@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use App\Models\SeatTransaction;
+use App\Observers\TransactionObserver;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,5 +24,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+        SeatTransaction::observe(TransactionObserver::class);
     }
 }
