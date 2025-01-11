@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('events', function (Blueprint $table) {
-            $table->string('event_id', 36)->primary(); // Ganti UUID ke string dengan panjang 36
+            $table->string('event_id', 36)->primary();
             $table->string('name');
-            $table->enum('category', ['concert', 'sports', 'workshop', 'etc']); // Hapus spasi ekstra
+            $table->enum('category', ['concert', 'sports', 'workshop', 'etc']);
             $table->dateTime('start_date');
-            $table->dateTime('end_date'); // Hapus spasi ekstra
+            $table->dateTime('end_date');
             $table->string('location');
-            $table->enum('status', ['planned', 'active', 'completed', 'cancelled']); // Hapus spasi ekstra
+            $table->enum('status', ['planned', 'active', 'completed', 'cancelled']);
             $table->timestamps();
         });
     }

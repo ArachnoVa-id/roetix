@@ -7,6 +7,7 @@ use App\Filament\Resources\EventResource\RelationManagers;
 use App\Models\Event;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Form\Components\Select;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,8 +27,15 @@ class EventResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('category')
-                    ->required(),
+                Forms\Components\Select::make('category')
+                    ->required()
+                    ->options([
+                        'concert' => 'concert',
+                        'sports' =>'sports',
+                        'workshop' =>'workshop',
+                        'etc' => 'etc',
+                    ])
+                    ->default('etc'),
                 Forms\Components\DateTimePicker::make('start_date')
                     ->required(),
                 Forms\Components\DateTimePicker::make('end_date')
@@ -35,8 +43,15 @@ class EventResource extends Resource
                 Forms\Components\TextInput::make('location')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('status')
-                    ->required(),
+                    Forms\Components\Select::make('status')
+                    ->required()
+                    ->options([
+                        'planned' => 'planned', 
+                        'active' => 'active', 
+                        'completed' => 'completed', 
+                        'cancelled' => 'cancelled', 
+                    ])
+                    ->default('planned'),
             ]);
     }
 
@@ -44,10 +59,9 @@ class EventResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('event_id')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('category'),
                 Tables\Columns\TextColumn::make('start_date')
                     ->dateTime()
@@ -59,10 +73,6 @@ class EventResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('status'),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
