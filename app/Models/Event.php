@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Event extends Model
 {
@@ -36,5 +38,9 @@ class Event extends Model
         });
     }
 
+    public function tikcetcategory(): HasMany
+    {
+        return $this->hasMany(TicketCategory::class, 'event_id', 'event_id');
+    }
 
 }
