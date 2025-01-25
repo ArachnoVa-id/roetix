@@ -80,7 +80,6 @@ class User extends Authenticatable implements FilamentUser, HasName
         parent::boot();
 
         static::creating(function ($model) {
-            // Automatically set the `user_id` to a UUID if it's not provided
             if (empty($model->user_id)) {
                 $model->user_id = (string) Str::uuid();
             }
@@ -89,10 +88,8 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     public function canAccessPanel(Panel $panel): bool
     {
-        if ($panel->getId() === 'admin') {
-            return str_ends_with($this->email, '@yourdomain.com') && $this->hasVerifiedEmail();
-        }
- 
-        return true;
+
+        return $this->role == 'admin' || $this->role == 'vendor';
+        
     }
 }
