@@ -1,15 +1,46 @@
-export type SeatStatus = 'available' | 'booked' | 'reserved' | 'in_transaction';
+export type SeatStatus = 'available' | 'booked' | 'in-transaction' | 'not_available';
 export type Category = 'diamond' | 'gold' | 'silver';
+export type ItemType = 'seat' | 'label';
 
 export interface SeatPosition {
     x: number;
     y: number;
 }
 
+export interface BaseItem {
+  row: string | number;
+  column: number;
+  type: ItemType;
+}
+
+export interface SeatItem {
+ type: 'seat';
+ seat_id: string;
+ row: string | number; // Allow both string/number for row
+ column: number;
+ status: SeatStatus;
+ category: Category;
+ price: number;
+}
+
+export interface LabelItem extends BaseItem {
+  type: 'label';
+  text: string;
+}
+
+export type LayoutItem = SeatItem | LabelItem;
+
+export interface Layout {
+  totalRows: number;
+  totalColumns: number;
+  items: LayoutItem[];
+}
+
 export type Position = string | { x: number; y: number };
 
 export interface Seat {
     seat_id: string;
+    section_id: string;
     seat_number: string;
     position: Position;
     status: SeatStatus;
@@ -46,4 +77,20 @@ export interface DragState {
     seatId: string;
     startPosition: SeatPosition;
     currentPosition: SeatPosition;
+}
+
+export interface SeatMap {
+  row: number;
+  column: number;
+  type: 'seat' | 'label';
+  category?: Category;
+  status?: SeatStatus;
+  label?: string;
+  seat_id?: string;
+}
+
+export interface SeatMapConfig {
+  totalRows: number;
+  totalColumns: number;
+  items: SeatMap[];
 }

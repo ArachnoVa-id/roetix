@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('seats', function (Blueprint $table) {
             $table->string('seat_id', 36)->primary();
-            $table->string('section_id', 36);
+            $table->string('venue_id', 36);
             $table->string('seat_number');
             $table->string('position');
             $table->enum('status', ['available', 'booked', 'reserved', 'in_transaction'])->default('available');
@@ -18,11 +18,6 @@ return new class extends Migration
             $table->string('row');
             $table->integer('column');
             $table->timestamps();
-
-            $table->foreign('section_id')
-                  ->references('id')
-                  ->on('sections')
-                  ->onDelete('cascade');
         });
     }
 

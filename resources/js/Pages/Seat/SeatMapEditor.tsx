@@ -1,134 +1,114 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { SeatMapSection, Seat, SeatStatus, Category } from './types';
-import EditModal from './components/EditModal';
+import React, { useState, useRef } from 'react';
+import { 
+  SeatMapSection, 
+  Seat, 
+  SeatStatus, 
+  Category, 
+  EditorState 
+} from './types';
 
 interface SeatMapEditorProps {
   sections: SeatMapSection[];
   onSave: (sections: SeatMapSection[]) => void;
 }
 
-type EditorMode = 'SINGLE' | 'GROUP' | 'DRAG';
-
 const SeatMapEditor: React.FC<SeatMapEditorProps> = ({ sections: initialSections, onSave }) => {
+  const [state, setState] = useState<EditorState>({
+    mode: 'SINGLE',
+    selectedSeats: new Set(),
+    isDragging: false,
+    selectedCategory: undefined
+  });
+
   const [sections, setSections] = useState<SeatMapSection[]>(initialSections);
-  const [mode, setMode] = useState<EditorMode>('SINGLE');
-  const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [dragSeat, setDragSeat] = useState<string | null>(null);
-  
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Get visual style for seat
   const getSeatStyle = (seat: Seat) => {
-    const isSelected = selectedSeats.has(seat.seat_id);
-    const isDragging = dragSeat === seat.seat_id;
+    const isSelected = state.selectedSeats.has(seat.seat_id);
+    const isSelectedCategory = 
+      state.mode === 'CAT_GROUP' && 
+      state.selectedCategory === seat.category;
 
     let baseColor = 'bg-gray-300';
-    if (seat.status === 'booked') baseColor = 'bg-red-500';
-    else if (seat.status === 'reserved') baseColor = 'bg-yellow-500';
-    else if (seat.status === 'in_transaction') baseColor = 'bg-orange-500';
-    else if (seat.category === 'diamond') baseColor = 'bg-cyan-400';
-    else if (seat.category === 'gold') baseColor = 'bg-yellow-400';
+    switch (seat.status) {
+      case 'booked': baseColor = 'bg-red-500'; break;
+      case 'in-transaction': baseColor = 'bg-yellow-500'; break;
+      case 'not_available': baseColor = 'bg-gray-400'; break;
+      default:
+        switch (seat.category) {
+          case 'diamond': baseColor = 'bg-cyan-400'; break;
+          case 'gold': baseColor = 'bg-yellow-400'; break;
+        }
+    }
 
     return `
       w-6 h-6 rounded-sm relative
-      ${isSelected ? 'ring-2 ring-blue-500' : ''}
-      ${isDragging ? 'opacity-50' : ''}
+      ${isSelected || isSelectedCategory ? 'ring-2 ring-blue-500' : ''}
+      ${state.isDragging ? 'opacity-50' : ''}
       ${baseColor}
-      ${mode === 'DRAG' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
+      ${state.mode === 'DRAG' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
       hover:opacity-75 transition-all duration-200
     `;
   };
 
-  // Handle seat selection
   const handleSeatClick = (seat: Seat, event: React.MouseEvent) => {
-    if (mode === 'DRAG') return;
+    if (state.mode === 'DRAG') return;
 
-    const newSelected = new Set(selectedSeats);
-    
-    if (mode === 'SINGLE') {
-      newSelected.clear();
-      newSelected.add(seat.seat_id);
-      setSelectedSeats(newSelected);
-      setShowEditModal(true);
-    } else if (mode === 'GROUP') {
-      if (event.shiftKey && selectedSeats.size > 0) {
-        newSelected.add(seat.seat_id);
-      } else if (newSelected.has(seat.seat_id)) {
-        newSelected.delete(seat.seat_id);
+    const newSelectedSeats = new Set(state.selectedSeats);
+
+    if (state.mode === 'SINGLE') {
+      newSelectedSeats.clear();
+      newSelectedSeats.add(seat.seat_id);
+    } else if (state.mode === 'CAT_GROUP') {
+      if (event.shiftKey && state.selectedCategory) {
+        // Select all seats in the selected category
+        sections.forEach(section => 
+          section.seats.forEach(s => {
+            if (s.category === state.selectedCategory) {
+              newSelectedSeats.add(s.seat_id);
+            }
+          })
+        );
       } else {
-        newSelected.add(seat.seat_id);
-      }
-      setSelectedSeats(newSelected);
-      if (newSelected.size > 0) {
-        setShowEditModal(true);
+        // Toggle seat selection
+        if (newSelectedSeats.has(seat.seat_id)) {
+          newSelectedSeats.delete(seat.seat_id);
+        } else {
+          newSelectedSeats.add(seat.seat_id);
+        }
       }
     }
+
+    setState(prev => ({
+      ...prev,
+      selectedSeats: newSelectedSeats
+    }));
   };
 
-  // Get current values for edit modal
-  const getCurrentValues = () => {
-    const firstSelectedSeat = sections
-      .flatMap(s => s.seats)
-      .find(seat => selectedSeats.has(seat.seat_id));
-
-    return {
-      status: firstSelectedSeat?.status || 'available',
-      category: firstSelectedSeat?.category || 'silver',
-      price: firstSelectedSeat?.price || 0
-    };
-  };
-
-  // Handle updates from edit modal
-  const handleSeatUpdate = (updates: {
-    status?: SeatStatus;
-    category?: Category;
-    price?: number;
-  }) => {
+  const updateSelectedSeats = (updates: Partial<Seat>) => {
     const updatedSections = sections.map(section => ({
       ...section,
       seats: section.seats.map(seat => 
-        selectedSeats.has(seat.seat_id)
+        state.selectedSeats.has(seat.seat_id)
           ? { ...seat, ...updates }
           : seat
       )
     }));
 
     setSections(updatedSections);
-    setSelectedSeats(new Set());
-    setShowEditModal(false);
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (e: React.MouseEvent, seatId: string) => {
-    if (mode !== 'DRAG') return;
-    setDragSeat(seatId);
-  };
-
-  const handleDragEnd = (e: React.MouseEvent) => {
-    if (!dragSeat || !gridRef.current) return;
-
-    const rect = gridRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Calculate new position
-    const cellSize = 24; // w-6 = 24px
-    const newRow = String.fromCharCode(65 + Math.floor(y / cellSize));
-    const newColumn = Math.floor(x / cellSize) + 1;
-
-    // Update seat position
-    const updatedSections = sections.map(section => ({
-      ...section,
-      seats: section.seats.map(seat =>
-        seat.seat_id === dragSeat
-          ? { ...seat, row: newRow, column: newColumn }
-          : seat
-      )
+    setState(prev => ({
+      ...prev,
+      selectedSeats: new Set()
     }));
+  };
 
-    setSections(updatedSections);
-    setDragSeat(null);
+  const handleModeChange = (mode: EditorState['mode']) => {
+    setState(prev => ({
+      mode,
+      selectedSeats: new Set(),
+      isDragging: false,
+      selectedCategory: undefined
+    }));
   };
 
   return (
@@ -136,48 +116,27 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({ sections: initialSections
       {/* Mode Selection */}
       <div className="flex gap-4 p-4 bg-gray-100 rounded-lg">
         <button
-          className={`px-4 py-2 rounded ${mode === 'SINGLE' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => {
-            setMode('SINGLE');
-            setSelectedSeats(new Set());
-          }}
+          className={`px-4 py-2 rounded ${state.mode === 'SINGLE' ? 'bg-blue-500 text-white' : 'bg-white'}`}
+          onClick={() => handleModeChange('SINGLE')}
         >
           Single Select
         </button>
         <button
-          className={`px-4 py-2 rounded ${mode === 'GROUP' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => {
-            setMode('GROUP');
-            setSelectedSeats(new Set());
-          }}
+          className={`px-4 py-2 rounded ${state.mode === 'CAT_GROUP' ? 'bg-blue-500 text-white' : 'bg-white'}`}
+          onClick={() => handleModeChange('CAT_GROUP')}
         >
-          Group Select
+          Category Group
         </button>
         <button
-          className={`px-4 py-2 rounded ${mode === 'DRAG' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => {
-            setMode('DRAG');
-            setSelectedSeats(new Set());
-          }}
+          className={`px-4 py-2 rounded ${state.mode === 'DRAG' ? 'bg-blue-500 text-white' : 'bg-white'}`}
+          onClick={() => handleModeChange('DRAG')}
         >
           Drag Mode
         </button>
       </div>
 
-      {/* Instructions */}
-      <div className="text-sm text-gray-600">
-        {mode === 'SINGLE' && 'Click a seat to edit its properties'}
-        {mode === 'GROUP' && 'Select multiple seats to edit. Hold Shift to select multiple seats'}
-        {mode === 'DRAG' && 'Drag seats to new positions'}
-      </div>
-
-      {/* Seat Map */}
-      <div 
-        ref={gridRef}
-        className="relative flex flex-wrap gap-8 justify-center"
-        onMouseUp={handleDragEnd}
-        onMouseLeave={handleDragEnd}
-      >
+      {/* Seat Map Rendering */}
+      <div ref={gridRef} className="relative flex flex-wrap gap-8 justify-center">
         {sections.map((section) => (
           <div key={section.id} className="flex flex-col items-center">
             <h3 className="text-lg font-semibold mb-2">{section.name}</h3>
@@ -186,16 +145,15 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({ sections: initialSections
                 <div key={`${section.id}-${row}`} className="flex gap-1 items-center">
                   <span className="w-6 text-right mr-2">{row}</span>
                   <div className="flex gap-1">
-                  {section.seats
+                    {section.seats
                       .filter((seat) => seat.row === row)
                       .sort((a, b) => a.column - b.column)
                       .map((seat) => (
                         <button
                           key={seat.seat_id}
                           className={getSeatStyle(seat)}
-                          onMouseDown={(e) => handleDragStart(e, seat.seat_id)}
                           onClick={(e) => handleSeatClick(seat, e)}
-                          title={`${seat.row}${seat.column} - ${seat.category.toUpperCase()} - ${seat.status} - $${seat.price}`}
+                          title={`${seat.seat_number} - ${seat.category} - ${seat.status} - $${seat.price}`}
                         />
                       ))}
                   </div>
@@ -205,20 +163,6 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({ sections: initialSections
           </div>
         ))}
       </div>
-
-      {/* Edit Modal */}
-      {showEditModal && (
-        <EditModal
-          selectedSeats={selectedSeats}
-          onUpdate={handleSeatUpdate}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedSeats(new Set());
-          }}
-          currentValues={getCurrentValues()}
-          mode={mode === 'GROUP' ? 'GROUP' : 'SINGLE'}
-        />
-      )}
 
       {/* Save Button */}
       <div className="flex justify-end mt-6">

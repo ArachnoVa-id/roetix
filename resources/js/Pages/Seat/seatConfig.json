@@ -1,0 +1,273 @@
+{
+"venue_id": "123",
+"layout": {
+"totalRows": 10,
+"totalColumns": 15,
+"items": [
+{
+"type": "seat",
+"seat_id": "A1",
+"row": "A",
+"column": 1,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "seat",
+"seat_id": "A2",
+"row": "A",
+"column": 2,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "seat",
+"seat_id": "A3",
+"row": "A",
+"column": 3,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "seat",
+"seat_id": "A4",
+"row": "A",
+"column": 4,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "seat",
+"seat_id": "A5",
+"row": "A",
+"column": 5,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "space",
+"row": "A",
+"column": 6
+},
+{
+"type": "seat",
+"seat_id": "A7",
+"row": "A",
+"column": 7,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "seat",
+"seat_id": "A8",
+"row": "A",
+"column": 8,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "seat",
+"seat_id": "A9",
+"row": "A",
+"column": 9,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "seat",
+"seat_id": "A10",
+"row": "A",
+"column": 10,
+"status": "available",
+"category": "diamond",
+"price": 100000
+},
+{
+"type": "label",
+"row": 10,
+"column": 7,
+"text": "STAGE"
+},
+{
+"type": "seat",
+"seat_id": "B1",
+"row": "B",
+"column": 1,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "seat",
+"seat_id": "B2",
+"row": "B",
+"column": 2,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "seat",
+"seat_id": "B3",
+"row": "B",
+"column": 3,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "seat",
+"seat_id": "B4",
+"row": "B",
+"column": 4,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "seat",
+"seat_id": "B5",
+"row": "B",
+"column": 5,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "space",
+"row": "B",
+"column": 6
+},
+{
+"type": "seat",
+"seat_id": "B7",
+"row": "B",
+"column": 7,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "seat",
+"seat_id": "B8",
+"row": "B",
+"column": 8,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "seat",
+"seat_id": "B9",
+"row": "B",
+"column": 9,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "seat",
+"seat_id": "B10",
+"row": "B",
+"column": 10,
+"status": "available",
+"category": "gold",
+"price": 80000
+},
+{
+"type": "seat",
+"seat_id": "C1",
+"row": "C",
+"column": 1,
+"status": "available",
+"category": "silver",
+"price": 50000
+},
+{
+"type": "seat",
+"seat_id": "C2",
+"row": "C",
+"column": 2,
+"status": "available",
+"category": "silver",
+"price": 50000
+},
+{
+"type": "seat",
+"seat_id": "C3",
+"row": "C",
+"column": 3,
+"status": "available",
+"category": "silver",
+"price": 50000
+},
+{
+"type": "seat",
+"seat_id": "C4",
+"row": "C",
+"column": 4,
+"status": "available",
+"category": "silver",
+"price": 50000
+},
+{
+"type": "seat",
+"seat_id": "C5",
+"row": "C",
+"column": 5,
+"status": "available",
+"category": "silver",
+"price": 50000
+},
+{
+"type": "space",
+"row": "C",
+"column": 6
+},
+{
+"type": "seat",
+"seat_id": "C7",
+"row": "C",
+"column": 7,
+"status": "available",
+"category": "silver",
+"price": 50000
+},
+{
+"type": "seat",
+"seat_id": "C8",
+"row": "C",
+"column": 8,
+"status": "available",
+"category": "silver",
+"price": 50000
+},
+{
+"type": "seat",
+"seat_id": "C9",
+"row": "C",
+"column": 9,
+"status": "available",
+"category": "silver",
+"price": 50000
+},
+{
+"type": "seat",
+"seat_id": "C10",
+"row": "C",
+"column": 10,
+"status": "available",
+"category": "silver",
+"price": 50000
+}
+]
+}
+}

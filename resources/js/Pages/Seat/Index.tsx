@@ -1,19 +1,16 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import SeatMapDisplay from './SeatMapDisplay';
-import { SeatMapSection } from './types';
+import { Layout } from './types';
 
 interface Props {
-  seatData: {
-    sections: SeatMapSection[];
-  };
+  layout: Layout;
 }
 
-const Index: React.FC<Props> = ({ seatData }) => {
+const Index: React.FC<Props> = ({ layout }) => {
   return (
     <>
       <Head title="Seat Map" />
-      
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
           <div className="bg-white overflow-hidden shadow-xl sm:rounded-lg">
@@ -27,10 +24,7 @@ const Index: React.FC<Props> = ({ seatData }) => {
                   Edit Seat Map
                 </Link>
               </div>
-              
-              <SeatMapDisplay
-                sections={seatData.sections}
-              />
+              <SeatMapDisplay config={layout} />
             </div>
           </div>
         </div>
