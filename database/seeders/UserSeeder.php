@@ -14,7 +14,7 @@ class UserSeeder extends Seeder
     {
         User::factory()->create([
             'email' => 'user@example.com',
-            'password' => bcrypt('test123'), // Encrypt the password
+            'password' => bcrypt('test123'),
             'first_name' => 'test',
             'last_name' => 'user',
             'role' => 'admin',
@@ -22,7 +22,7 @@ class UserSeeder extends Seeder
 
         User::factory()->create([
             'email' => 'admin@example.com',
-            'password' => bcrypt('test123'), // Encrypt the password
+            'password' => bcrypt('test123'),
             'first_name' => 'test',
             'last_name' => 'admin',
             'role' => 'admin',
@@ -30,7 +30,7 @@ class UserSeeder extends Seeder
 
         User::factory()->create([
             'email' => 'vendor@example.com',
-            'password' => bcrypt('test123'), // Encrypt the password
+            'password' => bcrypt('test123'),
             'first_name' => 'test',
             'last_name' => 'vendor',
             'role' => 'vendor',
