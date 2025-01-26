@@ -14,6 +14,11 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/eodashboard', function () {
+    return Inertia::render('Eodashboard/Eodashboard');
+})->middleware(['auth', 'verified'])->name('dashboard')
+->middleware(['auth', 'verified'])->name('dashboard');
+
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
