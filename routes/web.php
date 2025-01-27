@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Middleware\CheckRole;
+use App\Http\Controllers\OrderController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -17,7 +18,9 @@ Route::get('/', function () {
 
 Route::get('/eodashboard', function () {
     return Inertia::render('Eodashboard/Eodashboard');
-})->middleware(CheckRole::class);
+})->middleware(['auth', 'verified', CheckRole::class]);
+
+Route::resource('orders', OrderController::class);
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');

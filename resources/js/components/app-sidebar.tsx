@@ -1,23 +1,35 @@
 import * as React from "react"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage
+} from "@/components/ui/avatar"
+
+import { Link } from '@inertiajs/react';
+
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarMenuSub,
-  SidebarMenuSubItem
+  SidebarMenuSubItem,
+  SidebarFooter
 } from "@/components/ui/sidebar"
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, ChevronUp, User2 } from "lucide-react"
 
 // This is sample data.
 const data = {
@@ -64,6 +76,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </Avatar>
         <h1 className="h-fit self-center">Novatix-Arachnova</h1>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarMenu>
           {data.navMain.map((item) => (
@@ -88,7 +101,43 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </Collapsible>
           ))}
         </SidebarMenu>
+
       </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton>
+                  <User2 /> Username
+                  <ChevronUp className="ml-auto" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                className="w-[--radix-popper-anchor-width]"
+              >
+                <Link href={route('profile.edit')}>
+                  <DropdownMenuItem>
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                </Link>
+                <DropdownMenuSeparator />
+                <Link
+                  href={route('logout')}
+                  method="post"
+                  as="button">
+                  <DropdownMenuItem>
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </Link>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+
     </Sidebar>
   )
 }

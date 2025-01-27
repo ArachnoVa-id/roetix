@@ -28,7 +28,6 @@ class Ticket extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            // Automatically set the `ticket_id` to a UUID if it's not provided
             if (empty($model->ticket_id)) {
                 $model->ticket_id = (string) Str::uuid();
             }
