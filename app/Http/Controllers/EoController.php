@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
+use App\Models\Order;
+use App\Models\User;
+use App\Models\Ticket;
+use Inertia\Inertia;
+
 class EoController extends Controller
 {
     /**
@@ -11,7 +16,22 @@ class EoController extends Controller
      */
     public function index()
     {
-        //
+        $data = Order::query()
+        ->join('users', 'users.user_id', '=', 'orders.user_id')
+        ->join('tickets', 'tickets.ticket_id', '=', 'orders.ticket_id')
+        ->select([
+            'orders.ticket_id',
+            'orders.order_date',
+            'orders.status',
+            'orders.total_price',
+            'users.email',
+            'tickets.ticket_type',
+            'orders.created_at'
+        ])
+        ->latest()
+        ->get();
+
+        return $data;
     }
 
     /**

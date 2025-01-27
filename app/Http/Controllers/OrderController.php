@@ -13,7 +13,22 @@ class OrderController extends Controller
      */
     public function index()
     {
-        $orders = Order::with(['user', 'ticket'])->latest()->get();
+        $orders = Order::query()
+        ->join('users', 'users.user_id', '=', 'orders.user_id')
+        ->join('tickets', 'tickets.ticket_id', '=', 'orders.ticket_id')
+        ->select([
+            'orders.ticket_id',
+            'orders.order_date',
+            'orders.status',
+            'orders.total_price',
+            'users.email',
+            'tickets.ticket_type',
+            'orders.created_at'
+        ])
+        ->latest()
+        ->get();
+
+        // return $orders;
 
         return Inertia::render('Orders/Index', [
             'orders' => $orders,

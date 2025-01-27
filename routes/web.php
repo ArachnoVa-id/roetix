@@ -19,9 +19,32 @@ Route::get('/', function () {
 // order backend slash
 Route::resource('orders', OrderController::class);
 
-Route::get('/eodashboard', function () {
-    return Inertia::render('Eodashboard/Index');
-})->middleware(['auth', 'verified', CheckRole::class]);
+Route::get('/penjualan', function () {
+    return Inertia::render('EoPenjualan/Index', [
+        'title' => 'Penjualan',
+        'subtitle' => 'Terbeli',
+    ]);
+})
+->middleware(['auth', 'verified', CheckRole::class])
+->name('penjualan.index');
+
+Route::get('/kursi', function () {
+    return Inertia::render('EoKursi/Index', [
+        'title' => 'Kursi',
+        'subtitle' => 'Overview',
+    ]);
+})
+->middleware(['auth', 'verified', CheckRole::class])
+->name('kursi.index');
+
+Route::get('/tiket', function () {
+    return Inertia::render('EoTiket/Index', [
+        'title' => 'Tiket',
+        'subtitle' => 'Harga Tiket',
+    ]);
+})
+->middleware(['auth', 'verified', CheckRole::class])
+->name('tiket.index');
 
 
 Route::get('/dashboard', function () {
