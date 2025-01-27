@@ -2,63 +2,85 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class OrderController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Tampilkan semua data order.
      */
     public function index()
     {
-        //
+        $orders = Order::with(['user', 'ticket'])->latest()->get();
+
+        return Inertia::render('Orders/Index', [
+            'orders' => $orders,
+        ]);
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Tampilkan form untuk membuat order baru.
      */
     public function create()
     {
-        //
+        return Inertia::render('Orders/Create');
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Simpan order baru ke database.
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,user_id',
+            'ticket_id' => 'required|exists:tickets,ticket_id',
+            'order_date' => 'required|date',
+            'total_price' => 'required|numeric|min:0',
+            'status' => 'required|in:pending,completed,cancelled',
+        ]);
+
+        Order::create($validated);
+
+        return redirect()->route('orders.index')->with('success', 'Order berhasil dibuat.');
     }
 
     /**
-     * Display the specified resource.
+     * Tampilkan form untuk mengedit order.
      */
-    public function show(string $uuid)
+    public function edit(Order $order)
     {
-        //
+        return Inertia::render('Orders/Edit', [
+            'order' => $order->load(['user', 'ticket']),
+        ]);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Update data order di database.
      */
-    public function edit(string $uuid)
+    public function update(Request $request, Order $order)
     {
-        //
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,user_id',
+            'ticket_id' => 'required|exists:tickets,ticket_id',
+            'order_date' => 'required|date',
+            'total_price' => 'required|numeric|min:0',
+            'status' => 'required|in:pending,completed,cancelled',
+        ]);
+
+        $order->update($validated);
+
+        return redirect()->route('orders.index')->with('success', 'Order berhasil diperbarui.');
     }
 
     /**
-     * Update the specified resource in storage.
+     * Hapus order dari database.
      */
-    public function update(Request $request, string $uuid)
+    public function destroy(Order $order)
     {
-        //
-    }
+        $order->delete();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $uuid)
-    {
-        //
+        return redirect()->route('orders.index')->with('success', 'Order berhasil dihapus.');
     }
 }

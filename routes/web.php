@@ -16,11 +16,13 @@ Route::get('/', function () {
     ]);
 });
 
+// order backend slash
+Route::resource('orders', OrderController::class);
+
 Route::get('/eodashboard', function () {
-    return Inertia::render('Eodashboard/Eodashboard');
+    return Inertia::render('Eodashboard/Index');
 })->middleware(['auth', 'verified', CheckRole::class]);
 
-Route::resource('orders', OrderController::class);
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');

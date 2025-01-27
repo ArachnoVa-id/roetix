@@ -31,36 +31,57 @@ import {
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { ChevronDown, ChevronUp, User2 } from "lucide-react"
 
-// This is sample data.
 const data = {
-  versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
   navMain: [
     {
-      title: "Event Orgenizer",
-      url: "#",
+      title: "Penjualan",
       items: [
         {
-          title: "Upgrading",
-          url: "#",
+          title: "Terbeli",
         },
         {
-          title: "Examples",
-          url: "#",
+          title: "Opsi 2",
         },
+        {
+          title: "Opsi 3",
+        },
+        {
+          title: "Opsi 4",
+        }
       ],
     },
     {
-      title: "Vendor",
-      url: "#",
+      title: "Kursi",
       items: [
         {
-          title: "CLI",
-          url: "#",
+          title: "Overview",
         },
         {
-          title: "Edge Runtime",
-          url: "#",
+          title: "Opsi 2",
         },
+        {
+          title: "Opsi 3",
+        },
+        {
+          title: "Opsi 4",
+        }
+      ],
+    },
+    {
+      title: "Tiket",
+      items: [
+        {
+          title: "Scan Ticket",
+        },
+        {
+          title: "Opsi 2",
+        },
+        {
+          title: "Opsi 3",
+        },
+        {
+          title: "Opsi 4",
+        }
       ],
     },
   ],
@@ -92,7 +113,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuSub>
                     {item.items.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <a href={subItem.url}>{subItem.title}</a>
+                        <p>{subItem.title}</p>
                       </SidebarMenuSubItem>
                     ))}
                   </SidebarMenuSub>
@@ -141,3 +162,4 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     </Sidebar>
   )
 }
+

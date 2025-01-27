@@ -13,8 +13,15 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { ReactNode } from "react"
 
-export default function Eodashboard() {
+interface Props {
+  children: ReactNode;
+  title: string;
+  subtitle: string;
+}
+
+export default function EodashboardLayout({ children, title = "Hallo", subtitle = "Hallo" }: Props) {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -25,24 +32,17 @@ export default function Eodashboard() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  Building Your Application
-                </BreadcrumbLink>
+                {title}
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+                <BreadcrumbPage>{subtitle}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="aspect-video rounded-xl bg-muted/50" />
-            <div className="aspect-video rounded-xl bg-muted/50" />
-            <div className="aspect-video rounded-xl bg-muted/50" />
-          </div>
-          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
+        <div className="min-h-screen p-[2.4vw] md:p-[1.5vw]">
+          {children}
         </div>
       </SidebarInset>
     </SidebarProvider>
