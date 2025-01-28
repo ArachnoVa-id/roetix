@@ -28,11 +28,11 @@ class OrderController extends Controller
         ->latest()
         ->get();
 
-        // return $orders;
+        return $orders;
 
-        return Inertia::render('Orders/Index', [
-            'orders' => $orders,
-        ]);
+        // return Inertia::render('Orders/Index', [
+        //     'orders' => $orders,
+        // ]);
     }
 
     /**

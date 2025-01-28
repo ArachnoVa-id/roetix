@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Models\Ticket;
 use Inertia\Inertia;
 
-class EoController extends Controller
+class EoPenjualanController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -31,7 +31,12 @@ class EoController extends Controller
         ->latest()
         ->get();
 
-        return $data;
+        // return $data;
+        return Inertia::render('EoPenjualan/Index', [
+            'title' => 'Penjualan',
+            'subtitle' => 'Terbeli',
+            'tickets' => $data,
+        ]);
     }
 
     /**

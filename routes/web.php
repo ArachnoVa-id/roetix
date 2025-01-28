@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Middleware\CheckRole;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\EoPenjualanController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -19,12 +20,7 @@ Route::get('/', function () {
 // order backend slash
 Route::resource('orders', OrderController::class);
 
-Route::get('/penjualan', function () {
-    return Inertia::render('EoPenjualan/Index', [
-        'title' => 'Penjualan',
-        'subtitle' => 'Terbeli',
-    ]);
-})
+Route::get('/penjualan', [EoPenjualanController::class, 'index'])
 ->middleware(['auth', 'verified', CheckRole::class])
 ->name('penjualan.index');
 
