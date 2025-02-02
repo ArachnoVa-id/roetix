@@ -22,8 +22,8 @@ class OrderFactory extends Factory
     {
         return [
             'order_id' => (string) Str::uuid(),
-            'user_id' => User::factory(),
-            'ticket_id' => Ticket::factory(),
+            'user_id' => User::inRandomOrder()->first()->user_id,
+            'ticket_id' => Ticket::inRandomOrder()->first()->ticket_id,
             'order_date' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'total_price' => $this->faker->randomFloat(2, 100000, 1000000),
             'status' => $this->faker->randomElement(['pending', 'completed', 'cancelled']),

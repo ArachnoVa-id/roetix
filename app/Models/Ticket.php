@@ -39,4 +39,9 @@ class Ticket extends Model
         return $this->belongsTo(Event::class, 'event_id', 'event_id');
     }
 
+    public function ticket()
+    {
+        return $this->belongsTo(Sear::class, 'seat_id', 'seat_id');
+    }
+
 }

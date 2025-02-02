@@ -17,15 +17,15 @@ interface Props {
     tickets: Orders[];
     title: string;
     subtitle: string;
+    total: number;
 }
 
-export default function Index({ tickets, title, subtitle }: Props) {
+export default function Index({ tickets, total, title, subtitle }: Props) {
     return (
         <EodashboardLayout title={title} subtitle={subtitle}>
             <div className="p-4">
                 <h1 className="text-2xl font-bold">{title}</h1>
                 <p className="mt-2 text-gray-600">Overview Penjualan Tiket</p>
-                {/* Tambahkan konten khusus di sini */}
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -69,7 +69,7 @@ export default function Index({ tickets, title, subtitle }: Props) {
                     <TableFooter>
                         <TableRow>
                             <TableCell>Total</TableCell>
-                            <TableCell colSpan={5} className="text-right">Rp. 12999999999</TableCell>
+                            <TableCell colSpan={5} className="text-right">Rp. {total}</TableCell>
                         </TableRow>
                     </TableFooter>
                 </Table>

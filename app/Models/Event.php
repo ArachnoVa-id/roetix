@@ -31,7 +31,6 @@ class Event extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            // Automatically set the `event_id` to a UUID if it's not provided
             if (empty($model->event_id)) {
                 $model->event_id = (string) Str::uuid();
             }

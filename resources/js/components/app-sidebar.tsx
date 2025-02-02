@@ -29,50 +29,58 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, User2 } from "lucide-react";
+import { ChevronDown, ChevronUp, User2, ChartGantt, Building, Ticket, LineChart, LandPlot } from "lucide-react";
 
 const data = {
   navMain: [
     {
-      title: "Penjualan",
+      title: "Acara",
+      icon: <ChartGantt />,
       href: "",
       items: [
-        { title: "Terbeli", href: route("penjualan.index") },
-        // { title: "Opsi 2", href: route("penjualan.opsi2") },
-        // { title: "Opsi 3", href: route("penjualan.opsi3") },
-        // { title: "Opsi 4", href: route("penjualan.opsi4") },
+        { title: "Daftar Acara", href: route("kursi.index") },
+        { title: "Buat Acara", href: route("kursi.index") },
+        { title: "Edit Acara", href: route("kursi.index") },
       ],
     },
     {
-      title: "Kursi",
+      title: "Venue",
+      icon: <LandPlot />,
       href: "",
       items: [
-        { title: "Overview", href: route("kursi.index") },
-        // { title: "Atur Poisi", href: route("kursi.aturPoisi") },
-        // { title: "Opsi 3", href: route("kursi.opsi3") },
-        // { title: "Opsi 4", href: route("kursi.opsi4") },
+        { title: "Daftar Venue", href: route("penjualan.index") },
+        { title: "Sewa Venue", href: route("penjualan.index") },
+        { title: "Pengaturan Venue", href: route("penjualan.index") },
       ],
     },
     {
       title: "Tiket",
+      icon: <Ticket />,
       href: "",
       items: [
+        { title: "Pengaturan Tiket", href: route("tiket.index") },
         { title: "Harga Tiket", href: route("tiket.index") },
-        // { title: "Scan Tiket", href: route("tiket.scanTiket") },
-        // { title: "Opsi 3", href: route("tiket.opsi3") },
-        // { title: "Opsi 4", href: route("tiket.opsi4") },
+        { title: "Verifikasi Tiket", href: route("tiket.index") },
       ],
     },
-    // {
-    //   title: "Lain Lain",
-    //   href: "",
-    //   items: [
-    //     { title: "Pengumuman", href: route("lainLain.index") },
-    //     { title: "Time Line", href: route("lainLain.timeline") },
-    //     { title: "Opsi 3", href: route("lainLain.opsi3") },
-    //     { title: "Opsi 4", href: route("lainLain.opsi4") },
-    //   ],
-    // },
+    {
+      title: "Analitik",
+      icon: <LineChart />,
+      href: "",
+      items: [
+        { title: "Laporan Penjualan", href: route("tiket.index") },
+        { title: "Riwayat Acara", href: route("tiket.index") },
+      ],
+    },
+    {
+      title: "Profil",
+      icon: <Building />,
+      href: "",
+      items: [
+        { title: "Pengaturan Profil", href: route("tiket.index") },
+        { title: "Perbarui Profil", href: route("tiket.index") },
+      ],
+    },
   ],
 };
 
@@ -82,7 +90,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {/* Sidebar Header */}
       <SidebarHeader className="flex flex-row items-center">
         <Avatar>
-          <AvatarImage src="https://github.com/shadcn.png" />
+          {/* <AvatarImage src="https://github.com/shadcn.png" /> */}
+          <AvatarImage src="/images/novatix-logo.jpeg" />
           <AvatarFallback>AV</AvatarFallback>
         </Avatar>
         <h1 className="text-lg font-semibold">Novatix-Arachnova</h1>
@@ -96,6 +105,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton className="flex items-center text-[1.2vw]">
+                    {item.icon}
                     {item.title}
                     <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
                   </SidebarMenuButton>

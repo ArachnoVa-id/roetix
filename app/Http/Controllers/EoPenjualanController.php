@@ -30,12 +30,15 @@ class EoPenjualanController extends Controller
         ])
         ->latest()
         ->get();
+        
+        $total_price = $data->sum('total_price');
 
         // return $data;
         return Inertia::render('EoPenjualan/Index', [
             'title' => 'Penjualan',
             'subtitle' => 'Terbeli',
             'tickets' => $data,
+            'total' => $total_price,
         ]);
     }
 
