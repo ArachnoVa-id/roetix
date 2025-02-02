@@ -38,9 +38,9 @@ const data = {
       icon: <ChartGantt />,
       href: "",
       items: [
-        { title: "Daftar Acara", href: route("kursi.index") },
-        { title: "Buat Acara", href: route("kursi.index") },
-        { title: "Edit Acara", href: route("kursi.index") },
+        { title: "Daftar Acara", href: route("acara.index") },
+        { title: "Buat Acara", href: route("acara.create") },
+        { title: "Edit Acara", href: route("acara.edit") },
       ],
     },
     {
@@ -48,9 +48,9 @@ const data = {
       icon: <LandPlot />,
       href: "",
       items: [
-        { title: "Daftar Venue", href: route("penjualan.index") },
-        { title: "Sewa Venue", href: route("penjualan.index") },
-        { title: "Pengaturan Venue", href: route("penjualan.index") },
+        { title: "Daftar Venue", href: route("vanue.index") },
+        { title: "Sewa Venue", href: route("vanue.sewa") },
+        { title: "Pengaturan Venue", href: route("vanue.pengaturan") },
       ],
     },
     {
@@ -58,9 +58,9 @@ const data = {
       icon: <Ticket />,
       href: "",
       items: [
-        { title: "Pengaturan Tiket", href: route("tiket.index") },
-        { title: "Harga Tiket", href: route("tiket.index") },
-        { title: "Verifikasi Tiket", href: route("tiket.index") },
+        { title: "Pengaturan Tiket", href: route("tiket.pengaturan") },
+        { title: "Harga Tiket", href: route("tiket.harga") },
+        { title: "Verifikasi Tiket", href: route("tiket.verifikasi") },
       ],
     },
     {
@@ -68,8 +68,8 @@ const data = {
       icon: <LineChart />,
       href: "",
       items: [
-        { title: "Laporan Penjualan", href: route("tiket.index") },
-        { title: "Riwayat Acara", href: route("tiket.index") },
+        { title: "Laporan Penjualan", href: route("penjualan.index") },
+        { title: "Riwayat Acara", href: route("acara.riwayat") },
       ],
     },
     {
@@ -77,8 +77,8 @@ const data = {
       icon: <Building />,
       href: "",
       items: [
-        { title: "Pengaturan Profil", href: route("tiket.index") },
-        { title: "Perbarui Profil", href: route("tiket.index") },
+        { title: "Pengaturan Profil", href: route("profil.index") },
+        { title: "Perbarui Profil", href: route("profil.edit") },
       ],
     },
   ],
@@ -104,7 +104,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <Collapsible defaultOpen className="group/collapsible" key={item.title}>
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton className="flex items-center text-[1.2vw]">
+                  <SidebarMenuButton className="flex items-center md:text-[1.2vw] text-[2.5vw]">
                     {item.icon}
                     {item.title}
                     <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 interface Orders {
     ticket_id: string;
     order_date: string;
+    seat_number: number;
     status: string;
     total_price: string;
     email: string;
@@ -30,6 +31,7 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                     <TableHeader>
                         <TableRow>
                             <TableHead>ticket id</TableHead>
+                            <TableHead>seat number</TableHead>
                             <TableHead>order date</TableHead>
                             <TableHead>email</TableHead>
                             <TableHead>status</TableHead>
@@ -39,9 +41,10 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                     </TableHeader>
 
                     <TableBody>
-                        {tickets.map((ticket) => (
-                            <TableRow key={ticket.ticket_id}>
+                        {tickets.map((ticket, idx) => (
+                            <TableRow key={idx}>
                                 <TableCell>{ticket.ticket_id}</TableCell>
+                                <TableCell>{ticket.seat_number}</TableCell>
                                 <TableCell>{ticket.order_date}</TableCell>
                                 <TableCell>{ticket.email}</TableCell>
                                 <TableCell
@@ -69,7 +72,7 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                     <TableFooter>
                         <TableRow>
                             <TableCell>Total</TableCell>
-                            <TableCell colSpan={5} className="text-right">Rp. {total}</TableCell>
+                            <TableCell colSpan={6} className="text-right">Rp. {total}</TableCell>
                         </TableRow>
                     </TableFooter>
                 </Table>

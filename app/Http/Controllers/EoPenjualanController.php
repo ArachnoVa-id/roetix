@@ -19,14 +19,18 @@ class EoPenjualanController extends Controller
         $data = Order::query()
         ->join('users', 'users.user_id', '=', 'orders.user_id')
         ->join('tickets', 'tickets.ticket_id', '=', 'orders.ticket_id')
+        ->join('seats', 'seats.seat_id', '=', 'tickets.seat_id')
+        ->join('venues', 'venues.venue_id', '=', 'seats.venue_id')
         ->select([
             'orders.ticket_id',
+            'seats.seat_number',
+            'venues.name',
             'orders.order_date',
             'orders.status',
             'orders.total_price',
             'users.email',
             'tickets.ticket_type',
-            'orders.created_at'
+            'orders.created_at',
         ])
         ->latest()
         ->get();
@@ -34,7 +38,7 @@ class EoPenjualanController extends Controller
         $total_price = $data->sum('total_price');
 
         // return $data;
-        return Inertia::render('EoPenjualan/Index', [
+        return Inertia::render('EventOrganizer/EoPenjualan/Index', [
             'title' => 'Penjualan',
             'subtitle' => 'Terbeli',
             'tickets' => $data,
