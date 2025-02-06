@@ -4,13 +4,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 interface Orders {
-    ticket_id: string;
+    order_id: string;
     order_date: string;
-    seat_number: number;
+    // seat_number: number;
     status: string;
     total_price: string;
     email: string;
-    ticket_type: string;
+    // ticket_type: string;
     created_at: string;
 }
 
@@ -30,12 +30,10 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>ticket id</TableHead>
-                            <TableHead>seat number</TableHead>
+                            <TableHead>order id</TableHead>
                             <TableHead>order date</TableHead>
                             <TableHead>email</TableHead>
                             <TableHead>status</TableHead>
-                            <TableHead>type</TableHead>
                             <TableHead>total price</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -43,8 +41,7 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                     <TableBody>
                         {tickets.map((ticket, idx) => (
                             <TableRow key={idx}>
-                                <TableCell>{ticket.ticket_id}</TableCell>
-                                <TableCell>{ticket.seat_number}</TableCell>
+                                <TableCell>{ticket.order_id}</TableCell>
                                 <TableCell>{ticket.order_date}</TableCell>
                                 <TableCell>{ticket.email}</TableCell>
                                 <TableCell
@@ -64,7 +61,6 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                                         </Popover>
                                         : ticket.status}
                                 </TableCell>
-                                <TableCell>{ticket.ticket_type}</TableCell>
                                 <TableCell>{ticket.total_price}</TableCell>
                             </TableRow>
                         ))}

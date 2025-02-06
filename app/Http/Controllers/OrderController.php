@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\Venue;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -13,30 +14,26 @@ class OrderController extends Controller
      */
     public function index()
     {
-        $orders = Order::query()
-        ->join('users', 'users.user_id', '=', 'orders.user_id')
-        ->join('tickets', 'tickets.ticket_id', '=', 'orders.ticket_id')
-        ->join('seats', 'seats.seat_id', '=', 'tickets.seat_id')
-        ->join('venues', 'venues.venue_id', '=', 'seats.venue_id')
-        ->select([
-            'orders.ticket_id',
-            'seats.seat_number',
-            'venues.name',
-            'orders.order_date',
-            'orders.status',
-            'orders.total_price',
-            'users.email',
-            'tickets.ticket_type',
-            'orders.created_at',
-        ])
-        ->latest()
-        ->get();
+        // $data = Venue::query()
+        // ->join('user_contacts', 'contact_id', '=', 'venues.contact_info')
+        // ->select([
+        //     'venues.venue_id',
+        //     'venues.name',
+        //     'venues.location',
+        //     'venues.capacity',
+        //     'venues.status',
+        //     'user_contacts.phone_number',
+        //     'user_contacts.email',
+        //     'user_contacts.whatsapp_number',
+        //     'user_contacts.instagram',
+        //     'venues.created_at',
+        // ])
+        // ->latest()
+        // ->get();
 
-        return $orders;
+        $data = Venue::with('contactinfo')->get();
 
-        // return Inertia::render('Orders/Index', [
-        //     'orders' => $orders,
-        // ]);
+        return $data;
     }
 
     /**

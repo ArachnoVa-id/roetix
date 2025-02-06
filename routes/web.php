@@ -23,6 +23,10 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/test', function () {
+    return Inertia::render('Test');
+});
+
 // order backend slash
 Route::resource('orders', OrderController::class);
 

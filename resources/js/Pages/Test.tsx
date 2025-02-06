@@ -1,0 +1,20 @@
+import Ticket from "@/Components/novatix/Ticket"
+
+export default function Test() {
+    return (
+        <div className="flex justify-center items-center h-screen">
+            {/* <p>this is testing page</p> */}
+            <Ticket
+                ticketURL="https://youtu.be/dQw4w9WgXcQ"
+                ticketCode="1234"
+                ticketType="Diamond"
+                ticketData={{
+                    date: "6 April 2024, 14:40",
+                    type: "VIP+",
+                    seat: "C3",
+                    price: "Rp150.000",
+                }}
+            />
+        </div>
+    )
+}

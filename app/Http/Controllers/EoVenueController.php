@@ -4,13 +4,17 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+use App\Models\Venue;
 
 class EoVenueController extends Controller
 {
     public function index()
     {
+
+        $data = Venue::with('contactinfo')->get();
+
         return Inertia::render('EventOrganizer/EoVenue/Index', [
+            'venues' => $data,
             'title' => 'Venue',
             'subtitle' => 'Dafar',
         ]);

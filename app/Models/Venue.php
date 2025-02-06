@@ -30,6 +30,6 @@ class Venue extends Model
 
     public function contactinfo()
     {
-        return $this->belongsTo(UserContact::class, 'contact_info', 'contact_info');
+        return $this->belongsTo(UserContact::class, 'contact_info', 'contact_id');
     }
 }
