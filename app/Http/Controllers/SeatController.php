@@ -7,6 +7,7 @@ use App\Models\Section;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SeatController extends Controller
 {
@@ -52,7 +53,7 @@ class SeatController extends Controller
         $json = json_decode(file_get_contents($request->file('config')->path()), true);
 
         try {
-            \DB::beginTransaction();
+            DB::beginTransaction();
 
             foreach ($json['items'] as $item) {
                 if ($item['type'] === 'seat') {
@@ -67,45 +68,55 @@ class SeatController extends Controller
                 }
             }
 
-            \DB::commit();
+            DB::commit();
             return back()->with('message', 'Seat map imported successfully');
 
         } catch (\Exception $e) {
-            \DB::rollBack();
+            DB::rollBack();
             return back()->withErrors(['error' => 'Failed to import seat map']);
         }
     }
 
     public function edit()
-    {
-        // Load existing seat data
-        $seatData = [
-            'sections' => Section::with(['seats' => function ($query) {
-                $query->orderBy('row')->orderBy('column');
-            }])->get()->map(function ($section) {
+{
+    try {
+        // Ambil semua kursi
+        $seats = Seat::orderBy('row')->orderBy('column')->get();
+        
+        // Format data seperti di method index()
+        $layout = [
+            'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
+            'totalColumns' => $seats->max('column'),
+            'items' => $seats->map(function($seat) {
                 return [
-                    'id' => $section->id,
-                    'name' => $section->name,
-                    'rows' => $section->seats->pluck('row')->unique()->values()->all(),
-                    'seats' => $section->seats->map(function ($seat) {
-                        return [
-                            'seat_id' => $seat->seat_id,
-                            'seat_number' => $seat->seat_number,
-                            'position' => $seat->position,
-                            'status' => $seat->status,
-                            'category' => $seat->category,
-                            'row' => $seat->row,
-                            'column' => $seat->column
-                        ];
-                    })->values()->all()
+                    'type' => 'seat',
+                    'seat_id' => $seat->seat_id,
+                    'row' => $seat->row,
+                    'column' => $seat->column,
+                    'status' => $seat->status,
+                    'category' => $seat->category,
+                    'price' => $seat->price
                 ];
-            })->values()->all()
+            })->values()
+        ];
+
+        // Add stage label
+        $layout['items'][] = [
+            'type' => 'label',
+            'row' => $layout['totalRows'],
+            'column' => floor($layout['totalColumns'] / 2),
+            'text' => 'STAGE'
         ];
 
         return Inertia::render('Seat/Edit', [
-            'seatData' => $seatData
+            'layout' => $layout
         ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error in edit method: ' . $e->getMessage());
+        return redirect()->back()->withErrors(['error' => 'Failed to load seat map']);
     }
+}
 
     // SeatController.php
 public function update(Request $request)

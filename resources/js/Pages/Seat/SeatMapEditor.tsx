@@ -1,177 +1,170 @@
-import React, { useState, useRef } from 'react';
-import { 
-  SeatMapSection, 
-  Seat, 
-  SeatStatus, 
-  Category, 
-  EditorState 
-} from './types';
+import React, { useState } from 'react';
+import { Layout, SeatItem, LayoutItem, EditorState } from './types';
 
-interface SeatMapEditorProps {
-  sections: SeatMapSection[];
-  onSave: (sections: SeatMapSection[]) => void;
+interface Props {
+  layout: Layout;
+  onSave: (seats: any) => void;
 }
 
-const SeatMapEditor: React.FC<SeatMapEditorProps> = ({ sections: initialSections, onSave }) => {
+const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
+  const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
   const [state, setState] = useState<EditorState>({
     mode: 'SINGLE',
     selectedSeats: new Set(),
-    isDragging: false,
-    selectedCategory: undefined
+    isDragging: false
   });
 
-  const [sections, setSections] = useState<SeatMapSection[]>(initialSections);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const grid = Array(layout.totalRows).fill(null)
+    .map(() => Array(layout.totalColumns).fill(null));
 
-  const getSeatStyle = (seat: Seat) => {
-    const isSelected = state.selectedSeats.has(seat.seat_id);
-    const isSelectedCategory = 
-      state.mode === 'CAT_GROUP' && 
-      state.selectedCategory === seat.category;
-
-    let baseColor = 'bg-gray-300';
-    switch (seat.status) {
-      case 'booked': baseColor = 'bg-red-500'; break;
-      case 'in-transaction': baseColor = 'bg-yellow-500'; break;
-      case 'not_available': baseColor = 'bg-gray-400'; break;
-      default:
-        switch (seat.category) {
-          case 'diamond': baseColor = 'bg-cyan-400'; break;
-          case 'gold': baseColor = 'bg-yellow-400'; break;
-        }
+  layout.items.forEach(item => {
+    const rowIndex = typeof item.row === 'string' ?
+      item.row.charCodeAt(0) - 65 : item.row;
+    if (rowIndex >= 0 && rowIndex < layout.totalRows) {
+      grid[rowIndex][item.column - 1] = item;
     }
+  });
 
-    return `
-      w-6 h-6 rounded-sm relative
-      ${isSelected || isSelectedCategory ? 'ring-2 ring-blue-500' : ''}
-      ${state.isDragging ? 'opacity-50' : ''}
-      ${baseColor}
-      ${state.mode === 'DRAG' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
-      hover:opacity-75 transition-all duration-200
-    `;
-  };
+  const getSeatColor = (seat: SeatItem): string => {
+    const isSelected = state.selectedSeats.has(seat.seat_id);
+    let baseColor = '';
 
-  const handleSeatClick = (seat: Seat, event: React.MouseEvent) => {
-    if (state.mode === 'DRAG') return;
-
-    const newSelectedSeats = new Set(state.selectedSeats);
-
-    if (state.mode === 'SINGLE') {
-      newSelectedSeats.clear();
-      newSelectedSeats.add(seat.seat_id);
-    } else if (state.mode === 'CAT_GROUP') {
-      if (event.shiftKey && state.selectedCategory) {
-        // Select all seats in the selected category
-        sections.forEach(section => 
-          section.seats.forEach(s => {
-            if (s.category === state.selectedCategory) {
-              newSelectedSeats.add(s.seat_id);
-            }
-          })
-        );
-      } else {
-        // Toggle seat selection
-        if (newSelectedSeats.has(seat.seat_id)) {
-          newSelectedSeats.delete(seat.seat_id);
-        } else {
-          newSelectedSeats.add(seat.seat_id);
-        }
+    if (seat.status !== 'available') {
+      switch (seat.status) {
+        case 'booked': baseColor = 'bg-red-500'; break;
+        case 'in-transaction': baseColor = 'bg-yellow-500'; break;
+        case 'not_available': baseColor = 'bg-gray-400'; break;
+      }
+    } else {
+      switch (seat.category) {
+        case 'diamond': baseColor = 'bg-cyan-400'; break;
+        case 'gold': baseColor = 'bg-yellow-400'; break;
+        case 'silver': baseColor = 'bg-gray-300'; break;
+        default: baseColor = 'bg-gray-200';
       }
     }
 
-    setState(prev => ({
-      ...prev,
-      selectedSeats: newSelectedSeats
-    }));
+    return `${baseColor} ${isSelected ? 'ring-2 ring-blue-500' : ''}`;
   };
 
-  const updateSelectedSeats = (updates: Partial<Seat>) => {
-    const updatedSections = sections.map(section => ({
-      ...section,
-      seats: section.seats.map(seat => 
-        state.selectedSeats.has(seat.seat_id)
-          ? { ...seat, ...updates }
-          : seat
+  const handleSeatClick = (seat: SeatItem) => {
+    if (state.mode === 'DRAG') return;
+
+    setState(prev => {
+      const newSelectedSeats = new Set(prev.selectedSeats);
+      if (newSelectedSeats.has(seat.seat_id)) {
+        newSelectedSeats.delete(seat.seat_id);
+      } else {
+        newSelectedSeats.add(seat.seat_id);
+      }
+      return { ...prev, selectedSeats: newSelectedSeats };
+    });
+  };
+
+  const handleStatusUpdate = (status: string) => {
+    const updatedSeats = layout.items
+      .filter(item => 
+        item.type === 'seat' && 
+        state.selectedSeats.has((item as SeatItem).seat_id)
       )
-    }));
+      .map(item => ({
+        seat_id: (item as SeatItem).seat_id,
+        status: status
+      }));
 
-    setSections(updatedSections);
-    setState(prev => ({
-      ...prev,
-      selectedSeats: new Set()
-    }));
+    onSave(updatedSeats);
+    setState(prev => ({ ...prev, selectedSeats: new Set() }));
   };
 
-  const handleModeChange = (mode: EditorState['mode']) => {
-    setState(prev => ({
-      mode,
-      selectedSeats: new Set(),
-      isDragging: false,
-      selectedCategory: undefined
-    }));
+  const renderCell = (item: LayoutItem | null, key: number) => {
+    if (!item) return <div key={key} className="w-6 h-6" />;
+
+    if (item.type === 'label') {
+      return (
+        <div key={key} className="w-6 h-6 flex items-center justify-center text-sm font-medium">
+          {item.text}
+        </div>
+      );
+    }
+
+    return (
+      <button
+        key={key}
+        className={`
+          w-6 h-6 rounded-sm
+          ${getSeatColor(item)}
+          hover:opacity-75
+          transition-opacity duration-200
+        `}
+        onClick={() => handleSeatClick(item)}
+        title={`${item.seat_id} - ${item.category} - ${item.status}\nPrice: ${item.price}`}
+      />
+    );
   };
 
   return (
     <div className="space-y-6">
-      {/* Mode Selection */}
-      <div className="flex gap-4 p-4 bg-gray-100 rounded-lg">
+      {/* Status Buttons */}
+      <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
         <button
-          className={`px-4 py-2 rounded ${state.mode === 'SINGLE' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => handleModeChange('SINGLE')}
+          className="px-4 py-2 bg-green-400 text-white rounded hover:bg-green-500"
+          onClick={() => handleStatusUpdate('available')}
+          disabled={state.selectedSeats.size === 0}
         >
-          Single Select
+          Set Available
         </button>
         <button
-          className={`px-4 py-2 rounded ${state.mode === 'CAT_GROUP' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => handleModeChange('CAT_GROUP')}
+          className="px-4 py-2 bg-red-400 text-white rounded hover:bg-red-500"
+          onClick={() => handleStatusUpdate('booked')}
+          disabled={state.selectedSeats.size === 0}
         >
-          Category Group
+          Set Booked
         </button>
         <button
-          className={`px-4 py-2 rounded ${state.mode === 'DRAG' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => handleModeChange('DRAG')}
+          className="px-4 py-2 bg-yellow-400 text-white rounded hover:bg-yellow-500"
+          onClick={() => handleStatusUpdate('in-transaction')}
+          disabled={state.selectedSeats.size === 0}
         >
-          Drag Mode
+          Set In Transaction
         </button>
       </div>
 
-      {/* Seat Map Rendering */}
-      <div ref={gridRef} className="relative flex flex-wrap gap-8 justify-center">
-        {sections.map((section) => (
-          <div key={section.id} className="flex flex-col items-center">
-            <h3 className="text-lg font-semibold mb-2">{section.name}</h3>
-            <div className="grid gap-1">
-              {section.rows.map((row) => (
-                <div key={`${section.id}-${row}`} className="flex gap-1 items-center">
-                  <span className="w-6 text-right mr-2">{row}</span>
-                  <div className="flex gap-1">
-                    {section.seats
-                      .filter((seat) => seat.row === row)
-                      .sort((a, b) => a.column - b.column)
-                      .map((seat) => (
-                        <button
-                          key={seat.seat_id}
-                          className={getSeatStyle(seat)}
-                          onClick={(e) => handleSeatClick(seat, e)}
-                          title={`${seat.seat_number} - ${seat.category} - ${seat.status} - $${seat.price}`}
-                        />
-                      ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* Legend */}
+      <div className="flex gap-4 mb-6">
+        {[
+          { status: 'booked', color: 'bg-red-500', label: 'Booked' },
+          { status: 'in-transaction', color: 'bg-yellow-500', label: 'In Transaction' },
+          { status: 'not_available', color: 'bg-gray-400', label: 'Not Available' },
+          { category: 'diamond', color: 'bg-cyan-400', label: 'Diamond' },
+          { category: 'gold', color: 'bg-yellow-400', label: 'Gold' },
+          { category: 'silver', color: 'bg-gray-300', label: 'Silver' }
+        ].map((item, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <div className={`w-4 h-4 ${item.color}`} />
+            <span>{item.label}</span>
           </div>
         ))}
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end mt-6">
-        <button
-          className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          onClick={() => onSave(sections)}
-        >
-          Save Changes
-        </button>
+      {/* Grid */}
+      <div className="flex flex-col items-center w-full">
+        <div className="grid gap-1">
+          {grid.map((row, rowIndex) => (
+            <div key={rowIndex} className="flex gap-1 items-center">
+              <span className="w-6 text-right mr-2">
+                {String.fromCharCode(65 + rowIndex)}
+              </span>
+              <div className="flex gap-1">
+                {row.map((item, colIndex) => renderCell(item, colIndex))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Stage */}
+        <div className="mt-8 w-96 h-12 bg-white border border-gray-200 flex items-center justify-center rounded">
+          Panggung
+        </div>
       </div>
     </div>
   );
