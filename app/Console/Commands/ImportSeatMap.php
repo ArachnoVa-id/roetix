@@ -30,7 +30,7 @@ class ImportSeatMap extends Command
                             'venue_id' => $config['venue_id'],
                             'seat_number' => $item['seat_id'],
                             'position' => "{$item['row']}-{$item['column']}",
-                            'status' => $item['status'],
+                            'status' => "available",
                             'category' => $item['category'],
                             'row' => $item['row'],
                             'column' => $item['column'],

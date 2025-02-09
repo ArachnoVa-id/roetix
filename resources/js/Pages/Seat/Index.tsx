@@ -1,30 +1,149 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import SeatMapDisplay from './SeatMapDisplay';
-import { Layout } from './types';
+import { Layout, SeatItem, Category } from './types';
 
 interface Props {
   layout: Layout;
 }
 
+// Harga hard-code untuk masing-masing kategori
+const categoryPrice: { [key in Category]: number } = {
+  diamond: 150000,
+  gold: 100000,
+  silver: 75000
+};
+
+// Tax di hard-code, misalnya 10%
+const tax = 1;
+
+// Fungsi format rupiah
+const formatRupiah = (value: number): string =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value);
+
 const Index: React.FC<Props> = ({ layout }) => {
+  const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
+
+  const handleSeatClick = (seat: SeatItem) => {
+    const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
+    if (exists) {
+      setSelectedSeats(selectedSeats.filter((s) => s.seat_id !== seat.seat_id));
+    } else {
+      if (selectedSeats.length < 5) {
+        setSelectedSeats([...selectedSeats, seat]);
+      }
+    }
+  };
+
+  const subtotal = selectedSeats.reduce(
+    (acc, seat) => acc + categoryPrice[seat.category],
+    0
+  );
+  const taxAmount = (subtotal * tax) / 100;
+  const total = subtotal + taxAmount;
+
+  // Legenda untuk kategori dan status
+  const categoryLegends = [
+    { label: 'Diamond', color: 'bg-cyan-400' },
+    { label: 'Gold', color: 'bg-yellow-400' },
+    { label: 'Silver', color: 'bg-gray-300' }
+  ];
+
+  const statusLegends = [
+    { label: 'Booked', color: 'bg-red-500' },
+    { label: 'In Transaction', color: 'bg-yellow-500' },
+    { label: 'Not Available', color: 'bg-gray-400' }
+  ];
+
   return (
     <>
       <Head title="Seat Map" />
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <div className="bg-white overflow-hidden shadow-xl sm:rounded-lg">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Seat Map</h2>
-                <Link
-                  href={route('seats.edit')}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Edit Seat Map
-                </Link>
+          <div className="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
+            {/* Legend Section */}
+            <div className="mb-8">
+              <h3 className="text-2xl font-bold mb-4 text-center">SeatMap</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Category Legend */}
+                <div className="bg-gray-50 p-4 rounded-lg shadow">
+                  <h4 className="text-lg font-semibold mb-2 text-center">Category</h4>
+                  <div className="flex items-center justify-center space-x-6">
+                    {categoryLegends.map((legend, i) => (
+                      <div key={i} className="flex flex-col items-center">
+                        <div className={`w-8 h-8 ${legend.color} rounded-full shadow-lg`}></div>
+                        <span className="mt-2 text-sm font-medium">{legend.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Status Legend */}
+                <div className="bg-gray-50 p-4 rounded-lg shadow">
+                  <h4 className="text-lg font-semibold mb-2 text-center">Status</h4>
+                  <div className="flex items-center justify-center space-x-6">
+                    {statusLegends.map((legend, i) => (
+                      <div key={i} className="flex flex-col items-center">
+                        <div className={`w-8 h-8 ${legend.color} rounded-full shadow-lg`}></div>
+                        <span className="mt-2 text-sm font-medium">{legend.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <SeatMapDisplay config={layout} />
+            </div>
+
+            <SeatMapDisplay
+              config={layout}
+              onSeatClick={handleSeatClick}
+              selectedSeats={selectedSeats}
+            />
+
+            {/* Section Kursi yang Dipilih */}
+            <div className="mt-8 p-4 border rounded">
+              <h3 className="text-xl font-semibold mb-4">Kursi yang Dipilih</h3>
+              {selectedSeats.length === 0 ? (
+                <p>Tidak ada kursi yang dipilih.</p>
+              ) : (
+                <div className="space-y-4">
+                  {selectedSeats.map((seat) => (
+                    <div key={seat.seat_id} className="flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold">Kategori: {seat.category}</p>
+                        <p className="text-sm">Nomor Kursi: {seat.seat_id}</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold">
+                          Harga: {formatRupiah(categoryPrice[seat.category])}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Subtotal, Tax, and Total */}
+              <div className="mt-6 space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">Subtotal:</span>
+                  <span>{formatRupiah(subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Tax ({tax}%):</span>
+                  <span>{formatRupiah(taxAmount)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-semibold">
+                  <span>Total:</span>
+                  <span>{formatRupiah(total)}</span>
+                </div>
+              </div>
+
+              <button
+                className="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                disabled={selectedSeats.length === 0}
+                onClick={() => console.log('Proceed Transaction with', selectedSeats)}
+              >
+                Proceed Transaction
+              </button>
             </div>
           </div>
         </div>

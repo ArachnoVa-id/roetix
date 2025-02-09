@@ -3,24 +3,41 @@ import { Layout, SeatItem, LayoutItem, EditorState, Category } from './types';
 
 interface Props {
   layout: Layout;
-  onSave: (seats: any) => void;
+  onSave: (updatedSeats: any) => void;
 }
 
 type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY';
+
+const categoryLegends = [
+  { label: 'Diamond', color: 'bg-cyan-400' },
+  { label: 'Gold', color: 'bg-yellow-400' },
+  { label: 'Silver', color: 'bg-gray-300' }
+];
+
+const statusLegends = [
+  { label: 'Booked', color: 'bg-red-500' },
+  { label: 'In Transaction', color: 'bg-yellow-500' },
+  { label: 'Not Available', color: 'bg-gray-400' }
+];
 
 const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
   const [selectionMode, setSelectionMode] = useState<SelectionMode>('SINGLE');
   const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
-  const grid = Array(layout.totalRows).fill(null)
-    .map(() => Array(layout.totalColumns).fill(null));
+  const grid = Array.from({ length: layout.totalRows }, () =>
+    Array(layout.totalColumns).fill(null)
+  );
 
   layout.items.forEach(item => {
-    const rowIndex = typeof item.row === 'string' ?
-      item.row.charCodeAt(0) - 65 : item.row;
-    if (rowIndex >= 0 && rowIndex < layout.totalRows) {
-      grid[rowIndex][item.column - 1] = item;
+    if ('seat_id' in item) {
+      const rowIndex =
+        typeof item.row === 'string'
+          ? item.row.charCodeAt(0) - 65
+          : item.row;
+      if (rowIndex >= 0 && rowIndex < layout.totalRows) {
+        grid[rowIndex][(item.column as number) - 1] = item;
+      }
     }
   });
 
@@ -111,34 +128,24 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
     setSelectedSeats(new Set());
   };
 
-  const renderCell = (item: LayoutItem | null, key: number) => {
-    if (!item) return <div key={key} className="w-6 h-6" />;
-
-    if (item.type === 'label') {
+  const renderCell = (item: any, colIndex: number) => {
+    if (item && item.type === 'seat') {
       return (
-        <div key={key} className="w-6 h-6 flex items-center justify-center text-sm font-medium">
-          {item.text}
+        <div
+          key={colIndex}
+          onClick={() => console.log('Edit seat', item.seat_id)}
+          className={`w-10 h-10 flex items-center justify-center cursor-pointer border rounded ${item.category === 'gold' ? 'bg-yellow-400' : item.category === 'diamond' ? 'bg-cyan-400' : 'bg-gray-300'}`}
+        >
+          {item.seat_id}
         </div>
       );
     }
-
-    return (
-      <button
-        key={key}
-        className={`
-          w-6 h-6 rounded-sm
-          ${getSeatColor(item)}
-          hover:opacity-75
-          transition-opacity duration-200
-        `}
-        onClick={() => handleSeatClick(item)}
-        title={`${item.seat_id} - ${item.category} - ${item.status}\nPrice: ${item.price}`}
-      />
-    );
+    // Untuk kotak kosong, tidak ada border dan tidak terlihat sama sekali
+    return <div key={colIndex} className="w-10 h-10"></div>;
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-6">
       {/* Mode Selection */}
       <div className="flex gap-4 p-4 bg-gray-100 rounded-lg">
         <button
@@ -181,8 +188,8 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         </div>
       )}
 
-       {/* Status Buttons */}
-       <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
+      {/* Status Buttons */}
+      <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
         <button
           className="px-4 py-2 bg-green-400 text-white rounded hover:bg-green-500 disabled:opacity-50"
           onClick={() => handleStatusUpdate('available')}
@@ -199,7 +206,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         </button>
         <button
           className="px-4 py-2 bg-yellow-400 text-white rounded hover:bg-yellow-500 disabled:opacity-50"
-          onClick={() => handleStatusUpdate('in_transaction')} // Perbaiki nilai status
+          onClick={() => handleStatusUpdate('in_transaction')}
           disabled={selectedSeats.size === 0}
         >
           Set In Transaction
@@ -213,21 +220,35 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         </button>
       </div>
 
-      {/* Selection Info - tambahkan info untuk status not_available */}
-      <div className="flex gap-4 mb-6">
-        {[
-          { status: 'booked', color: 'bg-red-500', label: 'Booked' },
-          { status: 'in_transaction', color: 'bg-yellow-500', label: 'In Transaction' },
-          { status: 'not_available', color: 'bg-gray-400', label: 'Not Available' },
-          { category: 'diamond', color: 'bg-cyan-400', label: 'Diamond' },
-          { category: 'gold', color: 'bg-yellow-400', label: 'Gold' },
-          { category: 'silver', color: 'bg-gray-300', label: 'Silver' }
-        ].map((item, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className={`w-4 h-4 ${item.color} rounded-sm`} />
-            <span>{item.label}</span>
+      
+
+      {/* Legends Section yang Menarik */}
+      <div className="mb-8">
+        <h3 className="text-2xl font-bold mb-4 text-center"></h3>
+        <div className="grid grid-cols-2 gap-8">
+          <div className="flex flex-col items-center">
+            <h4 className="text-lg font-semibold mb-2">Category</h4>
+            <div className="flex space-x-4">
+              {categoryLegends.map((legend, i) => (
+                <div key={i} className="flex flex-col items-center">
+                  <div className={`w-8 h-8 ${legend.color} rounded-full shadow-md`}></div>
+                  <span className="mt-1 text-sm">{legend.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+          <div className="flex flex-col items-center">
+            <h4 className="text-lg font-semibold mb-2">Status</h4>
+            <div className="flex space-x-4">
+              {statusLegends.map((legend, i) => (
+                <div key={i} className="flex flex-col items-center">
+                  <div className={`w-8 h-8 ${legend.color} rounded-full shadow-md`}></div>
+                  <span className="mt-1 text-sm">{legend.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Grid */}
@@ -235,9 +256,6 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         <div className="grid gap-1">
           {grid.map((row, rowIndex) => (
             <div key={rowIndex} className="flex gap-1 items-center">
-              <span className="w-6 text-right mr-2">
-                {String.fromCharCode(65 + rowIndex)}
-              </span>
               <div className="flex gap-1">
                 {row.map((item, colIndex) => renderCell(item, colIndex))}
               </div>

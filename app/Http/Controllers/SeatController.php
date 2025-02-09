@@ -131,9 +131,15 @@ class SeatController extends Controller
             DB::beginTransaction();
     
             foreach ($validated['seats'] as $seatData) {
-                // Debug log untuk melihat nilai yang diterima
-                Log::info('Updating seat:', $seatData);
-                
+                $seat = Seat::where('seat_id', $seatData['seat_id'])->first();
+
+                // Jika status saat ini booked dan mencoba diubah ke status lain, lewati update
+                if ($seat && $seat->status === 'booked' && $seatData['status'] !== 'booked') {
+                    Log::warning('Skipping update for booked seat', ['seat_id' => $seat->seat_id]);
+                    continue;
+                }
+
+                // Update jika tidak memenuhi kondisi di atas
                 Seat::where('seat_id', $seatData['seat_id'])
                     ->update([
                         'status' => $seatData['status']
