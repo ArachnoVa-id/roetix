@@ -14,7 +14,7 @@ interface Props {
 const statusOptions = [
   { value: 'available', label: 'Available', color: 'bg-green-500' },
   { value: 'booked', label: 'Booked', color: 'bg-red-500' },
-  { value: 'in-transaction', label: 'In Transaction', color: 'bg-yellow-500' },
+  { value: 'in_transaction', label: 'In Transaction', color: 'bg-yellow-500' },
   { value: 'not_available', label: 'Not Available', color: 'bg-gray-400' }
 ];
 

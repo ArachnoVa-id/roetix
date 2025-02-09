@@ -13,7 +13,8 @@ return new class extends Migration
             $table->string('venue_id', 36);
             $table->string('seat_number');
             $table->string('position');
-            $table->enum('status', ['available', 'booked', 'reserved', 'in_transaction'])->default('available');
+            $table->enum('status', ['available', 'booked', 'in_transaction', 'not_available'])
+      ->default('available');
             $table->enum('category', ['diamond', 'gold', 'silver'])->default('silver');
             $table->string('row');
             $table->integer('column');
@@ -23,6 +24,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::table('seats', function (Blueprint $table) {
+            $table->enum('status', ['available', 'booked', 'in_transaction', 'not_available'])
+      ->default('available');
+        });
         Schema::dropIfExists('seats');
     }
 };

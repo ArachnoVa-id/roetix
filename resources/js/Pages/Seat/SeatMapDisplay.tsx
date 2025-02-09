@@ -22,7 +22,7 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick }) => {
     if (seat.status !== 'available') {
       switch (seat.status) {
         case 'booked': return 'bg-red-500';
-        case 'in-transaction': return 'bg-yellow-500';
+        case 'in_transaction': return 'bg-yellow-500';
         case 'not_available': return 'bg-gray-400';
       }
     }
@@ -68,7 +68,7 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick }) => {
       <div className="flex gap-4 mb-6">
         {[
           { status: 'booked', color: 'bg-red-500', label: 'Booked' },
-          { status: 'in-transaction', color: 'bg-yellow-500', label: 'In Transaction' },
+          { status: 'in_transaction', color: 'bg-yellow-500', label: 'In Transaction' },
           { status: 'not_available', color: 'bg-gray-400', label: 'Not Available' },
           { category: 'diamond', color: 'bg-cyan-400', label: 'Diamond' },
           { category: 'gold', color: 'bg-yellow-400', label: 'Gold' },

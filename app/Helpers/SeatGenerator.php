@@ -46,7 +46,7 @@ class SeatGenerator
     private static function generateSection($id, $name, $rows, $seatsPerRow, $defaultCategory)
     {
         $seats = [];
-        $statuses = ['available', 'booked', 'reserved', 'in_transaction'];
+        $statuses = ['available', 'booked', 'reserved', 'in_transaction', 'not_available'];
         $categories = ['diamond', 'gold', 'silver'];
 
         foreach ($rows as $rowIndex => $row) {

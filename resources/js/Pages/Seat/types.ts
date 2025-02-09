@@ -1,4 +1,4 @@
-export type SeatStatus = 'available' | 'booked' | 'in-transaction' | 'not_available';
+export type SeatStatus = 'available' | 'booked' | 'in_transaction' | 'not_available';
 export type Category = 'diamond' | 'gold' | 'silver';
 export type ItemType = 'seat' | 'label';
 

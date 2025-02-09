@@ -205,7 +205,7 @@
 "seat_id": "C3",
 "row": "C",
 "column": 3,
-"status": "available",
+"status": "not_available",
 "category": "silver",
 "price": 50000
 },

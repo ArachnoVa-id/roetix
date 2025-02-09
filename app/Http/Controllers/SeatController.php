@@ -119,32 +119,36 @@ class SeatController extends Controller
 }
 
     // SeatController.php
-public function update(Request $request)
-{
-    $validated = $request->validate([
-        'seats' => 'required|array',
-        'seats.*.seat_id' => 'required|string',
-        'seats.*.status' => 'required|string|in:available,booked,in-transaction,not_available',
-    ]);
-
-    try {
-        DB::beginTransaction();
-
-        foreach ($validated['seats'] as $seatData) {
-            Seat::where('seat_id', $seatData['seat_id'])
-                ->update([
-                    'status' => $seatData['status']
-                ]);
+    public function update(Request $request)
+    {
+        $validated = $request->validate([
+            'seats' => 'required|array',
+            'seats.*.seat_id' => 'required|string',
+            'seats.*.status' => 'required|string|in:available,booked,in_transaction,not_available',
+        ]);
+    
+        try {
+            DB::beginTransaction();
+    
+            foreach ($validated['seats'] as $seatData) {
+                // Debug log untuk melihat nilai yang diterima
+                Log::info('Updating seat:', $seatData);
+                
+                Seat::where('seat_id', $seatData['seat_id'])
+                    ->update([
+                        'status' => $seatData['status']
+                    ]);
+            }
+    
+            DB::commit();
+            return redirect()
+                ->route('seats.index')
+                ->with('message', 'Seats updated successfully');
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating seats: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to update seats: ' . $e->getMessage()]);
         }
-
-        DB::commit();
-        return redirect()
-            ->route('seats.index')
-            ->with('message', 'Seats updated successfully');
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->withErrors(['error' => 'Failed to update seats: ' . $e->getMessage()]);
     }
-}
 }
