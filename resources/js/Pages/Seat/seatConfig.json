@@ -1,44 +1,57 @@
 {
-  "venue_id": "123",
-  "layout": {
-    "totalRows": 10,
-    "totalColumns": 15,
-    "items": [
-      {
-        "type": "seat",
-        "seat_id": "A1",
-        "row": "A",
-        "column": 1,
-        "category": "diamond"
-      },
-      {
-        "type": "seat",
-        "seat_id": "B5",
-        "row": "B",
-        "column": 5,
-        "category": "gold"
-      },
-      {
-        "type": "seat",
-        "seat_id": "C10",
-        "row": "C",
-        "column": 10,
-        "category": "silver"
-      },
-      {
-        "type": "seat",
-        "seat_id": "D7",
-        "row": "D",
-        "column": 7,
-        "category": "silver"
-      },
-      {
-        "type": "seat",
-        "seat_id": "E3",
-        "row": "E",
-        "column": 3,
-        "category": "gold"
-      }
-    ]
+    "venue_id": "123",
+    "layout": {
+      "items": [
+        { "seat_id": "A1", "category": "diamond" },
+        { "seat_id": "A3", "category": "diamond" },
+        { "seat_id": "A5", "category": "diamond" },
+        { "seat_id": "A12", "category": "diamond" },
+        { "seat_id": "A13", "category": "diamond" },
+        
+        { "seat_id": "B1", "category": "gold" },
+        
+        { "seat_id": "B2", "category": "gold" },
+        { "seat_id": "B4", "category": "gold" },
+        { "seat_id": "B7", "category": "gold" },
+        
+        { "seat_id": "C1", "category": "silver" },
+        { "seat_id": "C2", "category": "silver" },
+        { "seat_id": "C4", "category": "silver" },
+        { "seat_id": "C7", "category": "silver" },
+        
+        { "seat_id": "D2", "category": "gold" },
+        { "seat_id": "D5", "category": "gold" },
+        { "seat_id": "D8", "category": "gold" },
+        
+        { "seat_id": "E1", "category": "diamond" },
+        { "seat_id": "E4", "category": "diamond" },
+        { "seat_id": "E7", "category": "diamond" },
+        
+        { "seat_id": "F3", "category": "silver" },
+        { "seat_id": "F6", "category": "silver" },
+        { "seat_id": "F9", "category": "silver" },
+        
+        { "seat_id": "G2", "category": "gold" },
+        { "seat_id": "G5", "category": "gold" },
+        { "seat_id": "G8", "category": "gold" },
+        
+        { "seat_id": "H1", "category": "diamond" },
+        { "seat_id": "H4", "category": "diamond" },
+        { "seat_id": "H7", "category": "diamond" },
+        
+        { "seat_id": "I2", "category": "silver" },
+        { "seat_id": "I5", "category": "silver" },
+        { "seat_id": "I8", "category": "silver" },
+        
+        { "seat_id": "J3", "category": "gold" },
+        { "seat_id": "J6", "category": "gold" },
+        { "seat_id": "J9", "category": "gold" },
+
+        { "seat_id": "K3", "category": "gold" },
+        { "seat_id": "K6", "category": "gold" },
+        { "seat_id": "K9", "category": "gold" }
+        
+        
+      ]
+    }
   }
-}

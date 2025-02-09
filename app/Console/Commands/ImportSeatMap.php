@@ -21,20 +21,36 @@ class ImportSeatMap extends Command
             DB::beginTransaction();
 
             foreach ($config['layout']['items'] as $item) {
+                // Set default type to 'seat' jika tidak disediakan
+                if (!isset($item['type'])) {
+                    $item['type'] = 'seat';
+                }
+
                 if ($item['type'] === 'seat') {
+                    // Ambil row dan column dari seat_id
+                    $seatId = $item['seat_id'];
+                    preg_match('/^([A-Za-z]+)(\d+)$/', $seatId, $matches);
+                    if ($matches) {
+                        $row    = strtoupper($matches[1]);
+                        $column = (int) $matches[2];
+                    } else {
+                        $row    = $item['row'] ?? '';
+                        $column = $item['column'] ?? 0;
+                    }
+
                     $existingSeat = Seat::where('seat_id', $item['seat_id'])->first();
-            
+
                     if (!$existingSeat) {
                         Seat::create([
-                            'seat_id' => $item['seat_id'],
-                            'venue_id' => $config['venue_id'],
+                            'seat_id'     => $item['seat_id'],
+                            'venue_id'    => $config['venue_id'],
                             'seat_number' => $item['seat_id'],
-                            'position' => "{$item['row']}-{$item['column']}",
-                            'status' => "available",
-                            'category' => $item['category'],
-                            'row' => $item['row'],
-                            'column' => $item['column'],
-                            'price' => $item['price'] ?? 0
+                            'position'    => "{$row}-{$column}",
+                            'status'      => $item['status'] ?? 'available',
+                            'category'    => $item['category'],
+                            'row'         => $row,
+                            'column'      => $column,
+                            'price'       => $item['price'] ?? 0
                         ]);
                     }
                 }
@@ -42,7 +58,6 @@ class ImportSeatMap extends Command
 
             DB::commit();
             $this->info('Seat map imported successfully');
-
         } catch (\Exception $e) {
             DB::rollBack();
             $this->error('Import failed: ' . $e->getMessage());
