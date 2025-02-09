@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->string('order_id', 36)->primary();
             $table->string('user_id', 36);
-            // $table->string('ticket_id', 36);
+            $table->json('ticket_id');
             $table->string('coupon_id', 36);
             $table->datetime('order_date');
             $table->decimal('total_price', 9, 2);
