@@ -16,8 +16,13 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(UserSeeder::class);
         $this->call(EventSeeder::class);
-        $this->call(TicketSeeder::class);
         $this->call(EventVariablesSeeder::class);
+        $this->call(UserContactSeeder::class);
+        $this->call(VenueSeeder::class);
+        $this->call(SeatSeeder::class);
+        $this->call(TicketSeeder::class);
+        $this->call(TicketCategorySeeder::class);
+        $this->call(CouponSeeder::class);
         $this->call(OrderSeeder::class);
     }
 }

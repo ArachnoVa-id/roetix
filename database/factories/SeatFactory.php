@@ -21,7 +21,7 @@ class SeatFactory extends Factory
         return [
             'seat_id' => (string) Str::uuid(),
             'venue_id' => Venue::factory(),
-            'seat_number' => $this->faker->unique()->numberBetween(1, 100),
+            'seat_number' => $this->faker->unique()->numberBetween(1, 10000),
             'position' => $this->faker->word(),
             'status' => $this->faker->randomElement(['available', 'booked', 'reserved', 'in_transaction']),
         ];

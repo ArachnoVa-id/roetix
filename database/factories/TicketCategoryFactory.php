@@ -30,8 +30,8 @@ class TicketCategoryFactory extends Factory
         return [
             'ticket_category_id' => (string) Str::uuid(),
             'event_id' => Event::factory(),
-            'name' => $this->faker()->sentence(2),
-            'color' => $this->faker()->sentence(1),
+            'name' => $this->faker->sentence(2),
+            'color' => $this->faker->sentence(1),
             'created_at' => now(),
             'updated_at' => now(),
         ];

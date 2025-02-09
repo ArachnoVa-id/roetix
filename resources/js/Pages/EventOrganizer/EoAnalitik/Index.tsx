@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button"
 interface Orders {
     order_id: string;
     order_date: string;
-    // seat_number: number;
+    seat_number: number;
     status: string;
     total_price: string;
-    email: string;
-    // ticket_type: string;
+    // email: string;
+    ticket_type: string;
     created_at: string;
 }
 
@@ -32,7 +32,7 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                         <TableRow>
                             <TableHead>order id</TableHead>
                             <TableHead>order date</TableHead>
-                            <TableHead>email</TableHead>
+                            {/* <TableHead>email</TableHead> */}
                             <TableHead>status</TableHead>
                             <TableHead>total price</TableHead>
                         </TableRow>
@@ -43,7 +43,6 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                             <TableRow key={idx}>
                                 <TableCell>{ticket.order_id}</TableCell>
                                 <TableCell>{ticket.order_date}</TableCell>
-                                <TableCell>{ticket.email}</TableCell>
                                 <TableCell
                                     className={`font-bold hover:
                                         ${ticket.status === 'cancelled' ? 'text-red-700'

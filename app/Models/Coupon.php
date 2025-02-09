@@ -8,18 +8,23 @@ use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 
 
-class Ticket extends Model
+class Coupon extends Model
 {
-    /** @use HasFactory<\Database\Factories\TicketFactory> */
+    /** @use HasFactory<\Database\Factories\CouponFactory> */
     use HasFactory, Notifiable;
 
-    protected $primaryKey = 'ticket_id';
+    protected $primaryKey = 'coupon_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
     protected $fillable = [
-        'ticket_type',
-        'price',
+        'name',
+        'code',
+        'start_date',
+        'discount_amount',
+        'expiry_date',
+        'quantity',
+        'applicable_categories',
         'status',
     ];
 
@@ -28,20 +33,9 @@ class Ticket extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->ticket_id)) {
-                $model->ticket_id = (string) Str::uuid();
+            if (empty($model->coupon_id)) {
+                $model->coupon_id = (string) Str::uuid();
             }
         });
     }
-
-    public function event()
-    {
-        return $this->belongsTo(Event::class, 'event_id', 'event_id');
-    }
-
-    public function seat()
-    {
-        return $this->belongsTo(Seat::class, 'seat_id', 'seat_id');
-    }
-
 }

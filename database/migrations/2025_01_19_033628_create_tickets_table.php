@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('ticket_id', 36)->primary();
             $table->string('event_id', 36);
             $table->string('seat_id', 36);
+            // $table->string('order_id', 36);
             $table->enum('ticket_type', ['standard', 'VIP'])->default('standard');
             $table->decimal('price', 5, 2)->default(123.45);
             $table->enum('status', ['available', 'sold', 'reserved'])->default('available');
@@ -23,6 +24,7 @@ return new class extends Migration
             // foreign key
             $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
             $table->foreign('seat_id')->references('seat_id')->on('seats')->onDelete('cascade');
+            // $table->foreign('order_id')->references('order_id')->on('orders')->onDelete('cascade');
         });
     }
 

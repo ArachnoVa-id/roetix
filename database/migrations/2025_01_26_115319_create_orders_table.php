@@ -13,15 +13,17 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->string('order_id', 36)->primary();
-            $table->string('user_id');
-            $table->string('ticket_id');
+            $table->string('user_id', 36);
+            // $table->string('ticket_id', 36);
+            $table->string('coupon_id', 36);
             $table->datetime('order_date');
             $table->decimal('total_price', 9, 2);
             $table->enum('status', ['pending', 'completed', 'cancelled'])->default('pending');
             $table->timestamps();
 
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
-            $table->foreign('ticket_id')->references('ticket_id')->on('tickets')->onDelete('cascade');
+            $table->foreign('coupon_id')->references('coupon_id')->on('coupons')->onDelete('cascade');
+            // $table->foreign('ticket_id')->references('ticket_id')->on('tickets')->onDelete('cascade');
 
         });
     }

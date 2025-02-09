@@ -14,12 +14,19 @@ class EoAnalitikController extends Controller
     {
         $data = Order::query()
         ->join('users', 'users.user_id', '=', 'orders.user_id')
+        // ->join('tickets', 'tickets.ticket_id', '=', 'orders.ticket_id')
+        // ->join('seats', 'seats.seat_id', '=', 'tickets.seat_id')
+        // ->join('venues', 'venues.venue_id', '=', 'seats.venue_id')
         ->select([
             'orders.order_id',
+            // 'orders.ticket_id',
+            // 'seats.seat_number',
+            // 'venues.name',
             'orders.order_date',
             'orders.status',
             'orders.total_price',
-            'users.email',
+            // 'users.email',
+            // 'tickets.ticket_type',
             'orders.created_at',
         ])
         ->latest()
