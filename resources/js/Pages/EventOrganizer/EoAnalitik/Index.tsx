@@ -3,6 +3,7 @@ import EodashboardLayout from "@/Layouts/EodashboardLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+
 interface Orders {
     order_id: string;
     order_date: string;
@@ -45,7 +46,7 @@ export default function Index({ orders, total, title, subtitle }: Props) {
                             <TableRow key={idx}>
                                 <TableCell>
                                     <Link href={route('penjualan.detail', order.order_id)}>
-                                    {order.order_id}
+                                        {order.order_id}
                                     </Link>
                                 </TableCell>
                                 <TableCell>{order.order_date}</TableCell>

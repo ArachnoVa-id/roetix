@@ -8,6 +8,8 @@ use Inertia\Inertia;
     
 use Illuminate\Http\Request;
 
+use function Laravel\Prompts\select;
+
 class EoAnalitikController extends Controller
 {
     public function analitikpenjualan()
@@ -32,7 +34,7 @@ class EoAnalitikController extends Controller
         return Inertia::render('EventOrganizer/EoAnalitik/Index', [
             'title' => 'Penjualan',
             'subtitle' => 'Terbeli',
-            'tickets' => $data,
+            'orders' => $data,
             'total' => $total_price,
         ]);
     }
@@ -47,11 +49,45 @@ class EoAnalitikController extends Controller
 
     public function penjualan($orderId)
     {
-        $ticket_ids = Order::where('order_id', $orderId)
-        // ->join()
-        // ->select([])
+        $orders = Order::where('orders.order_id', $orderId)
+            ->join('users', 'users.user_id', '=', 'orders.user_id')
+            ->select([
+                'users.email',
+                'users.first_name',
+                'users.last_name',
+                'orders.ticket_id',
+                'orders.order_date',
+                'orders.total_price',
+            ])
+            ->get();
+        
+        $orders->transform(function ($order) {
+            $order->ticket_id = json_decode($order->ticket_id, true);
+            return $order;
+        });
+
+        $ticketIds = $orders->pluck('ticket_id')->flatten()->unique()->toArray();
+
+        $tickets = Ticket::whereIn('ticket_id', $ticketIds)
+        ->join('events', 'events.event_id', '=', 'tickets.event_id')
+        ->join('seats', 'seats.seat_id', '=', 'tickets.seat_id')
+        ->select([
+            'tickets.ticket_id',
+            'tickets.ticket_type',
+            'tickets.price',
+            'seats.seat_number',
+            'seats.status',
+            'events.name',
+            'events.location',
+        ])
         ->get();
 
-        return $ticket_ids;
+        // return $tickets;
+
+        return Inertia::render('EventOrganizer/EoAnalitik/Penjualan', [
+            'orderId' => $orderId,
+            'orders' => $orders,
+            'tickets' => $tickets,
+        ]);
     }
 }

@@ -21,8 +21,8 @@ export default function Ticket({
   ticketData: {
     date: string;
     type: string;
-    seat: string;
-    price: string;
+    seat: number;
+    price: number;
   };
 }) {
   return (
@@ -46,15 +46,15 @@ export default function Ticket({
       <div className="w-[60%] h-full flex flex-col justify-around py-[1.2vw]">
         <div className="flex justify-between pr-[2vw] items-center">
           <p>{ticketType}</p>
-          <Button>Unduh</Button>
+          <Button className="w-[20%]">Unduh</Button>
         </div>
         <div>
         <RowComponent idtf="ID" content={ticketCode} />
         <RowComponent idtf="Tanggal" content={ticketData.date} />
         <RowComponent idtf="Tipe" content={ticketData.type} />
-        <RowComponent idtf="Kursi" content={ticketData.seat} />
+        <RowComponent idtf="Kursi" content={String(ticketData.seat)} />
         </div>
-        <RowComponent idtf="Subtotal" content={ticketData.price} />
+        <RowComponent idtf="Subtotal" content={String(ticketData.price)} />
       </div>
     </div>
   );
