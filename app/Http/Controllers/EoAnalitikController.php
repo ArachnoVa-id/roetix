@@ -5,7 +5,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\Ticket;
 use Inertia\Inertia;
-
+    
 use Illuminate\Http\Request;
 
 class EoAnalitikController extends Controller
@@ -14,23 +14,18 @@ class EoAnalitikController extends Controller
     {
         $data = Order::query()
         ->join('users', 'users.user_id', '=', 'orders.user_id')
-        // ->join('tickets', 'tickets.ticket_id', '=', 'orders.ticket_id')
-        // ->join('seats', 'seats.seat_id', '=', 'tickets.seat_id')
-        // ->join('venues', 'venues.venue_id', '=', 'seats.venue_id')
         ->select([
             'orders.order_id',
-            // 'orders.ticket_id',
-            // 'seats.seat_number',
-            // 'venues.name',
             'orders.order_date',
             'orders.status',
             'orders.total_price',
-            // 'users.email',
-            // 'tickets.ticket_type',
+            'orders.ticket_id',
             'orders.created_at',
         ])
         ->latest()
         ->get();
+
+        // return $data;
 
         $total_price = number_format($data->sum('total_price'), 2);
 
@@ -48,5 +43,15 @@ class EoAnalitikController extends Controller
             'title' => 'Riwayat',
             'subtitle' => 'Acara',
         ]);
+    }
+
+    public function penjualan($orderId)
+    {
+        $ticket_ids = Order::where('order_id', $orderId)
+        // ->join()
+        // ->select([])
+        ->get();
+
+        return $ticket_ids;
     }
 }

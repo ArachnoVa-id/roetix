@@ -48,9 +48,9 @@ const data = {
       icon: <LandPlot />,
       href: "",
       items: [
-        { title: "Daftar Venue", href: route("vanue.index") },
-        { title: "Sewa Venue", href: route("vanue.sewa") },
-        { title: "Pengaturan Venue", href: route("vanue.pengaturan") },
+        { title: "Daftar Venue", href: route("venue.index") },
+        { title: "Sewa Venue", href: route("venue.sewa") },
+        { title: "Pengaturan Venue", href: route("venue.pengaturan") },
       ],
     },
     {

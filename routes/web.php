@@ -27,65 +27,46 @@ Route::get('/test', function () {
     return Inertia::render('Test');
 });
 
-// order backend slash
-Route::resource('orders', OrderController::class);
+Route::middleware(['auth', 'verified', CheckRole::class])->prefix('eo')->group(function () {
 
-// route acara disini
-Route::get('/eo/acara', [EoAcaraController::class, 'index'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('acara.index');
+    // Route untuk Acara
+    Route::prefix('acara')->name('acara.')->group(function () {
+        Route::get('/', [EoAcaraController::class, 'index'])->name('index');
+        Route::get('/buat', [EoAcaraController::class, 'create'])->name('create');
+        Route::get('/edit', [EoAcaraController::class, 'edit'])->name('edit');
+    });
 
-Route::get('/eo/buat-acara', [EoAcaraController::class, 'create'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('acara.create');
+    // Route untuk Venue
+    Route::prefix('venue')->name('venue.')->group(function () {
+        Route::get('/', [EoVenueController::class, 'index'])->name('index');
+        Route::get('/sewa', [EoVenueController::class, 'sewa'])->name('sewa');
+        Route::get('/pengaturan', [EoVenueController::class, 'pengaturan'])->name('pengaturan');
+    });
 
-Route::get('/eo/edit-acara', [EoAcaraController::class, 'edit'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('acara.edit');
+    // Route untuk Tiket
+    Route::prefix('tiket')->name('tiket.')->group(function () {
+        Route::get('/pengaturan', [EoTiketController::class, 'pengaturan'])->name('pengaturan');
+        Route::get('/harga', [EoTiketController::class, 'harga'])->name('harga');
+        Route::get('/verifikasi', [EoTiketController::class, 'verifikasi'])->name('verifikasi');
+    });
 
-// route venue disini
-Route::get('/eo/venue', [EoVenueController::class, 'index'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('vanue.index');
+    // Route untuk Analitik
+    Route::prefix('analitik')->group(function () {
+        Route::get('/penjualan', [EoAnalitikController::class, 'analitikpenjualan'])
+        ->name('penjualan.index');
+        Route::get('/penjualan/{orderId}', [EoAnalitikController::class, 'penjualan'])
+        ->name('penjualan.detail');
+        Route::get('/riwayat-acara', [EoAnalitikController::class, 'riwayatacara'])
+        ->name('acara.riwayat');
+    });
 
-Route::get('/eo/sewa-venue', [EoVenueController::class, 'sewa'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('vanue.sewa');
+    // Route untuk Profil
+    Route::prefix('profile')->name('profil.')->group(function () {
+        Route::get('/', [EoProfilController::class, 'pengaturan'])->name('index');
+        Route::get('/edit', [EoProfilController::class, 'edit'])->name('edit');
+    });
 
-Route::get('/eo/pengaturan-venue', [EoVenueController::class, 'pengaturan'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('vanue.pengaturan');
-
-// route tiket disini
-Route::get('/eo/tiket-pengaturan', [EoTiketController::class, 'pengaturan'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('tiket.pengaturan');
-
-Route::get('/eo/tiket-harga', [EoTiketController::class, 'harga'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('tiket.harga');
-
-Route::get('/eo/tiket-verifikasi', [EoTiketController::class, 'verifikasi'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('tiket.verifikasi');
-
-// route analitik disini
-Route::get('/eo/penjualan', [EoAnalitikController::class, 'analitikpenjualan'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('penjualan.index');
-
-Route::get('/eo/riwayat-acara', [EoAnalitikController::class, 'riwayatacara'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('acara.riwayat');
-
-// route profile disini
-Route::get('/eo/profile', [EoProfilController::class, 'pengaturan'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('profil.index');
-
-Route::get('/eo/profile-edit', [EoProfilController::class, 'edit'])
-->middleware(['auth', 'verified', CheckRole::class])
-->name('profil.edit');
+});
 
 
 Route::get('/dashboard', function () {

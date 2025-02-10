@@ -14,14 +14,16 @@ interface Orders {
     created_at: string;
 }
 
+import { Link } from "@inertiajs/react";
+
 interface Props {
-    tickets: Orders[];
+    orders: Orders[];
     title: string;
     subtitle: string;
     total: number;
 }
 
-export default function Index({ tickets, total, title, subtitle }: Props) {
+export default function Index({ orders, total, title, subtitle }: Props) {
     return (
         <EodashboardLayout title={title} subtitle={subtitle}>
             <div className="p-4">
@@ -39,28 +41,32 @@ export default function Index({ tickets, total, title, subtitle }: Props) {
                     </TableHeader>
 
                     <TableBody>
-                        {tickets.map((ticket, idx) => (
+                        {orders.map((order, idx) => (
                             <TableRow key={idx}>
-                                <TableCell>{ticket.order_id}</TableCell>
-                                <TableCell>{ticket.order_date}</TableCell>
+                                <TableCell>
+                                    <Link href={route('penjualan.detail', order.order_id)}>
+                                    {order.order_id}
+                                    </Link>
+                                </TableCell>
+                                <TableCell>{order.order_date}</TableCell>
                                 <TableCell
                                     className={`font-bold hover:
-                                        ${ticket.status === 'cancelled' ? 'text-red-700'
-                                            : ticket.status === 'pending' ? 'text-yellow-400'
+                                        ${order.status === 'cancelled' ? 'text-red-700'
+                                            : order.status === 'pending' ? 'text-yellow-400'
                                                 : 'text-green-800'
                                         }`}
                                 >
-                                    {ticket.status === 'pending' ?
+                                    {order.status === 'pending' ?
                                         <Popover>
-                                            <PopoverTrigger>{ticket.status}</PopoverTrigger>
+                                            <PopoverTrigger>{order.status}</PopoverTrigger>
                                             <PopoverContent className="flex flex-col gap-2">
                                                 <Button className="text-white">Verified</Button>
                                                 <Button className="text-white">Rejected</Button>
                                             </PopoverContent>
                                         </Popover>
-                                        : ticket.status}
+                                        : order.status}
                                 </TableCell>
-                                <TableCell>{ticket.total_price}</TableCell>
+                                <TableCell>{order.total_price}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
