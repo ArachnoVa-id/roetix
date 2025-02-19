@@ -128,19 +128,19 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
     setSelectedSeats(new Set());
   };
 
-  const renderCell = (item: any, colIndex: number) => {
+  const renderCell = (item: LayoutItem | null, colIndex: number) => {
     if (item && item.type === 'seat') {
+      const seat = item as SeatItem;
       return (
         <div
           key={colIndex}
-          onClick={() => console.log('Edit seat', item.seat_id)}
-          className={`w-10 h-10 flex items-center justify-center cursor-pointer border rounded ${item.category === 'gold' ? 'bg-yellow-400' : item.category === 'diamond' ? 'bg-cyan-400' : 'bg-gray-300'}`}
+          onClick={() => handleSeatClick(seat)}
+          className={`w-10 h-10 flex items-center justify-center cursor-pointer border rounded ${getSeatColor(seat)}`}
         >
-          {item.seat_id}
+          {seat.seat_id}
         </div>
       );
     }
-    // Untuk kotak kosong, tidak ada border dan tidak terlihat sama sekali
     return <div key={colIndex} className="w-10 h-10"></div>;
   };
 
