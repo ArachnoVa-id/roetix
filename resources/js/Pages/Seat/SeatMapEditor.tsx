@@ -25,21 +25,48 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
   const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
+  // Map untuk menyimpan nomor terakhir untuk setiap baris
+  const lastNumberByRow = new Map<string, number>();
+
+  // Fungsi untuk mendapatkan nomor kursi berikutnya untuk suatu baris
+  const getNextNumber = (row: string): number => {
+    const lastNum = lastNumberByRow.get(row) || 0;
+    const nextNum = lastNum + 1;
+    lastNumberByRow.set(row, nextNum);
+    return nextNum;
+  };
+
   const grid = Array.from({ length: layout.totalRows }, () =>
     Array(layout.totalColumns).fill(null)
   );
 
+  // Isi grid dengan kursi
   layout.items.forEach(item => {
     if ('seat_id' in item) {
       const rowIndex =
         typeof item.row === 'string'
           ? item.row.charCodeAt(0) - 65
           : item.row;
+      
       if (rowIndex >= 0 && rowIndex < layout.totalRows) {
-        grid[rowIndex][(item.column as number) - 1] = item;
+        const rowLetter = String.fromCharCode(65 + rowIndex);
+        // Gunakan column dari item untuk penempatan
+        const colIndex = (item.column as number) - 1;
+        // Gunakan column sebagai nomor kursi
+        const updatedItem = {
+          ...item,
+          seat_id: `${rowLetter}${item.column}`
+        };
+        
+        grid[rowIndex][colIndex] = updatedItem;
       }
     }
   });
+
+  // Fungsi untuk mengecek apakah kursi dapat diedit
+  const isSeatEditable = (seat: SeatItem): boolean => {
+    return seat.status !== 'booked';
+  };
 
   const getSeatColor = (seat: SeatItem): string => {
     const isSelected = selectedSeats.has(seat.seat_id);
@@ -64,28 +91,36 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
   };
 
   const handleSeatClick = (seat: SeatItem) => {
+    // Jika kursi booked, tidak lakukan apa-apa
+    if (!isSeatEditable(seat)) return;
+
     setSelectedSeats(prev => {
       const next = new Set(prev);
       
       switch (selectionMode) {
         case 'SINGLE':
           next.clear();
-          next.add(seat.seat_id);
+          next.add(`${seat.row}${seat.column}`);
           break;
           
         case 'MULTIPLE':
-          if (next.has(seat.seat_id)) {
-            next.delete(seat.seat_id);
+          const seatId = `${seat.row}${seat.column}`;
+          if (next.has(seatId)) {
+            next.delete(seatId);
           } else {
-            next.add(seat.seat_id);
+            next.add(seatId);
           }
           break;
           
-        case 'CATEGORY':
+                  case 'CATEGORY':
           next.clear();
           layout.items.forEach(item => {
-            if (item.type === 'seat' && item.category === seat.category) {
-              next.add(item.seat_id);
+            if (item.type === 'seat' && 
+                item.category === seat.category && 
+                isSeatEditable(item as SeatItem)) {  // Gunakan isSeatEditable
+              const rowLetter = (item as SeatItem).row;
+              const column = (item as SeatItem).column;
+              next.add(`${rowLetter}${column}`);
             }
           });
           setSelectedCategory(seat.category);
@@ -98,13 +133,67 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
 
   const handleSelectCategory = (category: Category) => {
     if (selectionMode !== 'CATEGORY') return;
-    
-    setSelectedSeats(new Set(
-      layout.items
-        .filter(item => item.type === 'seat' && item.category === category)
-        .map(item => (item as SeatItem).seat_id)
-    ));
+
+    // Kumpulkan semua kursi yang dapat diedit dengan kategori yang dipilih
+    const seatsInCategory = layout.items
+      .filter(item => 
+        item.type === 'seat' && 
+        item.category === category && 
+        isSeatEditable(item as SeatItem)  // Gunakan isSeatEditable
+      )
+      .map(item => {
+        const rowLetter = (item as SeatItem).row;
+        const column = (item as SeatItem).column;
+        return `${rowLetter}${column}`;
+      });
+
+    setSelectedSeats(new Set(seatsInCategory));
     setSelectedCategory(category);
+  };
+
+  const renderCell = (item: LayoutItem | null, colIndex: number) => {
+    if (item && item.type === 'seat') {
+      const seat = item as SeatItem;
+      const isEditable = isSeatEditable(seat);
+      
+      return (
+        <div
+          key={colIndex}
+          onClick={() => isEditable && handleSeatClick(seat)}
+          className={`
+            w-8 h-8 
+            flex items-center justify-center 
+            border rounded 
+            ${getSeatColor(seat)}
+            ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}
+            ${seat.status === 'booked' ? 'opacity-75' : ''}
+            text-xs
+          `}
+          title={!isEditable ? 'Kursi telah dibooking dan tidak dapat diedit' : ''}
+        >
+          {seat.seat_id}
+        </div>
+      );
+    }
+    return <div key={colIndex} className="w-8 h-8"></div>;
+  };
+
+  const handleStatusUpdate = (status: string) => {
+    const updatedSeats = layout.items
+      .filter(item => 
+        item.type === 'seat' && 
+        selectedSeats.has(`${(item as SeatItem).row}${(item as SeatItem).column}`) &&
+        isSeatEditable(item as SeatItem)  // Gunakan isSeatEditable untuk konsistensi
+      )
+      .map(item => ({
+        seat_id: (item as SeatItem).seat_id,
+        status: status
+      }));
+
+    if (updatedSeats.length > 0) {
+      onSave(updatedSeats);
+      setSelectedSeats(new Set());
+    }
   };
 
   const handleModeChange = (mode: SelectionMode) => {
@@ -113,37 +202,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
     setSelectedCategory(null);
   };
 
-  const handleStatusUpdate = (status: string) => {
-    const updatedSeats = layout.items
-      .filter(item => 
-        item.type === 'seat' && 
-        selectedSeats.has((item as SeatItem).seat_id)
-      )
-      .map(item => ({
-        seat_id: (item as SeatItem).seat_id,
-        status: status
-      }));
-
-    onSave(updatedSeats);
-    setSelectedSeats(new Set());
-  };
-
-  const renderCell = (item: LayoutItem | null, colIndex: number) => {
-    if (item && item.type === 'seat') {
-      const seat = item as SeatItem;
-      return (
-        <div
-          key={colIndex}
-          onClick={() => handleSeatClick(seat)}
-          className={`w-10 h-10 flex items-center justify-center cursor-pointer border rounded ${getSeatColor(seat)}`}
-        >
-          {seat.seat_id}
-        </div>
-      );
-    }
-    return <div key={colIndex} className="w-10 h-10"></div>;
-  };
-
+  // Rest of the component remains the same...
   return (
     <div className="p-6">
       {/* Mode Selection */}
@@ -168,7 +227,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         </button>
       </div>
 
-      {/* Category Selection (only shown in Category mode) */}
+      {/* Category Selection */}
       {selectionMode === 'CATEGORY' && (
         <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
           {['diamond', 'gold', 'silver'].map((category) => (
@@ -198,13 +257,6 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
           Set Available
         </button>
         <button
-          className="px-4 py-2 bg-red-400 text-white rounded hover:bg-red-500 disabled:opacity-50"
-          onClick={() => handleStatusUpdate('booked')}
-          disabled={selectedSeats.size === 0}
-        >
-          Set Booked
-        </button>
-        <button
           className="px-4 py-2 bg-yellow-400 text-white rounded hover:bg-yellow-500 disabled:opacity-50"
           onClick={() => handleStatusUpdate('in_transaction')}
           disabled={selectedSeats.size === 0}
@@ -220,11 +272,8 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         </button>
       </div>
 
-      
-
-      {/* Legends Section yang Menarik */}
+      {/* Legends Section */}
       <div className="mb-8">
-        <h3 className="text-2xl font-bold mb-4 text-center"></h3>
         <div className="grid grid-cols-2 gap-8">
           <div className="flex flex-col items-center">
             <h4 className="text-lg font-semibold mb-2">Category</h4>
@@ -254,17 +303,21 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
       {/* Grid */}
       <div className="flex flex-col items-center w-full">
         <div className="grid gap-1">
-          {grid.map((row, rowIndex) => (
-            <div key={rowIndex} className="flex gap-1 items-center">
-              <div className="flex gap-1">
-                {row.map((item, colIndex) => renderCell(item, colIndex))}
+          {[...grid].reverse().map((row, reversedIndex) => {
+            // Hitung kembali indeks asli untuk label baris
+            const originalIndex = grid.length - 1 - reversedIndex;
+            return (
+              <div key={reversedIndex} className="flex gap-1 items-center">
+                <div className="flex gap-1">
+                  {row.map((item, colIndex) => renderCell(item, colIndex))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Stage */}
-        <div className="mt-8 w-96 h-12 bg-white border border-gray-200 flex items-center justify-center rounded">
+        <div className="mt-4 w-60 h-8 bg-white border border-gray-200 flex items-center justify-center rounded text-sm">
           Panggung
         </div>
       </div>

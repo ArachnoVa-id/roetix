@@ -12,16 +12,34 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick, selectedSeats = 
     Array(config.totalColumns).fill(null)
   );
 
+  // Map untuk menyimpan nomor terakhir untuk setiap baris
+  const lastNumberByRow = new Map<string, number>();
+
+  // Fungsi untuk mendapatkan nomor kursi berikutnya untuk suatu baris
+  const getNextNumber = (row: string): number => {
+    const lastNum = lastNumberByRow.get(row) || 0;
+    const nextNum = lastNum + 1;
+    lastNumberByRow.set(row, nextNum);
+    return nextNum;
+  };
+
   // Isi grid dengan kursi
   config.items.forEach(item => {
-    // Pastikan item merupakan SeatItem dengan melakukan pengecekan properti
     if ('seat_id' in item) {
-      const rowIndex =
-        typeof item.row === 'string'
-          ? item.row.charCodeAt(0) - 65
-          : item.row;
+      const rowIndex = typeof item.row === 'string'
+        ? item.row.charCodeAt(0) - 65
+        : item.row;
+      
       if (rowIndex >= 0 && rowIndex < config.totalRows) {
-        grid[rowIndex][(item.column as number) - 1] = item;
+        const rowLetter = String.fromCharCode(65 + rowIndex);
+        const colIndex = (item.column as number) - 1;
+        const seatNumber = getNextNumber(rowLetter);
+        const updatedItem = {
+          ...item,
+          seat_id: `${rowLetter}${seatNumber}`
+        };
+        
+        grid[rowIndex][colIndex] = updatedItem;
       }
     }
   });
@@ -38,42 +56,59 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick, selectedSeats = 
       case 'diamond': return 'bg-cyan-400';
       case 'gold': return 'bg-yellow-400';
       case 'silver': return 'bg-gray-300';
-      default: return 'bg-lightgray';
+      default: return 'bg-gray-200';
     }
   };
 
-  const renderCell = (seat: SeatItem, colIndex: number) => {
+  const isSeatSelectable = (seat: SeatItem): boolean => {
+    return seat.status === 'available';
+  };
+
+  const renderCell = (seat: SeatItem | null, colIndex: number) => {
+    if (!seat) {
+      return <div key={colIndex} className="w-8 h-8" />;
+    }
+
     const isSelected = selectedSeats.some(s => s.seat_id === seat.seat_id);
-    // Gunakan kelas Tailwind untuk background warna kursi yang terpilih
-    const seatColor = isSelected ? 'bg-[#24E05D]' : getSeatColor(seat);
+    const seatColor = isSelected ? 'bg-green-400' : getSeatColor(seat);
+    const isSelectable = isSeatSelectable(seat);
+
     return (
       <div
         key={colIndex}
-        onClick={() => onSeatClick && onSeatClick(seat)}
-        className={`w-10 h-10 flex items-center justify-center cursor-pointer border rounded ${seatColor}`}
+        onClick={() => isSelectable && onSeatClick && onSeatClick(seat)}
+        className={`
+          w-8 h-8
+          flex items-center justify-center
+          border rounded
+          ${seatColor}
+          ${isSelectable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-75'}
+          text-xs
+        `}
+        title={!isSelectable ? 'Kursi tidak tersedia' : ''}
       >
         {seat.seat_id}
       </div>
     );
   };
 
+  // Balik urutan grid untuk menampilkan A dari bawah
+  const reversedGrid = [...grid].reverse();
+
   return (
     <div className="flex flex-col items-center">
       <div className="grid gap-1">
-        {grid.map((row, rowIndex) => (
-          <div key={rowIndex} className="flex gap-1 items-center">
-            
-            <div className="flex gap-1">
-              {row.map((item, colIndex) =>
-                item && 'seat_id' in item ? (
-                  renderCell(item as SeatItem, colIndex)
-                ) : (
-                  <div key={colIndex} className="w-10 h-10"></div>
-                )
-              )}
+        {reversedGrid.map((row, reversedIndex) => {
+          // Hitung kembali indeks asli untuk label baris
+          const originalIndex = grid.length - 1 - reversedIndex;
+          return (
+            <div key={reversedIndex} className="flex gap-1 items-center">
+              <div className="flex gap-1">
+                {row.map((seat, colIndex) => renderCell(seat, colIndex))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {/* Stage */}
       <div className="mt-8 w-96 h-12 bg-white border border-gray-200 flex items-center justify-center rounded">

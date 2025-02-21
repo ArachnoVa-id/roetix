@@ -23,14 +23,18 @@ const Edit: React.FC<Props> = ({ layout }) => {
     <>
       <Head title="Edit Seat Map" />
       <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div className="w-full px-4">
           <div className="bg-white overflow-hidden shadow-xl sm:rounded-lg">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">Edit Seat Map</h2>
-              <SeatMapEditor 
-                layout={layout}
-                onSave={handleSave}
-              />
+              <div className="overflow-x-auto">
+                <div className="min-w-max">
+                  <SeatMapEditor 
+                    layout={layout}
+                    onSave={handleSave}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

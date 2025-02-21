@@ -7,17 +7,14 @@ interface Props {
   layout: Layout;
 }
 
-// Harga hard-code untuk masing-masing kategori
 const categoryPrice: { [key in Category]: number } = {
   diamond: 150000,
   gold: 100000,
   silver: 75000
 };
 
-// Tax di hard-code, misalnya 10%
 const tax = 1;
 
-// Fungsi format rupiah
 const formatRupiah = (value: number): string =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value);
 
@@ -42,7 +39,6 @@ const Index: React.FC<Props> = ({ layout }) => {
   const taxAmount = (subtotal * tax) / 100;
   const total = subtotal + taxAmount;
 
-  // Legenda untuk kategori dan status
   const categoryLegends = [
     { label: 'Diamond', color: 'bg-cyan-400' },
     { label: 'Gold', color: 'bg-yellow-400' },
@@ -59,7 +55,7 @@ const Index: React.FC<Props> = ({ layout }) => {
     <>
       <Head title="Seat Map" />
       <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div className="w-full px-4">
           <div className="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
             {/* Legend Section */}
             <div className="mb-8">
@@ -92,11 +88,15 @@ const Index: React.FC<Props> = ({ layout }) => {
               </div>
             </div>
 
-            <SeatMapDisplay
-              config={layout}
-              onSeatClick={handleSeatClick}
-              selectedSeats={selectedSeats}
-            />
+            <div className="overflow-x-auto">
+              <div className="min-w-max">
+                <SeatMapDisplay
+                  config={layout}
+                  onSeatClick={handleSeatClick}
+                  selectedSeats={selectedSeats}
+                />
+              </div>
+            </div>
 
             {/* Section Kursi yang Dipilih */}
             <div className="mt-8 p-4 border rounded">
