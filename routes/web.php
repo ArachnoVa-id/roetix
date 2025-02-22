@@ -16,7 +16,7 @@ use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\EoProfilController;
 use App\Http\Controllers\UserPageController;
 
-Route::get('/', [UserPageController::class, 'landing'])->name('dashboard');
+Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
 Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('my_tickets');
 
@@ -67,7 +67,7 @@ Route::middleware(['auth', 'verified', CheckRole::class])->prefix('eo')->group(f
 
 // Route::get('/dashboard', function () {
 //     return Inertia::render('Dashboard');
-// })->middleware(['auth', 'verified'])->name('dashboard');
+// })->middleware(['auth', 'verified'])->name('home');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
