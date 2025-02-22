@@ -1,8 +1,7 @@
 <?php
-// database/seeders/SeatSeeder.php
-
 namespace Database\Seeders;
 
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use App\Models\Section;
 use App\Models\Seat;
 use Illuminate\Database\Seeder;
