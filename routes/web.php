@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
     Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
     Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
+    Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
 });
 
 // Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');

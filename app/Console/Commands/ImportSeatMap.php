@@ -11,6 +11,8 @@ class ImportSeatMap extends Command
     protected $signature = 'seats:import {file : Path to JSON config file}';
     protected $description = 'Import seat configuration from JSON';
 
+    private $seatNumberCounters = [];
+
     public function handle()
     {
         $jsonPath = $this->argument('file');
@@ -20,39 +22,42 @@ class ImportSeatMap extends Command
         try {
             DB::beginTransaction();
 
+            // Reset seat number counters
+            $this->seatNumberCounters = [];
+
             foreach ($config['layout']['items'] as $item) {
-                // Set default type to 'seat' jika tidak disediakan
                 if (!isset($item['type'])) {
                     $item['type'] = 'seat';
                 }
 
                 if ($item['type'] === 'seat') {
-                    // Ambil row dan column dari seat_id
-                    $seatId = $item['seat_id'];
-                    preg_match('/^([A-Za-z]+)(\d+)$/', $seatId, $matches);
-                    if ($matches) {
-                        $row    = strtoupper($matches[1]);
-                        $column = (int) $matches[2];
-                    } else {
-                        $row    = $item['row'] ?? '';
-                        $column = $item['column'] ?? 0;
+                    // Parse position untuk mendapatkan row dan column
+                    $position = $item['position'] ?? '';
+                    if (!preg_match('/^([A-Za-z]+)(\d+)$/', $position, $matches)) {
+                        throw new \Exception("Invalid position format: {$position}");
                     }
 
-                    $existingSeat = Seat::where('seat_id', $item['seat_id'])->first();
+                    $row = strtoupper($matches[1]);
+                    $column = (int) $matches[2];
 
-                    if (!$existingSeat) {
-                        Seat::create([
-                            'seat_id'     => $item['seat_id'],
-                            'venue_id'    => $config['venue_id'],
-                            'seat_number' => $item['seat_id'],
-                            'position'    => "{$row}-{$column}",
-                            'status'      => $item['status'] ?? 'available',
-                            'category'    => $item['category'],
-                            'row'         => $row,
-                            'column'      => $column,
-                            'price'       => $item['price'] ?? 0
-                        ]);
-                    }
+                    // Generate seat number berdasarkan row
+                    $seatNumber = $this->generateSeatNumber($row);
+
+                    // Generate unique seat_id
+                    $seatId = $this->generateUniqueSeatId();
+
+                    $seat = Seat::create([
+                        'seat_id'     => $seatId,
+                        'venue_id'    => $config['venue_id'],
+                        'seat_number' => $seatNumber,
+                        'position'    => $position,
+                        'status'      => $item['status'] ?? 'available',
+                        'category'    => $item['category'],
+                        'row'         => $row,
+                        'column'      => $column,
+                    ]);
+
+                    $this->info("Created seat: {$seatNumber} at position {$position}");
                 }
             }
 
@@ -62,5 +67,32 @@ class ImportSeatMap extends Command
             DB::rollBack();
             $this->error('Import failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Generate seat number berdasarkan row
+     * Format: [ROW][INCREMENT_NUMBER]
+     */
+    private function generateSeatNumber(string $row): string
+    {
+        if (!isset($this->seatNumberCounters[$row])) {
+            $this->seatNumberCounters[$row] = 0;
+        }
+
+        $this->seatNumberCounters[$row]++;
+        return $row . $this->seatNumberCounters[$row];
+    }
+
+    /**
+     * Generate unique seat_id
+     */
+    private function generateUniqueSeatId(): string
+    {
+        do {
+            // Generate format: ST-XXXXX (X adalah random number)
+            $seatId = 'ST-' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
+        } while (Seat::where('seat_id', $seatId)->exists());
+
+        return $seatId;
     }
 }

@@ -111,7 +111,7 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick, selectedSeats = 
         })}
       </div>
       {/* Stage */}
-      <div className="mt-8 w-96 h-12 bg-white border border-gray-200 flex items-center justify-center rounded">
+      <div className="mt-20 w-[50vw] h-12 bg-white border border-gray-200 flex items-center justify-center rounded">
         Panggung
       </div>
     </div>

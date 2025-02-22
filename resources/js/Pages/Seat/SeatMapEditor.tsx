@@ -55,7 +55,6 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         // Gunakan column sebagai nomor kursi
         const updatedItem = {
           ...item,
-          seat_id: `${rowLetter}${item.column}`
         };
         
         grid[rowIndex][colIndex] = updatedItem;
@@ -171,7 +170,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
           `}
           title={!isEditable ? 'Kursi telah dibooking dan tidak dapat diedit' : ''}
         >
-          {seat.seat_id}
+          {seat.seat_number} {/* Ubah dari seat_id menjadi seat_number */}
         </div>
       );
     }

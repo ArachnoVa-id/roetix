@@ -16,6 +16,7 @@ export interface BaseItem {
 export interface SeatItem {
  type: 'seat';
  seat_id: string;
+ seat_number: string;
  row: string | number; // Allow both string/number for row
  column: number;
  status: SeatStatus;
@@ -40,7 +41,7 @@ export type Position = string | { x: number; y: number };
 
 export interface Seat {
     seat_id: string;
-    section_id: string;
+    // section_id: string;
     seat_number: string;
     position: Position;
     status: SeatStatus;

@@ -32,8 +32,8 @@ class Seat extends Model
     /**
      * Get the section that owns the seat.
      */
-    public function section(): BelongsTo
-    {
-        return $this->belongsTo(Section::class, 'section_id', 'id');
-    }
+    // public function section(): BelongsTo
+    // {
+    //     return $this->belongsTo(Section::class, 'section_id', 'id');
+    // }
 }
