@@ -38,13 +38,7 @@
         "vite": "^6.0"
     },
     "dependencies": {
-
         "@radix-ui/react-alert-dialog": "^1.1.6",
-        "@radix-ui/react-slot": "^1.1.2",
-        "clsx": "^2.1.1",
-        "lucide-react": "^0.475.0",
-        "tailwind-merge": "^3.0.1"
-
         "@radix-ui/react-avatar": "^1.1.2",
         "@radix-ui/react-collapsible": "^1.1.2",
         "@radix-ui/react-dialog": "^1.1.6",
@@ -53,13 +47,14 @@
         "@radix-ui/react-popover": "^1.1.5",
         "@radix-ui/react-select": "^2.1.5",
         "@radix-ui/react-separator": "^1.1.1",
-
+        "@radix-ui/react-slot": "^1.1.2",
         "@radix-ui/react-tooltip": "^1.1.7",
         "class-variance-authority": "^0.7.1",
-
+        "clsx": "^2.1.1",
         "flowbite": "^2.5.2",
-
+        "flowbite-react": "^0.10.2",
+        "lucide-react": "^0.475.0",
+        "tailwind-merge": "^3.0.1",
         "tailwindcss-animate": "^1.0.7"
-
     }
 }
