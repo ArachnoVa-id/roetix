@@ -14,15 +14,11 @@ use App\Http\Controllers\EoAcaraController;
 use App\Http\Controllers\EoVenueController;
 use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\EoProfilController;
+use App\Http\Controllers\UserPageController;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+Route::get('/', [UserPageController::class, 'landing'])->name('dashboard');
+
+Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('my_tickets');
 
 Route::get('/test', function () {
     return Inertia::render('Test');
@@ -69,9 +65,9 @@ Route::middleware(['auth', 'verified', CheckRole::class])->prefix('eo')->group(f
 });
 
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Route::get('/dashboard', function () {
+//     return Inertia::render('Dashboard');
+// })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

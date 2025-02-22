@@ -21,8 +21,8 @@ export default function Ticket({
     ticketData: {
         date: string;
         type: string;
-        seat: number;
-        price: number;
+        seat: string;
+        price: string;
     };
 }) {
     return (
