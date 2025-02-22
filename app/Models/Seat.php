@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Seat extends Model
 {
-    /** @use HasFactory<\Database\Factories\SeatFactory> */
     use HasFactory, Notifiable;
 
     protected $primaryKey = 'seat_id';
@@ -17,11 +17,16 @@ class Seat extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'seat_id',
+        'venue_id',
         'seat_number',
         'position',
         'status',
+        'category',
+        'row',
+        'column'
     ];
-
+  
     protected static function boot()
     {
         parent::boot();
@@ -32,7 +37,16 @@ class Seat extends Model
             }
         });
     }
-
+  
+    protected $casts = [
+        'column' => 'integer'
+    ];
+  
+    public function section(): BelongsTo
+    {
+        return $this->belongsTo(Section::class, 'section_id', 'id');
+    }
+      
     public function vanue(){
         return $this->belongsTo(Vanue::class, 'venue_id', 'venue_id');
     }
