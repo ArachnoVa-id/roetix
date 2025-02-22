@@ -26,7 +26,7 @@ class Seat extends Model
         'row',
         'column'
     ];
-  
+
     protected static function boot()
     {
         parent::boot();
@@ -37,17 +37,18 @@ class Seat extends Model
             }
         });
     }
-  
+
     protected $casts = [
         'column' => 'integer'
     ];
-  
+
     public function section(): BelongsTo
     {
         return $this->belongsTo(Section::class, 'section_id', 'id');
     }
-      
-    public function vanue(){
-        return $this->belongsTo(Vanue::class, 'venue_id', 'venue_id');
+
+    public function venue()
+    {
+        return $this->belongsTo(Venue::class, 'venue_id', 'venue_id');
     }
 }

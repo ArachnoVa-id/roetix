@@ -1,8 +1,13 @@
-import React from "react";
-import EodashboardLayout from "@/Layouts/EodashboardLayout";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { Button } from "@/components/ui/button"
-import { ShowTicket } from "./TicketDetailDialog";
+import EodashboardLayout from '@/Layouts/EodashboardLayout';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { ShowTicket } from './TicketDetailDialog';
 
 interface Order {
     email: string;
@@ -24,7 +29,7 @@ interface Ticket {
 
 interface Props {
     orderId: string;
-    orders: Order [];
+    orders: Order[];
     tickets: Ticket[];
 }
 
@@ -32,14 +37,16 @@ export default function Penjualan({ orderId, orders, tickets }: Props) {
     return (
         <EodashboardLayout title="Order / Penjualan" subtitle={orderId}>
             <div className="md:pb-[3vw]">
-                <p className="font-bold">{orders[0].first_name} {orders[0].last_name}</p>
+                <p className="font-bold">
+                    {orders[0].first_name} {orders[0].last_name}
+                </p>
                 <div>{orders[0].email}</div>
             </div>
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead>ticket id</TableHead>
-                        <TableHead>vanue name</TableHead>
+                        <TableHead>venue name</TableHead>
                         <TableHead>seat</TableHead>
                         <TableHead>pice</TableHead>
                         <TableHead>ticket type</TableHead>
@@ -49,7 +56,7 @@ export default function Penjualan({ orderId, orders, tickets }: Props) {
                     {tickets.map((item, idx) => (
                         <TableRow key={idx}>
                             <TableCell>
-                                <ShowTicket 
+                                <ShowTicket
                                     price={item.price}
                                     seat_number={item.seat_number}
                                     ticket_id={item.ticket_id}
@@ -61,7 +68,7 @@ export default function Penjualan({ orderId, orders, tickets }: Props) {
                             <TableCell>{item.seat_number}</TableCell>
                             <TableCell>{item.price}</TableCell>
                             <TableCell>{item.ticket_type}</TableCell>
-                    </TableRow>
+                        </TableRow>
                     ))}
                 </TableBody>
             </Table>

@@ -1,9 +1,11 @@
 <?php
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use App\Models\Section;
 use App\Models\Seat;
+use App\Models\Venue;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -25,11 +27,12 @@ class SeatSeeder extends Seeder
             for ($col = 1; $col <= $seatsPerRow; $col++) {
                 Seat::create([
                     'seat_id' => Str::uuid(),
-                    'section_id' => $section->id,
+                    'venue_id' => Venue::inRandomOrder()->first()->venue_id,
                     'seat_number' => $row . $col,
                     'position' => $row . '-' . $col,
                     'status' => 'available',
                     'category' => 'silver',
+                    'section_id' => $section->id,
                     'row' => $row,
                     'column' => $col,
                 ]);

@@ -27,13 +27,15 @@ class TicketFactory extends Factory
      */
     public function definition(): array
     {
+
+
         return [
             'ticket_id' => (string) Str::uuid(),
-            'event_id' => Event::factory(),
-            'seat_id' => Seat::factory(),
+            'event_id' => Event::all()->random()->event_id,
+            'seat_id' => Seat::all()->random()->seat_id,
             'ticket_type' => $this->faker->randomElement(['standard', 'VIP']),
             'price' => $this->faker->randomFloat(2, 10, 500),
-            'status' => $this->faker->randomElement(['available', 'sold', 'reserved']),
+            'status' => 'available',
             'created_at' => now(),
             'updated_at' => now(),
         ];

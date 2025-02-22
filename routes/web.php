@@ -54,11 +54,11 @@ Route::middleware(['auth', 'verified', CheckRole::class])->prefix('eo')->group(f
     // Route untuk Analitik
     Route::prefix('analitik')->group(function () {
         Route::get('/penjualan', [EoAnalitikController::class, 'analitikpenjualan'])
-        ->name('penjualan.index');
+            ->name('penjualan.index');
         Route::get('/penjualan/{orderId}', [EoAnalitikController::class, 'penjualan'])
-        ->name('penjualan.detail');
+            ->name('penjualan.detail');
         Route::get('/riwayat-acara', [EoAnalitikController::class, 'riwayatacara'])
-        ->name('acara.riwayat');
+            ->name('acara.riwayat');
     });
 
     // Route untuk Profil
@@ -66,7 +66,6 @@ Route::middleware(['auth', 'verified', CheckRole::class])->prefix('eo')->group(f
         Route::get('/', [EoProfilController::class, 'pengaturan'])->name('index');
         Route::get('/edit', [EoProfilController::class, 'edit'])->name('edit');
     });
-
 });
 
 
@@ -87,4 +86,4 @@ Route::middleware('auth')->group(function () {
 // Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
 // Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
