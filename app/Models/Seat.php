@@ -42,13 +42,18 @@ class Seat extends Model
         'column' => 'integer'
     ];
 
-    public function section(): BelongsTo
-    {
-        return $this->belongsTo(Section::class, 'section_id', 'id');
-    }
+
+    /**
+     * Get the section that owns the seat.
+     */
+    // public function section(): BelongsTo
+    // {
+    //     return $this->belongsTo(Section::class, 'section_id', 'id');
+    // }
 
     public function venue()
     {
         return $this->belongsTo(Venue::class, 'venue_id', 'venue_id');
     }
+
 }

@@ -91,6 +91,7 @@ class SeatController extends Controller
                 return [
                     'type' => 'seat',
                     'seat_id' => $seat->seat_id,
+                    'seat_number' => $seat->seat_number, // Tambahkan ini
                     'row' => $seat->row,
                     'column' => $seat->column,
                     'status' => $seat->status,
@@ -157,4 +158,35 @@ class SeatController extends Controller
             return back()->withErrors(['error' => 'Failed to update seats: ' . $e->getMessage()]);
         }
     }
+
+    public function spreadsheet()
+{
+    try {
+        $seats = Seat::orderBy('row')->orderBy('column')->get();
+        
+        $layout = [
+            'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
+            'totalColumns' => $seats->max('column'),
+            'items' => $seats->map(function($seat) {
+                return [
+                    'type' => 'seat',
+                    'seat_id' => $seat->seat_id,
+                    'row' => $seat->row,
+                    'column' => $seat->column,
+                    'status' => $seat->status,
+                    'category' => $seat->category,
+                    'price' => $seat->price
+                ];
+            })->values()
+        ];
+
+        return Inertia::render('Seat/Spreadsheet', [
+            'layout' => $layout
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error in spreadsheet method: ' . $e->getMessage());
+        return redirect()->back()->withErrors(['error' => 'Failed to load seat spreadsheet']);
+    }
+}
 }
