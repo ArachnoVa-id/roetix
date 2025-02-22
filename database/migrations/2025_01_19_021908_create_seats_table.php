@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('seat_number');
             $table->string('position');
             $table->enum('status', ['available', 'booked', 'in_transaction', 'not_available'])
-      ->default('available');
+                ->default('available');
             $table->enum('category', ['diamond', 'gold', 'silver'])->default('silver');
             $table->string('row');
             $table->integer('column');
@@ -26,7 +26,7 @@ return new class extends Migration
     {
         Schema::table('seats', function (Blueprint $table) {
             $table->enum('status', ['available', 'booked', 'in_transaction', 'not_available'])
-      ->default('available');
+                ->default('available');
         });
         Schema::dropIfExists('seats');
     }

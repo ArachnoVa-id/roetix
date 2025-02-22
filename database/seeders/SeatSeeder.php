@@ -1,12 +1,13 @@
 <?php
-// database/seeders/SeatSeeder.php
 
 // namespace Database\Seeders;
+
 
 // use App\Models\Section;
 // use App\Models\Seat;
 // use Illuminate\Database\Seeder;
 // use Illuminate\Support\Str;
+
 
 // class SeatSeeder extends Seeder
 // {
@@ -21,6 +22,7 @@
 //         // Create sample seats
 //         $rows = ['A', 'B', 'C', 'D', 'E'];
 //         $seatsPerRow = 10;
+
 
 //         foreach ($rows as $row) {
 //             for ($col = 1; $col <= $seatsPerRow; $col++) {
@@ -38,3 +40,4 @@
 //         }
 //     }
 // }
+
