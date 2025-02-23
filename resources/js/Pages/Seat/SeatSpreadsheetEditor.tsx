@@ -78,7 +78,6 @@ const SeatSpreadsheetEditor: React.FC<Props> = ({ layout }) => {
       column: newColumn,
       status: 'available',
       category: 'silver',
-      price: 75000,
       isNew: true,
       isDirty: true
     };
