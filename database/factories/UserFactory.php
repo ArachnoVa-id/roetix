@@ -26,7 +26,7 @@ class UserFactory extends Factory
         return [
             'user_id' => (string) Str::uuid(),
             'email' => $this->faker->unique()->safeEmail(),
-            'password' => Hash::make('password'),
+            'password' => 'test123',
             'role' => $this->faker->randomElement(['user', 'admin', 'vendor']), // Random role
             'first_name' => $this->faker->firstName(),
             'last_name' => $this->faker->lastName(),

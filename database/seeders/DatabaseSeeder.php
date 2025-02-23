@@ -10,6 +10,8 @@ use App\Models\Order;
 use App\Models\Seat;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
+use App\Models\SeatSeeder;
+use App\Models\Team;
 use App\Models\UserContact;
 use App\Models\Venue;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -23,33 +25,35 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
-        Order::truncate();
-        Coupon::truncate();
-        TicketCategory::truncate();
-        Ticket::truncate();
-        Seat::truncate();
-        Venue::truncate();
-        UserContact::truncate();
-        EventVariables::truncate();
-        Event::truncate();
-        User::truncate();
+        // Team::truncate();
+        // Order::truncate();
+        // Coupon::truncate();
+        // TicketCategory::truncate();
+        // Ticket::truncate();
+        // Seat::truncate();
+        // Venue::truncate();
+        // UserContact::truncate();
+        // EventVariables::truncate();
+        // Event::truncate();
+        // User::truncate();
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        // DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
 
         $this->call([
             UserSeeder::class,
+            TeamSeeder::class,
             EventSeeder::class,
-            EventVariablesSeeder::class,
-            UserContactSeeder::class,
-            VenueSeeder::class,
-            SeatSeeder::class,
-            TicketSeeder::class,
-            TicketCategorySeeder::class,
-            CouponSeeder::class,
-            OrderSeeder::class,
+            // EventVariablesSeeder::class,
+            // UserContactSeeder::class,
+            // VenueSeeder::class,
+            // SeatSeeder::class,
+            // TicketSeeder::class,
+            // TicketCategorySeeder::class,
+            // CouponSeeder::class,
+            // OrderSeeder::class,
         ]);
     }
 }

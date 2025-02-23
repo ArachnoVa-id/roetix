@@ -5,7 +5,6 @@ use App\Http\Controllers\SeatController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Middleware\CheckRole;
 
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\EoPenjualanController;
@@ -24,7 +23,7 @@ Route::get('/test', function () {
     return Inertia::render('Test');
 });
 
-Route::middleware(['auth', 'verified', CheckRole::class])->prefix('eo')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('eo')->group(function () {
 
     // Route untuk Acara
     Route::prefix('acara')->name('acara.')->group(function () {
