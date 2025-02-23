@@ -14,6 +14,7 @@ use App\Http\Controllers\EoVenueController;
 use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\EoProfilController;
 use App\Http\Controllers\UserPageController;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
@@ -21,6 +22,13 @@ Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('my_t
 
 Route::get('/test', function () {
     return Inertia::render('Test');
+});
+
+Route::get('/test-login', function () {
+    $user = \App\Models\User::where('email', 'vendor1@example.com')->first();
+    Auth::login($user);
+    
+    return redirect('/');
 });
 
 Route::middleware(['auth', 'verified'])->prefix('eo')->group(function () {

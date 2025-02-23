@@ -25,8 +25,8 @@ class TeamSeeder extends Seeder
             for($i = 0; $i < $randValue; $i++)
             {
                 $tms = Team::create([
-                    'name' => $user->name . "'s Team",
-                    'code' => 'TEAM' . strtoupper(Str::random(6)),
+                    'name' => $user->last_name . strtoupper(Str::random(1)) . "'s Team",
+                    'code' => 'TEAM-' . strtoupper(Str::random(6)),
                 ]);
 
                 DB::table('user_team')->insert([

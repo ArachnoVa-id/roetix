@@ -23,7 +23,8 @@ class Event extends Model
         'start_date',
         'end_date',
         'location',
-        'status'
+        'status',
+        'team_id',
     ];
 
     protected static function boot()
