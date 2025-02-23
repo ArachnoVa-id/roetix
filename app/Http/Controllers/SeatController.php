@@ -22,6 +22,7 @@ class SeatController extends Controller
                 return [
                     'type' => 'seat',
                     'seat_id' => $seat->seat_id,
+                    'seat_number' => $seat->seat_number, // Tambahkan ini
                     'row' => $seat->row,
                     'column' => $seat->column,
                     'status' => $seat->status,
@@ -121,43 +122,44 @@ class SeatController extends Controller
 
     // SeatController.php
     public function update(Request $request)
-    {
-        $validated = $request->validate([
-            'seats' => 'required|array',
-            'seats.*.seat_id' => 'required|string',
-            'seats.*.status' => 'required|string|in:available,booked,in_transaction,not_available',
-        ]);
-    
-        try {
-            DB::beginTransaction();
-    
-            foreach ($validated['seats'] as $seatData) {
-                $seat = Seat::where('seat_id', $seatData['seat_id'])->first();
+{
+    Log::info('Request headers:', $request->headers->all());
+    Log::info('Request body:', $request->all());
 
-                // Jika status saat ini booked dan mencoba diubah ke status lain, lewati update
-                if ($seat && $seat->status === 'booked' && $seatData['status'] !== 'booked') {
-                    Log::warning('Skipping update for booked seat', ['seat_id' => $seat->seat_id]);
-                    continue;
-                }
+    $validated = $request->validate([
+        'seats' => 'required|array',
+        'seats.*.seat_id' => 'required|string',
+        'seats.*.status' => 'required|string|in:available,booked,in_transaction,not_available',
+    ]);
 
-                // Update jika tidak memenuhi kondisi di atas
-                Seat::where('seat_id', $seatData['seat_id'])
-                    ->update([
-                        'status' => $seatData['status']
-                    ]);
+    try {
+        DB::beginTransaction();
+
+        foreach ($validated['seats'] as $seatData) {
+            $seat = Seat::where('seat_id', $seatData['seat_id'])->first();
+
+            if ($seat && $seat->status === 'booked' && $seatData['status'] !== 'booked') {
+                continue;
             }
-    
-            DB::commit();
-            return redirect()
-                ->route('seats.index')
-                ->with('message', 'Seats updated successfully');
-    
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error updating seats: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'Failed to update seats: ' . $e->getMessage()]);
+
+            Seat::where('seat_id', $seatData['seat_id'])
+                ->update([
+                    'status' => $seatData['status']
+                ]);
         }
+
+        DB::commit();
+        
+       
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error updating seats: ' . $e->getMessage());
+        return response()->json([
+            'error' => 'Failed to update seats'
+        ], 422);
     }
+}
 
     public function spreadsheet()
 {
@@ -171,6 +173,7 @@ class SeatController extends Controller
                 return [
                     'type' => 'seat',
                     'seat_id' => $seat->seat_id,
+                    'seat_number' => $seat->seat_number, // Tambahkan ini
                     'row' => $seat->row,
                     'column' => $seat->column,
                     'status' => $seat->status,

@@ -16,7 +16,18 @@ use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\EoProfilController;
 use App\Http\Controllers\UserPageController;
 
+Route::get('/test-csrf', function () {
+    return response()->json(['csrf_token' => csrf_token()]);
+});
+
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
+
+
+    Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
+    Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+    Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
+    Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
+
 
 Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('my_tickets');
 
@@ -31,7 +42,13 @@ Route::middleware(['auth', 'verified', CheckRole::class])->prefix('eo')->group(f
         Route::get('/', [EoAcaraController::class, 'index'])->name('index');
         Route::get('/buat', [EoAcaraController::class, 'create'])->name('create');
         Route::get('/edit', [EoAcaraController::class, 'edit'])->name('edit');
+        
     });
+
+    // Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
+    // Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+    // Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
+    // Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
 
     // Route untuk Venue
     Route::prefix('venue')->name('venue.')->group(function () {
@@ -73,10 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-    Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-    Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-    Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
+
 });
 
 // Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
