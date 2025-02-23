@@ -65,6 +65,9 @@ class EventResource extends Resource
                 Tables\Columns\TextColumn::make('location'),
                 Tables\Columns\TextColumn::make('status'),
             ])
+            ->recordUrl(function ($record) {
+                return TicketResource::getUrl(name: 'index', parameters: ['event_id' => $record->id]);
+            })
             ->filters([
                 //
             ])
