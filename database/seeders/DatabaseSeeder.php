@@ -14,6 +14,7 @@ use App\Models\SeatSeeder;
 use App\Models\Team;
 use App\Models\UserContact;
 use App\Models\Venue;
+use Database\Seeders\SeatSeeder as SeedersSeatSeeder;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -46,14 +47,14 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             TeamSeeder::class,
             EventSeeder::class,
-            // EventVariablesSeeder::class,
-            // UserContactSeeder::class,
-            // VenueSeeder::class,
-            // SeatSeeder::class,
-            // TicketSeeder::class,
-            // TicketCategorySeeder::class,
-            // CouponSeeder::class,
-            // OrderSeeder::class,
+            EventVariablesSeeder::class,
+            UserContactSeeder::class,
+            VenueSeeder::class,
+            SeedersSeatSeeder::class,
+            TicketSeeder::class,
+            TicketCategorySeeder::class,
+            CouponSeeder::class,
+            OrderSeeder::class,
         ]);
     }
 }
