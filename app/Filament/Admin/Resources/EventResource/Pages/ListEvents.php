@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\EventResource\Pages;
 
 use App\Filament\Admin\Resources\EventResource;
 use Filament\Actions;
+use Filament\Resources\Pages\ListRecords\Tab;
 use Filament\Resources\Pages\ListRecords;
 
 class ListEvents extends ListRecords
