@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Facades\Filament;
 
 class EventResource extends Resource
 {
@@ -21,6 +22,9 @@ class EventResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $tenant = Filament::getTenant()->team_id;
+        $tenant_name = Filament::getTenant()->code;
+
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
@@ -48,17 +52,28 @@ class EventResource extends Resource
                 ->required(),
             Forms\Components\TextInput::make('location')
                 ->required(),
-            Forms\Components\Select::make('team_id')
-                ->relationship('team', 'code')
+                Forms\Components\TextInput::make('team_code')
+                ->label('Team')
+                ->default($tenant_name)
+                ->disabled()
+                ->required(),
+            Forms\Components\Hidden::make('team_id')
+                ->default($tenant)
                 ->required(),
             ]);
     }
 
     public static function table(Table $table): Table
     {
+
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name'),
+                // Tables\Columns\TextColumn::make('name'),
+                Tables\Columns\TextColumn::make('name')
+                ->label('Event Name')
+                ->sortable()
+                ->searchable()
+                ->url(fn ($record) => TicketResource::getUrl('index', ['tableFilters[event_id][value]' => $record->event_id])),
                 Tables\Columns\TextColumn::make('category'),
                 Tables\Columns\TextColumn::make('start_date'),
                 Tables\Columns\TextColumn::make('end_date'),
@@ -66,7 +81,7 @@ class EventResource extends Resource
                 Tables\Columns\TextColumn::make('status'),
             ])
             ->recordUrl(function ($record) {
-                return TicketResource::getUrl(name: 'index', parameters: ['event_id' => $record->id]);
+                return TicketResource::getUrl(name: 'index', parameters: ['event_id' => $record->event_id]);
             })
             ->filters([
                 //

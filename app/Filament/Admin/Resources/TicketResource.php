@@ -68,7 +68,9 @@ class TicketResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('ticket_id'),
-                Tables\Columns\TextColumn::make('seat_id'),
+                Tables\Columns\TextColumn::make('event.name'),
+                // Tables\Columns\TextColumn::make('event_id'),
+                // Tables\Columns\TextColumn::make('seat_id'),
                 Tables\Columns\TextColumn::make('ticket_type'),
                 Tables\Columns\TextColumn::make('price'),
                 Tables\Columns\TextColumn::make('status'),
@@ -77,10 +79,11 @@ class TicketResource extends Resource
                 SelectFilter::make('event_id')
                     ->label('Filter by Event')
                     ->relationship('event', 'name')
-                    ->searchable(),
+                    ->searchable()
+                    ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                // Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
