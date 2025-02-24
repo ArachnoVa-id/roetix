@@ -38,28 +38,54 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
     return nextNum;
   };
 
-  const grid = Array.from({ length: layout.totalRows }, () =>
-    Array(layout.totalColumns).fill(null)
+  // const grid = Array.from({ length: layout.totalRows }, () =>
+  //   Array(layout.totalColumns).fill(null)
+  // );
+
+  // Find highest row and column from existing seats
+  const findHighestRow = (): number => {
+    let maxRowIndex = 0;
+    layout.items.forEach(item => {
+      if ('seat_id' in item) {
+        const rowIndex = typeof item.row === 'string'
+          ? item.row.charCodeAt(0) - 65
+          : item.row;
+        maxRowIndex = Math.max(maxRowIndex, rowIndex);
+      }
+    });
+    return maxRowIndex + 1;
+  };
+
+  const findHighestColumn = (): number => {
+    let maxColumn = 0;
+    layout.items.forEach(item => {
+      if ('seat_id' in item) {
+        maxColumn = Math.max(maxColumn, item.column);
+      }
+    });
+    return maxColumn;
+  };
+
+  // Create grid with dimensions based on actual data
+  const actualRows = Math.max(findHighestRow(), layout.totalRows);
+  const actualColumns = Math.max(findHighestColumn(), layout.totalColumns);
+  
+  const grid = Array.from({ length: actualRows }, () =>
+    Array(actualColumns).fill(null)
   );
 
   // Isi grid dengan kursi
   layout.items.forEach(item => {
     if ('seat_id' in item) {
-      const rowIndex =
-        typeof item.row === 'string'
-          ? item.row.charCodeAt(0) - 65
-          : item.row;
+      const rowIndex = typeof item.row === 'string'
+        ? item.row.charCodeAt(0) - 65
+        : item.row;
       
-      if (rowIndex >= 0 && rowIndex < layout.totalRows) {
-        const rowLetter = String.fromCharCode(65 + rowIndex);
-        // Gunakan column dari item untuk penempatan
+      if (rowIndex >= 0 && rowIndex < actualRows) {
         const colIndex = (item.column as number) - 1;
-        // Gunakan column sebagai nomor kursi
-        const updatedItem = {
-          ...item,
-        };
-        
-        grid[rowIndex][colIndex] = updatedItem;
+        if (colIndex >= 0 && colIndex < actualColumns) {
+          grid[rowIndex][colIndex] = item;
+        }
       }
     }
   });
@@ -321,12 +347,12 @@ const handleStatusUpdate = (status: string) => {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Grid display */}
       <div className="flex flex-col items-center w-full">
         <div className="grid gap-1">
           {[...grid].reverse().map((row, reversedIndex) => {
-            // Hitung kembali indeks asli untuk label baris
             const originalIndex = grid.length - 1 - reversedIndex;
+            const rowLabel = String.fromCharCode(65 + originalIndex);
             return (
               <div key={reversedIndex} className="flex gap-1 items-center">
                 <div className="flex gap-1">

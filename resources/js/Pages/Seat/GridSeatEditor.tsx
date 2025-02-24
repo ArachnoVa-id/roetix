@@ -57,39 +57,67 @@ interface Props {
       initializeGrid();
     }, [rows, columns]);
   
-    useEffect(() => {
-      if (initialLayout) {
-        setRows(initialLayout.totalRows);
-        setColumns(initialLayout.totalColumns);
+    // Function to find the highest occupied row
+  const findHighestRow = (items: LayoutItem[]): number => {
+    let maxRow = 0;
+    items.forEach(item => {
+      if (item.type === 'seat') {
+        const rowNum = typeof item.row === 'string' 
+          ? getRowNumber(item.row) - 1 
+          : item.row;
+        maxRow = Math.max(maxRow, rowNum);
       }
-    }, [initialLayout]);
-  
-    const initializeGrid = () => {
-      const newGrid: GridCell[][] = Array(rows).fill(null).map(() =>
-        Array(columns).fill(null).map(() => ({ type: 'empty' }))
-      );
-  
-      if (initialLayout) {
-        initialLayout.items.forEach(item => {
-          if (item.type === 'seat') {
-            const seatItem = item as SeatItem;
-            const rowIndex = typeof seatItem.row === 'string' 
-              ? getRowNumber(seatItem.row) - 1
-              : seatItem.row;
-            const colIndex = seatItem.column - 1;
-            
-            if (rowIndex >= 0 && rowIndex < rows && colIndex >= 0 && colIndex < columns) {
-              newGrid[rowIndex][colIndex] = {
-                type: 'seat',
-                item: seatItem
-              };
-            }
+    });
+    return maxRow;
+  };
+
+  // Function to find the highest occupied column
+  const findHighestColumn = (items: LayoutItem[]): number => {
+    let maxCol = 0;
+    items.forEach(item => {
+      if (item.type === 'seat') {
+        maxCol = Math.max(maxCol, item.column);
+      }
+    });
+    return maxCol;
+  };
+
+  // Update initializeGrid to automatically set dimensions based on seats
+  useEffect(() => {
+    if (initialLayout?.items?.length) {
+      const maxRow = findHighestRow(initialLayout.items);
+      const maxCol = findHighestColumn(initialLayout.items);
+      setRows(Math.max(maxRow + 1, rows));
+      setColumns(Math.max(maxCol, columns));
+    }
+  }, [initialLayout]);
+
+  const initializeGrid = () => {
+    const newGrid: GridCell[][] = Array(rows).fill(null).map(() =>
+      Array(columns).fill(null).map(() => ({ type: 'empty' }))
+    );
+
+    if (initialLayout) {
+      initialLayout.items.forEach(item => {
+        if (item.type === 'seat') {
+          const seatItem = item as SeatItem;
+          const rowIndex = typeof seatItem.row === 'string' 
+            ? getRowNumber(seatItem.row) - 1
+            : seatItem.row;
+          const colIndex = seatItem.column - 1;
+          
+          if (rowIndex >= 0 && rowIndex < rows && colIndex >= 0 && colIndex < columns) {
+            newGrid[rowIndex][colIndex] = {
+              type: 'seat',
+              item: seatItem
+            };
           }
-        });
-      }
-  
-      setGrid(newGrid);
-    };
+        }
+      });
+    }
+
+    setGrid(newGrid);
+  };
   
     const handleCellClick = (rowIndex: number, colIndex: number) => {
       setSelectedCell({ row: rowIndex, col: colIndex });
@@ -245,42 +273,39 @@ interface Props {
           </div>
         </div>
   
-        <div className="mb-6 flex flex-col items-center">
-      <div className="grid gap-1">
-        {[...grid].reverse().map((row, reversedIndex) => {
-          const originalIndex = grid.length - 1 - reversedIndex;
-          const rowLabel = getRowLabel(originalIndex + 1);
-          return (
-            <div key={reversedIndex} className="flex gap-1">
-              <span className="w-12 text-center leading-8">
-                {rowLabel}
-              </span>
-              {row.map((cell, colIndex) => (
-                <div
-                  key={colIndex}
-                  onClick={() => handleCellClick(originalIndex, colIndex)}
-                  className={`
-                    w-8 h-8
-                    flex items-center justify-center
-                    border rounded
-                    ${getCellColor(cell)}
-                    cursor-pointer
-                    hover:opacity-80
-                    text-xs
-                  `}
-                >
-                  {cell.type === 'seat' && cell.item?.seat_number}
+        <div className="mb-6">
+          <div className="grid gap-1">
+            {[...grid].reverse().map((row, reversedIndex) => {
+              const originalIndex = grid.length - 1 - reversedIndex;
+              const rowLabel = getRowLabel(originalIndex + 1);
+              return (
+                <div key={reversedIndex} className="flex gap-1">
+                  {row.map((cell, colIndex) => (
+                    <div
+                      key={colIndex}
+                      onClick={() => handleCellClick(originalIndex, colIndex)}
+                      className={`
+                        w-8 h-8 
+                        flex items-center justify-center 
+                        border rounded 
+                        ${getCellColor(cell)}
+                        cursor-pointer 
+                        hover:opacity-80
+                        text-xs
+                      `}
+                    >
+                      {cell.type === 'seat' && cell.item?.seat_number}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-10 w-[50vw] h-10 bg-white border border-gray-200 flex items-center justify-center rounded text-sm">
-        Panggung
-      </div>
-    </div>
+              );
+            })}
+          </div>
+  
+          <div className="mt-4 w-60 h-8 bg-white border border-gray-200 flex items-center justify-center rounded text-sm">
+            Panggung
+          </div>
+        </div>
   
         <Button onClick={handleSave} className="mt-4">
           Save Layout
