@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource;
 use Filament\Resources\Pages\Page;
 use App\Models\Event;
+use App\Models\Order;
 use App\Models\Ticket;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Actions\Action;
@@ -68,7 +69,7 @@ class TicketScan extends Page implements HasForms, HasTable
     // public function table(Table $table): Table
     // {
     //     return $table
-    //         ->query(Ticket::query()->where('event_id', $this->event->event_id))
+    //         ->query(Order::query()->where('event_id', $this->event->event_id))
     //         ->columns([
     //             TextColumn::make('ticket_id')->label('ID')->sortable(),
     //             TextColumn::make('ticket_code')->label('Ticket Code')->searchable(),

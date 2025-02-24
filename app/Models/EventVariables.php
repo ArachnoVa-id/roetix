@@ -25,8 +25,8 @@ class EventVariables extends Model
     protected $fillable = [
         'is_locked',
         'is_maintenance',
-        'var_a',
-        'var_b',
+        'title',
+        'expected_finish',
         'var_c'
     ];
 

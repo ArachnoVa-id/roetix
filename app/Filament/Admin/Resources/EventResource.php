@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\EventResource\Pages;
+use App\Filament\Admin\Resources\EventResource\Pages\Settings;
 use App\Filament\Admin\Resources\EventResource\Pages\TicketScan;
 use App\Filament\Admin\Resources\EventResource\RelationManagers;
 use Filament\Tables\Actions\Action;
@@ -91,6 +92,7 @@ class EventResource extends Resource
                     ->icon('heroicon-o-qr-code')
                     ->color('success')
                     ->url(fn ($record) => TicketScan::getUrl(['record' => $record])),
+                    // ->url(fn ($record) => Settings::getUrl(['record' => $record])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -113,6 +115,7 @@ class EventResource extends Resource
             'create' => Pages\CreateEvent::route('/create'),
             'edit' => Pages\EditEvent::route('/{record}/edit'),
             'ticket-scan' => Pages\TicketScan::route('/{record}/ticket-scan'),
+            'settings' => Pages\Settings::route('/{record}/settings'),
         ];
     }
 }
