@@ -34,10 +34,10 @@ class TicketScan extends Page implements HasForms, HasTable
     public function mount($record): void
     {
         $this->event = Event::findOrFail($record);
-        $this->enterTicketCode->fill();
+        $this->form->fill();
     }
 
-    public function enterTicketCode(Form $form): Form
+    public function form(Form $form): Form
     {
         return $form->schema([
             TextInput::make('ticket_code')
@@ -53,18 +53,6 @@ class TicketScan extends Page implements HasForms, HasTable
         ->columns(2);
     }
 
-    public function tableTicket(Table $table): Table
-    {
-        return $table
-            ->query(Ticket::query()->where('event_id', $this->event->event_id))
-            ->columns([
-                TextColumn::make('ticket_id')->label('ID')->sortable(),
-                TextColumn::make('ticket_code')->label('Ticket Code')->searchable(),
-                TextColumn::make('status')->label('Status')->sortable(),
-                TextColumn::make('created_at')->label('Created At')->dateTime(),
-            ]);
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -76,6 +64,18 @@ class TicketScan extends Page implements HasForms, HasTable
                 TextColumn::make('created_at')->label('Created At')->dateTime(),
             ]);
     }
+
+    // public function table(Table $table): Table
+    // {
+    //     return $table
+    //         ->query(Ticket::query()->where('event_id', $this->event->event_id))
+    //         ->columns([
+    //             TextColumn::make('ticket_id')->label('ID')->sortable(),
+    //             TextColumn::make('ticket_code')->label('Ticket Code')->searchable(),
+    //             TextColumn::make('status')->label('Status')->sortable(),
+    //             TextColumn::make('created_at')->label('Created At')->dateTime(),
+    //         ]);
+    // }
 
     public function submit()
     {

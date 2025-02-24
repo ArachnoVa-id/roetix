@@ -2,7 +2,7 @@
 
     {{-- form nya --}}
     <form wire:submit.prevent="submit">
-        {{ $this->enterTicketCode }}
+        {{ $this->form }}
     </form>
 
     {{-- table --}}

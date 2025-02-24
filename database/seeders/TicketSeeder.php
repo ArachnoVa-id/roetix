@@ -23,13 +23,12 @@ class TicketSeeder extends Seeder
             return;
         }
 
-        // Create a random number of tickets for each event
         foreach ($eventIds as $eventId) {
             Ticket::factory()
-                ->count(rand(1, 3)) // Generate 1 to 3 tickets per event
+                ->count(rand(1, 5))
                 ->create([
                     'event_id' => $eventId,
-                    'seat_id' => $seatIds[array_rand($seatIds)], // Pick a random seat
+                    'seat_id' => $seatIds[array_rand($seatIds)],
                 ]);
         }
     }
