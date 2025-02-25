@@ -34,7 +34,7 @@ jobs:
             cd ~/novatix/app
             if [ ! -d ".git" ]; then
               echo "Repository not found. Cloning..."
-              git clone git@github.com:ArachnoVa-id~/novatix.git ~/novatix/app
+              git clone git@github.com:ArachnoVa-id/novatix.git app
             else
               echo "Repository found. Pulling latest changes..."
               git pull origin main
@@ -73,7 +73,7 @@ jobs:
 
             # Auto-generate .env if missing
             echo "Checking .env file..."
-            if [ ! -f "~/novatix/app/.env" ]; then
+            if [ ! -f ~/novatix/app/.env ]; then
               echo "Generating .env file..."
               cat > ~/novatix/app/.env << EOT
           APP_NAME=Laravel
