@@ -28,6 +28,7 @@ jobs:
             mkdir -p /novatix/app /novatix/setups
 
             # Ensure update_repo.sh exists
+            echo "Creating update_repo.sh..."
             cat > /novatix/setups/update_repo.sh << 'EOT'
             #!/bin/bash
             cd /novatix/app
@@ -42,6 +43,7 @@ jobs:
             chmod +x /novatix/setups/update_repo.sh
 
             # Ensure install_dependencies.sh exists
+            echo "Creating install_dependencies.sh..."
             cat > /novatix/setups/install_dependencies.sh << 'EOT'
             #!/bin/bash
             cd /novatix/app
@@ -50,6 +52,7 @@ jobs:
             chmod +x /novatix/setups/install_dependencies.sh
 
             # Ensure deploy_laravel.sh exists
+            echo "Creating deploy_laravel.sh..."
             cat > /novatix/setups/deploy_laravel.sh << 'EOT'
             #!/bin/bash
             cd /novatix/app
@@ -61,6 +64,7 @@ jobs:
             chmod +x /novatix/setups/deploy_laravel.sh
 
             # Ensure restart_services.sh exists
+            echo "Creating restart_services.sh..."
             cat > /novatix/setups/restart_services.sh << 'EOT'
             #!/bin/bash
             sudo systemctl restart php8.1-fpm
@@ -68,6 +72,7 @@ jobs:
             chmod +x /novatix/setups/restart_services.sh
 
             # Auto-generate .env if missing
+            echo "Checking .env file..."
             if [ ! -f "/novatix/app/.env" ]; then
               echo "Generating .env file..."
               cat > /novatix/app/.env << EOT
