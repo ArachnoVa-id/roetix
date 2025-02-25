@@ -24,6 +24,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
             set -e
+            echo "Logged in as $(whoami)"
             mkdir -p /novatix/app /novatix/setups
 
             # Ensure update_repo.sh exists
