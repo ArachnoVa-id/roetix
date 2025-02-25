@@ -11,8 +11,8 @@ export function ShowTicket({
 }: {
     ticket_id: string;
     ticketType: string;
-    seat_number: number;
-    price: number;
+    seat_number: string;
+    price: string;
     date: string;
 }) {
     return (
