@@ -31,14 +31,16 @@ jobs:
             echo "Creating update_repo.sh..."
             cat > ~/novatix/setups/update_repo.sh << 'EOT'
             #!/bin/bash
+            mkdir -p ~/novatix/app
             cd ~/novatix/app
             if [ ! -d ".git" ]; then
               echo "Repository not found. Cloning..."
-              git clone git@github.com:ArachnoVa-id/novatix.git app
+              git clone git@github.com:ArachnoVa-id/novatix.git .
             else
               echo "Repository found. Pulling latest changes..."
               git pull origin main
             fi
+            ls -la  # Debugging: Show contents
             EOT
             chmod +x ~/novatix/setups/update_repo.sh
 
