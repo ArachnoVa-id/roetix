@@ -69,7 +69,7 @@ jobs:
               cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
           #!/bin/bash
           cd ~/novatix/app
-          php artisan migrate --force
+          php artisan migrate --force --seed
           php artisan config:clear
           php artisan cache:clear
           php artisan route:cache
