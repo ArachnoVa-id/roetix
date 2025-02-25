@@ -22,54 +22,54 @@ jobs:
 
       - name: Ensure Folder Structure & Create Scripts
         run: |
-          ssh -i ~/.ssh/av_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
             set -e
             mkdir -p /novatix/app /novatix/setups
 
-            # ✅ Ensure update_repo.sh exists
-            if [ ! -f "/novatix/setups/update_repo.sh" ]; then
-              echo '#!/bin/bash
-              cd /novatix/app
-              if [ ! -d ".git" ]; then
-                echo "Repository not found. Cloning..."
-                git clone git@github.com:ArachnoVa-id/novatix.git /novatix/app
-              else
-                echo "Repository found. Pulling latest changes..."
-                git pull origin main
-              fi' > /novatix/setups/update_repo.sh
-              chmod +x /novatix/setups/update_repo.sh
+            # Ensure update_repo.sh exists
+            cat > /novatix/setups/update_repo.sh << 'EOT'
+            #!/bin/bash
+            cd /novatix/app
+            if [ ! -d ".git" ]; then
+              echo "Repository not found. Cloning..."
+              git clone git@github.com:ArachnoVa-id/novatix.git /novatix/app
+            else
+              echo "Repository found. Pulling latest changes..."
+              git pull origin main
             fi
+            EOT
+            chmod +x /novatix/setups/update_repo.sh
 
-            # ✅ Ensure install_dependencies.sh exists
-            if [ ! -f "/novatix/setups/install_dependencies.sh" ]; then
-              echo '#!/bin/bash
-              cd /novatix/app
-              composer install --no-interaction --prefer-dist' > /novatix/setups/install_dependencies.sh
-              chmod +x /novatix/setups/install_dependencies.sh
-            fi
+            # Ensure install_dependencies.sh exists
+            cat > /novatix/setups/install_dependencies.sh << 'EOT'
+            #!/bin/bash
+            cd /novatix/app
+            composer install --no-interaction --prefer-dist
+            EOT
+            chmod +x /novatix/setups/install_dependencies.sh
 
-            # ✅ Ensure deploy_laravel.sh exists
-            if [ ! -f "/novatix/setups/deploy_laravel.sh" ]; then
-              echo '#!/bin/bash
-              cd /novatix/app
-              php artisan migrate --force
-              php artisan config:clear
-              php artisan cache:clear
-              php artisan route:cache' > /novatix/setups/deploy_laravel.sh
-              chmod +x /novatix/setups/deploy_laravel.sh
-            fi
+            # Ensure deploy_laravel.sh exists
+            cat > /novatix/setups/deploy_laravel.sh << 'EOT'
+            #!/bin/bash
+            cd /novatix/app
+            php artisan migrate --force
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan route:cache
+            EOT
+            chmod +x /novatix/setups/deploy_laravel.sh
 
-            # ✅ Ensure restart_services.sh exists
-            if [ ! -f "/novatix/setups/restart_services.sh" ]; then
-              echo '#!/bin/bash
-              sudo systemctl restart php8.1-fpm' > /novatix/setups/restart_services.sh
-              chmod +x /novatix/setups/restart_services.sh
-            fi
+            # Ensure restart_services.sh exists
+            cat > /novatix/setups/restart_services.sh << 'EOT'
+            #!/bin/bash
+            sudo systemctl restart php8.1-fpm
+            EOT
+            chmod +x /novatix/setups/restart_services.sh
 
-            # ✅ Auto-generate .env if missing
+            # Auto-generate .env if missing
             if [ ! -f "/novatix/app/.env" ]; then
               echo "Generating .env file..."
-              cat <<EOT > /novatix/app/.env
+              cat > /novatix/app/.env << EOT
           APP_NAME=Laravel
           APP_ENV=production
           APP_KEY=${{ secrets.APP_KEY }}
@@ -135,18 +135,18 @@ jobs:
 
           VITE_APP_NAME="${APP_NAME}"
           EOT
-                  chmod 600 /novatix/app/.env
-                fi
-              EOF
+              chmod 600 /novatix/app/.env
+            fi
+          EOF
 
       - name: Update Repository on VPS
-        run: ssh -i ~/.ssh/av_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "/novatix/setups/update_repo.sh"
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "/novatix/setups/update_repo.sh"
 
       - name: Install Dependencies on VPS
-        run: ssh -i ~/.ssh/av_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "/novatix/setups/install_dependencies.sh"
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "/novatix/setups/install_dependencies.sh"
 
       - name: Deploy Laravel on VPS
-        run: ssh -i ~/.ssh/av_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "/novatix/setups/deploy_laravel.sh"
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "/novatix/setups/deploy_laravel.sh"
 
       - name: Restart Services on VPS
-        run: ssh -i ~/.ssh/av_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "/novatix/setups/restart_services.sh"
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "/novatix/setups/restart_services.sh"
