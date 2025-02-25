@@ -72,4 +72,21 @@ else
     echo "✅ Supervisor already installed."
 fi
 
+# 8️⃣ Install Docker
+if ! command -v docker &> /dev/null; then
+    echo "Installing Docker..."
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+else
+    echo "✅ Docker already installed."
+fi
+
+# 9️⃣ Install Docker Compose
+if ! command -v docker-compose &> /dev/null; then
+    echo "Installing Docker Compose..."
+    sudo apt-get install -y docker-compose
+else
+    echo "✅ Docker Compose already installed."
+fi
+
 echo "🎉 All dependencies installed successfully!"
