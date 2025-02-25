@@ -20,6 +20,17 @@ jobs:
           chmod 600 ~/.ssh/av_rsa
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
+      - name: Debug SSH Setup
+        run: |
+          echo "Checking SSH key permissions:"
+          ls -l ~/.ssh/av_rsa
+          echo "Checking known_hosts file:"
+          cat ~/.ssh/known_hosts
+
+      - name: Test SSH Connection
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "echo 'SSH Connection Successful'"
+
       - name: Pull Latest Changes on VPS
         run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cd ~/novatix && git pull origin main"
+          ssh -i ~/.ssh/av_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cd ~/novatix && git pull origin main"
