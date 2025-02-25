@@ -15,10 +15,13 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # Adjust if needed
+          node-version: 'lts/*'
+          cache: 'npm'
 
       - name: 📦 Install Frontend Dependencies
-        run: npm install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
 
       - name: 🏗 Build Frontend (Vite)
         run: npm run build
