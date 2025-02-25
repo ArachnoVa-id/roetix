@@ -33,13 +33,14 @@ jobs:
           cat > ~/novatix/setups/update_repo.sh << 'EOT'
           #!/bin/bash
           mkdir -p ~/novatix/app
-          cd ~/novatix
+          cd ~/novatix/app || mkdir -p ~/novatix/app && cd ~/novatix/app
 
           if [ ! -d ".git" ]; then
               echo "Repository not found. Checking existing directory..."
-              if [ -d "/app" ]; then
-                echo "Existing directory found but not a Git repository. Removing..."
-                rm -rf ~/novatix/app
+
+              if [ "$(ls -A ~/novatix/app)" ]; then
+                  echo "Existing directory found but not a Git repository. Removing contents..."
+                  rm -rf ~/novatix/app/*
               fi
 
               echo "Cloning repository..."
