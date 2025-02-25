@@ -1,0 +1,25 @@
+name: ArachnoVa VPS Actions
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  vps_sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/av_rsa
+          chmod 600 ~/.ssh/av_rsa
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Pull Latest Changes on VPS
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cd ~/novatix && git pull origin main"
