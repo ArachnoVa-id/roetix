@@ -23,128 +23,131 @@ jobs:
       - name: Ensure Folder Structure & Create Scripts
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
-            set -e
-            echo "Ensuring folder structure..."
-            mkdir -p ~/novatix/app ~/novatix/setups
+          set -e
 
-            # Ensure update_repo.sh exists
-            echo "Creating update_repo.sh..."
-            cat > ~/novatix/setups/update_repo.sh << 'EOT'
-            #!/bin/bash
-            mkdir -p ~/novatix/app
-            cd ~/novatix/app
-            if [ ! -d ".git" ]; then
+          echo "Ensuring folder structure..."
+          mkdir -p ~/novatix/app ~/novatix/setups
+
+          # Ensure update_repo.sh exists
+          echo "Creating update_repo.sh..."
+          cat > ~/novatix/setups/update_repo.sh << 'EOT'
+          #!/bin/bash
+          mkdir -p ~/novatix/app
+          cd ~/novatix/app
+
+          if [ ! -d ".git" ]; then
               echo "Repository not found. Cloning..."
               git clone git@github.com:ArachnoVa-id/novatix.git .
-            else
+          else
               echo "Repository found. Pulling latest changes..."
               git pull origin main
-            fi
-            ls -la  # Debugging: Show contents
-            EOT
-            chmod +x ~/novatix/setups/update_repo.sh
+          fi
 
-            # Ensure install_dependencies.sh exists
-            echo "Creating install_dependencies.sh..."
-            cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
-            #!/bin/bash
-            cd ~/novatix/app
-            composer install --no-interaction --prefer-dist
-            EOT
-            chmod +x ~/novatix/setups/install_dependencies.sh
+          ls -la  # Debugging: Show contents
+          EOT
+              chmod +x ~/novatix/setups/update_repo.sh
 
-            # Ensure deploy_laravel.sh exists
-            echo "Creating deploy_laravel.sh..."
-            cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
-            #!/bin/bash
-            cd ~/novatix/app
-            php artisan migrate --force
-            php artisan config:clear
-            php artisan cache:clear
-            php artisan route:cache
-            EOT
-            chmod +x ~/novatix/setups/deploy_laravel.sh
+              # Ensure install_dependencies.sh exists
+              echo "Creating install_dependencies.sh..."
+              cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
+          #!/bin/bash
+          cd ~/novatix/app
+          composer install --no-interaction --prefer-dist
+          EOT
+              chmod +x ~/novatix/setups/install_dependencies.sh
 
-            # Ensure restart_services.sh exists
-            echo "Creating restart_services.sh..."
-            cat > ~/novatix/setups/restart_services.sh << 'EOT'
-            #!/bin/bash
-            sudo systemctl restart php8.1-fpm
-            EOT
-            chmod +x ~/novatix/setups/restart_services.sh
+              # Ensure deploy_laravel.sh exists
+              echo "Creating deploy_laravel.sh..."
+              cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
+          #!/bin/bash
+          cd ~/novatix/app
+          php artisan migrate --force
+          php artisan config:clear
+          php artisan cache:clear
+          php artisan route:cache
+          EOT
+              chmod +x ~/novatix/setups/deploy_laravel.sh
 
-            # Auto-generate .env if missing
-            echo "Checking .env file..."
-            if [ ! -f ~/novatix/app/.env ]; then
-              echo "Generating .env file..."
-              cat > ~/novatix/app/.env << EOT
-          APP_NAME=Laravel
-          APP_ENV=production
+              # Ensure restart_services.sh exists
+              echo "Creating restart_services.sh..."
+              cat > ~/novatix/setups/restart_services.sh << 'EOT'
+          #!/bin/bash
+          sudo systemctl restart php8.1-fpm
+          EOT
+              chmod +x ~/novatix/setups/restart_services.sh
+
+              # Auto-generate .env if missing
+              echo "Checking .env file..."
+              if [ ! -f ~/novatix/app/.env ]; then
+                  echo "Generating .env file..."
+                  cat > ~/novatix/app/.env << EOT
+          APP_NAME=${{ vars.APP_NAME }}
+          APP_ENV=${{ vars.APP_ENV }}
           APP_KEY=${{ secrets.APP_KEY }}
-          APP_DEBUG=false
-          APP_TIMEZONE=UTC
+          APP_DEBUG=${{ vars.APP_DEBUG }}
+          APP_TIMEZONE=${{ vars.APP_TIMEZONE }}
           APP_URL=${{ secrets.APP_URL }}
 
-          APP_LOCALE=en
-          APP_FALLBACK_LOCALE=en
-          APP_FAKER_LOCALE=en_US
+          APP_LOCALE=${{ vars.APP_LOCALE }}
+          APP_FALLBACK_LOCALE=${{ vars.APP_FALLBACK_LOCALE }}
+          APP_FAKER_LOCALE=${{ vars.APP_FAKER_LOCALE }}
 
-          APP_MAINTENANCE_DRIVER=file
-          PHP_CLI_SERVER_WORKERS=4
+          APP_MAINTENANCE_DRIVER=${{ vars.APP_MAINTENANCE_DRIVER }}
+          PHP_CLI_SERVER_WORKERS=${{ vars.PHP_CLI_SERVER_WORKERS }}
 
-          BCRYPT_ROUNDS=12
+          BCRYPT_ROUNDS=${{ vars.BCRYPT_ROUNDS }}
 
-          LOG_CHANNEL=stack
-          LOG_STACK=single
-          LOG_DEPRECATIONS_CHANNEL=null
-          LOG_LEVEL=debug
+          LOG_CHANNEL=${{ vars.LOG_CHANNEL }}
+          LOG_STACK=${{ vars.LOG_STACK }}
+          LOG_DEPRECATIONS_CHANNEL=${{ vars.LOG_DEPRECATIONS_CHANNEL }}
+          LOG_LEVEL=${{ vars.LOG_LEVEL }}
 
-          DB_CONNECTION=mariadb
+          DB_CONNECTION=${{ vars.DB_CONNECTION }}
           DB_HOST=${{ secrets.DB_HOST }}
           DB_PORT=${{ secrets.DB_PORT }}
           DB_DATABASE=${{ secrets.DB_DATABASE }}
           DB_USERNAME=${{ secrets.DB_USERNAME }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
-          SESSION_DRIVER=database
-          SESSION_LIFETIME=120
-          SESSION_ENCRYPT=false
-          SESSION_PATH=/
-          SESSION_DOMAIN=null
+          SESSION_DRIVER=${{ vars.SESSION_DRIVER }}
+          SESSION_LIFETIME=${{ vars.SESSION_LIFETIME }}
+          SESSION_ENCRYPT=${{ vars.SESSION_ENCRYPT }}
+          SESSION_PATH=${{ vars.SESSION_PATH }}
+          SESSION_DOMAIN=${{ vars.SESSION_DOMAIN }}
 
-          BROADCAST_CONNECTION=log
-          FILESYSTEM_DISK=local
-          QUEUE_CONNECTION=database
+          BROADCAST_CONNECTION=${{ vars.BROADCAST_CONNECTION }}
+          FILESYSTEM_DISK=${{ vars.FILESYSTEM_DISK }}
+          QUEUE_CONNECTION=${{ vars.QUEUE_CONNECTION }}
 
-          CACHE_STORE=database
-          CACHE_PREFIX=
+          CACHE_STORE=${{ vars.CACHE_STORE }}
+          CACHE_PREFIX=${{ vars.CACHE_PREFIX }}
 
-          MEMCACHED_HOST=127.0.0.1
+          MEMCACHED_HOST=${{ vars.MEMCACHED_HOST }}
 
-          REDIS_CLIENT=phpredis
+          REDIS_CLIENT=${{ vars.REDIS_CLIENT }}
           REDIS_HOST=${{ secrets.REDIS_HOST }}
           REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
           REDIS_PORT=${{ secrets.REDIS_PORT }}
 
-          MAIL_MAILER=smtp
-          MAIL_SCHEME=null
+          MAIL_MAILER=${{ vars.MAIL_MAILER }}
+          MAIL_SCHEME=${{ vars.MAIL_SCHEME }}
           MAIL_HOST=${{ secrets.MAIL_HOST }}
           MAIL_PORT=${{ secrets.MAIL_PORT }}
           MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
           MAIL_FROM_ADDRESS=${{ secrets.MAIL_FROM_ADDRESS }}
-          MAIL_FROM_NAME="${APP_NAME}"
+          MAIL_FROM_NAME=${{ vars.APP_NAME }}
 
           AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_DEFAULT_REGION=${{ vars.AWS_DEFAULT_REGION }}
           AWS_BUCKET=${{ secrets.AWS_BUCKET }}
-          AWS_USE_PATH_STYLE_ENDPOINT=false
+          AWS_USE_PATH_STYLE_ENDPOINT=${{ vars.AWS_USE_PATH_STYLE_ENDPOINT }}
 
-          VITE_APP_NAME="${APP_NAME}"
+          VITE_APP_NAME=${{ vars.APP_NAME }}
           EOT
-              chmod 600 ~/novatix/app/.env
-            fi
+                  chmod 600 ~/novatix/app/.env
+              fi
           EOF
 
       - name: Update Repository on VPS
