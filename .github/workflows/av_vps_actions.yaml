@@ -26,7 +26,7 @@ jobs:
             if [ ! -d '~/novatix/.git' ]; then
               echo 'Repository not found. Cloning...'
               rm -rf ~/novatix  # Remove existing folder if it's not a git repo
-              git clone https://github.com/your-username/your-repo.git ~/novatix
+              git clone https://github.com/ArachnoVa-id/novatix ~/novatix
             else
               echo 'Repository exists.'
             fi
