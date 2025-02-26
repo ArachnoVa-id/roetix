@@ -138,7 +138,7 @@ jobs:
           if [ ! -f "$ENV_FILE" ]; then
               echo "Generating .env file..."
 
-              cat > "$ENV_FILE" <<EOF
+              cat > "$ENV_FILE" <<"EOT_ENV"
           APP_NAME=${{ vars.APP_NAME }}
           APP_ENV=${{ vars.APP_ENV }}
           APP_KEY=${{ secrets.APP_KEY }}
@@ -203,7 +203,7 @@ jobs:
           AWS_USE_PATH_STYLE_ENDPOINT=${{ vars.AWS_USE_PATH_STYLE_ENDPOINT }}
 
           VITE_APP_NAME=${{ vars.APP_NAME }}
-          EOF
+          EOT_ENV
 
               chmod 600 "$ENV_FILE"
               echo ".env file generated successfully."
