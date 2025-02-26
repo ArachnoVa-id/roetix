@@ -59,29 +59,15 @@ class TicketScan extends Page implements HasForms, HasTable
         return $table
             ->query(Ticket::query()->where('event_id', $this->event->event_id))
             ->columns([
-                TextColumn::make('ticket_id')->label('ID')->sortable(),
-                TextColumn::make('ticket_code')->label('Ticket Code')->searchable(),
-                TextColumn::make('status')->label('Status')->sortable(),
-                TextColumn::make('created_at')->label('Created At')->dateTime(),
+                TextColumn::make('ticket_id')->label('Ticket Code'),
+                TextColumn::make('status')->label('Status'),
+                TextColumn::make('created_at')->label('Created At')->dateTime()->sortable(),
             ]);
     }
-
-    // public function table(Table $table): Table
-    // {
-    //     return $table
-    //         ->query(Order::query()->where('event_id', $this->event->event_id))
-    //         ->columns([
-    //             TextColumn::make('ticket_id')->label('ID')->sortable(),
-    //             TextColumn::make('ticket_code')->label('Ticket Code')->searchable(),
-    //             TextColumn::make('status')->label('Status')->sortable(),
-    //             TextColumn::make('created_at')->label('Created At')->dateTime(),
-    //         ]);
-    // }
 
     public function submit()
     {
         $data = $this->form->getState();
-        // dummy aja dulu ini
         if ($data['ticket_code'] === '12345') {
             Notification::make()
                 ->title('Ticket Valid')
