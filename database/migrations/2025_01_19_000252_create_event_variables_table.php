@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('event_variables_id', 36)->primary(); // Menggunakan string dengan panjang 36 untuk UUID
             $table->boolean('is_locked')->default(false);
             $table->boolean('is_maintenance')->default(false);
-            $table->string('title')->default('');
+            $table->string('var_title')->default('');
             $table->date('expected_finish')->default(now());
             $table->string('var_c')->default('');
             $table->timestamps();

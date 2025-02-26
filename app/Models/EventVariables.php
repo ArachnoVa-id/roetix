@@ -23,9 +23,10 @@ class EventVariables extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'event_variables_id',
         'is_locked',
         'is_maintenance',
-        'title',
+        'var_title',
         'expected_finish',
         'var_c'
     ];
@@ -35,7 +36,6 @@ class EventVariables extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            // Automatically set the `event_variables_id` to a UUID if it's not provided
             if (empty($model->event_variables_id)) {
                 $model->event_variables_id = (string) Str::uuid();
             }

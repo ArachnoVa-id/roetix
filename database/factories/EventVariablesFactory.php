@@ -30,7 +30,7 @@ class EventVariablesFactory extends Factory
             'event_variables_id' => (string) Str::uuid(),
             'is_locked' => $this->faker->boolean,
             'is_maintenance' => $this->faker->boolean,
-            'title' => $this->faker->word,
+            'var_title' => $this->faker->word,
             'expected_finish' => now(),
             'var_c' => $this->faker->word,
             'created_at' => now(),

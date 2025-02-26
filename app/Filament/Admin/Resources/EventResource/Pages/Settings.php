@@ -26,68 +26,68 @@ class Settings extends Page implements HasForms
 
     protected static string $view = 'filament.admin.resources.event-resource.pages.settings';
 
-    // protected static ?string $navigationIcon = 'heroicon-o-qrcode';
     protected static ?string $slug = 'Event Setting';
     protected static ?string $navigationLabel = 'Settings';
 
-    public function mount($record): void
+    public EventVariables $eventVariables;
+
+    public ?bool $is_locked = false;
+    public ?bool $is_maintenance = false;
+    public ?string $var_title = '';
+    public ?string $expected_finish = '';
+    public ?string $var_c = '';
+
+    public function mount(): void
     {
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    protected function getFormSchema(): array
     {
-        return $form->schema([
-            Toggle::make('is_locked')
-                ->onColor('success')
-                ->offColor('danger')
-                ->required(),
-            Toggle::make('is_maintenance')
-                ->onColor('success')
-                ->offColor('danger')
-                ->required(),
-            TextInput::make('Title')
+        return [
+            // Define form fields here
+            TextInput::make('var_title')
                 ->label('Title')
-                ->placeholder('Description')
+                ->required()
+                ->maxLength(255),
+
+            Toggle::make('is_locked')
+                ->label('Is Locked')
                 ->required(),
+
+            Toggle::make('is_maintenance')
+                ->label('Is Maintenance Mode')
+                ->required(),
+
             DatePicker::make('expected_finish')
                 ->label('Expected Finish')
                 ->required(),
-        ]);
+
+            TextInput::make('var_c')
+                ->label('Additional Variable')
+                ->nullable()
+                ->maxLength(255),
+        ];
     }
 
-    public function submit()
+    public function submit(): void
     {
         $data = $this->form->getState();
-    
-        // $validatedData = validator($data, [
-        //     'is_locked' => 'required|boolean',
-        //     'is_maintenance' => 'required|boolean',
-        //     'title' => 'required|string|max:255',
-        //     'expected_finish' => 'required|date',
-        // ])->validate();
-    
-        // EventVariables::Create(
-        //     $validatedData
-        // );
-    
-        // Notification::make()
-        //     ->title('Settings Updated')
-        //     ->success()
-        //     ->body('Your settings have been saved successfully.')
-        //     ->send();
-        dd($data);
-    }
-    
 
-    public function getFormActions(): array
-    {
-        return [
-            Action::make('submit')
-                ->label('Submit')
-                ->submit('submit')
-                ->color('primary'),
-        ];
+        EventVariables::create([
+            'event_variables_id' => Str::uuid()->toString(),
+            'var_title' => $data['var_title'],
+            'is_locked' => $data['is_locked'],
+            'is_maintenance' => $data['is_maintenance'],
+            'expected_finish' => $data['expected_finish'],
+            'var_c' => $data['var_c'],
+        ]);
+
+        Notification::make()
+            ->title('Settings Saved')
+            ->success()
+            ->body('Your settings have been successfully saved.')
+            ->send();
     }
 
 }
