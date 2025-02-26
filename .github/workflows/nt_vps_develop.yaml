@@ -81,16 +81,16 @@ jobs:
           mkdir -p ~/novatix/app/develop
           cd ~/novatix
 
-          if [ ! -d "app/.git" ]; then
+          if [ ! -d "app/develop/.git" ]; then
               echo "Repository not found. Checking existing directory..."
 
               if [ -n "$(ls -A app 2>/dev/null)" ]; then
                   echo "Existing directory found but not a Git repository. Removing everything..."
-                  rm -rf app
+                  rm -rf app/develop
               fi
 
               echo "Cloning repository..."
-              git clone git@github.com:ArachnoVa-id/novatix.git app
+              git clone git@github.com:ArachnoVa-id/novatix.git app/develop
           else
               echo "Repository found. Pulling latest changes..."
               cd app
