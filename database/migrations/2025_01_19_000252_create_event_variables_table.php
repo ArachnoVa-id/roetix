@@ -17,7 +17,7 @@ return new class extends Migration
             $table->boolean('is_maintenance')->default(false);
             $table->string('var_title')->default('');
             $table->date('expected_finish')->default(now());
-            $table->string('var_c')->default('');
+            $table->string('password')->default('');
             $table->timestamps();
         });
     }

@@ -28,7 +28,7 @@ class EventVariables extends Model
         'is_maintenance',
         'var_title',
         'expected_finish',
-        'var_c'
+        'password'
     ];
 
     protected static function boot()

@@ -32,7 +32,7 @@ class EventVariablesFactory extends Factory
             'is_maintenance' => $this->faker->boolean,
             'var_title' => $this->faker->word,
             'expected_finish' => now(),
-            'var_c' => $this->faker->word,
+            'password' => $this->faker->word,
             'created_at' => now(),
             'updated_at' => now(),
         ];

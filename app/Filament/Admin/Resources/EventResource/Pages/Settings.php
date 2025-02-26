@@ -35,7 +35,7 @@ class Settings extends Page implements HasForms
     public ?bool $is_maintenance = false;
     public ?string $var_title = '';
     public ?string $expected_finish = '';
-    public ?string $var_c = '';
+    public ?string $password = '';
 
     public function mount(): void
     {
@@ -63,8 +63,8 @@ class Settings extends Page implements HasForms
                 ->label('Expected Finish')
                 ->required(),
 
-            TextInput::make('var_c')
-                ->label('Additional Variable')
+            TextInput::make('password')
+                ->label('Password')
                 ->nullable()
                 ->maxLength(255),
         ];
@@ -80,7 +80,7 @@ class Settings extends Page implements HasForms
             'is_locked' => $data['is_locked'],
             'is_maintenance' => $data['is_maintenance'],
             'expected_finish' => $data['expected_finish'],
-            'var_c' => $data['var_c'],
+            'password' => $data['password'],
         ]);
 
         Notification::make()

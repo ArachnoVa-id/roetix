@@ -91,8 +91,8 @@ class EventResource extends Resource
                     ->label('Scan Ticket')
                     ->icon('heroicon-o-qr-code')
                     ->color('success')
-                    ->url(fn ($record) => TicketScan::getUrl(['record' => $record])),
-                    // ->url(fn ($record) => Settings::getUrl(['record' => $record])),
+                    // ->url(fn ($record) => TicketScan::getUrl(['record' => $record])),
+                    ->url(fn ($record) => Settings::getUrl(['record' => $record])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
