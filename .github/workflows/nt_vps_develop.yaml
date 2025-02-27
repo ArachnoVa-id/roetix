@@ -238,7 +238,7 @@ jobs:
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
 
-  update_staging:
+  update-staging:
     runs-on: ubuntu-latest
     needs: vps-sync
 
