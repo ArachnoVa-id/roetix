@@ -46,7 +46,7 @@ jobs:
           else
               echo "Repository found. Pulling latest changes..."
               cd app/production
-              git pull origin production
+              git pull origin main
           fi
           ls -la  # Debugging: Show contents
           EOT
