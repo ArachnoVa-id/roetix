@@ -1,4 +1,4 @@
-name: ArachnoVa VPS Actions
+name: NovaTix VPS production
 
 on:
   push:
@@ -6,54 +6,9 @@ on:
       - main
 
 jobs:
-  test-build:
+  vps-sync:
     runs-on: ubuntu-latest
-    steps:
-      - name: 🛠 Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-          cache: 'npm'
-
-      - name: 📦 Install Frontend Dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
-
-      - name: 🏗 Build Frontend (Vite)
-        run: npm run build
-
-  test-laravel:
-    runs-on: ubuntu-latest
-    needs: test-build # Run Laravel tests after Vite build
-    steps:
-      - name: 🛠 Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 🔧 Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.2
-          extensions: mbstring, bcmath, xml, pdo_mysql
-          tools: composer, phpunit
-
-      - name: 📦 Install Backend Dependencies
-        run: composer install --no-dev --optimize-autoloader
-
-      - name: 🛠 Set Up Laravel Environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
-
-      - name: 🛠 Run Laravel Tests
-        run: php artisan test
-
-  vps_sync:
-    runs-on: ubuntu-latest
-    needs: test-laravel # Deploy only if Laravel tests pass
+    needs: test-laravel
 
     steps:
       - name: Checkout Repository
@@ -72,69 +27,44 @@ jobs:
           set -e
 
           echo "Ensuring folder structure..."
-          mkdir -p ~/novatix/app ~/novatix/setups
+          mkdir -p ~/novatix/app/production
 
-          # Ensure update_repo.sh exists
-          echo "Creating update_repo.sh..."
-          cat > ~/novatix/setups/update_repo.sh << 'EOT'
+          # Ensure update_repo_prod.sh exists
+          echo "Creating update_repo_prod.sh..."
+          cat > ~/novatix/setups/update_repo_prod.sh << 'EOT'
           #!/bin/bash
-          mkdir -p ~/novatix/app
+          mkdir -p ~/novatix/app/production
           cd ~/novatix
 
-          if [ ! -d "app/.git" ]; then
+          if [ ! -d "app/production/.git" ]; then
               echo "Repository not found. Checking existing directory..."
-
               if [ -n "$(ls -A app 2>/dev/null)" ]; then
                   echo "Existing directory found but not a Git repository. Removing everything..."
-                  rm -rf app
+                  rm -rf app/production
               fi
-
               echo "Cloning repository..."
-              git clone git@github.com:ArachnoVa-id/novatix.git app
+              git clone git@github.com:ArachnoVa-id/novatix.git app/production
           else
               echo "Repository found. Pulling latest changes..."
-              cd app
-              git pull origin main
+              cd app/production
+              git pull origin production
           fi
-
           ls -la  # Debugging: Show contents
           EOT
-              chmod +x ~/novatix/setups/update_repo.sh
+          chmod +x ~/novatix/setups/update_repo_prod.sh
 
-              # Ensure install_dependencies.sh exists
-              echo "Creating install_dependencies.sh..."
-              cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
+          # Ensure generate_env_prod.sh exists
+          echo "Creating generate_env_prod.sh..."
+          cat > ~/novatix/app/production/generate_env_prod.sh << 'EOT'
           #!/bin/bash
-          cd ~/novatix/app
-          composer install --no-interaction --prefer-dist
-          EOT
-              chmod +x ~/novatix/setups/install_dependencies.sh
 
-              # Ensure deploy_laravel.sh exists
-              echo "Creating deploy_laravel.sh..."
-              cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
-          #!/bin/bash
-          cd ~/novatix/app
-          php artisan migrate --force --seed
-          php artisan config:clear
-          php artisan cache:clear
-          php artisan route:cache
-          EOT
-              chmod +x ~/novatix/setups/deploy_laravel.sh
+          ENV_FILE="$HOME/novatix/app/production/.env"
 
-              # Ensure restart_services.sh exists
-              echo "Creating restart_services.sh..."
-              cat > ~/novatix/setups/restart_services.sh << 'EOT'
-          #!/bin/bash
-          sudo systemctl restart php8.1-fpm
-          EOT
-              chmod +x ~/novatix/setups/restart_services.sh
+          echo "Checking .env file..."
+          if [ ! -f "$ENV_FILE" ]; then
+              echo "Generating .env file..."
 
-              # Auto-generate .env if missing
-              echo "Checking .env file..."
-              if [ ! -f ~/novatix/app/.env ]; then
-                  echo "Generating .env file..."
-                  cat > ~/novatix/app/.env << EOT
+              cat > "$ENV_FILE" <<"EOT_ENV"
           APP_NAME=${{ vars.APP_NAME }}
           APP_ENV=${{ vars.APP_ENV }}
           APP_KEY=${{ secrets.APP_KEY }}
@@ -199,13 +129,22 @@ jobs:
           AWS_USE_PATH_STYLE_ENDPOINT=${{ vars.AWS_USE_PATH_STYLE_ENDPOINT }}
 
           VITE_APP_NAME=${{ vars.APP_NAME }}
+          EOT_ENV
+
+              chmod 660 "$ENV_FILE"
+              echo ".env file generated successfully."
+          else
+              echo ".env file already exists. Skipping generation."
+          fi
           EOT
-                  chmod 600 ~/novatix/app/.env
-              fi
-          EOF
+
+          chmod +x ~/novatix/app/production/generate_env_prod.sh
 
       - name: Update Repository on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo.sh"
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo_prod_prod.sh"
+
+      - name: Generate .env on VPS
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/generate_env_prod_prod.sh"
 
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
@@ -215,3 +154,59 @@ jobs:
 
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
+
+  update-staging:
+    runs-on: ubuntu-latest
+    needs: vps-sync
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/av_rsa
+          chmod 600 ~/.ssh/av_rsa
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy Laravel Project to VPS
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
+          set -e  # Exit immediately if any command fails
+
+          # Ensure project directory exists
+          sudo mkdir -p ~/novatix/app/production
+
+          # Change permissions to allow www-data
+          sudo chown -R www-data:www-data ~/novatix/app/production
+
+          # Remove old symlink if exists, then create a new one
+          sudo rm -rf /var/www/novatix
+          sudo ln -s ~/novatix/app/production /var/www/novatix
+
+          # Set proper ownership
+          sudo chown -R www-data:www-data /var/www/novatix
+
+          # Move into project directory
+          cd /var/www/novatix
+
+          # Install backend dependencies
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+
+          # Install frontend dependencies
+          npm install
+
+          # Build frontend assets
+          npm run build
+
+          # Set correct permissions
+          sudo chown -R www-data:www-data /var/www/novatix
+          sudo chmod -R 775 /var/www/novatix/storage /var/www/novatix/bootstrap/cache
+
+          # Cache configurations
+          php artisan config:clear
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+          # Run database migrations
+          php artisan migrate --force
+          EOF

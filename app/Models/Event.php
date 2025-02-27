@@ -7,6 +7,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Event extends Model
@@ -23,7 +24,8 @@ class Event extends Model
         'start_date',
         'end_date',
         'location',
-        'status'
+        'status',
+        'team_id',
     ];
 
     protected static function boot()
@@ -40,6 +42,16 @@ class Event extends Model
     public function tikcetcategory(): HasMany
     {
         return $this->hasMany(TicketCategory::class, 'event_id', 'event_id');
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'team_id', 'team_id');
+    }
+
+    public function orders(): BelongsToMany
+    {
+        return $this->belongsToMany(Order::class, 'ticket_order', 'event_id', 'order_id');
     }
 
 }
