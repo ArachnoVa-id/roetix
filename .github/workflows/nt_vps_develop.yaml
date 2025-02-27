@@ -243,41 +243,45 @@ jobs:
     needs: vps-sync
 
     steps:
-      - name: Ensure /var/www/novatix_staging Exists and Create Symlink
+      - name: Setup SSH
         run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/av_rsa
+          chmod 600 ~/.ssh/av_rsa
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy Laravel Project to VPS
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
+          set -e  # Exit immediately if any command fails
+
+          # Ensure project directory exists and create symlink
           sudo mkdir -p /var/www/novatix_staging
           sudo ln -sfn ~/novatix/app/develop /var/www/novatix_staging
           sudo chown -R www-data:www-data /var/www/novatix_staging
 
-      - name: Install Backend Dependencies (Composer)
-        run: |
+          # Move into project directory
           cd /var/www/novatix_staging
+
+          # Install backend dependencies
           composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      - name: Install Frontend Dependencies (Node.js)
-        run: |
-          cd /var/www/novatix_staging
+          # Install frontend dependencies
           npm install
 
-      - name: Build Frontend Assets (Vite)
-        run: |
-          cd /var/www/novatix_staging
+          # Build frontend assets
           npm run build
 
-      - name: Set Correct Permissions
-        run: |
+          # Set correct permissions
           sudo chown -R www-data:www-data /var/www/novatix_staging
           sudo chmod -R 775 /var/www/novatix_staging/storage /var/www/novatix_staging/bootstrap/cache
 
-      - name: Cache Configurations
-        run: |
-          cd /var/www/novatix_staging
+          # Cache configurations
           php artisan config:clear
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
 
-      - name: Run Database Migrations
-        run: |
-          cd /var/www/novatix_staging
+          # Run database migrations
           php artisan migrate --force
+          EOF
