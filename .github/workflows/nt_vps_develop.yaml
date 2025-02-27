@@ -101,7 +101,7 @@ jobs:
           else
               echo "Repository found. Pulling latest changes..."
               cd app/develop
-              git pull origin main
+              git pull origin develop
           fi
           ls -la  # Debugging: Show contents
           EOT
