@@ -5,7 +5,6 @@ use App\Http\Controllers\SeatController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Middleware\CheckRole;
 
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\EoPenjualanController;
@@ -14,7 +13,10 @@ use App\Http\Controllers\EoAcaraController;
 use App\Http\Controllers\EoVenueController;
 use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\EoProfilController;
+use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\UserPageController;
+use Illuminate\Support\Facades\Auth;
+
 use App\Http\Controllers\SeatGridController;
 
 Route::get('/test-csrf', function () {
@@ -38,7 +40,19 @@ Route::get('/test', function () {
     return Inertia::render('Test');
 });
 
-Route::middleware(['auth', 'verified', CheckRole::class])->prefix('eo')->group(function () {
+Route::controller(SocialiteController::class)->group(function(){
+    Route::get('auth/google', 'googleLogin')->name('auth.google');
+    Route::get('auth/google-callback', 'googleAuthentication')->name('auth.google-authentication');
+});
+
+Route::get('/test-login', function () {
+    $user = \App\Models\User::where('email', 'vendor1@example.com')->first();
+    Auth::login($user);
+    
+    return redirect('/');
+});
+
+Route::middleware(['auth', 'verified'])->prefix('eo')->group(function () {
 
     // Route untuk Acara
     Route::prefix('acara')->name('acara.')->group(function () {

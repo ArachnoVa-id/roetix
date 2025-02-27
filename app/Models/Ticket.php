@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 
@@ -21,6 +22,8 @@ class Ticket extends Model
         'ticket_type',
         'price',
         'status',
+        'event_id',
+        'seat_id'
     ];
 
     protected static function boot()
@@ -30,6 +33,13 @@ class Ticket extends Model
         static::creating(function ($model) {
             if (empty($model->ticket_id)) {
                 $model->ticket_id = (string) Str::uuid();
+            }
+
+            if (!empty($model->event_id)) {
+                $event = Event::find($model->event_id);
+                if ($event) {
+                    $model->team_id = $event->team_id;
+                }
             }
         });
     }
@@ -42,6 +52,11 @@ class Ticket extends Model
     public function seat()
     {
         return $this->belongsTo(Seat::class, 'seat_id', 'seat_id');
+    }
+
+    public function team() : BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'team_id', 'team_id');
     }
 
 }
