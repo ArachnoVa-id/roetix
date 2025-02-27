@@ -255,17 +255,18 @@ jobs:
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
           set -e  # Exit immediately if any command fails
 
-          CUSTOM_USER=${{ secrets.NGINX_USER }}
-
           # Ensure project directory exists
           sudo mkdir -p ~/novatix/app/develop
+
+          # Change permissions to allow www-data
+          sudo chown -R www-data:www-data ~/novatix/app/develop
 
           # Remove old symlink if exists, then create a new one
           sudo rm -rf /var/www/novatix_staging
           sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
 
           # Set proper ownership
-          sudo chown -R $CUSTOM_USER:$CUSTOM_USER /var/www/novatix_staging
+          sudo chown -R www-data:www-data /var/www/novatix_staging
 
           # Move into project directory
           cd /var/www/novatix_staging
@@ -280,7 +281,7 @@ jobs:
           npm run build
 
           # Set correct permissions
-          sudo chown -R $CUSTOM_USER:$CUSTOM_USER /var/www/novatix_staging
+          sudo chown -R www-data:www-data /var/www/novatix_staging
           sudo chmod -R 775 /var/www/novatix_staging/storage /var/www/novatix_staging/bootstrap/cache
 
           # Cache configurations
