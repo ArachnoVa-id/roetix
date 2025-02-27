@@ -28,7 +28,7 @@ jobs:
 
   test-laravel:
     runs-on: ubuntu-latest
-    needs: test-build # Run Laravel tests after Vite build
+    needs: test-build
     steps:
       - name: 🛠 Checkout Repository
         uses: actions/checkout@v4
@@ -60,9 +60,9 @@ jobs:
       - name: 🛠 Run Laravel Tests
         run: php artisan test
 
-  vps_sync:
+  vps-sync:
     runs-on: ubuntu-latest
-    needs: test-laravel # Deploy only if Laravel tests pass
+    needs: test-laravel
 
     steps:
       - name: Checkout Repository
@@ -237,3 +237,46 @@ jobs:
 
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
+
+  update_staging:
+    runs-on: ubuntu-latest
+    needs: vps-sync
+
+    steps:
+      - name: Symlink Application to /var/www
+        run: |
+          sudo ln -sfn ~/novatix/app/develop /var/www/novatix_staging
+          sudo chown -R www-data:www-data /var/www/novatix_staging
+
+      - name: Install Backend Dependencies (Composer)
+        run: |
+          cd /var/www/novatix_staging
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Frontend Dependencies (Node.js)
+        run: |
+          cd /var/www/novatix_staging
+          npm install
+
+      - name: Build Frontend Assets (Vite)
+        run: |
+          cd /var/www/novatix_staging
+          npm run build
+
+      - name: Set Correct Permissions
+        run: |
+          sudo chown -R www-data:www-data /var/www/novatix_staging
+          sudo chmod -R 775 /var/www/novatix_staging/storage /var/www/novatix_staging/bootstrap/cache
+
+      - name: Cache Configurations
+        run: |
+          cd /var/www/novatix_staging
+          php artisan config:clear
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+      - name: Run Database Migrations
+        run: |
+          cd /var/www/novatix_staging
+          php artisan migrate --force
