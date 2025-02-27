@@ -53,7 +53,8 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         'password',
         'first_name',
         'last_name',
-        'role'
+        'role',
+        'google_id'
     ];
 
     /**

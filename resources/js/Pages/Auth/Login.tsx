@@ -101,6 +101,9 @@ export default function Login({
                         Log in
                     </PrimaryButton>
                 </div>
+                <a href={route('auth.google')} className="w-full text-center mt-2">
+                    Login With Google
+                </a>
             </form>
         </GuestLayout>
     );

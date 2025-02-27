@@ -13,6 +13,7 @@ use App\Http\Controllers\EoAcaraController;
 use App\Http\Controllers\EoVenueController;
 use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\EoProfilController;
+use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\UserPageController;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,6 +23,11 @@ Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('my_t
 
 Route::get('/test', function () {
     return Inertia::render('Test');
+});
+
+Route::controller(SocialiteController::class)->group(function(){
+    Route::get('auth/google', 'googleLogin')->name('auth.google');
+    Route::get('auth/google-callback', 'googleAuthentication')->name('auth.google-authentication');
 });
 
 Route::get('/test-login', function () {
