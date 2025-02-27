@@ -243,8 +243,9 @@ jobs:
     needs: vps-sync
 
     steps:
-      - name: Symlink Application to /var/www
+      - name: Ensure /var/www/novatix_staging Exists and Create Symlink
         run: |
+          sudo mkdir -p /var/www/novatix_staging
           sudo ln -sfn ~/novatix/app/develop /var/www/novatix_staging
           sudo chown -R www-data:www-data /var/www/novatix_staging
 
