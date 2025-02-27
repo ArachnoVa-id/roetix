@@ -288,5 +288,5 @@ jobs:
           php artisan view:cache
 
           # Run database migrations
-          php artisan migrate:fresh --force
+          php artisan migrate:fresh --force --seed
           EOF

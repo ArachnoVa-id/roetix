@@ -49,7 +49,7 @@ class DatabaseSeeder extends Seeder
             TicketSeeder::class,
             TicketCategorySeeder::class,
             CouponSeeder::class,
-            OrderSeeder::class,
+            // OrderSeeder::class,
         ]);
     }
 }
