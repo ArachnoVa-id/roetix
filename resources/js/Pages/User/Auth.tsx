@@ -43,7 +43,7 @@ export default function Welcome({ auth }: PageProps) {
                 </header>
 
                 <main className="flex w-full grow items-center justify-center">
-                    <div>Staging Server</div>
+                    <div>Production Server</div>
                 </main>
             </div>
         </>
