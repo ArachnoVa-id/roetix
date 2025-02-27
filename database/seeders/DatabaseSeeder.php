@@ -6,6 +6,7 @@ use App\Models\Coupon;
 use App\Models\Event;
 use App\Models\EventVariables;
 use App\Models\Order;
+use App\Models\Seat;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketCategory;
@@ -29,6 +30,7 @@ class DatabaseSeeder extends Seeder
         Coupon::truncate();
         TicketCategory::truncate();
         Ticket::truncate();
+        Seat::truncate();
         Venue::truncate();
         UserContact::truncate();
         EventVariables::truncate();
@@ -36,7 +38,6 @@ class DatabaseSeeder extends Seeder
         User::truncate();
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-
 
         $this->call([
             UserSeeder::class,
