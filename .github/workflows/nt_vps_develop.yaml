@@ -214,7 +214,7 @@ jobs:
           VITE_APP_NAME=${{ vars.APP_NAME }}
           EOT_ENV
 
-              chmod 600 "$ENV_FILE"
+              chmod 660 "$ENV_FILE"
               echo ".env file generated successfully."
           else
               echo ".env file already exists. Skipping generation."
