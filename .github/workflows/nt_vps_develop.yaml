@@ -48,6 +48,15 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Build frontend assets with Vite
+        run: npm run build
+
+      - name: Start Laravel built-in server
+        run: php artisan serve --host=127.0.0.1 --port=8000 &
+
       - name: 🛠 Run Laravel Tests
         run: php artisan test
 
