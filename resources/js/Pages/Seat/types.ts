@@ -23,6 +23,8 @@ export interface SeatItem extends BaseItem {
   seat_number: string;
   status: SeatStatus;
   category: Category;
+  price: number;
+  seat_type: string;
 }
 
 export interface LabelItem extends BaseItem {
@@ -95,4 +97,31 @@ export interface SeatMapConfig {
     totalRows: number;
     totalColumns: number;
     items: SeatMap[];
+}
+
+export interface ProceedTransactionButtonProps {
+    selectedSeats: SeatItem[];
+}
+
+export interface PaymentRequestPayload {
+    email: string;
+    amount: number;
+    grouped_items: {
+        [category: string]: {
+            price: number;
+            quantity: number;
+            seatNumbers: string[];
+        };
+    };
+}
+
+export interface PaymentResponse {
+    snap_token: string;
+}
+
+export interface MidtransCallbacks {
+    onSuccess: (result: any) => void;
+    onPending: (result: any) => void;
+    onError: (error: any) => void;
+    onClose: () => void;
 }

@@ -13,6 +13,7 @@ use App\Http\Controllers\EoAcaraController;
 use App\Http\Controllers\EoVenueController;
 use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\EoProfilController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\UserPageController;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,7 @@ Route::get('/test-csrf', function () {
 
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
+Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
 
     Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
     Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');

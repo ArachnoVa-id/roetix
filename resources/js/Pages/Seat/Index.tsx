@@ -1,7 +1,8 @@
 import { Head } from '@inertiajs/react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SeatMapDisplay from './SeatMapDisplay';
 import { Category, Layout, SeatItem } from './types';
+import ProceedTransactionButton from './components/ProceedTransactionButton';
 
 interface Props {
     layout: Layout;
@@ -22,7 +23,7 @@ const formatRupiah = (value: number): string =>
     }).format(value);
 
 const Index: React.FC<Props> = ({ layout }) => {
-    const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
+    const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);;
 
     const handleSeatClick = (seat: SeatItem) => {
         const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
@@ -33,6 +34,7 @@ const Index: React.FC<Props> = ({ layout }) => {
         } else {
             if (selectedSeats.length < 5) {
                 setSelectedSeats([...selectedSeats, seat]);
+                console.log(exists, seat);
             }
         }
     };
@@ -180,18 +182,7 @@ const Index: React.FC<Props> = ({ layout }) => {
                                 </div>
                             </div>
 
-                            <button
-                                className="mt-4 rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600 disabled:opacity-50"
-                                disabled={selectedSeats.length === 0}
-                                onClick={() =>
-                                    console.log(
-                                        'Proceed Transaction with',
-                                        selectedSeats,
-                                    )
-                                }
-                            >
-                                Proceed Transaction
-                            </button>
+                            <ProceedTransactionButton selectedSeats={selectedSeats} />
                         </div>
                     </div>
                 </div>
