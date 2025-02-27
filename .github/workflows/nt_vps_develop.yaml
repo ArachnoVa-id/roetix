@@ -255,9 +255,14 @@ jobs:
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
           set -e  # Exit immediately if any command fails
 
-          # Ensure project directory exists and create symlink
-          sudo mkdir -p /var/www/novatix_staging
-          sudo ln -sfn ~/novatix/app/develop /var/www/novatix_staging
+          # Ensure project directory exists
+          sudo mkdir -p ~/novatix/app/develop
+
+          # Remove old symlink if exists, then create a new one
+          sudo rm -rf /var/www/novatix_staging
+          sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
+
+          # Set proper ownership
           sudo chown -R www-data:www-data /var/www/novatix_staging
 
           # Move into project directory
