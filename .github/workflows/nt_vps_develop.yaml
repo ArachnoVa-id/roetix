@@ -97,7 +97,7 @@ jobs:
                   rm -rf app/develop
               fi
               echo "Cloning repository..."
-              git clone git@github.com:ArachnoVa-id/novatix.git app/develop
+              git clone --branch develop git@github.com:ArachnoVa-id/novatix.git app/develop
           else
               echo "Repository found. Pulling latest changes..."
               cd app/develop
