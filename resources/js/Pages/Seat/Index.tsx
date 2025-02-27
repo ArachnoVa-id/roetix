@@ -33,8 +33,9 @@ const Index: React.FC<Props> = ({ layout }) => {
             );
         } else {
             if (selectedSeats.length < 5) {
+                seat.price = categoryPrice[seat.category];
                 setSelectedSeats([...selectedSeats, seat]);
-                console.log(exists, seat);
+                console.log(seat);
             }
         }
     };

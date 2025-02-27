@@ -18,7 +18,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({ sel
 
             if (!grouped[category]) {
                 grouped[category] = {
-                    price: price ?? 50000, // default harga jika tidak ada
+                    price: price ?? 50000,
                     quantity: 0,
                     seatNumbers: [],
                 };

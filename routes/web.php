@@ -27,6 +27,7 @@ Route::get('/test-csrf', function () {
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
 Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
+Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
 
     Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
     Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
