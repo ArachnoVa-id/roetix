@@ -137,7 +137,7 @@ jobs:
           fi
           EOT
 
-          chmod +x ~/novatix/app/production/generate_env_prod.sh
+          chmod +x ~/novatix/app/setups/generate_env_prod.sh
 
       - name: Update Repository on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo_prod.sh"
