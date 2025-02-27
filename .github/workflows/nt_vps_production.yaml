@@ -1,4 +1,4 @@
-name: NovaTix VPS production
+name: NovaTix VPS Production
 
 on:
   push:
@@ -54,7 +54,7 @@ jobs:
 
           # Ensure generate_env_prod.sh exists
           echo "Creating generate_env_prod.sh..."
-          cat > ~/novatix/app/production/generate_env_prod.sh << 'EOT'
+          cat > ~/novatix/setups/generate_env_prod.sh << 'EOT'
           #!/bin/bash
 
           ENV_FILE="$HOME/novatix/app/production/.env"
