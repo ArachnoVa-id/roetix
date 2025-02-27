@@ -8,7 +8,6 @@ on:
 jobs:
   vps-sync:
     runs-on: ubuntu-latest
-    needs: test-laravel
 
     steps:
       - name: Checkout Repository
