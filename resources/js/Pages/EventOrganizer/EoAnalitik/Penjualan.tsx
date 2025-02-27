@@ -20,8 +20,8 @@ interface Order {
 interface Ticket {
     ticket_id: string;
     ticket_type: string;
-    seat_number: number;
-    price: number;
+    seat_number: string;
+    price: string;
     status: string;
     name: string;
     location: string;

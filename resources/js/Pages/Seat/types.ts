@@ -17,15 +17,12 @@ export interface BaseItem {
     type: ItemType;
 }
 
-export interface SeatItem {
- type: 'seat';
- seat_id: string;
- seat_number: string;
- row: string | number; // Allow both string/number for row
- column: number;
- status: SeatStatus;
- category: Category;
- price: number;
+export interface SeatItem extends BaseItem {
+  type: 'seat';
+  seat_id: string;
+  seat_number: string;
+  status: SeatStatus;
+  category: Category;
 }
 
 export interface LabelItem extends BaseItem {

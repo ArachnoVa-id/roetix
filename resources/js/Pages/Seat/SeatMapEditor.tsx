@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Layout, SeatItem, LayoutItem, EditorState, Category } from './types';
+import { router, useForm } from '@inertiajs/react';
+
 
 interface Props {
   layout: Layout;
@@ -36,28 +38,54 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
     return nextNum;
   };
 
-  const grid = Array.from({ length: layout.totalRows }, () =>
-    Array(layout.totalColumns).fill(null)
+  // const grid = Array.from({ length: layout.totalRows }, () =>
+  //   Array(layout.totalColumns).fill(null)
+  // );
+
+  // Find highest row and column from existing seats
+  const findHighestRow = (): number => {
+    let maxRowIndex = 0;
+    layout.items.forEach(item => {
+      if ('seat_id' in item) {
+        const rowIndex = typeof item.row === 'string'
+          ? item.row.charCodeAt(0) - 65
+          : item.row;
+        maxRowIndex = Math.max(maxRowIndex, rowIndex);
+      }
+    });
+    return maxRowIndex + 1;
+  };
+
+  const findHighestColumn = (): number => {
+    let maxColumn = 0;
+    layout.items.forEach(item => {
+      if ('seat_id' in item) {
+        maxColumn = Math.max(maxColumn, item.column);
+      }
+    });
+    return maxColumn;
+  };
+
+  // Create grid with dimensions based on actual data
+  const actualRows = Math.max(findHighestRow(), layout.totalRows);
+  const actualColumns = Math.max(findHighestColumn(), layout.totalColumns);
+  
+  const grid = Array.from({ length: actualRows }, () =>
+    Array(actualColumns).fill(null)
   );
 
   // Isi grid dengan kursi
   layout.items.forEach(item => {
     if ('seat_id' in item) {
-      const rowIndex =
-        typeof item.row === 'string'
-          ? item.row.charCodeAt(0) - 65
-          : item.row;
+      const rowIndex = typeof item.row === 'string'
+        ? item.row.charCodeAt(0) - 65
+        : item.row;
       
-      if (rowIndex >= 0 && rowIndex < layout.totalRows) {
-        const rowLetter = String.fromCharCode(65 + rowIndex);
-        // Gunakan column dari item untuk penempatan
+      if (rowIndex >= 0 && rowIndex < actualRows) {
         const colIndex = (item.column as number) - 1;
-        // Gunakan column sebagai nomor kursi
-        const updatedItem = {
-          ...item,
-        };
-        
-        grid[rowIndex][colIndex] = updatedItem;
+        if (colIndex >= 0 && colIndex < actualColumns) {
+          grid[rowIndex][colIndex] = item;
+        }
       }
     }
   });
@@ -68,67 +96,72 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
   };
 
   const getSeatColor = (seat: SeatItem): string => {
-    const isSelected = selectedSeats.has(seat.seat_id);
+    // Ubah cara pengecekan selectedSeats
+    const isSelected = selectedSeats.has(`${seat.row}${seat.column}`); // Pastikan format string sesuai
     let baseColor = '';
 
-    if (seat.status !== 'available') {
-      switch (seat.status) {
-        case 'booked': baseColor = 'bg-red-500'; break;
-        case 'in_transaction': baseColor = 'bg-yellow-500'; break;
-        case 'not_available': baseColor = 'bg-gray-400'; break;
-      }
-    } else {
-      switch (seat.category) {
-        case 'diamond': baseColor = 'bg-cyan-400'; break;
-        case 'gold': baseColor = 'bg-yellow-400'; break;
-        case 'silver': baseColor = 'bg-gray-300'; break;
-        default: baseColor = 'bg-gray-200';
-      }
+    // Jika kursi terpilih, prioritaskan warna seleksi
+    if (isSelected) {
+        return 'bg-blue-200 ring-2 ring-blue-500'; // Tambahkan visual feedback yang lebih jelas
     }
 
-    return `${baseColor} ${isSelected ? 'ring-2 ring-blue-500' : ''}`;
-  };
+    if (seat.status !== 'available') {
+        switch (seat.status) {
+            case 'booked': baseColor = 'bg-red-500'; break;
+            case 'in_transaction': baseColor = 'bg-yellow-500'; break;
+            case 'not_available': baseColor = 'bg-gray-400'; break;
+        }
+    } else {
+        switch (seat.category) {
+            case 'diamond': baseColor = 'bg-cyan-400'; break;
+            case 'gold': baseColor = 'bg-yellow-400'; break;
+            case 'silver': baseColor = 'bg-gray-300'; break;
+            default: baseColor = 'bg-gray-200';
+        }
+    }
 
-  const handleSeatClick = (seat: SeatItem) => {
-    // Jika kursi booked, tidak lakukan apa-apa
-    if (!isSeatEditable(seat)) return;
+    return baseColor;
+};
 
-    setSelectedSeats(prev => {
+const handleSeatClick = (seat: SeatItem) => {
+  if (!isSeatEditable(seat)) return;
+
+  const seatId = `${seat.row}${seat.column}`; // Format yang konsisten
+
+  setSelectedSeats(prev => {
       const next = new Set(prev);
       
       switch (selectionMode) {
-        case 'SINGLE':
-          next.clear();
-          next.add(`${seat.row}${seat.column}`);
-          break;
-          
-        case 'MULTIPLE':
-          const seatId = `${seat.row}${seat.column}`;
-          if (next.has(seatId)) {
-            next.delete(seatId);
-          } else {
-            next.add(seatId);
-          }
-          break;
-          
-                  case 'CATEGORY':
-          next.clear();
-          layout.items.forEach(item => {
-            if (item.type === 'seat' && 
-                item.category === seat.category && 
-                isSeatEditable(item as SeatItem)) {  // Gunakan isSeatEditable
-              const rowLetter = (item as SeatItem).row;
-              const column = (item as SeatItem).column;
-              next.add(`${rowLetter}${column}`);
-            }
-          });
-          setSelectedCategory(seat.category);
-          break;
+          case 'SINGLE':
+              next.clear();
+              next.add(seatId);
+              break;
+              
+          case 'MULTIPLE':
+              if (next.has(seatId)) {
+                  next.delete(seatId);
+              } else {
+                  next.add(seatId);
+              }
+              break;
+              
+          case 'CATEGORY':
+              next.clear();
+              layout.items.forEach(item => {
+                  if (item.type === 'seat' && 
+                      item.category === seat.category && 
+                      isSeatEditable(item as SeatItem)) {
+                      const id = `${(item as SeatItem).row}${(item as SeatItem).column}`;
+                      next.add(id);
+                  }
+              });
+              setSelectedCategory(seat.category);
+              break;
       }
       
       return next;
-    });
-  };
+  });
+};
 
   const handleSelectCategory = (category: Category) => {
     if (selectionMode !== 'CATEGORY') return;
@@ -152,48 +185,63 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
 
   const renderCell = (item: LayoutItem | null, colIndex: number) => {
     if (item && item.type === 'seat') {
-      const seat = item as SeatItem;
-      const isEditable = isSeatEditable(seat);
-      
-      return (
-        <div
-          key={colIndex}
-          onClick={() => isEditable && handleSeatClick(seat)}
-          className={`
-            w-8 h-8 
-            flex items-center justify-center 
-            border rounded 
-            ${getSeatColor(seat)}
-            ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}
-            ${seat.status === 'booked' ? 'opacity-75' : ''}
-            text-xs
-          `}
-          title={!isEditable ? 'Kursi telah dibooking dan tidak dapat diedit' : ''}
-        >
-          {seat.seat_number} {/* Ubah dari seat_id menjadi seat_number */}
-        </div>
-      );
+        const seat = item as SeatItem;
+        const isEditable = isSeatEditable(seat);
+        const seatId = `${seat.row}${seat.column}`;
+        const isSelected = selectedSeats.has(seatId);
+        
+        return (
+            <div
+                key={colIndex}
+                onClick={() => isEditable && handleSeatClick(seat)}
+                className={`
+                    w-8 h-8 
+                    flex items-center justify-center 
+                    border rounded 
+                    ${getSeatColor(seat)}
+                    ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}
+                    ${seat.status === 'booked' ? 'opacity-75' : ''}
+                    ${isSelected ? 'ring-2 ring-blue-500' : ''} 
+                    text-xs
+                `}
+                title={!isEditable ? 'Kursi telah dibooking dan tidak dapat diedit' : ''}
+            >
+                {seat.seat_number}
+            </div>
+        );
     }
     return <div key={colIndex} className="w-8 h-8"></div>;
-  };
+};
 
-  const handleStatusUpdate = (status: string) => {
-    const updatedSeats = layout.items
-      .filter(item => 
-        item.type === 'seat' && 
-        selectedSeats.has(`${(item as SeatItem).row}${(item as SeatItem).column}`) &&
-        isSeatEditable(item as SeatItem)  // Gunakan isSeatEditable untuk konsistensi
-      )
-      .map(item => ({
-        seat_id: (item as SeatItem).seat_id,
-        status: status
-      }));
+const handleStatusUpdate = (status: string) => {
+  const updatedSeats = layout.items
+    .filter(item => 
+      item.type === 'seat' && 
+      selectedSeats.has(`${(item as SeatItem).row}${(item as SeatItem).column}`) &&
+      isSeatEditable(item as SeatItem)
+    )
+    .map(item => ({
+      seat_id: (item as SeatItem).seat_id,
+      status: status
+    }));
 
-    if (updatedSeats.length > 0) {
-      onSave(updatedSeats);
-      setSelectedSeats(new Set());
-    }
-  };
+  if (updatedSeats.length > 0) {
+    router.post('/seats/update', 
+      { seats: updatedSeats },
+      {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+          onSave(updatedSeats);
+          setSelectedSeats(new Set());
+        },
+        onError: (errors) => {
+          console.error('Failed to update seats:', errors);
+        }
+      }
+    );
+  }
+};
 
   const handleModeChange = (mode: SelectionMode) => {
     setSelectionMode(mode);
@@ -299,12 +347,12 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Grid display */}
       <div className="flex flex-col items-center w-full">
         <div className="grid gap-1">
           {[...grid].reverse().map((row, reversedIndex) => {
-            // Hitung kembali indeks asli untuk label baris
             const originalIndex = grid.length - 1 - reversedIndex;
+            const rowLabel = String.fromCharCode(65 + originalIndex);
             return (
               <div key={reversedIndex} className="flex gap-1 items-center">
                 <div className="flex gap-1">

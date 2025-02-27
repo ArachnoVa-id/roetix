@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import React from 'react';
+import React, { useState } from 'react';
 import SeatMapEditor from './SeatMapEditor';
 import { Layout } from './types';
 
@@ -8,19 +8,33 @@ interface Props {
 }
 
 const Edit: React.FC<Props> = ({ layout }) => {
+    const [error, setError] = useState<string | null>(null);
+
     const handleSave = (updatedSeats: any) => {
-        router.post(
-            route('seats.update'),
-            { seats: updatedSeats },
-            {
-                onSuccess: () => {
-                    console.log('Seat map updated successfully');
-                },
-                onError: (errors) => {
-                    console.error('Failed to update seat map:', errors);
-                },
+        // Add visitOptions untuk memastikan credentials dikirim
+        const visitOptions = {
+            preserveScroll: true,
+            preserveState: true,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
             },
-        );
+            onBefore: () => {
+                setError(null);
+                console.log('Starting request with seats:', updatedSeats);
+            },
+            onSuccess: () => {
+                console.log('Update successful');
+            },
+            onError: (errors: any) => {
+                console.error('Update failed:', errors);
+                setError('Failed to update seats. Please try again.');
+            },
+            onFinish: () => {
+                console.log('Request finished');
+            }
+        };
+
+        router.post('/seats/update', { seats: updatedSeats }, visitOptions);
     };
 
     return (
@@ -33,6 +47,11 @@ const Edit: React.FC<Props> = ({ layout }) => {
                             <h2 className="mb-4 text-2xl font-bold">
                                 Edit Seat Map
                             </h2>
+                            {error && (
+                                <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+                                    {error}
+                                </div>
+                            )}
                             <div className="overflow-x-auto">
                                 <div className="min-w-max">
                                     <SeatMapEditor

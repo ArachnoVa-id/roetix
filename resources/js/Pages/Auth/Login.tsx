@@ -14,7 +14,11 @@ export default function Login({
     status?: string;
     canResetPassword: boolean;
 }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset } = useForm<{
+        email: string;
+        password: string;
+        remember: boolean;
+    }>({
         email: '',
         password: '',
         remember: false,
@@ -78,7 +82,7 @@ export default function Login({
                             name="remember"
                             checked={data.remember}
                             onChange={(e) =>
-                                setData('remember', e.target.checked)
+                                setData('remember', e.target.checked as boolean)
                             }
                         />
                         <span className="ms-2 text-sm text-gray-600">

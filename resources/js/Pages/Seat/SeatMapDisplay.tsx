@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout, SeatItem } from './types';
 
 interface Props {
@@ -8,8 +8,44 @@ interface Props {
 }
 
 const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick, selectedSeats = [] }) => {
-  const grid = Array.from({ length: config.totalRows }, () =>
-    Array(config.totalColumns).fill(null)
+  const [rows, setRows] = useState(config.totalRows);
+  const [columns, setColumns] = useState(config.totalColumns);
+
+  // Function to find highest row from data
+  const findHighestRow = () => {
+    let maxRowIndex = 0;
+    config.items.forEach(item => {
+      if ('seat_id' in item) {
+        const rowIndex = typeof item.row === 'string'
+          ? item.row.charCodeAt(0) - 65
+          : item.row;
+        maxRowIndex = Math.max(maxRowIndex, rowIndex);
+      }
+    });
+    return maxRowIndex + 1; // Add 1 because index is 0-based
+  };
+
+  // Function to find highest column from data
+  const findHighestColumn = () => {
+    let maxColumn = 0;
+    config.items.forEach(item => {
+      if ('seat_id' in item) {
+        maxColumn = Math.max(maxColumn, item.column);
+      }
+    });
+    return maxColumn;
+  };
+
+  // Update grid dimensions based on actual data
+  useEffect(() => {
+    const maxRows = findHighestRow();
+    const maxColumns = findHighestColumn();
+    setRows(Math.max(maxRows, config.totalRows));
+    setColumns(Math.max(maxColumns, config.totalColumns));
+  }, [config]);
+
+  const grid = Array.from({ length: rows }, () =>
+    Array(columns).fill(null)
   );
 
   // Map untuk menyimpan nomor terakhir untuk setiap baris
@@ -29,8 +65,8 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick, selectedSeats = 
       const rowIndex = typeof item.row === 'string'
         ? item.row.charCodeAt(0) - 65
         : item.row;
-      
-      if (rowIndex >= 0 && rowIndex < config.totalRows) {
+     
+      if (rowIndex >= 0 && rowIndex < rows) {
         const rowLetter = String.fromCharCode(65 + rowIndex);
         const colIndex = (item.column as number) - 1;
         const seatNumber = getNextNumber(rowLetter);
@@ -38,7 +74,7 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick, selectedSeats = 
           ...item,
           seat_id: `${rowLetter}${seatNumber}`
         };
-        
+       
         grid[rowIndex][colIndex] = updatedItem;
       }
     }
@@ -68,11 +104,9 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick, selectedSeats = 
     if (!seat) {
       return <div key={colIndex} className="w-8 h-8" />;
     }
-
     const isSelected = selectedSeats.some(s => s.seat_id === seat.seat_id);
     const seatColor = isSelected ? 'bg-green-400' : getSeatColor(seat);
     const isSelectable = isSeatSelectable(seat);
-
     return (
       <div
         key={colIndex}
@@ -99,8 +133,8 @@ const SeatMapDisplay: React.FC<Props> = ({ config, onSeatClick, selectedSeats = 
     <div className="flex flex-col items-center">
       <div className="grid gap-1">
         {reversedGrid.map((row, reversedIndex) => {
-          // Hitung kembali indeks asli untuk label baris
           const originalIndex = grid.length - 1 - reversedIndex;
+          const rowLabel = String.fromCharCode(65 + originalIndex);
           return (
             <div key={reversedIndex} className="flex gap-1 items-center">
               <div className="flex gap-1">

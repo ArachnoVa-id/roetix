@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { router } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../Components/ui/alert-dialog";
 import { PlusCircle, Trash2, Save } from 'lucide-react';
 import { Layout, SeatItem, SeatStatus, Category } from './types';
@@ -17,6 +17,10 @@ const SeatSpreadsheetEditor: React.FC<Props> = ({ layout }) => {
   const [seats, setSeats] = useState<EditableSeatItem[]>([]);
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   
+  const { data, setData, post, processing } = useForm({
+    seats: [] as any[]
+  });
+
   useEffect(() => {
     // Transform layout items into grid format
     const seatItems = layout.items
@@ -69,11 +73,11 @@ const SeatSpreadsheetEditor: React.FC<Props> = ({ layout }) => {
     const newSeat: EditableSeatItem = {
       type: 'seat',
       seat_id: `${newRow}${newColumn}`,
+      seat_number: `${newRow}${newColumn}`,
       row: newRow,
       column: newColumn,
       status: 'available',
       category: 'silver',
-      price: 75000,
       isNew: true,
       isDirty: true
     };
@@ -97,7 +101,22 @@ const SeatSpreadsheetEditor: React.FC<Props> = ({ layout }) => {
       isNew: seat.isNew
     }));
 
-    router.post(route('seats.update'), { seats: payload });
+    setData('seats', payload);
+    
+    post(route('seats.update'), {
+      preserveScroll: true,
+      onSuccess: () => {
+        const updatedSeats = seats.map(seat => ({
+          ...seat,
+          isDirty: false,
+          isNew: false
+        }));
+        setSeats(updatedSeats);
+      },
+      onError: (errors) => {
+        console.error('Update failed:', errors);
+      }
+    });
   };
 
   const getCellStyles = (seat: EditableSeatItem): string => {
@@ -153,11 +172,11 @@ const SeatSpreadsheetEditor: React.FC<Props> = ({ layout }) => {
           <button
             onClick={handleSave}
             className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            disabled={!seats.some(seat => seat.isDirty || seat.isNew)}
+            disabled={processing || !seats.some(seat => seat.isDirty || seat.isNew)}
             title="Save changes"
           >
             <Save size={20} />
-            Save Changes
+            {processing ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -168,6 +187,7 @@ const SeatSpreadsheetEditor: React.FC<Props> = ({ layout }) => {
             <tr className="bg-gray-100">
               <th className="px-4 py-2 border">Actions</th>
               <th className="px-4 py-2 border">Seat ID</th>
+              <th className="px-4 py-2 border">Seat Number</th>
               <th className="px-4 py-2 border">Row</th>
               <th className="px-4 py-2 border">Column</th>
               <th className="px-4 py-2 border">Status</th>
@@ -209,6 +229,7 @@ const SeatSpreadsheetEditor: React.FC<Props> = ({ layout }) => {
                   </AlertDialog>
                 </td>
                 <td className={getCellStyles(seat)}>{seat.seat_id}</td>
+                <td className={getCellStyles(seat)}>{seat.seat_number}</td>
                 <td className={getCellStyles(seat)}>{seat.row}</td>
                 <td className={getCellStyles(seat)}>{seat.column}</td>
                 <td className={getCellStyles(seat)}>
