@@ -1,8 +1,8 @@
 import { Head } from '@inertiajs/react';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import ProceedTransactionButton from './components/ProceedTransactionButton';
 import SeatMapDisplay from './SeatMapDisplay';
 import { Category, Layout, SeatItem } from './types';
-import ProceedTransactionButton from './components/ProceedTransactionButton';
 
 interface Props {
     layout: Layout;
@@ -23,7 +23,7 @@ const formatRupiah = (value: number): string =>
     }).format(value);
 
 const Index: React.FC<Props> = ({ layout }) => {
-    const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);;
+    const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
 
     const handleSeatClick = (seat: SeatItem) => {
         const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
@@ -183,7 +183,9 @@ const Index: React.FC<Props> = ({ layout }) => {
                                 </div>
                             </div>
 
-                            <ProceedTransactionButton selectedSeats={selectedSeats} />
+                            <ProceedTransactionButton
+                                selectedSeats={selectedSeats}
+                            />
                         </div>
                     </div>
                 </div>

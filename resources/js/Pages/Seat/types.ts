@@ -18,13 +18,13 @@ export interface BaseItem {
 }
 
 export interface SeatItem extends BaseItem {
-  type: 'seat';
-  seat_id: string;
-  seat_number: string;
-  status: SeatStatus;
-  category: Category;
-  price: number;
-  seat_type: string;
+    type: 'seat';
+    seat_id: string;
+    seat_number: string;
+    status: SeatStatus;
+    category: Category;
+    price: number;
+    seat_type: string;
 }
 
 export interface LabelItem extends BaseItem {
@@ -119,9 +119,34 @@ export interface PaymentResponse {
     snap_token: string;
 }
 
+export interface MidtransTransactionResult {
+    order_id: string;
+    transaction_status:
+        | 'settlement'
+        | 'pending'
+        | 'deny'
+        | 'expire'
+        | 'cancel'
+        | 'failure'
+        | 'refund'
+        | 'partial_refund';
+    transaction_id: string;
+    payment_type: string;
+    gross_amount: string;
+    fraud_status: 'accept' | 'deny' | 'challenge';
+    status_message: string;
+    status_code: string;
+}
+
+export interface MidtransError {
+    message: string;
+    status_code: string;
+    error_messages?: string[];
+}
+
 export interface MidtransCallbacks {
-    onSuccess: (result: any) => void;
-    onPending: (result: any) => void;
-    onError: (error: any) => void;
+    onSuccess: (result: MidtransTransactionResult) => void;
+    onPending: (result: MidtransTransactionResult) => void;
+    onError: (error: MidtransError) => void;
     onClose: () => void;
 }

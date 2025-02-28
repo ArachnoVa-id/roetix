@@ -1,375 +1,427 @@
+import { router } from '@inertiajs/react';
 import React, { useState } from 'react';
-import { Layout, SeatItem, LayoutItem, EditorState, Category } from './types';
-import { router, useForm } from '@inertiajs/react';
+import { Category, Layout, LayoutItem, SeatItem } from './types';
 
+export interface UpdatedSeats {
+    seat_id: string;
+    status: string;
+}
 
 interface Props {
-  layout: Layout;
-  onSave: (updatedSeats: any) => void;
+    layout: Layout;
+    onSave: (updatedSeats: UpdatedSeats[]) => void;
 }
 
 type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY';
 
 const categoryLegends = [
-  { label: 'Diamond', color: 'bg-cyan-400' },
-  { label: 'Gold', color: 'bg-yellow-400' },
-  { label: 'Silver', color: 'bg-gray-300' }
+    { label: 'Diamond', color: 'bg-cyan-400' },
+    { label: 'Gold', color: 'bg-yellow-400' },
+    { label: 'Silver', color: 'bg-gray-300' },
 ];
 
 const statusLegends = [
-  { label: 'Booked', color: 'bg-red-500' },
-  { label: 'In Transaction', color: 'bg-yellow-500' },
-  { label: 'Not Available', color: 'bg-gray-400' }
+    { label: 'Booked', color: 'bg-red-500' },
+    { label: 'In Transaction', color: 'bg-yellow-500' },
+    { label: 'Not Available', color: 'bg-gray-400' },
 ];
 
 const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
-  const [selectionMode, setSelectionMode] = useState<SelectionMode>('SINGLE');
-  const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-
-  // Map untuk menyimpan nomor terakhir untuk setiap baris
-  const lastNumberByRow = new Map<string, number>();
-
-  // Fungsi untuk mendapatkan nomor kursi berikutnya untuk suatu baris
-  const getNextNumber = (row: string): number => {
-    const lastNum = lastNumberByRow.get(row) || 0;
-    const nextNum = lastNum + 1;
-    lastNumberByRow.set(row, nextNum);
-    return nextNum;
-  };
-
-  // const grid = Array.from({ length: layout.totalRows }, () =>
-  //   Array(layout.totalColumns).fill(null)
-  // );
-
-  // Find highest row and column from existing seats
-  const findHighestRow = (): number => {
-    let maxRowIndex = 0;
-    layout.items.forEach(item => {
-      if ('seat_id' in item) {
-        const rowIndex = typeof item.row === 'string'
-          ? item.row.charCodeAt(0) - 65
-          : item.row;
-        maxRowIndex = Math.max(maxRowIndex, rowIndex);
-      }
-    });
-    return maxRowIndex + 1;
-  };
-
-  const findHighestColumn = (): number => {
-    let maxColumn = 0;
-    layout.items.forEach(item => {
-      if ('seat_id' in item) {
-        maxColumn = Math.max(maxColumn, item.column);
-      }
-    });
-    return maxColumn;
-  };
-
-  // Create grid with dimensions based on actual data
-  const actualRows = Math.max(findHighestRow(), layout.totalRows);
-  const actualColumns = Math.max(findHighestColumn(), layout.totalColumns);
-  
-  const grid = Array.from({ length: actualRows }, () =>
-    Array(actualColumns).fill(null)
-  );
-
-  // Isi grid dengan kursi
-  layout.items.forEach(item => {
-    if ('seat_id' in item) {
-      const rowIndex = typeof item.row === 'string'
-        ? item.row.charCodeAt(0) - 65
-        : item.row;
-      
-      if (rowIndex >= 0 && rowIndex < actualRows) {
-        const colIndex = (item.column as number) - 1;
-        if (colIndex >= 0 && colIndex < actualColumns) {
-          grid[rowIndex][colIndex] = item;
-        }
-      }
-    }
-  });
-
-  // Fungsi untuk mengecek apakah kursi dapat diedit
-  const isSeatEditable = (seat: SeatItem): boolean => {
-    return seat.status !== 'booked';
-  };
-
-  const getSeatColor = (seat: SeatItem): string => {
-    // Ubah cara pengecekan selectedSeats
-    const isSelected = selectedSeats.has(`${seat.row}${seat.column}`); // Pastikan format string sesuai
-    let baseColor = '';
-
-    // Jika kursi terpilih, prioritaskan warna seleksi
-    if (isSelected) {
-        return 'bg-blue-200 ring-2 ring-blue-500'; // Tambahkan visual feedback yang lebih jelas
-    }
-
-    if (seat.status !== 'available') {
-        switch (seat.status) {
-            case 'booked': baseColor = 'bg-red-500'; break;
-            case 'in_transaction': baseColor = 'bg-yellow-500'; break;
-            case 'not_available': baseColor = 'bg-gray-400'; break;
-        }
-    } else {
-        switch (seat.category) {
-            case 'diamond': baseColor = 'bg-cyan-400'; break;
-            case 'gold': baseColor = 'bg-yellow-400'; break;
-            case 'silver': baseColor = 'bg-gray-300'; break;
-            default: baseColor = 'bg-gray-200';
-        }
-    }
-
-    return baseColor;
-};
-
-const handleSeatClick = (seat: SeatItem) => {
-  if (!isSeatEditable(seat)) return;
-
-  const seatId = `${seat.row}${seat.column}`; // Format yang konsisten
-
-  setSelectedSeats(prev => {
-      const next = new Set(prev);
-      
-      switch (selectionMode) {
-          case 'SINGLE':
-              next.clear();
-              next.add(seatId);
-              break;
-              
-          case 'MULTIPLE':
-              if (next.has(seatId)) {
-                  next.delete(seatId);
-              } else {
-                  next.add(seatId);
-              }
-              break;
-              
-          case 'CATEGORY':
-              next.clear();
-              layout.items.forEach(item => {
-                  if (item.type === 'seat' && 
-                      item.category === seat.category && 
-                      isSeatEditable(item as SeatItem)) {
-                      const id = `${(item as SeatItem).row}${(item as SeatItem).column}`;
-                      next.add(id);
-                  }
-              });
-              setSelectedCategory(seat.category);
-              break;
-      }
-      
-      return next;
-  });
-};
-
-  const handleSelectCategory = (category: Category) => {
-    if (selectionMode !== 'CATEGORY') return;
-
-    // Kumpulkan semua kursi yang dapat diedit dengan kategori yang dipilih
-    const seatsInCategory = layout.items
-      .filter(item => 
-        item.type === 'seat' && 
-        item.category === category && 
-        isSeatEditable(item as SeatItem)  // Gunakan isSeatEditable
-      )
-      .map(item => {
-        const rowLetter = (item as SeatItem).row;
-        const column = (item as SeatItem).column;
-        return `${rowLetter}${column}`;
-      });
-
-    setSelectedSeats(new Set(seatsInCategory));
-    setSelectedCategory(category);
-  };
-
-  const renderCell = (item: LayoutItem | null, colIndex: number) => {
-    if (item && item.type === 'seat') {
-        const seat = item as SeatItem;
-        const isEditable = isSeatEditable(seat);
-        const seatId = `${seat.row}${seat.column}`;
-        const isSelected = selectedSeats.has(seatId);
-        
-        return (
-            <div
-                key={colIndex}
-                onClick={() => isEditable && handleSeatClick(seat)}
-                className={`
-                    w-8 h-8 
-                    flex items-center justify-center 
-                    border rounded 
-                    ${getSeatColor(seat)}
-                    ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}
-                    ${seat.status === 'booked' ? 'opacity-75' : ''}
-                    ${isSelected ? 'ring-2 ring-blue-500' : ''} 
-                    text-xs
-                `}
-                title={!isEditable ? 'Kursi telah dibooking dan tidak dapat diedit' : ''}
-            >
-                {seat.seat_number}
-            </div>
-        );
-    }
-    return <div key={colIndex} className="w-8 h-8"></div>;
-};
-
-const handleStatusUpdate = (status: string) => {
-  const updatedSeats = layout.items
-    .filter(item => 
-      item.type === 'seat' && 
-      selectedSeats.has(`${(item as SeatItem).row}${(item as SeatItem).column}`) &&
-      isSeatEditable(item as SeatItem)
-    )
-    .map(item => ({
-      seat_id: (item as SeatItem).seat_id,
-      status: status
-    }));
-
-  if (updatedSeats.length > 0) {
-    router.post('/seats/update', 
-      { seats: updatedSeats },
-      {
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => {
-          onSave(updatedSeats);
-          setSelectedSeats(new Set());
-        },
-        onError: (errors) => {
-          console.error('Failed to update seats:', errors);
-        }
-      }
+    const [selectionMode, setSelectionMode] = useState<SelectionMode>('SINGLE');
+    const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
+    const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+        null,
     );
-  }
-};
 
-  const handleModeChange = (mode: SelectionMode) => {
-    setSelectionMode(mode);
-    setSelectedSeats(new Set());
-    setSelectedCategory(null);
-  };
+    // Map untuk menyimpan nomor terakhir untuk setiap baris
+    // const lastNumberByRow = new Map<string, number>();
 
-  // Rest of the component remains the same...
-  return (
-    <div className="p-6">
-      {/* Mode Selection */}
-      <div className="flex gap-4 p-4 bg-gray-100 rounded-lg">
-        <button
-          className={`px-4 py-2 rounded ${selectionMode === 'SINGLE' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => handleModeChange('SINGLE')}
-        >
-          Single Edit
-        </button>
-        <button
-          className={`px-4 py-2 rounded ${selectionMode === 'MULTIPLE' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => handleModeChange('MULTIPLE')}
-        >
-          Multiple Edit
-        </button>
-        <button
-          className={`px-4 py-2 rounded ${selectionMode === 'CATEGORY' ? 'bg-blue-500 text-white' : 'bg-white'}`}
-          onClick={() => handleModeChange('CATEGORY')}
-        >
-          Category Edit
-        </button>
-      </div>
+    // Fungsi untuk mendapatkan nomor kursi berikutnya untuk suatu baris
+    // const getNextNumber = (row: string): number => {
+    //     const lastNum = lastNumberByRow.get(row) || 0;
+    //     const nextNum = lastNum + 1;
+    //     lastNumberByRow.set(row, nextNum);
+    //     return nextNum;
+    // };
 
-      {/* Category Selection */}
-      {selectionMode === 'CATEGORY' && (
-        <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-          {['diamond', 'gold', 'silver'].map((category) => (
-            <button
-              key={category}
-              className={`px-4 py-2 rounded ${
-                selectedCategory === category ? 'ring-2 ring-blue-500' : ''
-              } ${
-                category === 'diamond' ? 'bg-cyan-400' :
-                category === 'gold' ? 'bg-yellow-400' : 'bg-gray-300'
-              } text-white`}
-              onClick={() => handleSelectCategory(category as Category)}
-            >
-              {category.charAt(0).toUpperCase() + category.slice(1)}
-            </button>
-          ))}
-        </div>
-      )}
+    // const grid = Array.from({ length: layout.totalRows }, () =>
+    //   Array(layout.totalColumns).fill(null)
+    // );
 
-      {/* Status Buttons */}
-      <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-        <button
-          className="px-4 py-2 bg-green-400 text-white rounded hover:bg-green-500 disabled:opacity-50"
-          onClick={() => handleStatusUpdate('available')}
-          disabled={selectedSeats.size === 0}
-        >
-          Set Available
-        </button>
-        <button
-          className="px-4 py-2 bg-yellow-400 text-white rounded hover:bg-yellow-500 disabled:opacity-50"
-          onClick={() => handleStatusUpdate('in_transaction')}
-          disabled={selectedSeats.size === 0}
-        >
-          Set In Transaction
-        </button>
-        <button
-          className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 disabled:opacity-50"
-          onClick={() => handleStatusUpdate('not_available')}
-          disabled={selectedSeats.size === 0}
-        >
-          Set Not Available
-        </button>
-      </div>
+    // Find highest row and column from existing seats
+    const findHighestRow = (): number => {
+        let maxRowIndex = 0;
+        layout.items.forEach((item) => {
+            if ('seat_id' in item) {
+                const rowIndex =
+                    typeof item.row === 'string'
+                        ? item.row.charCodeAt(0) - 65
+                        : item.row;
+                maxRowIndex = Math.max(maxRowIndex, rowIndex);
+            }
+        });
+        return maxRowIndex + 1;
+    };
 
-      {/* Legends Section */}
-      <div className="mb-8">
-        <div className="grid grid-cols-2 gap-8">
-          <div className="flex flex-col items-center">
-            <h4 className="text-lg font-semibold mb-2">Category</h4>
-            <div className="flex space-x-4">
-              {categoryLegends.map((legend, i) => (
-                <div key={i} className="flex flex-col items-center">
-                  <div className={`w-8 h-8 ${legend.color} rounded-full shadow-md`}></div>
-                  <span className="mt-1 text-sm">{legend.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col items-center">
-            <h4 className="text-lg font-semibold mb-2">Status</h4>
-            <div className="flex space-x-4">
-              {statusLegends.map((legend, i) => (
-                <div key={i} className="flex flex-col items-center">
-                  <div className={`w-8 h-8 ${legend.color} rounded-full shadow-md`}></div>
-                  <span className="mt-1 text-sm">{legend.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+    const findHighestColumn = (): number => {
+        let maxColumn = 0;
+        layout.items.forEach((item) => {
+            if ('seat_id' in item) {
+                maxColumn = Math.max(maxColumn, item.column);
+            }
+        });
+        return maxColumn;
+    };
 
-      {/* Grid display */}
-      <div className="flex flex-col items-center w-full">
-        <div className="grid gap-1">
-          {[...grid].reverse().map((row, reversedIndex) => {
-            const originalIndex = grid.length - 1 - reversedIndex;
-            const rowLabel = String.fromCharCode(65 + originalIndex);
+    // Create grid with dimensions based on actual data
+    const actualRows = Math.max(findHighestRow(), layout.totalRows);
+    const actualColumns = Math.max(findHighestColumn(), layout.totalColumns);
+
+    const grid = Array.from({ length: actualRows }, () =>
+        Array(actualColumns).fill(null),
+    );
+
+    // Isi grid dengan kursi
+    layout.items.forEach((item) => {
+        if ('seat_id' in item) {
+            const rowIndex =
+                typeof item.row === 'string'
+                    ? item.row.charCodeAt(0) - 65
+                    : item.row;
+
+            if (rowIndex >= 0 && rowIndex < actualRows) {
+                const colIndex = (item.column as number) - 1;
+                if (colIndex >= 0 && colIndex < actualColumns) {
+                    grid[rowIndex][colIndex] = item;
+                }
+            }
+        }
+    });
+
+    // Fungsi untuk mengecek apakah kursi dapat diedit
+    const isSeatEditable = (seat: SeatItem): boolean => {
+        return seat.status !== 'booked';
+    };
+
+    const getSeatColor = (seat: SeatItem): string => {
+        // Ubah cara pengecekan selectedSeats
+        const isSelected = selectedSeats.has(`${seat.row}${seat.column}`); // Pastikan format string sesuai
+        let baseColor = '';
+
+        // Jika kursi terpilih, prioritaskan warna seleksi
+        if (isSelected) {
+            return 'bg-blue-200 ring-2 ring-blue-500'; // Tambahkan visual feedback yang lebih jelas
+        }
+
+        if (seat.status !== 'available') {
+            switch (seat.status) {
+                case 'booked':
+                    baseColor = 'bg-red-500';
+                    break;
+                case 'in_transaction':
+                    baseColor = 'bg-yellow-500';
+                    break;
+                case 'not_available':
+                    baseColor = 'bg-gray-400';
+                    break;
+            }
+        } else {
+            switch (seat.category) {
+                case 'diamond':
+                    baseColor = 'bg-cyan-400';
+                    break;
+                case 'gold':
+                    baseColor = 'bg-yellow-400';
+                    break;
+                case 'silver':
+                    baseColor = 'bg-gray-300';
+                    break;
+                default:
+                    baseColor = 'bg-gray-200';
+            }
+        }
+
+        return baseColor;
+    };
+
+    const handleSeatClick = (seat: SeatItem) => {
+        if (!isSeatEditable(seat)) return;
+
+        const seatId = `${seat.row}${seat.column}`; // Format yang konsisten
+
+        setSelectedSeats((prev) => {
+            const next = new Set(prev);
+
+            switch (selectionMode) {
+                case 'SINGLE':
+                    next.clear();
+                    next.add(seatId);
+                    break;
+
+                case 'MULTIPLE':
+                    if (next.has(seatId)) {
+                        next.delete(seatId);
+                    } else {
+                        next.add(seatId);
+                    }
+                    break;
+
+                case 'CATEGORY':
+                    next.clear();
+                    layout.items.forEach((item) => {
+                        if (
+                            item.type === 'seat' &&
+                            item.category === seat.category &&
+                            isSeatEditable(item as SeatItem)
+                        ) {
+                            const id = `${(item as SeatItem).row}${(item as SeatItem).column}`;
+                            next.add(id);
+                        }
+                    });
+                    setSelectedCategory(seat.category);
+                    break;
+            }
+
+            return next;
+        });
+    };
+
+    const handleSelectCategory = (category: Category) => {
+        if (selectionMode !== 'CATEGORY') return;
+
+        // Kumpulkan semua kursi yang dapat diedit dengan kategori yang dipilih
+        const seatsInCategory = layout.items
+            .filter(
+                (item) =>
+                    item.type === 'seat' &&
+                    item.category === category &&
+                    isSeatEditable(item as SeatItem), // Gunakan isSeatEditable
+            )
+            .map((item) => {
+                const rowLetter = (item as SeatItem).row;
+                const column = (item as SeatItem).column;
+                return `${rowLetter}${column}`;
+            });
+
+        setSelectedSeats(new Set(seatsInCategory));
+        setSelectedCategory(category);
+    };
+
+    const renderCell = (item: LayoutItem | null, colIndex: number) => {
+        if (item && item.type === 'seat') {
+            const seat = item as SeatItem;
+            const isEditable = isSeatEditable(seat);
+            const seatId = `${seat.row}${seat.column}`;
+            const isSelected = selectedSeats.has(seatId);
+
             return (
-              <div key={reversedIndex} className="flex gap-1 items-center">
-                <div className="flex gap-1">
-                  {row.map((item, colIndex) => renderCell(item, colIndex))}
+                <div
+                    key={colIndex}
+                    onClick={() => isEditable && handleSeatClick(seat)}
+                    className={`flex h-8 w-8 items-center justify-center rounded border ${getSeatColor(seat)} ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
+                    title={
+                        !isEditable
+                            ? 'Kursi telah dibooking dan tidak dapat diedit'
+                            : ''
+                    }
+                >
+                    {seat.seat_number}
                 </div>
-              </div>
             );
-          })}
-        </div>
+        }
+        return <div key={colIndex} className="h-8 w-8"></div>;
+    };
 
-        {/* Stage */}
-        <div className="mt-4 w-60 h-8 bg-white border border-gray-200 flex items-center justify-center rounded text-sm">
-          Panggung
+    const handleStatusUpdate = (status: string) => {
+        const updatedSeats = layout.items
+            .filter(
+                (item) =>
+                    item.type === 'seat' &&
+                    selectedSeats.has(
+                        `${(item as SeatItem).row}${(item as SeatItem).column}`,
+                    ) &&
+                    isSeatEditable(item as SeatItem),
+            )
+            .map((item) => ({
+                seat_id: (item as SeatItem).seat_id,
+                status: status,
+            }));
+
+        if (updatedSeats.length > 0) {
+            router.post(
+                '/seats/update',
+                { seats: updatedSeats },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: () => {
+                        onSave(updatedSeats);
+                        setSelectedSeats(new Set());
+                    },
+                    onError: (errors) => {
+                        console.error('Failed to update seats:', errors);
+                    },
+                },
+            );
+        }
+    };
+
+    const handleModeChange = (mode: SelectionMode) => {
+        setSelectionMode(mode);
+        setSelectedSeats(new Set());
+        setSelectedCategory(null);
+    };
+
+    // Rest of the component remains the same...
+    return (
+        <div className="p-6">
+            {/* Mode Selection */}
+            <div className="flex gap-4 rounded-lg bg-gray-100 p-4">
+                <button
+                    className={`rounded px-4 py-2 ${selectionMode === 'SINGLE' ? 'bg-blue-500 text-white' : 'bg-white'}`}
+                    onClick={() => handleModeChange('SINGLE')}
+                >
+                    Single Edit
+                </button>
+                <button
+                    className={`rounded px-4 py-2 ${selectionMode === 'MULTIPLE' ? 'bg-blue-500 text-white' : 'bg-white'}`}
+                    onClick={() => handleModeChange('MULTIPLE')}
+                >
+                    Multiple Edit
+                </button>
+                <button
+                    className={`rounded px-4 py-2 ${selectionMode === 'CATEGORY' ? 'bg-blue-500 text-white' : 'bg-white'}`}
+                    onClick={() => handleModeChange('CATEGORY')}
+                >
+                    Category Edit
+                </button>
+            </div>
+
+            {/* Category Selection */}
+            {selectionMode === 'CATEGORY' && (
+                <div className="flex gap-4 rounded-lg bg-gray-50 p-4">
+                    {['diamond', 'gold', 'silver'].map((category) => (
+                        <button
+                            key={category}
+                            className={`rounded px-4 py-2 ${
+                                selectedCategory === category
+                                    ? 'ring-2 ring-blue-500'
+                                    : ''
+                            } ${
+                                category === 'diamond'
+                                    ? 'bg-cyan-400'
+                                    : category === 'gold'
+                                      ? 'bg-yellow-400'
+                                      : 'bg-gray-300'
+                            } text-white`}
+                            onClick={() =>
+                                handleSelectCategory(category as Category)
+                            }
+                        >
+                            {category.charAt(0).toUpperCase() +
+                                category.slice(1)}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Status Buttons */}
+            <div className="flex gap-4 rounded-lg bg-gray-50 p-4">
+                <button
+                    className="rounded bg-green-400 px-4 py-2 text-white hover:bg-green-500 disabled:opacity-50"
+                    onClick={() => handleStatusUpdate('available')}
+                    disabled={selectedSeats.size === 0}
+                >
+                    Set Available
+                </button>
+                <button
+                    className="rounded bg-yellow-400 px-4 py-2 text-white hover:bg-yellow-500 disabled:opacity-50"
+                    onClick={() => handleStatusUpdate('in_transaction')}
+                    disabled={selectedSeats.size === 0}
+                >
+                    Set In Transaction
+                </button>
+                <button
+                    className="rounded bg-gray-400 px-4 py-2 text-white hover:bg-gray-500 disabled:opacity-50"
+                    onClick={() => handleStatusUpdate('not_available')}
+                    disabled={selectedSeats.size === 0}
+                >
+                    Set Not Available
+                </button>
+            </div>
+
+            {/* Legends Section */}
+            <div className="mb-8">
+                <div className="grid grid-cols-2 gap-8">
+                    <div className="flex flex-col items-center">
+                        <h4 className="mb-2 text-lg font-semibold">Category</h4>
+                        <div className="flex space-x-4">
+                            {categoryLegends.map((legend, i) => (
+                                <div
+                                    key={i}
+                                    className="flex flex-col items-center"
+                                >
+                                    <div
+                                        className={`h-8 w-8 ${legend.color} rounded-full shadow-md`}
+                                    ></div>
+                                    <span className="mt-1 text-sm">
+                                        {legend.label}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <h4 className="mb-2 text-lg font-semibold">Status</h4>
+                        <div className="flex space-x-4">
+                            {statusLegends.map((legend, i) => (
+                                <div
+                                    key={i}
+                                    className="flex flex-col items-center"
+                                >
+                                    <div
+                                        className={`h-8 w-8 ${legend.color} rounded-full shadow-md`}
+                                    ></div>
+                                    <span className="mt-1 text-sm">
+                                        {legend.label}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Grid display */}
+            <div className="flex w-full flex-col items-center">
+                <div className="grid gap-1">
+                    {[...grid].reverse().map((row, reversedIndex) => {
+                        // const originalIndex = grid.length - 1 - reversedIndex;
+                        // const rowLabel = String.fromCharCode(
+                        //     65 + originalIndex,
+                        // );
+                        return (
+                            <div
+                                key={reversedIndex}
+                                className="flex items-center gap-1"
+                            >
+                                <div className="flex gap-1">
+                                    {row.map((item, colIndex) =>
+                                        renderCell(item, colIndex),
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Stage */}
+                <div className="mt-4 flex h-8 w-60 items-center justify-center rounded border border-gray-200 bg-white text-sm">
+                    Panggung
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default SeatMapEditor;

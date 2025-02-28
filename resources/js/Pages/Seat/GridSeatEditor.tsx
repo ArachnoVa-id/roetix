@@ -23,7 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Category, Layout, LayoutItem, SeatItem, SeatStatus } from './types';
 
 interface Props {
@@ -45,19 +45,19 @@ interface GridDimensions {
 }
 
 // Helper function to convert number to Excel-style column label
-const getRowLabel = (num: number): string => {
-    let dividend = num;
-    let columnName = '';
-    let modulo;
+// const getRowLabel = (num: number): string => {
+//     let dividend = num;
+//     let columnName = '';
+//     let modulo;
 
-    while (dividend > 0) {
-        modulo = (dividend - 1) % 26;
-        columnName = String.fromCharCode(65 + modulo) + columnName;
-        dividend = Math.floor((dividend - 1) / 26);
-    }
+//     while (dividend > 0) {
+//         modulo = (dividend - 1) % 26;
+//         columnName = String.fromCharCode(65 + modulo) + columnName;
+//         dividend = Math.floor((dividend - 1) / 26);
+//     }
 
-    return columnName;
-};
+//     return columnName;
+// };
 
 // Helper function to convert Excel-style column label to number
 const getRowNumber = (label: string): number => {
@@ -72,7 +72,7 @@ const getRowNumber = (label: string): number => {
 const GridSeatEditor: React.FC<Props> = ({
     initialLayout,
     onSave,
-    venueId,
+    // venueId,
 }) => {
     const [dimensions, setDimensions] = useState<GridDimensions>({
         top: 0,
@@ -123,25 +123,8 @@ const GridSeatEditor: React.FC<Props> = ({
         return maxCol;
     };
 
-    // Initialize grid when dimensions change
-    useEffect(() => {
-        initializeGrid();
-    }, [dimensions.top, dimensions.bottom, dimensions.left, dimensions.right]);
-
-    // Initialize dimensions based on initialLayout
-    useEffect(() => {
-        if (initialLayout?.items?.length) {
-            const maxRow = findHighestRow(initialLayout.items);
-            const maxCol = findHighestColumn(initialLayout.items);
-            setDimensions((prev) => ({
-                ...prev,
-                bottom: Math.max(maxRow + 1, prev.bottom),
-                right: Math.max(maxCol, prev.right),
-            }));
-        }
-    }, [initialLayout]);
-
-    const initializeGrid = () => {
+    //
+    const initializeGrid = useCallback(() => {
         const newGrid: GridCell[][] = Array(totalRows)
             .fill(null)
             .map(() =>
@@ -176,7 +159,37 @@ const GridSeatEditor: React.FC<Props> = ({
         }
 
         setGrid(newGrid);
-    };
+    }, [
+        dimensions.top,
+        dimensions.left,
+        initialLayout,
+        totalRows,
+        totalColumns,
+    ]);
+
+    // Initialize grid when dimensions change
+    useEffect(() => {
+        initializeGrid();
+    }, [
+        dimensions.top,
+        dimensions.bottom,
+        dimensions.left,
+        dimensions.right,
+        initializeGrid,
+    ]);
+
+    // Initialize dimensions based on initialLayout
+    useEffect(() => {
+        if (initialLayout?.items?.length) {
+            const maxRow = findHighestRow(initialLayout.items);
+            const maxCol = findHighestColumn(initialLayout.items);
+            setDimensions((prev) => ({
+                ...prev,
+                bottom: Math.max(maxRow + 1, prev.bottom),
+                right: Math.max(maxCol, prev.right),
+            }));
+        }
+    }, [initialLayout]);
 
     const handleCellClick = (rowIndex: number, colIndex: number) => {
         setSelectedCell({ row: rowIndex, col: colIndex });
@@ -231,6 +244,8 @@ const GridSeatEditor: React.FC<Props> = ({
             column: adjustedColumn,
             status: selectedStatus,
             category: selectedCategory,
+            price: 0,
+            seat_type: 'regular',
         };
 
         newGrid[selectedCell.row][selectedCell.col] = {
@@ -478,12 +493,12 @@ const GridSeatEditor: React.FC<Props> = ({
             <div className="mb-6 flex flex-col items-center">
                 <div className="grid w-full gap-1">
                     {[...grid].reverse().map((row, reversedIndex) => {
-                        const originalIndex = grid.length - 1 - reversedIndex;
-                        const adjustedRowIndex = originalIndex - dimensions.top;
-                        const rowLabel = getAdjustedRowLabel(
-                            reversedIndex,
-                            totalRows,
-                        );
+                        // const originalIndex = grid.length - 1 - reversedIndex;
+                        // const adjustedRowIndex = originalIndex - dimensions.top;
+                        // const rowLabel = getAdjustedRowLabel(
+                        //     reversedIndex,
+                        //     totalRows,
+                        // );
                         return (
                             <div key={reversedIndex} className="flex gap-1">
                                 {row.map((cell, colIndex) => (

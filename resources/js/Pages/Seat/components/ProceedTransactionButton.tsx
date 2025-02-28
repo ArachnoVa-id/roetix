@@ -1,19 +1,23 @@
-import React from 'react';
 import axios from 'axios';
+import React from 'react';
 import {
-    ProceedTransactionButtonProps,
+    MidtransCallbacks,
     PaymentRequestPayload,
     PaymentResponse,
-    MidtransCallbacks,
+    ProceedTransactionButtonProps,
     SeatItem,
 } from '../types';
 
-const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({ selectedSeats }) => {
-
+const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
+    selectedSeats,
+}) => {
     const transformSeatsToGroupedItems = (seats: SeatItem[]) => {
-        const grouped: Record<string, { price: number; quantity: number; seatNumbers: string[] }> = {};
+        const grouped: Record<
+            string,
+            { price: number; quantity: number; seatNumbers: string[] }
+        > = {};
 
-        seats.forEach(seat => {
+        seats.forEach((seat) => {
             const { category, seat_number, price } = seat;
 
             if (!grouped[category]) {
@@ -32,9 +36,11 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({ sel
     };
 
     // Fungsi hitung total amount
-    const calculateTotalAmount = (groupedItems: PaymentRequestPayload['grouped_items']) => {
+    const calculateTotalAmount = (
+        groupedItems: PaymentRequestPayload['grouped_items'],
+    ) => {
         return Object.values(groupedItems).reduce((total, item) => {
-            return total + (item.price * item.quantity);
+            return total + item.price * item.quantity;
         }, 0);
     };
 
@@ -56,14 +62,19 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({ sel
         console.log('Request Payload:', requestPayload);
 
         try {
-            const response = await axios.post<PaymentResponse>('/payment/charge', requestPayload);
+            const response = await axios.post<PaymentResponse>(
+                '/payment/charge',
+                requestPayload,
+            );
 
             const snapToken = response.data.snap_token;
 
             if (window.snap) {
                 const midtransCallbacks: MidtransCallbacks = {
-                    onSuccess: (result) => console.log('Payment success:', result),
-                    onPending: (result) => console.log('Payment pending:', result),
+                    onSuccess: (result) =>
+                        console.log('Payment success:', result),
+                    onPending: (result) =>
+                        console.log('Payment pending:', result),
                     onError: (error) => console.error('Payment failed:', error),
                     onClose: () => console.log('Payment popup closed'),
                 };
@@ -72,8 +83,17 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({ sel
             } else {
                 alert('Snap.js is not loaded');
             }
-        } catch (error: any) {
-            console.error('Error creating charge:', error.response?.data || error.message);
+        } catch (error: unknown) {
+            if (axios.isAxiosError(error)) {
+                console.error(
+                    'Error creating charge:',
+                    error.response?.data || error.message,
+                );
+            } else if (error instanceof Error) {
+                console.error('Error creating charge:', error.message);
+            } else {
+                console.error('An unknown error occurred');
+            }
         }
     };
 
