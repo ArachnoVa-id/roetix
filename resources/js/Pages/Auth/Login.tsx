@@ -1,8 +1,8 @@
-import Checkbox from '@/components/Checkbox';
-import InputError from '@/components/InputError';
-import InputLabel from '@/components/InputLabel';
-import PrimaryButton from '@/components/PrimaryButton';
-import TextInput from '@/components/TextInput';
+import Checkbox from '@/Components/Checkbox';
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
+import PrimaryButton from '@/Components/PrimaryButton';
+import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -57,7 +57,9 @@ export default function Login({
                         className="mt-1 block w-full"
                         autoComplete="username"
                         isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('email', e.target.value)
+                        }
                     />
 
                     <InputError message={errors.email} className="mt-2" />
@@ -73,7 +75,9 @@ export default function Login({
                         value={data.password}
                         className="mt-1 block w-full"
                         autoComplete="current-password"
-                        onChange={(e) => setData('password', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('password', e.target.value)
+                        }
                     />
 
                     <InputError message={errors.password} className="mt-2" />
@@ -84,7 +88,9 @@ export default function Login({
                         <Checkbox
                             name="remember"
                             checked={data.remember}
-                            onChange={(e) =>
+                            onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>,
+                            ) =>
                                 setData('remember', e.target.checked as boolean)
                             }
                         />

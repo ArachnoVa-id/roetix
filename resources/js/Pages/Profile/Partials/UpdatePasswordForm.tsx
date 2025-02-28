@@ -1,7 +1,7 @@
-import InputError from '@/components/InputError';
-import InputLabel from '@/components/InputLabel';
-import PrimaryButton from '@/components/PrimaryButton';
-import TextInput from '@/components/TextInput';
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
+import PrimaryButton from '@/Components/PrimaryButton';
+import TextInput from '@/Components/TextInput';
 import { Transition } from '@headlessui/react';
 import { useForm } from '@inertiajs/react';
 import { FormEventHandler, useRef } from 'react';
@@ -72,7 +72,7 @@ export default function UpdatePasswordForm({
                         id="current_password"
                         ref={currentPasswordInput}
                         value={data.current_password}
-                        onChange={(e) =>
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             setData('current_password', e.target.value)
                         }
                         type="password"
@@ -93,7 +93,9 @@ export default function UpdatePasswordForm({
                         id="password"
                         ref={passwordInput}
                         value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('password', e.target.value)
+                        }
                         type="password"
                         className="mt-1 block w-full"
                         autoComplete="new-password"
@@ -111,7 +113,7 @@ export default function UpdatePasswordForm({
                     <TextInput
                         id="password_confirmation"
                         value={data.password_confirmation}
-                        onChange={(e) =>
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             setData('password_confirmation', e.target.value)
                         }
                         type="password"

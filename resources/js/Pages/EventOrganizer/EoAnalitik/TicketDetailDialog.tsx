@@ -1,4 +1,4 @@
-import Ticket from '@/components/novatix/Ticket';
+import Ticket from '@/Components/novatix/Ticket';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 

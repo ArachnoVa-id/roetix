@@ -1,5 +1,5 @@
-import NavLink from '@/components/NavLink';
-import ResponsiveNavLink from '@/components/ResponsiveNavLink';
+import NavLink from '@/Components/NavLink';
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 

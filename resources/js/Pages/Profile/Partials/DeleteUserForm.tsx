@@ -1,9 +1,9 @@
-import DangerButton from '@/components/DangerButton';
-import InputError from '@/components/InputError';
-import InputLabel from '@/components/InputLabel';
-import Modal from '@/components/Modal';
-import SecondaryButton from '@/components/SecondaryButton';
-import TextInput from '@/components/TextInput';
+import DangerButton from '@/Components/DangerButton';
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import TextInput from '@/Components/TextInput';
 import { useForm } from '@inertiajs/react';
 import { FormEventHandler, useRef, useState } from 'react';
 
@@ -94,9 +94,9 @@ export default function DeleteUserForm({
                             name="password"
                             ref={passwordInput}
                             value={data.password}
-                            onChange={(e) =>
-                                setData('password', e.target.value)
-                            }
+                            onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>,
+                            ) => setData('password', e.target.value)}
                             className="mt-1 block w-3/4"
                             isFocused
                             placeholder="Password"

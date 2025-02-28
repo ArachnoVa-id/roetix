@@ -1,7 +1,7 @@
-import InputError from '@/components/InputError';
-import InputLabel from '@/components/InputLabel';
-import PrimaryButton from '@/components/PrimaryButton';
-import TextInput from '@/components/TextInput';
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
+import PrimaryButton from '@/Components/PrimaryButton';
+import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -43,7 +43,9 @@ export default function ResetPassword({
                         value={data.email}
                         className="mt-1 block w-full"
                         autoComplete="username"
-                        onChange={(e) => setData('email', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('email', e.target.value)
+                        }
                     />
 
                     <InputError message={errors.email} className="mt-2" />
@@ -60,7 +62,9 @@ export default function ResetPassword({
                         className="mt-1 block w-full"
                         autoComplete="new-password"
                         isFocused={true}
-                        onChange={(e) => setData('password', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('password', e.target.value)
+                        }
                     />
 
                     <InputError message={errors.password} className="mt-2" />
@@ -78,7 +82,7 @@ export default function ResetPassword({
                         value={data.password_confirmation}
                         className="mt-1 block w-full"
                         autoComplete="new-password"
-                        onChange={(e) =>
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             setData('password_confirmation', e.target.value)
                         }
                     />

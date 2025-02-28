@@ -1,4 +1,4 @@
-import Ticket from '@/components/novatix/Ticket';
+import Ticket from '@/Components/novatix/Ticket';
 
 export default function Test() {
     return (
