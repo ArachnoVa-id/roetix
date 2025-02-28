@@ -177,6 +177,9 @@ jobs:
           # Change permissions to allow www-data
           sudo chown -R www-data:www-data ~/novatix/app/production
 
+          # Enable pulling by marking as safe
+          git config --global --add safe.directory ~/novatix/app/production
+
           # Remove old symlink if exists, then create a new one
           sudo rm -rf /var/www/novatix
           sudo ln -s ~/novatix/app/production /var/www/novatix
