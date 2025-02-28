@@ -10,9 +10,11 @@ import { FormEventHandler } from 'react';
 export default function Login({
     status,
     canResetPassword,
+    client,
 }: {
     status?: string;
     canResetPassword: boolean;
+    client: string;
 }) {
     const { data, setData, post, processing, errors, reset } = useForm<{
         email: string;
@@ -42,6 +44,7 @@ export default function Login({
                 </div>
             )}
 
+            <div>Active Client: {client}</div>
             <form onSubmit={submit}>
                 <div>
                     <InputLabel htmlFor="email" value="Email" />
@@ -105,7 +108,10 @@ export default function Login({
                         Log in
                     </PrimaryButton>
                 </div>
-                <a href={route('auth.google')} className="w-full text-center mt-2">
+                <a
+                    href={route('auth.google')}
+                    className="mt-2 w-full text-center"
+                >
                     Login With Google
                 </a>
             </form>

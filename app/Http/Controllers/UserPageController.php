@@ -13,12 +13,16 @@ use Illuminate\Support\Facades\Log;
 
 class UserPageController extends Controller
 {
-    public function landing()
+    public function landing(string $client = '')
     {
         if (Auth::check()) {
-            return Inertia::render('User/Landing');
+            return Inertia::render('User/Landing', [
+                'client' => $client
+            ]);
         } else {
-            return Inertia::render('User/Auth');
+            return Inertia::render('User/Auth', [
+                'client' => $client
+            ]);
         }
     }
 
