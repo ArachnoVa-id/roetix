@@ -28,9 +28,9 @@ Route::get('/test-csrf', function () {
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
 Route::prefix('{client}')->group(function () {
-    Route::get('/', [UserPageController::class, 'landing'])->name('home_client');
+    Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
-        ->name('login');
+        ->name('client.login');
 });
 
 Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
