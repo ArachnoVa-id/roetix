@@ -158,6 +158,7 @@ jobs:
           APP_DEBUG=${{ vars.APP_DEBUG }}
           APP_TIMEZONE=${{ vars.APP_TIMEZONE }}
           APP_URL=${{ secrets.APP_URL_DEV }}
+          APP_DOMAIN=${{ secrets.APP_DOMAIN_DEV }}
 
           APP_LOCALE=${{ vars.APP_LOCALE }}
           APP_FALLBACK_LOCALE=${{ vars.APP_FALLBACK_LOCALE }}

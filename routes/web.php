@@ -27,11 +27,10 @@ Route::get('/test-csrf', function () {
 
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
-Route::domain('{client}.staging-novatix.arachnova.id')->group(function () {
+Route::domain('{client}.' . config('app.domain'))->group(function () {
     Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('client.login');
 });
-
 
 Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
 Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
