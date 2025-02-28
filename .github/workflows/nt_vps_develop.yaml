@@ -101,6 +101,10 @@ jobs:
           else
               echo "Repository found. Pulling latest changes..."
               cd app/develop
+
+              # Enable pulling by marking as safe
+              git config --global --add safe.directory ~/novatix/app/develop
+
               git pull origin develop
           fi
           ls -la  # Debugging: Show contents
@@ -260,9 +264,6 @@ jobs:
 
           # Change permissions to allow www-data
           sudo chown -R www-data:www-data ~/novatix/app/develop
-
-          # Enable pulling by marking as safe
-          git config --global --add safe.directory ~/novatix/app/develop
 
           # Remove old symlink if exists, then create a new one
           sudo rm -rf /var/www/novatix_staging
