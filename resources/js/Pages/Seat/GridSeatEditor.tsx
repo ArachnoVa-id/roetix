@@ -15,14 +15,14 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '@/components/ui/dialog';
+} from '@/Components/ui/dialog';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@/components/ui/select';
+} from '@/Components/ui/select';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Category, Layout, LayoutItem, SeatItem, SeatStatus } from './types';
 
