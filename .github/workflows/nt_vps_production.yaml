@@ -1,68 +1,13 @@
-name: NovaTix VPS Develop
+name: NovaTix VPS Production
 
 on:
   push:
     branches:
-      - develop
+      - main
 
 jobs:
-  test-build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🛠 Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-          cache: 'npm'
-
-      - name: 📦 Install Frontend Dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
-
-      - name: 🏗 Build Frontend (Vite)
-        run: npm run build
-
-  test-laravel:
-    runs-on: ubuntu-latest
-    needs: test-build
-    steps:
-      - name: 🛠 Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 🔧 Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.2
-          extensions: mbstring, bcmath, xml, pdo_mysql
-          tools: composer, phpunit
-
-      - name: 📦 Install Backend Dependencies
-        run: composer install --optimize-autoloader --no-interaction
-
-      - name: 🛠 Set Up Laravel Environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
-
-      - name: Install Node.js dependencies
-        run: npm ci
-
-      - name: Build frontend assets with Vite
-        run: npm run build
-
-      - name: Start Laravel built-in server
-        run: php artisan serve --host=127.0.0.1 --port=8000 &
-
-      - name: 🛠 Run Laravel Tests
-        run: php artisan test
-
   vps-sync:
     runs-on: ubuntu-latest
-    needs: test-laravel
 
     steps:
       - name: Checkout Repository
@@ -81,67 +26,38 @@ jobs:
           set -e
 
           echo "Ensuring folder structure..."
-          mkdir -p ~/novatix/app/develop ~/novatix/setups
+          mkdir -p ~/novatix/app/production
 
-          # Ensure update_repo.sh exists
-          echo "Creating update_repo.sh..."
-          cat > ~/novatix/setups/update_repo.sh << 'EOT'
+          # Ensure update_repo_prod.sh exists
+          echo "Creating update_repo_prod.sh..."
+          cat > ~/novatix/setups/update_repo_prod.sh << 'EOT'
           #!/bin/bash
-          mkdir -p ~/novatix/app/develop
+          mkdir -p ~/novatix/app/production
           cd ~/novatix
 
-          if [ ! -d "app/develop/.git" ]; then
+          if [ ! -d "app/production/.git" ]; then
               echo "Repository not found. Checking existing directory..."
               if [ -n "$(ls -A app 2>/dev/null)" ]; then
                   echo "Existing directory found but not a Git repository. Removing everything..."
-                  rm -rf app/develop
+                  rm -rf app/production
               fi
               echo "Cloning repository..."
-              git clone --branch develop git@github.com:ArachnoVa-id/novatix.git app/develop
+              git clone git@github.com:ArachnoVa-id/novatix.git app/production
           else
               echo "Repository found. Pulling latest changes..."
-              cd app/develop
-              git pull origin develop
+              cd app/production
+              git pull origin production
           fi
           ls -la  # Debugging: Show contents
           EOT
-          chmod +x ~/novatix/setups/update_repo.sh
+          chmod +x ~/novatix/setups/update_repo_prod.sh
 
-          # Ensure install_dependencies.sh exists
-          echo "Creating install_dependencies.sh..."
-          cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
-          #!/bin/bash
-          cd ~/novatix/app/develop
-          composer install --no-interaction --prefer-dist
-          EOT
-          chmod +x ~/novatix/setups/install_dependencies.sh
-
-          # Ensure deploy_laravel.sh exists
-          echo "Creating deploy_laravel.sh..."
-          cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
-          #!/bin/bash
-          cd ~/novatix/app/develop
-          php artisan migrate:fresh --force --seed
-          php artisan config:clear
-          php artisan cache:clear
-          php artisan route:cache
-          EOT
-          chmod +x ~/novatix/setups/deploy_laravel.sh
-
-          # Ensure restart_services.sh exists
-          echo "Creating restart_services.sh..."
-          cat > ~/novatix/setups/restart_services.sh << 'EOT'
-          #!/bin/bash
-          sudo systemctl restart php8.2-fpm
-          EOT
-          chmod +x ~/novatix/setups/restart_services.sh
-
-          # Ensure generate_env.sh exists
-          echo "Creating generate_env.sh..."
-          cat > ~/novatix/setups/generate_env.sh << 'EOT'
+          # Ensure generate_env_prod.sh exists
+          echo "Creating generate_env_prod.sh..."
+          cat > ~/novatix/setups/generate_env_prod.sh << 'EOT'
           #!/bin/bash
 
-          ENV_FILE="$HOME/novatix/app/develop/.env"
+          ENV_FILE="$HOME/novatix/app/production/.env"
 
           echo "Checking .env file..."
           if [ ! -f "$ENV_FILE" ]; then
@@ -153,7 +69,7 @@ jobs:
           APP_KEY=${{ secrets.APP_KEY }}
           APP_DEBUG=${{ vars.APP_DEBUG }}
           APP_TIMEZONE=${{ vars.APP_TIMEZONE }}
-          APP_URL=${{ secrets.APP_URL_DEV }}
+          APP_URL=${{ secrets.APP_URL }}
 
           APP_LOCALE=${{ vars.APP_LOCALE }}
           APP_FALLBACK_LOCALE=${{ vars.APP_FALLBACK_LOCALE }}
@@ -172,7 +88,7 @@ jobs:
           DB_CONNECTION=${{ vars.DB_CONNECTION }}
           DB_HOST=${{ secrets.DB_HOST }}
           DB_PORT=${{ secrets.DB_PORT }}
-          DB_DATABASE=${{ secrets.DB_DATABASE_DEV }}
+          DB_DATABASE=${{ secrets.DB_DATABASE }}
           DB_USERNAME=${{ secrets.DB_USERNAME }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
@@ -221,13 +137,13 @@ jobs:
           fi
           EOT
 
-          chmod +x ~/novatix/setups/generate_env.sh
+          chmod +x ~/novatix/setups/generate_env_prod.sh
 
       - name: Update Repository on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo.sh"
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo_prod.sh"
 
       - name: Generate .env on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/generate_env.sh"
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/generate_env_prod.sh"
 
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
@@ -256,20 +172,20 @@ jobs:
           set -e  # Exit immediately if any command fails
 
           # Ensure project directory exists
-          sudo mkdir -p ~/novatix/app/develop
+          sudo mkdir -p ~/novatix/app/production
 
           # Change permissions to allow www-data
-          sudo chown -R www-data:www-data ~/novatix/app/develop
+          sudo chown -R www-data:www-data ~/novatix/app/production
 
           # Remove old symlink if exists, then create a new one
-          sudo rm -rf /var/www/novatix_staging
-          sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
+          sudo rm -rf /var/www/novatix
+          sudo ln -s ~/novatix/app/production /var/www/novatix
 
           # Set proper ownership
-          sudo chown -R www-data:www-data /var/www/novatix_staging
+          sudo chown -R www-data:www-data /var/www/novatix
 
           # Move into project directory
-          cd /var/www/novatix_staging
+          cd /var/www/novatix
 
           # Install backend dependencies
           composer install --no-interaction --prefer-dist --optimize-autoloader
@@ -281,8 +197,8 @@ jobs:
           npm run build
 
           # Set correct permissions
-          sudo chown -R www-data:www-data /var/www/novatix_staging
-          sudo chmod -R 775 /var/www/novatix_staging/storage /var/www/novatix_staging/bootstrap/cache
+          sudo chown -R www-data:www-data /var/www/novatix
+          sudo chmod -R 775 /var/www/novatix/storage /var/www/novatix/bootstrap/cache
 
           # Cache configurations
           php artisan config:clear
@@ -291,5 +207,5 @@ jobs:
           php artisan view:cache
 
           # Run database migrations
-          php artisan migrate:fresh --force --seed
+          php artisan migrate --force
           EOF

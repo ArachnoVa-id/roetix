@@ -33,7 +33,6 @@ Route::prefix('{client}')->group(function () {
         ->name('login');
 });
 
-
 Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
 Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
 
