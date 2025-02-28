@@ -184,7 +184,7 @@ jobs:
           SESSION_LIFETIME=${{ vars.SESSION_LIFETIME }}
           SESSION_ENCRYPT=${{ vars.SESSION_ENCRYPT }}
           SESSION_PATH=${{ vars.SESSION_PATH }}
-          SESSION_DOMAIN=${{ vars.SESSION_DOMAIN }}
+          SESSION_DOMAIN=${{ vars.SESSION_DOMAIN_DEV }}
 
           BROADCAST_CONNECTION=${{ vars.BROADCAST_CONNECTION }}
           FILESYSTEM_DISK=${{ vars.FILESYSTEM_DISK }}
