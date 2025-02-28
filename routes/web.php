@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeatController;
 use Illuminate\Foundation\Application;
@@ -26,16 +27,22 @@ Route::get('/test-csrf', function () {
 
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
+Route::prefix('{client}')->group(function () {
+    Route::get('/', [UserPageController::class, 'landing'])->name('home_client');
+    Route::get('login', [AuthenticatedSessionController::class, 'create'])
+        ->name('login');
+});
+
+
 Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
 Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
 
-    Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-    Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-    Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-    Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
-    Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
-    Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
-
+Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
+Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
+Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
+Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
+Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
 
 Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('my_tickets');
 
@@ -43,7 +50,7 @@ Route::get('/test', function () {
     return Inertia::render('Test');
 });
 
-Route::controller(SocialiteController::class)->group(function(){
+Route::controller(SocialiteController::class)->group(function () {
     Route::get('auth/google', 'googleLogin')->name('auth.google');
     Route::get('auth/google-callback', 'googleAuthentication')->name('auth.google-authentication');
 });
@@ -51,7 +58,7 @@ Route::controller(SocialiteController::class)->group(function(){
 Route::get('/test-login', function () {
     $user = \App\Models\User::where('email', 'vendor1@example.com')->first();
     Auth::login($user);
-    
+
     return redirect('/');
 });
 
@@ -62,7 +69,6 @@ Route::middleware(['auth', 'verified'])->prefix('eo')->group(function () {
         Route::get('/', [EoAcaraController::class, 'index'])->name('index');
         Route::get('/buat', [EoAcaraController::class, 'create'])->name('create');
         Route::get('/edit', [EoAcaraController::class, 'edit'])->name('edit');
-        
     });
 
     // Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
@@ -110,7 +116,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
 });
 
 // Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');

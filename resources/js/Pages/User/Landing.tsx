@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 
-export default function Landing() {
+export default function Landing({ client }: { client: string }) {
     return (
         <AuthenticatedLayout>
             <Head title="Dashboard" />
@@ -10,7 +10,7 @@ export default function Landing() {
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">
-                            Buy Tickets Here
+                            {client}: Buy Tickets Here
                         </div>
                     </div>
                 </div>
