@@ -7,7 +7,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from '@/Components/ui/alert-dialog';
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -15,14 +15,14 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '@/Components/ui/dialog';
+} from '@/components/ui/dialog';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@/Components/ui/select';
+} from '@/components/ui/select';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Category, Layout, LayoutItem, SeatItem, SeatStatus } from './types';
 

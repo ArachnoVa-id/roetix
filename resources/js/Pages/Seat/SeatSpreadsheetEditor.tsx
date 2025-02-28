@@ -11,7 +11,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from '../../Components/ui/alert-dialog';
+} from '../../components/ui/alert-dialog';
 import { Category, Layout, SeatItem, SeatStatus } from './types';
 
 interface Props {
