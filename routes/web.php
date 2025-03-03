@@ -21,15 +21,15 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\SeatGridController;
 
-Route::get('/test-csrf', function () {
-    return response()->json(['csrf_token' => csrf_token()]);
+Route::domain('{client}.' . config('app.domain'))->group(function () {
+    Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('client.login');
 });
 
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
-Route::domain('{client}.' . config('app.domain'))->group(function () {
-    Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('client.login');
+Route::get('/test-csrf', function () {
+    return response()->json(['csrf_token' => csrf_token()]);
 });
 
 Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');

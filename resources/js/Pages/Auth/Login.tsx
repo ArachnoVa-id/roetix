@@ -44,7 +44,7 @@ export default function Login({
                 </div>
             )}
 
-            <div>Active Client: {client}</div>
+            <div>Active Client: {client ? client : 'Admin AV'}</div>
             <form onSubmit={submit}>
                 <div>
                     <InputLabel htmlFor="email" value="Email" />
