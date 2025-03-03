@@ -10,9 +10,11 @@ import { FormEventHandler } from 'react';
 export default function Login({
     status,
     canResetPassword,
+    client,
 }: {
     status?: string;
     canResetPassword: boolean;
+    client: string;
 }) {
     const { data, setData, post, processing, errors, reset } = useForm<{
         email: string;
@@ -42,6 +44,7 @@ export default function Login({
                 </div>
             )}
 
+            <div>Active Client: {client ? client : 'Admin AV'}</div>
             <form onSubmit={submit}>
                 <div>
                     <InputLabel htmlFor="email" value="Email" />
@@ -54,7 +57,9 @@ export default function Login({
                         className="mt-1 block w-full"
                         autoComplete="username"
                         isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('email', e.target.value)
+                        }
                     />
 
                     <InputError message={errors.email} className="mt-2" />
@@ -70,7 +75,9 @@ export default function Login({
                         value={data.password}
                         className="mt-1 block w-full"
                         autoComplete="current-password"
-                        onChange={(e) => setData('password', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('password', e.target.value)
+                        }
                     />
 
                     <InputError message={errors.password} className="mt-2" />
@@ -81,7 +88,9 @@ export default function Login({
                         <Checkbox
                             name="remember"
                             checked={data.remember}
-                            onChange={(e) =>
+                            onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>,
+                            ) =>
                                 setData('remember', e.target.checked as boolean)
                             }
                         />
@@ -105,7 +114,10 @@ export default function Login({
                         Log in
                     </PrimaryButton>
                 </div>
-                <a href={route('auth.google')} className="w-full text-center mt-2">
+                <a
+                    href={route('auth.google')}
+                    className="mt-2 w-full text-center"
+                >
                     Login With Google
                 </a>
             </form>

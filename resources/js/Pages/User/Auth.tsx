@@ -1,7 +1,10 @@
 import { PageProps } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 
-export default function Welcome({ auth }: PageProps) {
+export default function Welcome({
+    auth,
+    client,
+}: PageProps & { client: string }) {
     return (
         <>
             <Head title="Welcome" />
@@ -43,7 +46,7 @@ export default function Welcome({ auth }: PageProps) {
                 </header>
 
                 <main className="flex w-full grow items-center justify-center">
-                    <div>Production Server</div>
+                    <div>{(client ? 'Production for: ' : 'Production') + client}</div>
                 </main>
             </div>
         </>

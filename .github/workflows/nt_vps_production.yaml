@@ -46,9 +46,16 @@ jobs:
           else
               echo "Repository found. Pulling latest changes..."
               cd app/production
-              git pull origin main
+
+              git reset --hard HEAD
+              git clean -fd
+
+              # Enable pulling by marking as safe
+              git config --global --add safe.directory ~/novatix/app/production
+
+              git pull origin main --force
           fi
-          ls -la  # Debugging: Show contents
+
           EOT
           chmod +x ~/novatix/setups/update_repo_prod.sh
 
@@ -60,16 +67,20 @@ jobs:
           ENV_FILE="$HOME/novatix/app/production/.env"
 
           echo "Checking .env file..."
-          if [ ! -f "$ENV_FILE" ]; then
-              echo "Generating .env file..."
+          if [ -f "$ENV_FILE" ]; then
+              echo "Backing up existing .env file..."
+              mv "$ENV_FILE" "$ENV_FILE.bak"
+          fi
+          echo "Generating .env file..."
 
-              cat > "$ENV_FILE" <<"EOT_ENV"
+          cat > "$ENV_FILE" <<"EOT_ENV"
           APP_NAME=${{ vars.APP_NAME }}
           APP_ENV=${{ vars.APP_ENV }}
           APP_KEY=${{ secrets.APP_KEY }}
           APP_DEBUG=${{ vars.APP_DEBUG }}
           APP_TIMEZONE=${{ vars.APP_TIMEZONE }}
           APP_URL=${{ secrets.APP_URL }}
+          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
 
           APP_LOCALE=${{ vars.APP_LOCALE }}
           APP_FALLBACK_LOCALE=${{ vars.APP_FALLBACK_LOCALE }}
@@ -130,11 +141,8 @@ jobs:
           VITE_APP_NAME=${{ vars.APP_NAME }}
           EOT_ENV
 
-              chmod 660 "$ENV_FILE"
-              echo ".env file generated successfully."
-          else
-              echo ".env file already exists. Skipping generation."
-          fi
+          chmod 660 "$ENV_FILE"
+          echo ".env file generated successfully."
           EOT
 
           chmod +x ~/novatix/setups/generate_env_prod.sh

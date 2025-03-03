@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeatController;
 use Illuminate\Foundation\Application;
@@ -13,18 +14,26 @@ use App\Http\Controllers\EoAcaraController;
 use App\Http\Controllers\EoVenueController;
 use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\EoProfilController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\UserPageController;
 use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\SeatGridController;
 
-Route::get('/test-csrf', function () {
-    return response()->json(['csrf_token' => csrf_token()]);
+Route::domain('{client}.' . config('app.domain'))->group(function () {
+    Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('client.login');
 });
 
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
+Route::get('/test-csrf', function () {
+    return response()->json(['csrf_token' => csrf_token()]);
+});
+
+Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
+Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
 
 Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
 Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
@@ -32,7 +41,6 @@ Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.upd
 Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
 Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
 Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
-
 
 Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('my_tickets');
 

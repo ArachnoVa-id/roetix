@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import React, { useState } from 'react';
+import ProceedTransactionButton from './components/ProceedTransactionButton';
 import SeatMapDisplay from './SeatMapDisplay';
 import { Category, Layout, SeatItem } from './types';
 
@@ -32,7 +33,9 @@ const Index: React.FC<Props> = ({ layout }) => {
             );
         } else {
             if (selectedSeats.length < 5) {
+                seat.price = categoryPrice[seat.category];
                 setSelectedSeats([...selectedSeats, seat]);
+                console.log(seat);
             }
         }
     };
@@ -180,18 +183,9 @@ const Index: React.FC<Props> = ({ layout }) => {
                                 </div>
                             </div>
 
-                            <button
-                                className="mt-4 rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600 disabled:opacity-50"
-                                disabled={selectedSeats.length === 0}
-                                onClick={() =>
-                                    console.log(
-                                        'Proceed Transaction with',
-                                        selectedSeats,
-                                    )
-                                }
-                            >
-                                Proceed Transaction
-                            </button>
+                            <ProceedTransactionButton
+                                selectedSeats={selectedSeats}
+                            />
                         </div>
                     </div>
                 </div>

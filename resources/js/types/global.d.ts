@@ -6,6 +6,9 @@ import { PageProps as AppPageProps } from './';
 declare global {
     interface Window {
         axios: AxiosInstance;
+        snap?: {
+            pay: (snapToken: string, callbacks: MidtransCallbacks) => void;
+        };
     }
 
     /* eslint-disable no-var */

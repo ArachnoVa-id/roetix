@@ -101,9 +101,16 @@ jobs:
           else
               echo "Repository found. Pulling latest changes..."
               cd app/develop
-              git pull origin develop
+
+              git reset --hard HEAD
+              git clean -fd
+
+              # Enable pulling by marking as safe
+              git config --global --add safe.directory ~/novatix/app/develop
+
+              git pull origin develop --force
           fi
-          ls -la  # Debugging: Show contents
+
           EOT
           chmod +x ~/novatix/setups/update_repo.sh
 
@@ -144,16 +151,19 @@ jobs:
           ENV_FILE="$HOME/novatix/app/develop/.env"
 
           echo "Checking .env file..."
-          if [ ! -f "$ENV_FILE" ]; then
-              echo "Generating .env file..."
-
-              cat > "$ENV_FILE" <<"EOT_ENV"
+          if [ -f "$ENV_FILE" ]; then
+              echo "Backing up existing .env file..."
+              mv "$ENV_FILE" "$ENV_FILE.bak"
+          fi
+          echo "Generating .env file..."
+          cat > "$ENV_FILE" <<"EOT_ENV"
           APP_NAME=${{ vars.APP_NAME }}
           APP_ENV=${{ vars.APP_ENV }}
           APP_KEY=${{ secrets.APP_KEY }}
           APP_DEBUG=${{ vars.APP_DEBUG }}
           APP_TIMEZONE=${{ vars.APP_TIMEZONE }}
           APP_URL=${{ secrets.APP_URL_DEV }}
+          APP_DOMAIN=${{ secrets.APP_DOMAIN_DEV }}
 
           APP_LOCALE=${{ vars.APP_LOCALE }}
           APP_FALLBACK_LOCALE=${{ vars.APP_FALLBACK_LOCALE }}
@@ -180,7 +190,7 @@ jobs:
           SESSION_LIFETIME=${{ vars.SESSION_LIFETIME }}
           SESSION_ENCRYPT=${{ vars.SESSION_ENCRYPT }}
           SESSION_PATH=${{ vars.SESSION_PATH }}
-          SESSION_DOMAIN=${{ vars.SESSION_DOMAIN }}
+          SESSION_DOMAIN=${{ vars.SESSION_DOMAIN_DEV }}
 
           BROADCAST_CONNECTION=${{ vars.BROADCAST_CONNECTION }}
           FILESYSTEM_DISK=${{ vars.FILESYSTEM_DISK }}
@@ -214,11 +224,8 @@ jobs:
           VITE_APP_NAME=${{ vars.APP_NAME }}
           EOT_ENV
 
-              chmod 660 "$ENV_FILE"
-              echo ".env file generated successfully."
-          else
-              echo ".env file already exists. Skipping generation."
-          fi
+          chmod 660 "$ENV_FILE"
+          echo ".env file generated successfully."
           EOT
 
           chmod +x ~/novatix/setups/generate_env.sh
@@ -290,6 +297,4 @@ jobs:
           php artisan route:cache
           php artisan view:cache
 
-          # Run database migrations
-          php artisan migrate:fresh --force --seed
           EOF

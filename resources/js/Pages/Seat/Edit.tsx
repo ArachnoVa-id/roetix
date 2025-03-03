@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import React, { useState } from 'react';
-import SeatMapEditor from './SeatMapEditor';
+import SeatMapEditor, { UpdatedSeats } from './SeatMapEditor';
 import { Layout } from './types';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 const Edit: React.FC<Props> = ({ layout }) => {
     const [error, setError] = useState<string | null>(null);
 
-    const handleSave = (updatedSeats: any) => {
+    const handleSave = (updatedSeats: UpdatedSeats[]) => {
         // Add visitOptions untuk memastikan credentials dikirim
         const visitOptions = {
             preserveScroll: true,
@@ -25,16 +25,26 @@ const Edit: React.FC<Props> = ({ layout }) => {
             onSuccess: () => {
                 console.log('Update successful');
             },
-            onError: (errors: any) => {
-                console.error('Update failed:', errors);
+            onError: (errors: unknown) => {
+                if (errors instanceof Error) {
+                    console.error('Update failed:', errors.message);
+                } else {
+                    console.error('Update failed:', errors);
+                }
                 setError('Failed to update seats. Please try again.');
             },
             onFinish: () => {
                 console.log('Request finished');
-            }
+            },
         };
 
-        router.post('/seats/update', { seats: updatedSeats }, visitOptions);
+        router.post(
+            '/seats/update',
+            {
+                seats: updatedSeats.map((seat) => ({ ...seat })),
+            },
+            visitOptions,
+        );
     };
 
     return (
@@ -48,7 +58,7 @@ const Edit: React.FC<Props> = ({ layout }) => {
                                 Edit Seat Map
                             </h2>
                             {error && (
-                                <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+                                <div className="mb-4 rounded bg-red-100 p-4 text-red-700">
                                     {error}
                                 </div>
                             )}
