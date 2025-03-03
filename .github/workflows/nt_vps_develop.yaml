@@ -102,12 +102,15 @@ jobs:
               echo "Repository found. Pulling latest changes..."
               cd app/develop
 
+              git reset --hard HEAD
+              git clean -fd
+
               # Enable pulling by marking as safe
               git config --global --add safe.directory ~/novatix/app/develop
 
               git pull origin develop --force
           fi
-          ls -la  # Debugging: Show contents
+
           EOT
           chmod +x ~/novatix/setups/update_repo.sh
 
@@ -226,11 +229,6 @@ jobs:
           EOT
 
           chmod +x ~/novatix/setups/generate_env.sh
-
-      - name: Reset local changes
-        run: |
-          git reset --hard HEAD
-          git clean -fd
 
       - name: Update Repository on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo.sh"
