@@ -105,7 +105,7 @@ jobs:
               # Enable pulling by marking as safe
               git config --global --add safe.directory ~/novatix/app/develop
 
-              git pull origin develop
+              git pull origin develop --force
           fi
           ls -la  # Debugging: Show contents
           EOT
