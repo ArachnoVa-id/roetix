@@ -148,10 +148,12 @@ jobs:
           ENV_FILE="$HOME/novatix/app/develop/.env"
 
           echo "Checking .env file..."
-          if [ ! -f "$ENV_FILE" ]; then
-              echo "Generating .env file..."
-
-              cat > "$ENV_FILE" <<"EOT_ENV"
+          if [ -f "$ENV_FILE" ]; then
+              echo "Backing up existing .env file..."
+              mv "$ENV_FILE" "$ENV_FILE.bak"
+          fi
+          echo "Generating .env file..."
+          cat > "$ENV_FILE" <<"EOT_ENV"
           APP_NAME=${{ vars.APP_NAME }}
           APP_ENV=${{ vars.APP_ENV }}
           APP_KEY=${{ secrets.APP_KEY }}
@@ -219,14 +221,16 @@ jobs:
           VITE_APP_NAME=${{ vars.APP_NAME }}
           EOT_ENV
 
-              chmod 660 "$ENV_FILE"
-              echo ".env file generated successfully."
-          else
-              echo ".env file already exists. Skipping generation."
-          fi
+          chmod 660 "$ENV_FILE"
+          echo ".env file generated successfully."
           EOT
 
           chmod +x ~/novatix/setups/generate_env.sh
+
+      - name: Reset local changes
+        run: |
+          git reset --hard HEAD
+          git clean -fd
 
       - name: Update Repository on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo.sh"
