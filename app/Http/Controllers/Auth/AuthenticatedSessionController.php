@@ -38,7 +38,7 @@ class AuthenticatedSessionController extends Controller
         if ($request->client)
             return redirect()->intended(route('client.home', ['client' => $request->client], false));
         else
-            return redirect()->intended(route('admin', absolute: false));
+            return redirect()->route('filament.admin.pages.dashboard', ['tenant' => '08235c2e-b648-4aa2-88bf-97f3b4edd3b9']);
     }
 
     /**
