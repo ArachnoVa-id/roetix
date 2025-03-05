@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('team_id', 36);
             $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
             $table->string('name');
+            $table->string('slug');
             $table->enum('category', ['concert', 'sports', 'workshop', 'etc']);
             $table->dateTime('start_date');
             $table->dateTime('end_date');

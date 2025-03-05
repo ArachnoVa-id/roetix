@@ -17,9 +17,8 @@ use App\Http\Controllers\EoProfilController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\UserPageController;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-
-use App\Http\Controllers\SeatGridController;
 
 Route::domain('{client}.' . config('app.domain'))->group(function () {
     Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
@@ -35,9 +34,33 @@ Route::controller(SocialiteController::class)->group(function () {
 });
 
 Route::get('/', function () {
-    return redirect('/login');
-});
-Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    $user = Auth::user();
+
+    if ($user) {
+        $userModel = User::find($user->user_id);
+
+        $firstTeam = $userModel->teams()->first();
+
+        return redirect()->to(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->name]));
+    } else {
+        return redirect()->route('login');
+    }
+})->name('home');
+
+Route::get('/login', function () {
+    $user = Auth::user();
+
+    if ($user) {
+        $userModel = User::find($user->user_id);
+
+        $firstTeam = $userModel->teams()->first();
+
+        return redirect()->to(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->name]));
+    } else {
+        $page = new AuthenticatedSessionController();
+        return $page->create();
+    }
+})->name('login');
 
 Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
 Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
@@ -45,46 +68,6 @@ Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.upd
 Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
 Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
 Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
-
-Route::middleware(['auth', 'verified'])->prefix('eo')->group(function () {
-
-    // Route untuk Acara
-    Route::prefix('acara')->name('acara.')->group(function () {
-        Route::get('/', [EoAcaraController::class, 'index'])->name('index');
-        Route::get('/buat', [EoAcaraController::class, 'create'])->name('create');
-        Route::get('/edit', [EoAcaraController::class, 'edit'])->name('edit');
-    });
-
-    // Route untuk Venue
-    Route::prefix('venue')->name('venue.')->group(function () {
-        Route::get('/', [EoVenueController::class, 'index'])->name('index');
-        Route::get('/sewa', [EoVenueController::class, 'sewa'])->name('sewa');
-        Route::get('/pengaturan', [EoVenueController::class, 'pengaturan'])->name('pengaturan');
-    });
-
-    // Route untuk Tiket
-    Route::prefix('tiket')->name('tiket.')->group(function () {
-        Route::get('/pengaturan', [EoTiketController::class, 'pengaturan'])->name('pengaturan');
-        Route::get('/harga', [EoTiketController::class, 'harga'])->name('harga');
-        Route::get('/verifikasi', [EoTiketController::class, 'verifikasi'])->name('verifikasi');
-    });
-
-    // Route untuk Analitik
-    Route::prefix('analitik')->group(function () {
-        Route::get('/penjualan', [EoAnalitikController::class, 'analitikpenjualan'])
-            ->name('penjualan.index');
-        Route::get('/penjualan/{orderId}', [EoAnalitikController::class, 'penjualan'])
-            ->name('penjualan.detail');
-        Route::get('/riwayat-acara', [EoAnalitikController::class, 'riwayatacara'])
-            ->name('acara.riwayat');
-    });
-
-    // Route untuk Profil
-    Route::prefix('profile')->name('profil.')->group(function () {
-        Route::get('/', [EoProfilController::class, 'pengaturan'])->name('index');
-        Route::get('/edit', [EoProfilController::class, 'edit'])->name('edit');
-    });
-});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
