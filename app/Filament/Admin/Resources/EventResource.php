@@ -12,16 +12,69 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Infolists;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 
 class EventResource extends Resource
 {
     protected static ?string $model = Event::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
+    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    {
+        return $infolist->schema([
+            Infolists\Components\Section::make()->schema([
+                Infolists\Components\TextEntry::make('name')
+                ->label('NAME')
+                ->icon('heroicon-m-film'),
+                Infolists\Components\TextEntry::make('slug')
+                ->label('SLUG')
+                ->icon('heroicon-m-magnifying-glass-plus'),
+                Infolists\Components\TextEntry::make('category')
+                ->label('CATEGORY')
+                ->icon('heroicon-m-tag'),
+                Infolists\Components\TextEntry::make('status')
+                ->label('STATUS')
+                ->icon('heroicon-m-exclamation-triangle')
+                ->color('primary'),
+                Infolists\Components\TextEntry::make('start_date')
+                ->label('START')
+                ->icon('heroicon-m-calendar-date-range')
+                ->dateTime(),
+                Infolists\Components\TextEntry::make('end_date')
+                ->label('END')
+                ->icon('heroicon-m-calendar-date-range')
+                ->dateTime(),
+                Infolists\Components\TextEntry::make('location')
+                ->label('LOCATION')
+                ->icon('heroicon-m-map-pin')
+                ,
+            ])->columns(2),
+            Infolists\Components\Tabs::make('Tabs')
+            ->tabs([
+                Infolists\Components\Tabs\Tab::make('Settings')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                    ]),
+                Infolists\Components\Tabs\Tab::make('Scan Tickets')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                    ]),
+            ])
+            ->columnSpan('full'),
+        ]);
+    }
 
     public static function form(Form $form): Form
     {
@@ -91,8 +144,8 @@ class EventResource extends Resource
                     ->label('Scan Ticket')
                     ->icon('heroicon-o-qr-code')
                     ->color('success')
-                    // ->url(fn ($record) => TicketScan::getUrl(['record' => $record])),
-                    ->url(fn ($record) => Settings::getUrl(['record' => $record])),
+                    ->url(fn ($record) => TicketScan::getUrl(['record' => $record])),
+                    // ->url(fn ($record) => Settings::getUrl(['record' => $record])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -114,6 +167,7 @@ class EventResource extends Resource
             'index' => Pages\ListEvents::route('/'),
             'create' => Pages\CreateEvent::route('/create'),
             'edit' => Pages\EditEvent::route('/{record}/edit'),
+            'view' => Pages\ViewEvent::route('/{record}'),
             'ticket-scan' => Pages\TicketScan::route('/{record}/ticket-scan'),
             'settings' => Pages\Settings::route('/{record}/settings'),
         ];
