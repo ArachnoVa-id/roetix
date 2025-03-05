@@ -10,13 +10,13 @@ use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\UserPageController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use App\Helpers\RoutingHelper;
 
 Route::domain('{client}.' . config('app.domain'))->group(function () {
     Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('client.login');
     Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('client.my_tickets');
     Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
-    Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
 });
 
 Route::controller(SocialiteController::class)->group(function () {
@@ -24,34 +24,17 @@ Route::controller(SocialiteController::class)->group(function () {
     Route::get('/auth/google-callback', 'googleAuthentication')->name('auth.google-authentication');
 });
 
+Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
+
 Route::get('/', function () {
-    $user = Auth::user();
-
-    if ($user) {
-        $userModel = User::find($user->user_id);
-
-        $firstTeam = $userModel->teams()->first();
-
-        return redirect()->to(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->name]));
-    } else {
-        return redirect()->route('login');
-    }
+    return Auth::check()
+        ? RoutingHelper::redirectToDashboard(User::find(Auth::id()))
+        : redirect()->route('login');
 })->name('home');
 
-Route::get('/login', function () {
-    $user = Auth::user();
-
-    if ($user) {
-        $userModel = User::find($user->user_id);
-
-        $firstTeam = $userModel->teams()->first();
-
-        return redirect()->to(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->name]));
-    } else {
-        $page = new AuthenticatedSessionController();
-        return $page->create();
-    }
-})->name('login');
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])
+    ->name('login')
+    ->middleware('guest');
 
 Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
 Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');

@@ -39,7 +39,6 @@ export default function Landing({ client, layout }: Props) {
             if (selectedSeats.length < 5) {
                 seat.price = categoryPrice[seat.category];
                 setSelectedSeats([...selectedSeats, seat]);
-                console.log(seat);
             }
         }
     };

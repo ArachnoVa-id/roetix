@@ -72,8 +72,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             grouped_items: groupedItems,
         };
 
-        console.log('Request Payload:', requestPayload);
-
         try {
             // Ensure CSRF token is available
             await fetchCsrfToken();
@@ -87,12 +85,10 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
             if (window.snap) {
                 const midtransCallbacks: MidtransCallbacks = {
-                    onSuccess: (result) =>
-                        console.log('Payment success:', result),
-                    onPending: (result) =>
-                        console.log('Payment pending:', result),
+                    onSuccess: () => {},
+                    onPending: () => {},
                     onError: (error) => console.error('Payment failed:', error),
-                    onClose: () => console.log('Payment popup closed'),
+                    onClose: () => {},
                 };
 
                 window.snap.pay(snapToken, midtransCallbacks);

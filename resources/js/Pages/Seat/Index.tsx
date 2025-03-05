@@ -35,7 +35,6 @@ const Index: React.FC<Props> = ({ layout }) => {
             if (selectedSeats.length < 5) {
                 seat.price = categoryPrice[seat.category];
                 setSelectedSeats([...selectedSeats, seat]);
-                console.log(seat);
             }
         }
     };

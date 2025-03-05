@@ -9,6 +9,7 @@ use Exception;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -22,6 +23,11 @@ class PaymentController extends Controller
 
     public function createCharge(Request $request)
     {
+        Log::info('Midtrans API Key:', [
+            'server_key' => config('midtrans.server_key'),
+            'is_production' => config('midtrans.is_production'),
+        ]);
+
         $itemDetails = collect($request->grouped_items)->map(function ($details, $category) {
             return [
                 'id' => $category,

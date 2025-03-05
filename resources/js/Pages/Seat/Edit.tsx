@@ -20,11 +20,8 @@ const Edit: React.FC<Props> = ({ layout }) => {
             },
             onBefore: () => {
                 setError(null);
-                console.log('Starting request with seats:', updatedSeats);
             },
-            onSuccess: () => {
-                console.log('Update successful');
-            },
+            onSuccess: () => {},
             onError: (errors: unknown) => {
                 if (errors instanceof Error) {
                     console.error('Update failed:', errors.message);
@@ -33,9 +30,7 @@ const Edit: React.FC<Props> = ({ layout }) => {
                 }
                 setError('Failed to update seats. Please try again.');
             },
-            onFinish: () => {
-                console.log('Request finished');
-            },
+            onFinish: () => {},
         };
 
         router.post(
