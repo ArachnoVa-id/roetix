@@ -66,6 +66,14 @@ export default function Authenticated({
                                     href={route('logout')}
                                     as="button"
                                     active={false}
+                                    headers={{
+                                        'X-CSRF-TOKEN':
+                                            (
+                                                document.querySelector(
+                                                    'meta[name="csrf-token"]',
+                                                ) as HTMLMetaElement
+                                            )?.content || '',
+                                    }}
                                 >
                                     Log Out
                                 </NavLink>

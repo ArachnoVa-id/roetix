@@ -42,7 +42,7 @@ class UserPageController extends Controller
 
             return Inertia::render('User/Landing', [
                 'client' => $client,
-                'layout' => $layout // Now including the layout prop
+                'layout' => $layout
             ]);
         } else {
             return Inertia::render('User/Auth', [

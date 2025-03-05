@@ -32,6 +32,9 @@ export default function Login({
         e.preventDefault();
 
         post(route('login'), {
+            onSuccess: () => {
+                window.location.reload();
+            },
             onFinish: () => reset('password'),
         });
     };

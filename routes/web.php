@@ -3,17 +3,8 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeatController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\EoPenjualanController;
-use App\Http\Controllers\EoAnalitikController;
-use App\Http\Controllers\EoAcaraController;
-use App\Http\Controllers\EoVenueController;
-use App\Http\Controllers\EoTiketController;
-use App\Http\Controllers\EoProfilController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\UserPageController;
@@ -74,5 +65,13 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+Route::get('/check-session', function () {
+    return response()->json([
+        'user' => Auth::user(),
+        'session' => session()->all(),
+    ]);
+});
+
 
 require __DIR__ . '/auth.php';
