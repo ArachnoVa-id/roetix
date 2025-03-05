@@ -35,7 +35,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('home', absolute: false));
+        if ($request->client)
+            return redirect()->intended(route('client.home', ['client' => $request->client], false));
+        else
+            return redirect()->intended(route('admin', absolute: false));
     }
 
     /**
@@ -43,6 +46,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        dd('test');
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

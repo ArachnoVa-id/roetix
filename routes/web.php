@@ -24,16 +24,20 @@ use App\Http\Controllers\SeatGridController;
 Route::domain('{client}.' . config('app.domain'))->group(function () {
     Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('client.login');
+    Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('client.my_tickets');
+    Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
+    Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
 });
 
-Route::get('/', [UserPageController::class, 'landing'])->name('home');
-
-Route::get('/test-csrf', function () {
-    return response()->json(['csrf_token' => csrf_token()]);
+Route::controller(SocialiteController::class)->group(function () {
+    Route::get('/auth/google', 'googleLogin')->name('auth.google');
+    Route::get('/auth/google-callback', 'googleAuthentication')->name('auth.google-authentication');
 });
 
-Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
-Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
+Route::get('/', function () {
+    return redirect('/login');
+});
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
 
 Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
 Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
@@ -41,24 +45,6 @@ Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.upd
 Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
 Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
 Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
-
-Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('my_tickets');
-
-Route::get('/test', function () {
-    return Inertia::render('Test');
-});
-
-Route::controller(SocialiteController::class)->group(function () {
-    Route::get('auth/google', 'googleLogin')->name('auth.google');
-    Route::get('auth/google-callback', 'googleAuthentication')->name('auth.google-authentication');
-});
-
-Route::get('/test-login', function () {
-    $user = \App\Models\User::where('email', 'vendor1@example.com')->first();
-    Auth::login($user);
-
-    return redirect('/');
-});
 
 Route::middleware(['auth', 'verified'])->prefix('eo')->group(function () {
 
@@ -68,11 +54,6 @@ Route::middleware(['auth', 'verified'])->prefix('eo')->group(function () {
         Route::get('/buat', [EoAcaraController::class, 'create'])->name('create');
         Route::get('/edit', [EoAcaraController::class, 'edit'])->name('edit');
     });
-
-    // Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-    // Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-    // Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-    // Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
 
     // Route untuk Venue
     Route::prefix('venue')->name('venue.')->group(function () {
@@ -105,19 +86,18 @@ Route::middleware(['auth', 'verified'])->prefix('eo')->group(function () {
     });
 });
 
-
-// Route::get('/dashboard', function () {
-//     return Inertia::render('Dashboard');
-// })->middleware(['auth', 'verified'])->name('home');
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-// Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-// Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-
 require __DIR__ . '/auth.php';
+
+Auth::routes();
+
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+Auth::routes();
+
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

@@ -60,19 +60,19 @@ class PaymentController extends Controller
     public function midtransCallback(Request $request)
     {
         $data = $request->all();
-    
+
         try {
             if (!isset($data['order_id'], $data['gross_amount'], $data['transaction_status'])) {
                 return response()->json(['error' => 'Invalid request data'], 400);
             }
-    
+
             $team = Team::first();
             $coupon = Coupon::first();
-    
+
             if (!$team || !$coupon) {
                 return response()->json(['error' => 'Team or Coupon not found'], 404);
             }
-    
+
             // Buat order baru
             Order::create([
                 'user_id' => auth()->user_id ?? null,
@@ -82,11 +82,10 @@ class PaymentController extends Controller
                 'total_price' => $data['gross_amount'],
                 'status' => $data['transaction_status']
             ]);
-    
+
             return response()->json(['message' => 'Order successfully created'], 201);
         } catch (Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
 }
