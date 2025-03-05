@@ -13,8 +13,13 @@ use Illuminate\Support\Facades\Auth;
 use App\Helpers\RoutingHelper;
 
 Route::domain('{client}.' . config('app.domain'))->group(function () {
-    Route::get('/', [UserPageController::class, 'landing'])->name('client.home');
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('client.login');
+    Route::get('/', [UserPageController::class, 'landing'])
+        ->name('client.home')
+        ->middleware('auth')
+    ;
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])
+        ->name('client.login')
+        ->middleware('guest');
     Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('client.my_tickets');
     Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
 });
@@ -27,10 +32,15 @@ Route::controller(SocialiteController::class)->group(function () {
 Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
 
 Route::get('/', function () {
-    return Auth::check()
-        ? RoutingHelper::redirectToDashboard(User::find(Auth::id()))
-        : redirect()->route('login');
-})->name('home');
+    $user = Auth::user();
+
+    $user = User::find($user->user_id);
+
+    $firstTeam = optional($user->teams()->first())->name;
+
+    return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam]);
+})->name('home')
+    ->middleware('auth');
 
 Route::get('/login', [AuthenticatedSessionController::class, 'create'])
     ->name('login')
