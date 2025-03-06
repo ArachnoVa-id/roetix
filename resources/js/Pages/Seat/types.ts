@@ -134,3 +134,14 @@ export interface MidtransTransactionResult {
     status_message: string;
     status_code: string;
 }
+export interface MidtransError {
+    message: string;
+    status_code: string;
+    error_messages?: string[];
+}
+export interface MidtransCallbacks {
+    onSuccess: (result: MidtransTransactionResult) => void;
+    onPending: (result: MidtransTransactionResult) => void;
+    onError: (error: MidtransError) => void;
+    onClose: () => void;
+}
