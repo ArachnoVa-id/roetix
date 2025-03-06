@@ -132,8 +132,8 @@ const SeatMapDisplay: React.FC<Props> = ({
     const reversedGrid = [...grid].reverse();
 
     return (
-        <div className="flex flex-col items-center">
-            <div className="grid gap-1">
+        <div className="flex w-full flex-col items-center">
+            <div className="grid w-full gap-1 overflow-x-auto">
                 {reversedGrid.map((row, reversedIndex) => (
                     <div
                         key={reversedIndex}
@@ -149,7 +149,7 @@ const SeatMapDisplay: React.FC<Props> = ({
             </div>
 
             {/* Stage */}
-            <div className="mt-12 flex h-12 w-[50vw] items-center justify-center rounded border border-gray-200 bg-white">
+            <div className="mt-12 flex h-12 w-full max-w-4xl items-center justify-center rounded border border-gray-200 bg-white">
                 Stage
             </div>
         </div>
