@@ -28,6 +28,9 @@ Route::domain('{client}.' . config('app.domain'))->group(function () {
 
 Route::get('/', [UserPageController::class, 'landing'])->name('home');
 
+Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])->name('events.tickets.show');
+Route::get('/events/tickets', [EoTiketController::class, 'show'])->name('events.tickets.index');
+
 Route::get('/test-csrf', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 });
@@ -37,6 +40,7 @@ Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCal
 
 Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
 Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
 Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
 Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
 Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');

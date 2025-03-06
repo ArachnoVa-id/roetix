@@ -15,6 +15,11 @@ return new class extends Migration
             $table->string('event_id', 36)->primary();
             $table->string('team_id', 36);
             $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
+            
+            // Kolom venue_id dengan nilai default '123'
+            $table->string('venue_id', 36);
+            $table->foreign('venue_id')->references('venue_id')->on('venues')->onDelete('cascade');
+            
             $table->string('name');
             $table->enum('category', ['concert', 'sports', 'workshop', 'etc']);
             $table->dateTime('start_date');

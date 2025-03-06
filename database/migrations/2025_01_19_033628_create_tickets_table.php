@@ -19,7 +19,7 @@ return new class extends Migration
             // $table->string('order_id', 36);
             $table->enum('ticket_type', ['standard', 'VIP'])->default('standard');
             $table->decimal('price', 5, 2)->default(123.45);
-            $table->enum('status', ['available', 'sold', 'reserved'])->default('available');
+            $table->enum('status', ['available', 'booked', 'reserved', 'in_transaction'])->default('available');
             $table->timestamps();
             
             // foreign key
