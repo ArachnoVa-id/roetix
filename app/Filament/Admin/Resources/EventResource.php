@@ -66,7 +66,7 @@ class EventResource extends Resource
                     ]),
                 Infolists\Components\Tabs\Tab::make('Scan Tickets')
                     ->schema([
-                        Livewire::make('event-scan-ticket'),
+                        Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
                     ]),
             ])
             ->columnSpan('full'),
