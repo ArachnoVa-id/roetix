@@ -1,24 +1,26 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransactionButton';
 import SeatMapDisplay from '@/Pages/Seat/SeatMapDisplay';
 import { Layout, SeatItem } from '@/Pages/Seat/types';
 import { Head } from '@inertiajs/react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface Event {
-    id: string;
+    event_id: string;
     name: string;
+    venue_id: string;
     date: string;
-    venue: {
-        id: string;
-        name: string;
-    };
+    team_id: string;
+}
+
+interface Venue {
+    venue_id: string;
+    name: string;
 }
 
 interface Props {
-    client?: string;
     layout: Layout;
     event: Event;
+    venue: Venue;
     ticketTypes: string[];
 }
 
@@ -28,28 +30,15 @@ const formatRupiah = (value: number): string =>
         currency: 'IDR',
     }).format(value);
 
-export default function Landing({
-    client,
+const ShowTickets: React.FC<Props> = ({
     layout,
     event,
-    ticketTypes = ['standard', 'VIP', 'Regular'],
-}: Props) {
+    venue,
+    ticketTypes,
+}) => {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
 
-    // Create a map of ticket types to colors for display
-    const ticketTypeColors: Record<string, string> = {};
-    ticketTypes.forEach((type, index) => {
-        const colorClasses = [
-            'bg-cyan-400', // For VIP or first type
-            'bg-yellow-400', // For standard or second type
-            'bg-green-400', // For third type
-            'bg-purple-400', // For fourth type
-            'bg-gray-300', // For any additional type
-        ];
-
-        ticketTypeColors[type] = colorClasses[index] || 'bg-gray-300';
-    });
-
+    // Function to handle seat click
     const handleSeatClick = (seat: SeatItem) => {
         if (seat.status !== 'available') {
             return; // Only allow selecting available seats
@@ -68,61 +57,53 @@ export default function Landing({
     };
 
     // Calculate subtotal, tax and total
-    const subtotal = selectedSeats.reduce((acc, seat) => {
-        // Explicit check and conversion with type assertions
-        let price = 0;
-        if (seat.price !== undefined && seat.price !== null) {
-            price =
-                typeof seat.price === 'string'
-                    ? parseFloat(
-                          (seat.price as string)
-                              .replace(/[^\d.,-]/g, '')
-                              .replace(',', '.'),
-                      )
-                    : Number(seat.price);
-        }
-        return acc + price;
-    }, 0);
+    const subtotal = selectedSeats.reduce(
+        (acc, seat) => acc + (seat.price || 0),
+        0,
+    );
     const taxRate = 1; // 1% tax
     const taxAmount = (subtotal * taxRate) / 100;
     const total = subtotal + taxAmount;
+
+    // Create a map of ticket types to colors for display
+    const ticketTypeColors: Record<string, string> = {};
+    ticketTypes.forEach((type, index) => {
+        const colorClasses = [
+            'bg-cyan-400', // For VIP or first type
+            'bg-yellow-400', // For standard or second type
+            'bg-green-400', // For third type
+            'bg-purple-400', // For fourth type
+            'bg-gray-300', // For any additional type
+        ];
+
+        ticketTypeColors[type] = colorClasses[index] || 'bg-gray-300';
+    });
 
     // Status legend
     const statusLegends = [
         { label: 'Available', color: 'bg-white border-2 border-gray-300' },
         { label: 'Booked', color: 'bg-red-500' },
         { label: 'In Transaction', color: 'bg-yellow-500' },
+        { label: 'Reserved', color: 'bg-blue-300' },
         { label: 'Not Available', color: 'bg-gray-400' },
     ];
 
     return (
         <AuthenticatedLayout>
-            <Head title="Book Tickets" />
+            <Head title={`Tickets for ${event.name}`} />
+
             <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">
-                            {event ? (
-                                <>
-                                    <h1 className="text-2xl font-bold">
-                                        {event.name}
-                                    </h1>
-                                    <p className="text-lg text-gray-600">
-                                        Venue: {event.venue.name}
-                                    </p>
-                                    <p className="text-gray-600">
-                                        Date:{' '}
-                                        {new Date(
-                                            event.date,
-                                        ).toLocaleDateString()}
-                                    </p>
-                                </>
-                            ) : (
-                                <h1 className="text-2xl font-bold">
-                                    {(client ? client + ' : ' : '') +
-                                        'Buy Tickets Here'}
-                                </h1>
-                            )}
+                            <h1 className="text-2xl font-bold">{event.name}</h1>
+                            <p className="text-lg text-gray-600">
+                                Venue: {venue.name}
+                            </p>
+                            <p className="text-gray-600">
+                                Date:{' '}
+                                {new Date(event.date).toLocaleDateString()}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -131,7 +112,7 @@ export default function Landing({
             <div className="py-6">
                 <div className="mx-auto w-full sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white p-6 shadow-xl sm:rounded-lg">
-                        {/* Legend Section */}
+                        {/* Legends Section */}
                         <div className="mb-8">
                             <h3 className="mb-4 text-center text-2xl font-bold">
                                 Seat Map
@@ -186,6 +167,7 @@ export default function Landing({
                             </div>
                         </div>
 
+                        {/* Seat Map */}
                         <div className="overflow-x-auto">
                             <div className="w-full">
                                 <SeatMapDisplay
@@ -215,7 +197,6 @@ export default function Landing({
                                                 <p className="font-semibold">
                                                     Ticket Type:{' '}
                                                     {seat.ticket_type ||
-                                                        seat.category ||
                                                         'Standard'}
                                                 </p>
                                                 <p className="text-sm">
@@ -257,9 +238,17 @@ export default function Landing({
 
                             {/* Proceed Button */}
                             {selectedSeats.length > 0 && (
-                                <ProceedTransactionButton
-                                    selectedSeats={selectedSeats}
-                                />
+                                <div className="mt-4">
+                                    <button
+                                        className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        onClick={() => {
+                                            // Handle payment process
+                                            alert('Proceeding to payment...');
+                                        }}
+                                    >
+                                        Proceed to Payment
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -267,4 +256,6 @@ export default function Landing({
             </div>
         </AuthenticatedLayout>
     );
-}
+};
+
+export default ShowTickets;

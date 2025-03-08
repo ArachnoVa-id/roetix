@@ -42,10 +42,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,
             TeamSeeder::class,
+            VenueSeeder::class,
             EventSeeder::class,
             EventVariablesSeeder::class,
             UserContactSeeder::class,
-            VenueSeeder::class,
             TicketSeeder::class,
             TicketCategorySeeder::class,
             CouponSeeder::class,

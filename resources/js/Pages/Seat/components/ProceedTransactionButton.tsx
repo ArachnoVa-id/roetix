@@ -15,13 +15,22 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
     // Function to group seats by category
     const transformSeatsToGroupedItems = (seats: SeatItem[]) => {
-        return seats.reduce<
-            Record<
-                string,
-                { price: number; quantity: number; seatNumbers: string[] }
-            >
-        >((grouped, seat) => {
-            const { category, seat_number, price = 50000 } = seat;
+        const grouped: Record<
+            string,
+            {
+                price: number;
+                quantity: number;
+                seatNumbers: string[];
+            }
+        > = {};
+
+        seats.forEach((seat) => {
+            const { category, seat_number, price } = seat;
+
+            // Skip seats with undefined category or seat_number
+            if (category === undefined || seat_number === undefined) {
+                return;
+            }
 
             if (!grouped[category]) {
                 grouped[category] = { price, quantity: 0, seatNumbers: [] };

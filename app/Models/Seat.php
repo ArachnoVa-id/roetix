@@ -21,8 +21,6 @@ class Seat extends Model
         'venue_id',
         'seat_number',
         'position',
-        'status',
-        'category',
         'row',
         'column'
     ];

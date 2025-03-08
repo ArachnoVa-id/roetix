@@ -10,7 +10,7 @@ use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\UserPageController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use App\Helpers\RoutingHelper;
+use App\Http\Controllers\EoTiketController;
 
 Route::domain('{client}.' . config('app.domain'))->group(function () {
     Route::get('/', [UserPageController::class, 'landing'])
@@ -21,6 +21,9 @@ Route::domain('{client}.' . config('app.domain'))->group(function () {
         ->name('client.login')
         ->middleware('guest');
     Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('client.my_tickets');
+
+    Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])->name('events.tickets.show');
+    Route::get('/events/tickets', [EoTiketController::class, 'show'])->name('events.tickets.index');
     Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
 });
 
@@ -48,6 +51,7 @@ Route::get('/login', [AuthenticatedSessionController::class, 'create'])
 
 Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
 Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
 Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
 Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
 Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');

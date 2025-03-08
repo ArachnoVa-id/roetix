@@ -1,9 +1,5 @@
-export type SeatStatus =
-    | 'available'
-    | 'booked'
-    | 'in_transaction'
-    | 'not_available';
-export type Category = 'diamond' | 'gold' | 'silver';
+export type SeatStatus = 'available' | 'booked' | 'reserved' | 'in_transaction';
+export type Category = 'standard' | 'VIP';
 export type ItemType = 'seat' | 'label';
 
 export interface SeatPosition {
@@ -22,9 +18,9 @@ export interface SeatItem extends BaseItem {
     seat_id: string;
     seat_number: string;
     status: SeatStatus;
-    category: Category;
+    ticket_type?: string;
+    category?: Category;
     price: number;
-    seat_type: string;
 }
 
 export interface LabelItem extends BaseItem {
@@ -44,11 +40,11 @@ export type Position = string | { x: number; y: number };
 
 export interface Seat {
     seat_id: string;
-    // section_id: string;
     seat_number: string;
     position: Position;
     status: SeatStatus;
-    category: Category;
+    ticket_type?: string;
+    category?: Category;
     row: string;
     column: number;
     price: number;
@@ -88,6 +84,7 @@ export interface SeatMap {
     column: number;
     type: 'seat' | 'label';
     category?: Category;
+    ticket_type?: string;
     status?: SeatStatus;
     label?: string;
     seat_id?: string;
@@ -107,7 +104,7 @@ export interface PaymentRequestPayload {
     email: string;
     amount: number;
     grouped_items: {
-        [category: string]: {
+        [ticket_type: string]: {
             price: number;
             quantity: number;
             seatNumbers: string[];
@@ -137,13 +134,11 @@ export interface MidtransTransactionResult {
     status_message: string;
     status_code: string;
 }
-
 export interface MidtransError {
     message: string;
     status_code: string;
     error_messages?: string[];
 }
-
 export interface MidtransCallbacks {
     onSuccess: (result: MidtransTransactionResult) => void;
     onPending: (result: MidtransTransactionResult) => void;

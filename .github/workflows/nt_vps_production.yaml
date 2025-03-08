@@ -42,7 +42,7 @@ jobs:
                   rm -rf app/production
               fi
               echo "Cloning repository..."
-              git clone git@github.com:ArachnoVa-id/novatix.git app/production
+              git clone --branch main git@github.com:ArachnoVa-id/novatix.git app/production
           else
               echo "Repository found. Pulling latest changes..."
               cd app/production
@@ -53,7 +53,7 @@ jobs:
               # Enable pulling by marking as safe
               git config --global --add safe.directory ~/novatix/app/production
 
-              git pull origin production --force
+              git pull origin main --force
           fi
 
           EOT
@@ -162,7 +162,7 @@ jobs:
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
 
-  update-staging:
+  update-production:
     runs-on: ubuntu-latest
     needs: vps-sync
 
