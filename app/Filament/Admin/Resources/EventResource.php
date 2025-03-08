@@ -21,6 +21,8 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 
+use Filament\Infolists\Components\ViewEntry;
+
 class EventResource extends Resource
 {
     protected static ?string $model = Event::class;
@@ -61,9 +63,8 @@ class EventResource extends Resource
             ->tabs([
                 Infolists\Components\Tabs\Tab::make('Settings')
                     ->schema([
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                        ViewEntry::make('settings-placeholder')
+                            ->view('livewire.event-settings-infolist'),
                     ]),
                 Infolists\Components\Tabs\Tab::make('Scan Tickets')
                     ->schema([
