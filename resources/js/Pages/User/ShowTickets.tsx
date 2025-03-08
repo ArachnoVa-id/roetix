@@ -18,6 +18,7 @@ interface Venue {
 }
 
 interface Props {
+    client: string;
     layout: Layout;
     event: Event;
     venue: Venue;
@@ -31,6 +32,7 @@ const formatRupiah = (value: number): string =>
     }).format(value);
 
 const ShowTickets: React.FC<Props> = ({
+    client,
     layout,
     event,
     venue,
@@ -89,7 +91,7 @@ const ShowTickets: React.FC<Props> = ({
     ];
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout client={client}>
             <Head title={`Tickets for ${event.name}`} />
 
             <div className="py-8">

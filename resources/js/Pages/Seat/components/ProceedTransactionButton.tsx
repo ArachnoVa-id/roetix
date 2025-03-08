@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import {
     MidtransCallbacks,
+    PaymentRequestGroupedItems,
     PaymentRequestPayload,
     PaymentResponse,
     ProceedTransactionButtonProps,
@@ -14,15 +15,10 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     const [isLoading, setIsLoading] = useState(false);
 
     // Function to group seats by category
-    const transformSeatsToGroupedItems = (seats: SeatItem[]) => {
-        const grouped: Record<
-            string,
-            {
-                price: number;
-                quantity: number;
-                seatNumbers: string[];
-            }
-        > = {};
+    const transformSeatsToGroupedItems = (
+        seats: SeatItem[],
+    ): PaymentRequestGroupedItems => {
+        const grouped: PaymentRequestGroupedItems = {};
 
         seats.forEach((seat) => {
             const { category, seat_number, price } = seat;
@@ -38,15 +34,13 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
             grouped[category].quantity += 1;
             grouped[category].seatNumbers.push(seat_number);
+        });
 
-            return grouped;
-        }, {});
+        return grouped;
     };
 
     // Calculate total amount
-    const calculateTotalAmount = (
-        groupedItems: PaymentRequestPayload['grouped_items'],
-    ) => {
+    const calculateTotalAmount = (groupedItems: PaymentRequestGroupedItems) => {
         return Object.values(groupedItems).reduce(
             (total, item) => total + item.price * item.quantity,
             0,

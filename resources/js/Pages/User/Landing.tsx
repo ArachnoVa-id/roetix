@@ -16,7 +16,7 @@ interface Event {
 }
 
 interface Props {
-    client?: string;
+    client: string;
     layout: Layout;
     event: Event;
     ticketTypes: string[];
@@ -96,7 +96,7 @@ export default function Landing({
     ];
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout client={client}>
             <Head title="Book Tickets" />
             <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">

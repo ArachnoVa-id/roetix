@@ -100,16 +100,18 @@ export interface ProceedTransactionButtonProps {
     selectedSeats: SeatItem[];
 }
 
+export interface PaymentRequestGroupedItems {
+    [ticket_type: string]: {
+        price: number;
+        quantity: number;
+        seatNumbers: string[];
+    };
+}
+
 export interface PaymentRequestPayload {
     email: string;
     amount: number;
-    grouped_items: {
-        [ticket_type: string]: {
-            price: number;
-            quantity: number;
-            seatNumbers: string[];
-        };
-    };
+    grouped_items: PaymentRequestGroupedItems;
 }
 
 export interface PaymentResponse {
