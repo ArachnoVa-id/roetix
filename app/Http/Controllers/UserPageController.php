@@ -17,15 +17,15 @@ class UserPageController extends Controller
     {
         if (Auth::check()) {
             try {
-                // Use a specific event_id
-                $eventId = '181c1c9e-d4af-4a64-b056-8b3f3adca688';
-
                 // Get the event and associated venue
-                $event = Event::findOrFail($eventId);
+                $event = Event::where('slug', $client)
+                    ->first();
+                // $event = Event::where('event_id', '')
+                //     ->first();
                 $venue = Venue::findOrFail($event->venue_id);
 
                 // Get all tickets for this event
-                $tickets = Ticket::where('event_id', $eventId)
+                $tickets = Ticket::where('event_id', $event->event_id)
                     ->get();
 
                 // Get all seats for this venue

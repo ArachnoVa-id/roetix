@@ -12,20 +12,21 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\EoTiketController;
 
-Route::domain('{client}.' . config('app.domain'))->group(function () {
-    Route::get('/', [UserPageController::class, 'landing'])
-        ->name('client.home')
-        ->middleware('auth')
-    ;
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])
-        ->name('client.login')
-        ->middleware('guest');
-    Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('client.my_tickets');
+Route::domain('{client}.' . config('app.domain'))
+    ->middleware('verify.subdomain')
+    ->group(function () {
+        Route::get('/', [UserPageController::class, 'landing'])
+            ->name('client.home')
+            ->middleware('auth');
+        Route::get('/login', [AuthenticatedSessionController::class, 'create'])
+            ->name('client.login')
+            ->middleware('guest');
+        Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('client.my_tickets');
 
-    Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])->name('events.tickets.show');
-    Route::get('/events/tickets', [EoTiketController::class, 'show'])->name('events.tickets.index');
-    Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
-});
+        Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])->name('events.tickets.show');
+        Route::get('/events/tickets', [EoTiketController::class, 'show'])->name('events.tickets.index');
+        Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
+    });
 
 Route::controller(SocialiteController::class)->group(function () {
     Route::get('/auth/google', 'googleLogin')->name('auth.google');

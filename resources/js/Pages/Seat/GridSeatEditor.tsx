@@ -572,7 +572,7 @@ const GridSeatEditor: React.FC<Props> = ({
                                             )
                                         }
                                         onMouseUp={handleMouseUp}
-                                        className={`flex h-8 w-8 items-center justify-center rounded border ${getCellColor(cell)} cursor-pointer text-xs hover:opacity-80`}
+                                        className={`flex h-8 w-8 select-none items-center justify-center rounded border ${getCellColor(cell)} cursor-pointer text-xs hover:opacity-80`}
                                     >
                                         {cell.type === 'seat' &&
                                             cell.item?.seat_number}
