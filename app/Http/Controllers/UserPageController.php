@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Http\Controllers;
+
 use App\Models\Event;
 use App\Models\Ticket;
 use App\Models\Seat;
@@ -17,31 +19,31 @@ class UserPageController extends Controller
             try {
                 // Use a specific event_id
                 $eventId = '181c1c9e-d4af-4a64-b056-8b3f3adca688';
-                
+
                 // Get the event and associated venue
                 $event = Event::findOrFail($eventId);
                 $venue = Venue::findOrFail($event->venue_id);
-                
+
                 // Get all tickets for this event
                 $tickets = Ticket::where('event_id', $eventId)
                     ->get();
-                
+
                 // Get all seats for this venue
                 $seats = Seat::where('venue_id', $venue->venue_id)
                     ->orderBy('row')
                     ->orderBy('column')
                     ->get();
-                
+
                 // Create a map of tickets by seat_id for easy lookup
                 $ticketsBySeatId = $tickets->keyBy('seat_id');
-                
+
                 // Format data for the frontend
                 $layout = [
                     'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
                     'totalColumns' => $seats->max('column'),
-                    'items' => $seats->map(function($seat) use ($ticketsBySeatId) {
+                    'items' => $seats->map(function ($seat) use ($ticketsBySeatId) {
                         $ticket = $ticketsBySeatId->get($seat->seat_id);
-                        
+
                         if ($ticket) {
                             return [
                                 'type' => 'seat',
@@ -81,7 +83,7 @@ class UserPageController extends Controller
 
                 // Get available ticket types from data
                 $ticketTypes = $tickets->pluck('ticket_type')->unique()->values()->all();
-                
+
                 // If no ticket types found, provide defaults
                 if (empty($ticketTypes)) {
                     $ticketTypes = ['standard', 'VIP', 'VVIP', 'Regular'];
@@ -94,7 +96,6 @@ class UserPageController extends Controller
                     'venue' => $venue,
                     'ticketTypes' => $ticketTypes
                 ]);
-
             } catch (\Exception $e) {
                 Log::error('Error in landing method: ' . $e->getMessage());
                 return Inertia::render('User/Landing', [
@@ -109,8 +110,10 @@ class UserPageController extends Controller
         }
     }
 
-    public function my_tickets()
+    public function my_tickets(string $client = '')
     {
-        return Inertia::render('User/MyTickets', []);
+        return Inertia::render('User/MyTickets', [
+            'client' => $client
+        ]);
     }
 }

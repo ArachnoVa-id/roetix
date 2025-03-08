@@ -52,9 +52,7 @@ const Edit: React.FC<Props> = ({ layout, event, venue, ticketTypes }) => {
                 }
                 setError('Failed to update tickets. Please try again.');
             },
-            onFinish: () => {
-                console.log('Request finished');
-            },
+            onFinish: () => {},
         };
 
         router.post(

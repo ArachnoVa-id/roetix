@@ -9,6 +9,7 @@ use Exception;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -22,6 +23,11 @@ class PaymentController extends Controller
 
     public function createCharge(Request $request)
     {
+        Log::info('Midtrans API Key:', [
+            'server_key' => config('midtrans.server_key'),
+            'is_production' => config('midtrans.is_production'),
+        ]);
+
         $itemDetails = collect($request->grouped_items)->map(function ($details, $category) {
             return [
                 'id' => $category,
@@ -60,19 +66,19 @@ class PaymentController extends Controller
     public function midtransCallback(Request $request)
     {
         $data = $request->all();
-    
+
         try {
             if (!isset($data['order_id'], $data['gross_amount'], $data['transaction_status'])) {
                 return response()->json(['error' => 'Invalid request data'], 400);
             }
-    
+
             $team = Team::first();
             $coupon = Coupon::first();
-    
+
             if (!$team || !$coupon) {
                 return response()->json(['error' => 'Team or Coupon not found'], 404);
             }
-    
+
             // Buat order baru
             Order::create([
                 'user_id' => auth()->user_id ?? null,
@@ -82,11 +88,10 @@ class PaymentController extends Controller
                 'total_price' => $data['gross_amount'],
                 'status' => $data['transaction_status']
             ]);
-    
+
             return response()->json(['message' => 'Order successfully created'], 201);
         } catch (Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
 }

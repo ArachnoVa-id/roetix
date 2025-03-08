@@ -12,11 +12,14 @@
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-  <script type="text/javascript"
-    src="https://app.sandbox.midtrans.com/snap/snap.js"
-    data-client-key="{{config('midtrans.client_key')}}">
-  </script>
+  <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js"
+    data-client-key="{{ config('midtrans.client_key') }}"></script>
 
+  <script>
+    if (window.top !== window.self) {
+      window.top.location = window.location.href; // Break out of iframe
+    }
+  </script>
 
   <!-- Scripts -->
   @routes

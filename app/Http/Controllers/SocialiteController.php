@@ -25,12 +25,10 @@ class SocialiteController extends Controller
 
             $user = User::where('google_id', $google_user->id)->first();
 
-            if ($user)
-            {
+            if ($user) {
                 Auth::login($user);
                 return redirect('/');
-            } else
-            {
+            } else {
                 $userdata = User::create([
                     'user_id' => (string) Str::uuid(),
                     'email' => $google_user->email,
@@ -40,15 +38,12 @@ class SocialiteController extends Controller
                     'last_name' => 'test',
                 ]);
 
-                if ($userdata)
-                {
+                if ($userdata) {
                     Auth::login($userdata);
                     return redirect('/');
                 }
             }
-        }
-        catch (Exception $e)
-        {
+        } catch (Exception $e) {
             dd($e);
         }
         // dd($google_user);
