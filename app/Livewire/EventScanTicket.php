@@ -4,10 +4,10 @@ namespace App\Livewire;
 
 use Livewire\Component;
 
-class EventSettings extends Component
+class EventScanTicket extends Component
 {
     public function render()
     {
-        return view('livewire.event-settings');
+        return view('livewire.event-scan-ticket');
     }
 }
