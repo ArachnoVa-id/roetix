@@ -20,6 +20,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\Livewire;
 
 class EventResource extends Resource
 {
@@ -61,15 +62,11 @@ class EventResource extends Resource
             ->tabs([
                 Infolists\Components\Tabs\Tab::make('Settings')
                     ->schema([
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                        Livewire::make('event-settings'),
                     ]),
                 Infolists\Components\Tabs\Tab::make('Scan Tickets')
                     ->schema([
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
-                        Infolists\Components\TextEntry::make('hallo')->default('hallo'),
+                        Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
                     ]),
             ])
             ->columnSpan('full'),
