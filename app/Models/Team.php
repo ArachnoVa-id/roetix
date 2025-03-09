@@ -44,6 +44,11 @@ class Team extends Model
         return $this->hasMany(Event::class, 'team_id', 'team_id');
     }
 
+    public function venues(): HasMany
+    {
+        return $this->hasMany(Venue::class, 'team_id', 'team_id');
+    }
+
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'team_id', 'team_id');
