@@ -46,9 +46,22 @@ jobs:
       - name: 🛠 Set Up Laravel Environment
         run: |
           ENV_DIR="$HOME/novatix/app/develop"
-          STAGING_ENV_FILE="\$ENV_DIR/.env.staging"
-          TARGET_ENV_FILE="\$ENV_DIR/.env"
-          cp "\$STAGING_ENV_FILE" "\$TARGET_ENV_FILE"
+          STAGING_ENV_FILE="$ENV_DIR/.env.staging"
+          TARGET_ENV_FILE="$ENV_DIR/.env"
+
+          echo "Checking if .env.staging exists..."
+          if [ ! -f "$STAGING_ENV_FILE" ]; then
+              echo "❌ Error: .env.staging file not found!"
+              exit 1
+          fi
+
+          echo "Copying .env.staging to .env..."
+          cp "$STAGING_ENV_FILE" "$TARGET_ENV_FILE"
+
+          echo "✅ .env file set up successfully."
+
+          echo "Running Laravel key:generate..."
+          cd "$HOME/novatix/app/develop" || exit 1
           php artisan key:generate
 
       - name: Install Node.js dependencies
