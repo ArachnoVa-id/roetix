@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers;
 use App\Models\Venue;
+use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class VenueResource extends Resource
 {
+    use HasPanelShield;
+
     protected static ?string $model = Venue::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';

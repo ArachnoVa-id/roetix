@@ -25,6 +25,7 @@ use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 
 class EventResource extends Resource implements HasShieldPermissions
 {
+
     protected static ?string $model = Event::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
@@ -32,13 +33,11 @@ class EventResource extends Resource implements HasShieldPermissions
     public static function getPermissionPrefixes(): array
     {
         return [
-            'view',
-            'view_any',
-            'create',
-            'update',
-            'delete',
-            'delete_any',
-            'publish'
+            'view events',
+            'create event',
+            'edit event',
+            'delete event',
+            'scan ticket',
         ];
     }
 
