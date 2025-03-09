@@ -64,85 +64,27 @@ jobs:
           cat > ~/novatix/setups/generate_env_prod.sh << 'EOT'
           #!/bin/bash
 
-          ENV_FILE="$HOME/novatix/app/production/.env"
+          ENV_DIR="$HOME/novatix/app/production"
+          PROD_ENV_FILE="$ENV_DIR/.env.production"
+          TARGET_ENV_FILE="$ENV_DIR/.env"
 
-          echo "Checking .env file..."
-          if [ -f "$ENV_FILE" ]; then
-              echo "Backing up existing .env file..."
-              mv "$ENV_FILE" "$ENV_FILE.bak"
+          echo "Checking if .env.production exists..."
+          if [ ! -f "$PROD_ENV_FILE" ]; then
+              echo "Error: .env.production file not found!"
+              exit 1
           fi
-          echo "Generating .env file..."
 
-          cat > "$ENV_FILE" <<"EOT_ENV"
-          APP_NAME=${{ vars.APP_NAME }}
-          APP_ENV=${{ vars.APP_ENV }}
-          APP_KEY=${{ secrets.APP_KEY }}
-          APP_DEBUG=${{ vars.APP_DEBUG }}
-          APP_TIMEZONE=${{ vars.APP_TIMEZONE }}
-          APP_URL=${{ secrets.APP_URL }}
-          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+          echo "Backing up existing .env file (if exists)..."
+          if [ -f "$TARGET_ENV_FILE" ]; then
+              mv "$TARGET_ENV_FILE" "$TARGET_ENV_FILE.bak"
+          fi
 
-          APP_LOCALE=${{ vars.APP_LOCALE }}
-          APP_FALLBACK_LOCALE=${{ vars.APP_FALLBACK_LOCALE }}
-          APP_FAKER_LOCALE=${{ vars.APP_FAKER_LOCALE }}
+          echo "Copying .env.production to .env..."
+          cp "$PROD_ENV_FILE" "$TARGET_ENV_FILE"
 
-          APP_MAINTENANCE_DRIVER=${{ vars.APP_MAINTENANCE_DRIVER }}
-          PHP_CLI_SERVER_WORKERS=${{ vars.PHP_CLI_SERVER_WORKERS }}
+          chmod 660 "$TARGET_ENV_FILE"
+          echo ".env file copied successfully from .env.production."
 
-          BCRYPT_ROUNDS=${{ vars.BCRYPT_ROUNDS }}
-
-          LOG_CHANNEL=${{ vars.LOG_CHANNEL }}
-          LOG_STACK=${{ vars.LOG_STACK }}
-          LOG_DEPRECATIONS_CHANNEL=${{ vars.LOG_DEPRECATIONS_CHANNEL }}
-          LOG_LEVEL=${{ vars.LOG_LEVEL }}
-
-          DB_CONNECTION=${{ vars.DB_CONNECTION }}
-          DB_HOST=${{ secrets.DB_HOST }}
-          DB_PORT=${{ secrets.DB_PORT }}
-          DB_DATABASE=${{ secrets.DB_DATABASE }}
-          DB_USERNAME=${{ secrets.DB_USERNAME }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-
-          SESSION_DRIVER=${{ vars.SESSION_DRIVER }}
-          SESSION_LIFETIME=${{ vars.SESSION_LIFETIME }}
-          SESSION_ENCRYPT=${{ vars.SESSION_ENCRYPT }}
-          SESSION_PATH=${{ vars.SESSION_PATH }}
-          SESSION_DOMAIN=${{ vars.SESSION_DOMAIN }}
-
-          BROADCAST_CONNECTION=${{ vars.BROADCAST_CONNECTION }}
-          FILESYSTEM_DISK=${{ vars.FILESYSTEM_DISK }}
-          QUEUE_CONNECTION=${{ vars.QUEUE_CONNECTION }}
-
-          CACHE_STORE=${{ vars.CACHE_STORE }}
-          CACHE_PREFIX=${{ vars.CACHE_PREFIX }}
-
-          MEMCACHED_HOST=${{ vars.MEMCACHED_HOST }}
-
-          REDIS_CLIENT=${{ vars.REDIS_CLIENT }}
-          REDIS_HOST=${{ secrets.REDIS_HOST }}
-          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-          REDIS_PORT=${{ secrets.REDIS_PORT }}
-
-          MAIL_MAILER=${{ vars.MAIL_MAILER }}
-          MAIL_SCHEME=${{ vars.MAIL_SCHEME }}
-          MAIL_HOST=${{ secrets.MAIL_HOST }}
-          MAIL_PORT=${{ secrets.MAIL_PORT }}
-          MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
-          MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
-          MAIL_FROM_ADDRESS=${{ secrets.MAIL_FROM_ADDRESS }}
-          MAIL_FROM_NAME=${{ vars.APP_NAME }}
-
-          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION=${{ vars.AWS_DEFAULT_REGION }}
-          AWS_BUCKET=${{ secrets.AWS_BUCKET }}
-          AWS_USE_PATH_STYLE_ENDPOINT=${{ vars.AWS_USE_PATH_STYLE_ENDPOINT }}
-
-          VITE_APP_NAME=${{ vars.APP_NAME }}
-          EOT_ENV
-
-          chmod 660 "$ENV_FILE"
-          echo ".env file generated successfully."
           EOT
 
           chmod +x ~/novatix/setups/generate_env_prod.sh
