@@ -59,42 +59,10 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/update_repo_prod.sh
 
-          # Create generate_env_prod.sh script
-          echo "Creating generate_env_prod.sh..."
-          cat > "$HOME/novatix/setups/generate_env_prod.sh" <<EOT
-          #!/bin/bash
-
-          export ENV_DIR="$HOME/novatix/app/production"
-          PROD_ENV_FILE="\$ENV_DIR/.env.production"
-          TARGET_ENV_FILE="\$ENV_DIR/.env"
-
-          echo "Checking if .env.production exists..."
-          if [ ! -f "\$PROD_ENV_FILE" ]; then
-              echo "Error: .env.production file not found!"
-              exit 1
-          fi
-
-          echo "Backing up existing .env file (if exists)..."
-          if [ -f "\$TARGET_ENV_FILE" ]; then
-              mv "\$TARGET_ENV_FILE" "\$TARGET_ENV_FILE.bak"
-          fi
-
-          echo "Copying .env.production to .env..."
-          cp "\$PROD_ENV_FILE" "\$TARGET_ENV_FILE"
-
-          chmod 660 "\$TARGET_ENV_FILE"
-          echo ".env file copied successfully from .env.production."
-          EOT
-
-          # Make the script executable
-          chmod +x "$HOME/novatix/setups/generate_env_prod.sh"
-          echo "generate_env_prod.sh created and made executable."
+          EOF
 
       - name: Update Repository on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo_prod.sh"
-
-      - name: Generate .env on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/generate_env_prod.sh"
 
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
