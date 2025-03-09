@@ -371,7 +371,7 @@ const GridSeatEditor: React.FC<Props> = ({
             <div className="flex items-center gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">
-                        Top Rows
+                        Bottom Rows
                     </label>
                     <div className="flex items-center gap-2">
                         <Button
@@ -401,7 +401,7 @@ const GridSeatEditor: React.FC<Props> = ({
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700">
-                        Bottom Rows
+                        Top Rows
                     </label>
                     <div className="flex items-center gap-2">
                         <Button
