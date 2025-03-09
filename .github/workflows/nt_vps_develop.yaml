@@ -149,8 +149,8 @@ jobs:
           #!/bin/bash
 
           ENV_DIR="$HOME/novatix/app/develop"
-          STAGING_ENV_FILE=".env.staging"
-          TARGET_ENV_FILE=".env"
+          STAGING_ENV_FILE="$ENV_DIR/.env.staging"
+          TARGET_ENV_FILE="$ENV_DIR/.env"
 
           echo "Checking if .env.staging exists..."
           if [ ! -f "$STAGING_ENV_FILE" ]; then
