@@ -10,8 +10,9 @@ interface Props {
 }
 
 interface GridCell {
-    type: 'empty' | 'seat' | 'label' | 'blocked';
+    type: 'empty' | 'seat' | 'label';
     item?: SeatItem;
+    isBlocked?: boolean;
 }
 
 interface GridDimensions {
@@ -56,12 +57,42 @@ const GridSeatEditor: React.FC<Props> = ({
         null,
     );
 
+    // State for improved block mode
+    const [isDragging, setIsDragging] = useState<boolean>(false);
+    const [blockedArea, setBlockedArea] = useState<{
+        minRow: number;
+        maxRow: number;
+        minCol: number;
+        maxCol: number;
+    } | null>(null);
+
     // Default values for new seats
     const defaultCategory: Category = 'standard';
     const defaultStatus: SeatStatus = 'available';
 
     const totalRows = dimensions.top + dimensions.bottom;
     const totalColumns = dimensions.left + dimensions.right;
+
+    // Function to check if a cell is in the most recently blocked/unblocked area
+    const isInBlockedArea = (rowIndex: number, colIndex: number): boolean => {
+        if (!blockedArea) return false;
+
+        return (
+            rowIndex >= blockedArea.minRow &&
+            rowIndex <= blockedArea.maxRow &&
+            colIndex >= blockedArea.minCol &&
+            colIndex <= blockedArea.maxCol
+        );
+    };
+
+    // Handle mode change with cleanup
+    const handleModeChange = (newMode: EditorMode) => {
+        // Clear blocked area highlight when switching out of block mode
+        if (mode === 'block') {
+            setBlockedArea(null);
+        }
+        setMode(newMode);
+    };
 
     // Function to find highest row and adjust dimensions
     const findHighestRow = (items: LayoutItem[]): number => {
@@ -156,11 +187,20 @@ const GridSeatEditor: React.FC<Props> = ({
         }
     }, [initialLayout]);
 
+    // Reset state when mode changes
+    useEffect(() => {
+        setIsDragging(false);
+        setIsMouseDown(false);
+        setStartCell(null);
+        setEndCell(null);
+        setBlockedArea(null);
+    }, [mode]);
+
     const handleCellClick = (rowIndex: number, colIndex: number) => {
         const cell = grid[rowIndex][colIndex];
 
         if (mode === 'add') {
-            if (cell.type === 'empty') {
+            if (cell.type === 'empty' && !cell.isBlocked) {
                 // Immediately add a seat with default values
                 addSeatAtPosition(rowIndex, colIndex);
             }
@@ -179,6 +219,7 @@ const GridSeatEditor: React.FC<Props> = ({
         if (mode !== 'block') return;
 
         setIsMouseDown(true);
+        setIsDragging(true);
         setStartCell({ row: rowIndex, col: colIndex });
         setEndCell({ row: rowIndex, col: colIndex });
     };
@@ -200,19 +241,26 @@ const GridSeatEditor: React.FC<Props> = ({
 
         const newGrid = [...grid];
 
+        // Determine if we're blocking or unblocking based on the first cell
+        const firstCell = newGrid[startCell.row][startCell.col];
+        const isBlocking = !firstCell.isBlocked;
+
         for (let i = minRow; i <= maxRow; i++) {
             for (let j = minCol; j <= maxCol; j++) {
-                // Toggle between blocked and the current type
-                if (newGrid[i][j].type !== 'blocked') {
-                    newGrid[i][j] = { type: 'blocked' };
-                } else if (newGrid[i][j].type === 'blocked') {
-                    newGrid[i][j] = { type: 'empty' };
-                }
+                // Toggle isBlocked flag instead of changing the cell type
+                newGrid[i][j] = {
+                    ...newGrid[i][j],
+                    isBlocked: isBlocking,
+                };
             }
         }
 
+        // Save the blocked area so we can highlight it
+        setBlockedArea({ minRow, maxRow, minCol, maxCol });
+
         setGrid(newGrid);
         setIsMouseDown(false);
+        setIsDragging(false);
         setStartCell(null);
         setEndCell(null);
     };
@@ -220,13 +268,13 @@ const GridSeatEditor: React.FC<Props> = ({
     // Function to toggle a single cell's blocked status
     const toggleBlockedCell = (rowIndex: number, colIndex: number) => {
         const newGrid = [...grid];
+        const currentCell = newGrid[rowIndex][colIndex];
 
-        if (newGrid[rowIndex][colIndex].type !== 'blocked') {
-            // Save current state (regardless if it's empty or seat)
-            newGrid[rowIndex][colIndex] = { type: 'blocked' };
-        } else if (newGrid[rowIndex][colIndex].type === 'blocked') {
-            newGrid[rowIndex][colIndex] = { type: 'empty' };
-        }
+        // Toggle the isBlocked flag
+        newGrid[rowIndex][colIndex] = {
+            ...currentCell,
+            isBlocked: !currentCell.isBlocked,
+        };
 
         setGrid(newGrid);
     };
@@ -266,9 +314,13 @@ const GridSeatEditor: React.FC<Props> = ({
             price: 0,
         };
 
+        // Keep the isBlocked flag if it exists
+        const isBlocked = newGrid[rowIndex][colIndex].isBlocked || false;
+
         newGrid[rowIndex][colIndex] = {
             type: 'seat',
             item: newSeat,
+            isBlocked,
         };
 
         setGrid(newGrid);
@@ -277,7 +329,13 @@ const GridSeatEditor: React.FC<Props> = ({
 
     const deleteSeat = (rowIndex: number, colIndex: number) => {
         const newGrid = [...grid];
-        newGrid[rowIndex][colIndex] = { type: 'empty' };
+        // Preserve the isBlocked flag when deleting a seat
+        const isBlocked = newGrid[rowIndex][colIndex].isBlocked || false;
+
+        newGrid[rowIndex][colIndex] = {
+            type: 'empty',
+            isBlocked,
+        };
 
         setGrid(newGrid);
         reorderSeatNumbers();
@@ -313,7 +371,7 @@ const GridSeatEditor: React.FC<Props> = ({
             const rowLabel = getAdjustedRowLabel(i, totalRows);
 
             grid[i].forEach((cell, colIndex) => {
-                if (cell.type === 'seat' && cell.item) {
+                if (cell.type === 'seat' && cell.item && !cell.isBlocked) {
                     const adjustedColumn = colIndex + 1;
                     items.push({
                         ...cell.item,
@@ -336,7 +394,6 @@ const GridSeatEditor: React.FC<Props> = ({
     const getCellColor = (cell: GridCell): string => {
         if (cell.type === 'empty') return 'bg-gray-100';
         if (cell.type === 'label') return 'bg-gray-200';
-        if (cell.type === 'blocked') return 'bg-gray-600';
 
         const seat = cell.item;
         if (!seat) return 'bg-gray-100';
@@ -510,7 +567,7 @@ const GridSeatEditor: React.FC<Props> = ({
             <div className="mb-4 flex gap-2">
                 <Button
                     variant={getModeButtonVariant('add')}
-                    onClick={() => setMode('add')}
+                    onClick={() => handleModeChange('add')}
                     className="flex items-center gap-2"
                 >
                     <MousePointer size={16} />
@@ -518,7 +575,7 @@ const GridSeatEditor: React.FC<Props> = ({
                 </Button>
                 <Button
                     variant={getModeButtonVariant('delete')}
-                    onClick={() => setMode('delete')}
+                    onClick={() => handleModeChange('delete')}
                     className="flex items-center gap-2"
                 >
                     <Trash2 size={16} />
@@ -526,7 +583,7 @@ const GridSeatEditor: React.FC<Props> = ({
                 </Button>
                 <Button
                     variant={getModeButtonVariant('block')}
-                    onClick={() => setMode('block')}
+                    onClick={() => handleModeChange('block')}
                     className="flex items-center gap-2"
                 >
                     <Square size={16} />
@@ -545,39 +602,86 @@ const GridSeatEditor: React.FC<Props> = ({
                 )}
             </div>
 
-            <div className="mb-6 flex flex-col items-center">
+            <div
+                className="mb-6 flex flex-col items-center"
+                onMouseUp={handleMouseUp}
+                onMouseLeave={() => {
+                    if (isMouseDown) {
+                        handleMouseUp();
+                    }
+                }}
+            >
                 <div className="grid w-full gap-1">
                     {[...grid].reverse().map((row, reversedIndex) => {
                         return (
                             <div key={reversedIndex} className="flex gap-1">
-                                {row.map((cell, colIndex) => (
-                                    <div
-                                        key={colIndex}
-                                        onClick={() =>
-                                            handleCellClick(
-                                                grid.length - 1 - reversedIndex,
-                                                colIndex,
-                                            )
-                                        }
-                                        onMouseDown={() =>
-                                            handleMouseDown(
-                                                grid.length - 1 - reversedIndex,
-                                                colIndex,
-                                            )
-                                        }
-                                        onMouseOver={() =>
-                                            handleMouseOver(
-                                                grid.length - 1 - reversedIndex,
-                                                colIndex,
-                                            )
-                                        }
-                                        onMouseUp={handleMouseUp}
-                                        className={`flex h-8 w-8 select-none items-center justify-center rounded border ${getCellColor(cell)} cursor-pointer text-xs hover:opacity-80`}
-                                    >
-                                        {cell.type === 'seat' &&
-                                            cell.item?.seat_number}
-                                    </div>
-                                ))}
+                                {row.map((cell, colIndex) => {
+                                    const actualRowIndex =
+                                        grid.length - 1 - reversedIndex;
+
+                                    return (
+                                        <div
+                                            key={colIndex}
+                                            onClick={() =>
+                                                handleCellClick(
+                                                    actualRowIndex,
+                                                    colIndex,
+                                                )
+                                            }
+                                            onMouseDown={() =>
+                                                handleMouseDown(
+                                                    actualRowIndex,
+                                                    colIndex,
+                                                )
+                                            }
+                                            onMouseOver={() =>
+                                                handleMouseOver(
+                                                    actualRowIndex,
+                                                    colIndex,
+                                                )
+                                            }
+                                            className={`flex h-8 w-8 cursor-pointer select-none items-center justify-center rounded text-xs hover:opacity-80 ${getCellColor(cell)} ${cell.isBlocked ? 'border-0' : 'border'} ${
+                                                // Show blue ring during dragging
+                                                (isDragging &&
+                                                    mode === 'block' &&
+                                                    startCell &&
+                                                    endCell &&
+                                                    actualRowIndex >=
+                                                        Math.min(
+                                                            startCell.row,
+                                                            endCell.row,
+                                                        ) &&
+                                                    actualRowIndex <=
+                                                        Math.max(
+                                                            startCell.row,
+                                                            endCell.row,
+                                                        ) &&
+                                                    colIndex >=
+                                                        Math.min(
+                                                            startCell.col,
+                                                            endCell.col,
+                                                        ) &&
+                                                    colIndex <=
+                                                        Math.max(
+                                                            startCell.col,
+                                                            endCell.col,
+                                                        )) ||
+                                                // Keep blue ring after blocking/unblocking
+                                                (mode === 'block' &&
+                                                    isInBlockedArea(
+                                                        actualRowIndex,
+                                                        colIndex,
+                                                    ))
+                                                    ? 'ring-2 ring-blue-500'
+                                                    : ''
+                                            }`}
+                                            draggable={false}
+                                        >
+                                            {cell.type === 'seat' &&
+                                                cell.item?.seat_number}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         );
                     })}
