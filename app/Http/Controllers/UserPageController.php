@@ -64,7 +64,7 @@ class UserPageController extends Controller
                                 'seat_number' => $seat->seat_number,
                                 'row' => $seat->row,
                                 'column' => $seat->column,
-                                'status' => 'available',
+                                'status' => 'reserved',
                                 'ticket_type' => 'standard',
                                 'price' => 0,
                                 'category' => 'standard'
