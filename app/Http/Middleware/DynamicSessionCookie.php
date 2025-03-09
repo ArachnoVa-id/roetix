@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Str;
 
 class DynamicSessionCookie
 {
@@ -11,20 +13,19 @@ class DynamicSessionCookie
     {
         $host = $request->getHost();
 
-        // Check if we are in a subdomain
+        // Check if we are in a subdomain by checking the length of the host
         $isInSubdomain = count(explode('.', $host)) > 2;
 
-        // Ensure admin panel keeps a stable session
-        if (!$isInSubdomain || str_ends_with($host, env('APP_DOMAIN', 'localhost'))) {
+        // Skip dynamic session handling for Filament (admin panel)
+        if (!$isInSubdomain) {
             return $next($request);
         }
 
-        // Set session domain for clients
-        $baseDomain = env('APP_DOMAIN', 'localhost');
-        config([
-            'session.cookie' => 'session_shared',
-            'session.domain' => ".$baseDomain",
-        ]);
+        config(['session.cookie' => 'session_user']);
+
+        // Continue with tenant-based session logic
+        // $subdomain = explode('.', $host)[0];
+        // config(['session.cookie' => 'session_' . $subdomain]);
 
         return $next($request);
     }
