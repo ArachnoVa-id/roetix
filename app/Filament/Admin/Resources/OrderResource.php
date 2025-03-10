@@ -14,20 +14,18 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class OrderResource extends Resource implements HasShieldPermissions
+class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function getPermissionPrefixes(): array
+    public static function canAccess(): bool
     {
-        return [
-            'create event',
-            'edit event',
-            'delete event',
-            'create ticket'
-        ];
+        $user = auth()->user();
+
+        return in_array($user->role, ['admin', 'event-orginizer']);
+        // return in_array($user->role, ['admin', 'event-orginizer']);
     }
 
     public static function form(Form $form): Form

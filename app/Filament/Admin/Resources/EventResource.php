@@ -21,24 +21,20 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\Livewire;
-use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 
-class EventResource extends Resource implements HasShieldPermissions
+class EventResource extends Resource
 {
 
     protected static ?string $model = Event::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function getPermissionPrefixes(): array
+    public static function canAccess(): bool
     {
-        return [
-            'view events',
-            'create event',
-            'edit event',
-            'delete event',
-            'scan ticket',
-        ];
+        $user = auth()->user();
+
+        return in_array($user->role, ['admin', 'event-orginizer']);
+        // return in_array($user->role, ['admin', 'event-orginizer']);
     }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
