@@ -1,52 +1,48 @@
-import { router } from '@inertiajs/react';
-import React, { useState } from 'react';
-import { Category, Layout, LayoutItem, SeatItem } from './types';
+import React, { useRef, useState } from 'react';
+import { Layout, LayoutItem, SeatItem } from './types';
 
 export interface UpdatedSeats {
     seat_id: string;
     status: string;
+    ticket_type: string;
+    price: number;
 }
 
 interface Props {
     layout: Layout;
     onSave: (updatedSeats: UpdatedSeats[]) => void;
+    ticketTypes: string[];
 }
 
-type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY';
+type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
 
-const categoryLegends = [
-    { label: 'Diamond', color: 'bg-cyan-400' },
-    { label: 'Gold', color: 'bg-yellow-400' },
-    { label: 'Silver', color: 'bg-gray-300' },
-];
+const categoryColors: Record<string, string> = {
+    standard: 'bg-blue-300',
+    VIP: 'bg-yellow-400',
+};
 
 const statusLegends = [
     { label: 'Booked', color: 'bg-red-500' },
     { label: 'In Transaction', color: 'bg-yellow-500' },
-    { label: 'Not Available', color: 'bg-gray-400' },
+    { label: 'Reserved', color: 'bg-gray-400' },
 ];
 
-const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
+const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
     const [selectionMode, setSelectionMode] = useState<SelectionMode>('SINGLE');
     const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
-    const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(
         null,
     );
+    const [selectedStatus, setSelectedStatus] = useState<string>('available');
+    const [selectedTicketType, setSelectedTicketType] = useState<string>(
+        ticketTypes[0] || 'standard',
+    );
+    const [ticketPrice, setTicketPrice] = useState<number>(0);
 
-    // Map untuk menyimpan nomor terakhir untuk setiap baris
-    // const lastNumberByRow = new Map<string, number>();
-
-    // Fungsi untuk mendapatkan nomor kursi berikutnya untuk suatu baris
-    // const getNextNumber = (row: string): number => {
-    //     const lastNum = lastNumberByRow.get(row) || 0;
-    //     const nextNum = lastNum + 1;
-    //     lastNumberByRow.set(row, nextNum);
-    //     return nextNum;
-    // };
-
-    // const grid = Array.from({ length: layout.totalRows }, () =>
-    //   Array(layout.totalColumns).fill(null)
-    // );
+    // Drag selection state
+    const [isDragging, setIsDragging] = useState<boolean>(false);
+    const [dragStartSeat, setDragStartSeat] = useState<string | null>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
 
     // Find highest row and column from existing seats
     const findHighestRow = (): number => {
@@ -81,7 +77,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         Array(actualColumns).fill(null),
     );
 
-    // Isi grid dengan kursi
+    // Fill grid with seats
     layout.items.forEach((item) => {
         if ('seat_id' in item) {
             const rowIndex =
@@ -98,19 +94,19 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         }
     });
 
-    // Fungsi untuk mengecek apakah kursi dapat diedit
+    // Function to check if seat can be edited
     const isSeatEditable = (seat: SeatItem): boolean => {
         return seat.status !== 'booked';
     };
 
     const getSeatColor = (seat: SeatItem): string => {
-        // Ubah cara pengecekan selectedSeats
-        const isSelected = selectedSeats.has(`${seat.row}${seat.column}`); // Pastikan format string sesuai
+        // Check if selected
+        const isSelected = selectedSeats.has(`${seat.row}${seat.column}`);
         let baseColor = '';
 
-        // Jika kursi terpilih, prioritaskan warna seleksi
+        // If seat is selected, prioritize selection color
         if (isSelected) {
-            return 'bg-blue-200 ring-2 ring-blue-500'; // Tambahkan visual feedback yang lebih jelas
+            return 'bg-blue-200 ring-2 ring-blue-500';
         }
 
         if (seat.status !== 'available') {
@@ -121,33 +117,68 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
                 case 'in_transaction':
                     baseColor = 'bg-yellow-500';
                     break;
-                case 'not_available':
+                case 'reserved':
                     baseColor = 'bg-gray-400';
                     break;
             }
         } else {
-            switch (seat.category) {
-                case 'diamond':
-                    baseColor = 'bg-cyan-400';
-                    break;
-                case 'gold':
-                    baseColor = 'bg-yellow-400';
-                    break;
-                case 'silver':
-                    baseColor = 'bg-gray-300';
-                    break;
-                default:
-                    baseColor = 'bg-gray-200';
-            }
+            // If available, show ticket type color
+            const ticketType = seat.ticket_type || 'standard';
+            baseColor = categoryColors[ticketType] || 'bg-gray-200';
         }
 
         return baseColor;
     };
 
+    // Convert row and column to a unique ID
+    const getSeatId = (seat: SeatItem): string => `${seat.row}${seat.column}`;
+
+    // Get row and column indices from seat ID
+    const getIndicesFromSeatId = (
+        seatId: string,
+    ): { rowIndex: number; colIndex: number } | null => {
+        // Find the seat in the grid
+        for (let rowIndex = 0; rowIndex < grid.length; rowIndex++) {
+            for (
+                let colIndex = 0;
+                colIndex < grid[rowIndex].length;
+                colIndex++
+            ) {
+                const item = grid[rowIndex][colIndex];
+                if (
+                    item &&
+                    'seat_id' in item &&
+                    getSeatId(item as SeatItem) === seatId
+                ) {
+                    return { rowIndex, colIndex };
+                }
+            }
+        }
+        return null;
+    };
+
+    // Seat click handler
     const handleSeatClick = (seat: SeatItem) => {
         if (!isSeatEditable(seat)) return;
 
-        const seatId = `${seat.row}${seat.column}`; // Format yang konsisten
+        const seatId = getSeatId(seat);
+
+        if (selectionMode === 'DRAG') {
+            // In drag mode, we just set the start seat
+            setDragStartSeat(seatId);
+            setIsDragging(true);
+
+            // Initialize selection with just this seat
+            setSelectedSeats((prev) => {
+                const next = new Set(prev);
+                if (!prev.has(seatId)) {
+                    next.clear();
+                    next.add(seatId);
+                }
+                return next;
+            });
+            return;
+        }
 
         setSelectedSeats((prev) => {
             const next = new Set(prev);
@@ -156,6 +187,10 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
                 case 'SINGLE':
                     next.clear();
                     next.add(seatId);
+                    // Set current values from the seat for editing
+                    setSelectedStatus(seat.status);
+                    setSelectedTicketType(seat.ticket_type || 'standard');
+                    setTicketPrice(Number(seat.price) || 0);
                     break;
 
                 case 'MULTIPLE':
@@ -171,14 +206,15 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
                     layout.items.forEach((item) => {
                         if (
                             item.type === 'seat' &&
-                            item.category === seat.category &&
+                            (item as SeatItem).ticket_type ===
+                                seat.ticket_type &&
                             isSeatEditable(item as SeatItem)
                         ) {
-                            const id = `${(item as SeatItem).row}${(item as SeatItem).column}`;
+                            const id = getSeatId(item as SeatItem);
                             next.add(id);
                         }
                     });
-                    setSelectedCategory(seat.category);
+                    setSelectedCategory(seat.ticket_type || 'standard');
                     break;
             }
 
@@ -186,22 +222,87 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         });
     };
 
-    const handleSelectCategory = (category: Category) => {
+    // Mouse move handler for drag selection
+    const handleMouseMove = (seat: SeatItem) => {
+        if (
+            !isDragging ||
+            !dragStartSeat ||
+            selectionMode !== 'DRAG' ||
+            !isSeatEditable(seat)
+        )
+            return;
+
+        const currentSeatId = getSeatId(seat);
+
+        // Get coordinates of start and current seat
+        const startIndices = getIndicesFromSeatId(dragStartSeat);
+        const currentIndices = getIndicesFromSeatId(currentSeatId);
+
+        if (!startIndices || !currentIndices) return;
+
+        // Determine the rectangle corners
+        const minRowIndex = Math.min(
+            startIndices.rowIndex,
+            currentIndices.rowIndex,
+        );
+        const maxRowIndex = Math.max(
+            startIndices.rowIndex,
+            currentIndices.rowIndex,
+        );
+        const minColIndex = Math.min(
+            startIndices.colIndex,
+            currentIndices.colIndex,
+        );
+        const maxColIndex = Math.max(
+            startIndices.colIndex,
+            currentIndices.colIndex,
+        );
+
+        // Create a new set of selected seats
+        const newSelectedSeats = new Set<string>();
+
+        // Add all seats in the rectangle to selection
+        for (let rowIndex = minRowIndex; rowIndex <= maxRowIndex; rowIndex++) {
+            for (
+                let colIndex = minColIndex;
+                colIndex <= maxColIndex;
+                colIndex++
+            ) {
+                const item = grid[rowIndex][colIndex];
+                if (
+                    item &&
+                    'seat_id' in item &&
+                    isSeatEditable(item as SeatItem)
+                ) {
+                    const id = getSeatId(item as SeatItem);
+                    newSelectedSeats.add(id);
+                }
+            }
+        }
+
+        setSelectedSeats(newSelectedSeats);
+    };
+
+    // Mouse up handler to end dragging
+    const handleMouseUp = () => {
+        if (isDragging) {
+            setIsDragging(false);
+            setDragStartSeat(null);
+        }
+    };
+
+    const handleSelectCategory = (category: string) => {
         if (selectionMode !== 'CATEGORY') return;
 
-        // Kumpulkan semua kursi yang dapat diedit dengan kategori yang dipilih
+        // Collect all editable seats with the selected ticket type
         const seatsInCategory = layout.items
             .filter(
                 (item) =>
                     item.type === 'seat' &&
-                    item.category === category &&
-                    isSeatEditable(item as SeatItem), // Gunakan isSeatEditable
+                    (item as SeatItem).ticket_type === category &&
+                    isSeatEditable(item as SeatItem),
             )
-            .map((item) => {
-                const rowLetter = (item as SeatItem).row;
-                const column = (item as SeatItem).column;
-                return `${rowLetter}${column}`;
-            });
+            .map((item) => getSeatId(item as SeatItem));
 
         setSelectedSeats(new Set(seatsInCategory));
         setSelectedCategory(category);
@@ -211,19 +312,22 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         if (item && item.type === 'seat') {
             const seat = item as SeatItem;
             const isEditable = isSeatEditable(seat);
-            const seatId = `${seat.row}${seat.column}`;
+            const seatId = getSeatId(seat);
             const isSelected = selectedSeats.has(seatId);
 
             return (
                 <div
                     key={colIndex}
                     onClick={() => isEditable && handleSeatClick(seat)}
-                    className={`flex h-8 w-8 items-center justify-center rounded border ${getSeatColor(seat)} ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
+                    onMouseMove={() => isEditable && handleMouseMove(seat)}
+                    onMouseUp={handleMouseUp}
+                    className={`flex h-8 w-8 select-none items-center justify-center rounded border ${getSeatColor(seat)} ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
                     title={
                         !isEditable
-                            ? 'Kursi telah dibooking dan tidak dapat diedit'
-                            : ''
+                            ? 'This seat is booked and cannot be edited'
+                            : `${seat.seat_number} - ${seat.ticket_type || 'Standard'} - ${seat.status}`
                     }
+                    draggable={false}
                 >
                     {seat.seat_number}
                 </div>
@@ -232,37 +336,23 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         return <div key={colIndex} className="h-8 w-8"></div>;
     };
 
-    const handleStatusUpdate = (status: string) => {
+    const handleUpdateSelectedSeats = () => {
         const updatedSeats = layout.items
             .filter(
                 (item) =>
                     item.type === 'seat' &&
-                    selectedSeats.has(
-                        `${(item as SeatItem).row}${(item as SeatItem).column}`,
-                    ) &&
+                    selectedSeats.has(getSeatId(item as SeatItem)) &&
                     isSeatEditable(item as SeatItem),
             )
             .map((item) => ({
                 seat_id: (item as SeatItem).seat_id,
-                status: status,
+                status: selectedStatus,
+                ticket_type: selectedTicketType,
+                price: ticketPrice,
             }));
 
         if (updatedSeats.length > 0) {
-            router.post(
-                '/seats/update',
-                { seats: updatedSeats },
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    onSuccess: () => {
-                        onSave(updatedSeats);
-                        setSelectedSeats(new Set());
-                    },
-                    onError: (errors) => {
-                        console.error('Failed to update seats:', errors);
-                    },
-                },
-            );
+            onSave(updatedSeats);
         }
     };
 
@@ -270,9 +360,10 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
         setSelectionMode(mode);
         setSelectedSeats(new Set());
         setSelectedCategory(null);
+        setIsDragging(false);
+        setDragStartSeat(null);
     };
 
-    // Rest of the component remains the same...
     return (
         <div className="p-6">
             {/* Mode Selection */}
@@ -295,28 +386,26 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
                 >
                     Category Edit
                 </button>
+                <button
+                    className={`rounded px-4 py-2 ${selectionMode === 'DRAG' ? 'bg-blue-500 text-white' : 'bg-white'}`}
+                    onClick={() => handleModeChange('DRAG')}
+                >
+                    Drag Select
+                </button>
             </div>
 
-            {/* Category Selection */}
+            {/* Category Selection for Category Mode */}
             {selectionMode === 'CATEGORY' && (
                 <div className="flex gap-4 rounded-lg bg-gray-50 p-4">
-                    {['diamond', 'gold', 'silver'].map((category) => (
+                    {ticketTypes.map((category) => (
                         <button
                             key={category}
                             className={`rounded px-4 py-2 ${
                                 selectedCategory === category
                                     ? 'ring-2 ring-blue-500'
                                     : ''
-                            } ${
-                                category === 'diamond'
-                                    ? 'bg-cyan-400'
-                                    : category === 'gold'
-                                      ? 'bg-yellow-400'
-                                      : 'bg-gray-300'
-                            } text-white`}
-                            onClick={() =>
-                                handleSelectCategory(category as Category)
-                            }
+                            } ${categoryColors[category] || 'bg-gray-200'} text-black`}
+                            onClick={() => handleSelectCategory(category)}
                         >
                             {category.charAt(0).toUpperCase() +
                                 category.slice(1)}
@@ -325,47 +414,116 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
                 </div>
             )}
 
-            {/* Status Buttons */}
-            <div className="flex gap-4 rounded-lg bg-gray-50 p-4">
-                <button
-                    className="rounded bg-green-400 px-4 py-2 text-white hover:bg-green-500 disabled:opacity-50"
-                    onClick={() => handleStatusUpdate('available')}
-                    disabled={selectedSeats.size === 0}
-                >
-                    Set Available
-                </button>
-                <button
-                    className="rounded bg-yellow-400 px-4 py-2 text-white hover:bg-yellow-500 disabled:opacity-50"
-                    onClick={() => handleStatusUpdate('in_transaction')}
-                    disabled={selectedSeats.size === 0}
-                >
-                    Set In Transaction
-                </button>
-                <button
-                    className="rounded bg-gray-400 px-4 py-2 text-white hover:bg-gray-500 disabled:opacity-50"
-                    onClick={() => handleStatusUpdate('not_available')}
-                    disabled={selectedSeats.size === 0}
-                >
-                    Set Not Available
-                </button>
+            {/* Drag Selection Instructions */}
+            {selectionMode === 'DRAG' && (
+                <div className="mb-4 rounded-lg bg-blue-50 p-4">
+                    <p className="text-sm text-blue-700">
+                        Click and drag to select multiple seats at once. Only
+                        editable seats will be included in the selection.
+                    </p>
+                </div>
+            )}
+
+            {/* Ticket Type and Status Configuration */}
+            <div className="mt-4 grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-4">
+                <div>
+                    <label
+                        htmlFor="ticketType"
+                        className="block text-sm font-medium text-gray-700"
+                    >
+                        Ticket Type
+                    </label>
+                    <select
+                        id="ticketType"
+                        name="ticketType"
+                        className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                        value={selectedTicketType}
+                        onChange={(e) => setSelectedTicketType(e.target.value)}
+                        disabled={selectedSeats.size === 0}
+                        aria-label="Select ticket type"
+                    >
+                        {ticketTypes.map((type) => (
+                            <option key={type} value={type}>
+                                {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label
+                        htmlFor="seatStatus"
+                        className="block text-sm font-medium text-gray-700"
+                    >
+                        Status
+                    </label>
+                    <select
+                        id="seatStatus"
+                        name="seatStatus"
+                        className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                        value={selectedStatus}
+                        onChange={(e) => setSelectedStatus(e.target.value)}
+                        disabled={selectedSeats.size === 0}
+                        aria-label="Select seat status"
+                    >
+                        <option value="available">Available</option>
+                        <option value="in_transaction">In Transaction</option>
+                        <option value="reserved">Reserved</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label
+                        htmlFor="ticketPrice"
+                        className="block text-sm font-medium text-gray-700"
+                    >
+                        Price
+                    </label>
+                    <input
+                        id="ticketPrice"
+                        name="ticketPrice"
+                        type="number"
+                        min="0"
+                        step="1000"
+                        className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                        value={ticketPrice}
+                        onChange={(e) => setTicketPrice(Number(e.target.value))}
+                        disabled={selectedSeats.size === 0}
+                        aria-label="Ticket price"
+                        placeholder="Enter ticket price"
+                    />
+                </div>
+
+                <div className="flex items-end">
+                    <button
+                        className="w-full rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+                        onClick={handleUpdateSelectedSeats}
+                        disabled={selectedSeats.size === 0}
+                    >
+                        Apply to Selected ({selectedSeats.size})
+                    </button>
+                </div>
             </div>
 
             {/* Legends Section */}
-            <div className="mb-8">
+            <div className="mb-8 mt-6">
                 <div className="grid grid-cols-2 gap-8">
                     <div className="flex flex-col items-center">
-                        <h4 className="mb-2 text-lg font-semibold">Category</h4>
-                        <div className="flex space-x-4">
-                            {categoryLegends.map((legend, i) => (
+                        <h4 className="mb-2 text-lg font-semibold">
+                            Ticket Types
+                        </h4>
+                        <div className="flex flex-wrap gap-4">
+                            {ticketTypes.map((type) => (
                                 <div
-                                    key={i}
+                                    key={type}
                                     className="flex flex-col items-center"
                                 >
                                     <div
-                                        className={`h-8 w-8 ${legend.color} rounded-full shadow-md`}
+                                        className={`h-8 w-8 ${categoryColors[type] || 'bg-gray-200'} rounded-full shadow-md`}
                                     ></div>
                                     <span className="mt-1 text-sm">
-                                        {legend.label}
+                                        {type.charAt(0).toUpperCase() +
+                                            type.slice(1)}
                                     </span>
                                 </div>
                             ))}
@@ -373,7 +531,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
                     </div>
                     <div className="flex flex-col items-center">
                         <h4 className="mb-2 text-lg font-semibold">Status</h4>
-                        <div className="flex space-x-4">
+                        <div className="flex flex-wrap gap-4">
                             {statusLegends.map((legend, i) => (
                                 <div
                                     key={i}
@@ -392,14 +550,28 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
                 </div>
             </div>
 
+            {/* Selected Seats Summary */}
+            {selectedSeats.size > 0 && (
+                <div className="mb-4 rounded-lg bg-blue-50 p-4">
+                    <h4 className="text-md font-semibold text-blue-800">
+                        Selected Seats: {selectedSeats.size}
+                    </h4>
+                    <p className="text-sm text-blue-600">
+                        Will be configured as {selectedTicketType} tickets with{' '}
+                        {selectedStatus} status at price {ticketPrice}
+                    </p>
+                </div>
+            )}
+
             {/* Grid display */}
-            <div className="flex w-full flex-col items-center">
+            <div
+                className="flex w-full flex-col items-center"
+                ref={gridRef}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+            >
                 <div className="grid gap-1">
                     {[...grid].reverse().map((row, reversedIndex) => {
-                        // const originalIndex = grid.length - 1 - reversedIndex;
-                        // const rowLabel = String.fromCharCode(
-                        //     65 + originalIndex,
-                        // );
                         return (
                             <div
                                 key={reversedIndex}
@@ -417,7 +589,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave }) => {
 
                 {/* Stage */}
                 <div className="mt-4 flex h-8 w-60 items-center justify-center rounded border border-gray-200 bg-white text-sm">
-                    Panggung
+                    Stage
                 </div>
             </div>
         </div>

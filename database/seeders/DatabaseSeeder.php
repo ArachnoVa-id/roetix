@@ -23,29 +23,30 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
-        Team::truncate();
-        Order::truncate();
-        Coupon::truncate();
-        TicketCategory::truncate();
-        Ticket::truncate();
-        Seat::truncate();
-        Venue::truncate();
-        UserContact::truncate();
-        EventVariables::truncate();
-        Event::truncate();
-        User::truncate();
+        // Team::truncate();
+        // Order::truncate();
+        // Coupon::truncate();
+        // TicketCategory::truncate();
+        // Ticket::truncate();
+        // Seat::truncate();
+        // Venue::truncate();
+        // UserContact::truncate();
+        // EventVariables::truncate();
+        // Event::truncate();
+        // User::truncate();
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        // DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         $this->call([
             UserSeeder::class,
             TeamSeeder::class,
+            RoleSeeder::class,
+            VenueSeeder::class,
             EventSeeder::class,
             EventVariablesSeeder::class,
             UserContactSeeder::class,
-            VenueSeeder::class,
             TicketSeeder::class,
             TicketCategorySeeder::class,
             CouponSeeder::class,

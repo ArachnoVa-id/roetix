@@ -7,7 +7,12 @@ export default function Authenticated({
     header,
     children,
     footer,
-}: PropsWithChildren<{ header?: ReactNode; footer?: ReactNode }>) {
+    client,
+}: PropsWithChildren<{
+    header?: ReactNode;
+    footer?: ReactNode;
+    client: string;
+}>) {
     const user = usePage().props.auth.user;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
@@ -32,14 +37,16 @@ export default function Authenticated({
 
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
-                                    href={route('home')}
-                                    active={route().current('home')}
+                                    href={route('client.home', client)}
+                                    active={route().current('client.home')}
                                 >
                                     Beli Tiket
                                 </NavLink>
                                 <NavLink
-                                    href={route('my_tickets')}
-                                    active={route().current('my_tickets')}
+                                    href={route('client.my_tickets', client)}
+                                    active={route().current(
+                                        'client.my_tickets',
+                                    )}
                                 >
                                     Tiket Saya
                                 </NavLink>
@@ -59,14 +66,16 @@ export default function Authenticated({
                                     href={route('logout')}
                                     as="button"
                                     active={false}
+                                    headers={{
+                                        'X-CSRF-TOKEN':
+                                            (
+                                                document.querySelector(
+                                                    'meta[name="csrf-token"]',
+                                                ) as HTMLMetaElement
+                                            )?.content || '',
+                                    }}
                                 >
-                                    <Link
-                                        href={route('logout')}
-                                        method="post"
-                                        as="button"
-                                    >
-                                        Log Out
-                                    </Link>
+                                    Log Out
                                 </NavLink>
                             </div>
                         </div>
@@ -123,14 +132,14 @@ export default function Authenticated({
                 >
                     <div className="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
-                            href={route('home')}
-                            active={route().current('home')}
+                            href={route('client.home', client)}
+                            active={route().current('client.home')}
                         >
                             Beli Tiket
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
-                            href={route('my_tickets')}
-                            active={route().current('my_tickets')}
+                            href={route('client.my_tickets', client)}
+                            active={route().current('client.my_tickets')}
                         >
                             Tiket Saya
                         </ResponsiveNavLink>

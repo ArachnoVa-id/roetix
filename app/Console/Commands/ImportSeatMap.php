@@ -51,8 +51,6 @@ class ImportSeatMap extends Command
                         'venue_id'    => $config['venue_id'],
                         'seat_number' => $seatNumber,
                         'position'    => $position,
-                        'status'      => $item['status'] ?? 'available',
-                        'category'    => $item['category'],
                         'row'         => $row,
                         'column'      => $column,
                     ]);

@@ -8,9 +8,11 @@ import UpdateProfileInformationForm from './Partials/UpdateProfileInformationFor
 export default function Edit({
     mustVerifyEmail,
     status,
-}: PageProps<{ mustVerifyEmail: boolean; status?: string }>) {
+    client,
+}: PageProps<{ mustVerifyEmail: boolean; status?: string; client: string }>) {
     return (
         <AuthenticatedLayout
+            client={client}
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
                     Profile

@@ -3,7 +3,6 @@ import Ticket from '@/Components/novatix/Ticket';
 export default function Test() {
     return (
         <div className="flex h-screen items-center justify-center">
-            {/* <p>this is testing page</p> */}
             <Ticket
                 ticketURL="https://youtu.be/dQw4w9WgXcQ"
                 ticketCode="1234"

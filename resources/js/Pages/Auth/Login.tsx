@@ -20,16 +20,21 @@ export default function Login({
         email: string;
         password: string;
         remember: boolean;
+        client: string;
     }>({
         email: '',
         password: '',
         remember: false,
+        client: client,
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
         post(route('login'), {
+            onSuccess: () => {
+                window.location.reload();
+            },
             onFinish: () => reset('password'),
         });
     };
