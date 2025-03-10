@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import {
     MidtransCallbacks,
     PaymentRequestGroupedItems,
-    PaymentRequestPayload,
     ProceedTransactionButtonProps,
     SeatItem,
 } from '../types';
@@ -12,29 +12,58 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [snapInitialized, setSnapInitialized] = useState(false);
+
+    // Initialize Midtrans Snap on component mount
+    useEffect(() => {
+        // Check if Snap is already loaded
+        if (window.snap) {
+            setSnapInitialized(true);
+            return;
+        }
+
+        // Load Snap.js
+        const snapScript = document.createElement('script');
+        snapScript.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+        snapScript.setAttribute(
+            'data-client-key',
+            process.env.MIDTRANS_CLIENT_KEY || '',
+        );
+        snapScript.onload = () => {
+            console.log('Midtrans Snap loaded successfully');
+            setSnapInitialized(true);
+        };
+        snapScript.onerror = () => {
+            console.error('Failed to load Midtrans Snap');
+            setError(
+                'Payment system could not be loaded. Please try again later.',
+            );
+        };
+
+        document.head.appendChild(snapScript);
+
+        // Cleanup
+        return () => {
+            document.head.removeChild(snapScript);
+        };
+    }, []);
 
     // Function to safely parse price
     const getSafePrice = (price: string | number | undefined): number => {
         if (price === undefined || price === null) return 0;
 
-        // If it's already a number, return it directly
-        if (typeof price === 'number') {
-            return price;
-        }
+        if (typeof price === 'number') return price;
 
         if (typeof price === 'string') {
-            // Remove currency symbol, spaces, and non-numeric characters except decimals and commas
+            // Clean the price string (remove currency symbols, spaces, etc.)
             let cleaned = price.replace(/[^0-9,\.]/g, '');
 
-            // Handle Indonesian number format: convert "200.000,00" to "200000.00"
+            // Handle Indonesian number format (periods for thousands, comma for decimal)
             if (cleaned.includes(',') && cleaned.includes('.')) {
-                // First, remove all periods (thousand separators)
-                cleaned = cleaned.replace(/\./g, '');
-                // Then replace comma with period for decimal
-                cleaned = cleaned.replace(',', '.');
+                cleaned = cleaned.replace(/\./g, ''); // Remove thousands separators
+                cleaned = cleaned.replace(',', '.'); // Convert decimal comma to point
             } else if (cleaned.includes(',')) {
-                // Just has a comma - replace with period for standard JS parsing
-                cleaned = cleaned.replace(',', '.');
+                cleaned = cleaned.replace(',', '.'); // Convert comma to decimal point
             }
 
             const numericPrice = parseFloat(cleaned);
@@ -52,13 +81,9 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
         seats.forEach((seat) => {
             const { category, seat_number } = seat;
-            // Convert price safely
             const price = getSafePrice(seat.price);
 
-            // Skip seats with undefined category or seat_number
-            if (category === undefined || seat_number === undefined) {
-                return;
-            }
+            if (!category || !seat_number) return;
 
             if (!grouped[category]) {
                 grouped[category] = {
@@ -76,7 +101,9 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     };
 
     // Calculate total amount
-    const calculateTotalAmount = (groupedItems: PaymentRequestGroupedItems) => {
+    const calculateTotalAmount = (
+        groupedItems: PaymentRequestGroupedItems,
+    ): number => {
         return Object.values(groupedItems).reduce(
             (total, item) => total + item.price * item.quantity,
             0,
@@ -86,7 +113,14 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     // Handle payment process
     const handleProceedTransaction = async () => {
         if (selectedSeats.length === 0) {
-            alert('Please select at least one seat.');
+            alert('Please select at least one seat to proceed.');
+            return;
+        }
+
+        if (!snapInitialized) {
+            setError(
+                'Payment system is still initializing. Please try again in a moment.',
+            );
             return;
         }
 
@@ -94,192 +128,121 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         setError(null);
 
         try {
+            // Prepare the payment data
             const groupedItems = transformSeatsToGroupedItems(selectedSeats);
             const totalAmount = calculateTotalAmount(groupedItems);
 
-            console.log('Grouped items:', groupedItems);
-            console.log('Total amount calculated:', totalAmount);
+            console.log('Payment data:', {
+                groupedItems,
+                totalAmount,
+            });
 
-            // Ensure email is always provided (use user's email or default)
-            const user = {
-                email: 'user@example.com', // You should replace this with actual user email
-            };
+            // Get the current user's email or use a default
+            // In a real app, you would get this from your auth system
+            const userEmail = 'user@example.com';
 
-            const requestPayload: PaymentRequestPayload = {
-                email: user.email,
+            // Create the request payload
+            const payload = {
+                email: userEmail,
                 amount: totalAmount,
                 grouped_items: groupedItems,
             };
 
-            console.log(
-                'Sending payment request with payload:',
-                requestPayload,
+            // Set up axios for the request
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            };
+
+            // Send the payment request
+            console.log('Sending payment request');
+            const response = await axios.post(
+                '/payment/charge',
+                payload,
+                config,
             );
+            console.log('Payment response:', response.data);
 
-            // Get the CSRF token directly from the page
-            const csrfToken = document
-                .querySelector('meta[name="csrf-token"]')
-                ?.getAttribute('content');
-
-            // Create a form and submit it (this avoids AJAX and CSRF issues)
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/payment/charge';
-            form.style.display = 'none';
-
-            // Add CSRF token
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = csrfToken || '';
-            form.appendChild(csrfInput);
-
-            // Add payload data
-            const emailInput = document.createElement('input');
-            emailInput.type = 'hidden';
-            emailInput.name = 'email';
-            emailInput.value = requestPayload.email;
-            form.appendChild(emailInput);
-
-            const amountInput = document.createElement('input');
-            amountInput.type = 'hidden';
-            amountInput.name = 'amount';
-            amountInput.value = requestPayload.amount.toString();
-            form.appendChild(amountInput);
-
-            const groupedItemsInput = document.createElement('input');
-            groupedItemsInput.type = 'hidden';
-            groupedItemsInput.name = 'grouped_items';
-            groupedItemsInput.value = JSON.stringify(
-                requestPayload.grouped_items,
-            );
-            form.appendChild(groupedItemsInput);
-
-            // Add the form to the body and submit it
-            document.body.appendChild(form);
-
-            // Create a target iframe to receive the response
-            const targetFrame = document.createElement('iframe');
-            targetFrame.name = 'payment_frame';
-            targetFrame.style.display = 'none';
-            document.body.appendChild(targetFrame);
-
-            form.target = 'payment_frame';
-            form.submit();
-
-            // Listen for response from the iframe
-            targetFrame.onload = () => {
-                try {
-                    // Try to access the iframe content
-                    const frameContent =
-                        targetFrame.contentWindow?.document.body.innerHTML;
-
-                    if (frameContent) {
-                        // Try to parse the JSON response
-                        try {
-                            const responseData = JSON.parse(frameContent);
-                            console.log(
-                                'Payment response received:',
-                                responseData,
+            // Handle the response
+            if (response.data && response.data.snap_token) {
+                // If Midtrans snap.js is loaded
+                if (window.snap) {
+                    const callbacks: MidtransCallbacks = {
+                        onSuccess: (result) => {
+                            console.log('Payment success:', result);
+                            alert('Payment successful!');
+                            window.location.reload();
+                        },
+                        onPending: (result) => {
+                            console.log('Payment pending:', result);
+                            alert(
+                                'Your payment is pending. Please complete the payment.',
                             );
-
-                            if (responseData.snap_token) {
-                                if (window.snap) {
-                                    const midtransCallbacks: MidtransCallbacks =
-                                        {
-                                            onSuccess: () => {
-                                                console.log(
-                                                    'Payment successful',
-                                                );
-                                                alert('Payment successful!');
-                                                window.location.reload();
-                                            },
-                                            onPending: () => {
-                                                console.log('Payment pending');
-                                                alert(
-                                                    'Payment is pending. Please complete your payment.',
-                                                );
-                                                setIsLoading(false);
-                                            },
-                                            onError: (error) => {
-                                                console.error(
-                                                    'Payment failed:',
-                                                    error,
-                                                );
-                                                alert(
-                                                    'Payment failed. Please try again.',
-                                                );
-                                                setIsLoading(false);
-                                            },
-                                            onClose: () => {
-                                                console.log(
-                                                    'Payment window closed',
-                                                );
-                                                setIsLoading(false);
-                                            },
-                                        };
-                                    window.snap.pay(
-                                        responseData.snap_token,
-                                        midtransCallbacks,
-                                    );
-                                } else {
-                                    setError(
-                                        'Snap.js is not loaded. Please refresh and try again.',
-                                    );
-                                    setIsLoading(false);
-                                }
-                            } else {
-                                setError('No snap token received from server');
-                                setIsLoading(false);
-                            }
-                        } catch (e) {
-                            // Couldn't parse as JSON, might be an error page
-                            console.error(
-                                'Could not parse response:',
-                                frameContent,
-                            );
-                            setError('Received invalid response from server');
                             setIsLoading(false);
-                        }
-                    } else {
-                        setError('Empty response received');
-                        setIsLoading(false);
-                    }
-                } catch (e) {
-                    // Security error - can't access iframe content due to same-origin policy
-                    console.error('Could not access iframe content:', e);
-                    setError('Could not process the payment response');
+                        },
+                        onError: (result) => {
+                            console.error('Payment error:', result);
+                            setError('Payment failed. Please try again.');
+                            setIsLoading(false);
+                        },
+                        onClose: () => {
+                            console.log('Snap payment closed');
+                            setIsLoading(false);
+                        },
+                    };
+
+                    // Open the Midtrans Snap payment page
+                    window.snap.pay(response.data.snap_token, callbacks);
+                } else {
+                    console.error('Snap.js is not properly initialized');
+                    setError(
+                        'Payment gateway not loaded. Please refresh the page and try again.',
+                    );
                     setIsLoading(false);
                 }
+            } else {
+                throw new Error('Invalid response from payment server');
+            }
+        } catch (err) {
+            console.error('Payment error:', err);
 
-                // Clean up
-                setTimeout(() => {
-                    document.body.removeChild(form);
-                    document.body.removeChild(targetFrame);
-                }, 1000);
-            };
-        } catch (error) {
+            if (axios.isAxiosError(err)) {
+                const errorMsg =
+                    err.response?.data?.message ||
+                    'Failed to connect to payment server';
+                setError(errorMsg);
+            } else {
+                setError('An unexpected error occurred');
+            }
+
             setIsLoading(false);
-            console.error('Unexpected error:', error);
-            setError('An unexpected error occurred');
-            alert('An unexpected error occurred. Please try again.');
         }
     };
 
     return (
         <div>
             {error && (
-                <div className="mb-4 rounded-md bg-red-50 p-3 text-red-600">
+                <div className="mb-4 mt-2 rounded-md bg-red-50 p-3 text-red-600">
                     {error}
                 </div>
             )}
             <button
                 className="mt-4 rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600 disabled:opacity-50"
-                disabled={isLoading || selectedSeats.length === 0}
+                disabled={
+                    isLoading || selectedSeats.length === 0 || !snapInitialized
+                }
                 onClick={handleProceedTransaction}
             >
                 {isLoading ? 'Processing...' : 'Proceed Transaction'}
             </button>
+            {!snapInitialized && (
+                <div className="mt-2 text-sm text-gray-600">
+                    Initializing payment system...
+                </div>
+            )}
         </div>
     );
 };
