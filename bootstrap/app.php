@@ -12,7 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(prepend: [
-            \App\Http\Middleware\DynamicSessionCookie::class,
+            \App\Http\Middleware\SessionCookie::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
             'verify.subdomain' => \App\Http\Middleware\ValidateSubdomain::class,
+            'verify.maindomain' => \App\Http\Middleware\ValidateMainDomain::class,
         ]);
     })
 

@@ -21,6 +21,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\Livewire;
+use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
 class EventResource extends Resource
 {
@@ -65,6 +66,22 @@ class EventResource extends Resource
                 Infolists\Components\TextEntry::make('location')
                     ->label('LOCATION')
                     ->icon('heroicon-m-map-pin'),
+                Infolists\Components\Actions::make([
+                    InfolistAction::make('editSeats')
+                        ->label('Edit Seats')
+                        ->icon('heroicon-m-pencil-square')
+                        ->button()
+                        ->color('primary')
+                        ->url(fn ($record) => "http://{$record->slug}." . env('APP_DOMAIN') . "/seats/edit?event_id={$record->event_id}")
+                        ->openUrlInNewTab(),
+                    InfolistAction::make('editVenue')
+                        ->label('Edit Venue')
+                        ->icon('heroicon-m-map')
+                        ->button()
+                        ->color('success')
+                        ->url(fn ($record) => "http://" . env('APP_DOMAIN') . "/seats/grid-edit?venue_id={$record->venue_id}")
+                        ->openUrlInNewTab(),
+                ]),
             ])->columns(2),
             Infolists\Components\Tabs::make('Tabs')
                 ->tabs([

@@ -14,13 +14,12 @@ export interface BaseItem {
 }
 
 export interface SeatItem extends BaseItem {
-    type: 'seat';
     seat_id: string;
     seat_number: string;
-    status: SeatStatus;
+    status: string;
     ticket_type?: string;
     category?: Category;
-    price: number;
+    price: number | string | undefined;
 }
 
 export interface LabelItem extends BaseItem {
@@ -100,12 +99,13 @@ export interface ProceedTransactionButtonProps {
     selectedSeats: SeatItem[];
 }
 
+export interface GroupedItem {
+    price: number;
+    quantity: number;
+    seatNumbers: string[];
+}
 export interface PaymentRequestGroupedItems {
-    [ticket_type: string]: {
-        price: number;
-        quantity: number;
-        seatNumbers: string[];
-    };
+    [ticket_type: string]: GroupedItem;
 }
 
 export interface PaymentRequestPayload {

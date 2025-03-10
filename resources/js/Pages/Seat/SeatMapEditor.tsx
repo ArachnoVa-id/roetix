@@ -17,12 +17,11 @@ interface Props {
 type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
 
 const categoryColors: Record<string, string> = {
-    standard: 'bg-gray-300',
+    standard: 'bg-blue-300',
     VIP: 'bg-yellow-400',
 };
 
 const statusLegends = [
-    { label: 'Available', color: 'bg-white border-2 border-gray-300' },
     { label: 'Booked', color: 'bg-red-500' },
     { label: 'In Transaction', color: 'bg-yellow-500' },
     { label: 'Reserved', color: 'bg-gray-400' },
@@ -191,7 +190,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     // Set current values from the seat for editing
                     setSelectedStatus(seat.status);
                     setSelectedTicketType(seat.ticket_type || 'standard');
-                    setTicketPrice(seat.price || 0);
+                    setTicketPrice(Number(seat.price) || 0);
                     break;
 
                 case 'MULTIPLE':

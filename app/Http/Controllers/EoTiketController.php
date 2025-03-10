@@ -42,36 +42,36 @@ class EoTiketController extends Controller
         try {
             // Use provided event_id or default to the one in the request
             $eventId = $eventId ?: $request->event_id;
-            
+
             // Sample event_id if none provided
             if (!$eventId) {
                 $eventId = '181c1c9e-d4af-4a64-b056-8b3f3adca688';
             }
-            
+
             // Get the event and associated venue
             $event = Event::findOrFail($eventId);
             $venue = Venue::findOrFail($event->venue_id);
-            
+
             // Get all tickets for this event
             $tickets = Ticket::where('event_id', $eventId)
                 ->get();
-            
+
             // Get all seats for this venue to establish the layout
             $seats = Seat::where('venue_id', $venue->venue_id)
                 ->orderBy('row')
                 ->orderBy('column')
                 ->get();
-            
+
             // Create a map of tickets by seat_id for easy lookup
             $ticketsBySeatId = $tickets->keyBy('seat_id');
-            
+
             // Format data for the frontend
             $layout = [
                 'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
                 'totalColumns' => $seats->max('column'),
-                'items' => $seats->map(function($seat) use ($ticketsBySeatId) {
+                'items' => $seats->map(function ($seat) use ($ticketsBySeatId) {
                     $ticket = $ticketsBySeatId->get($seat->seat_id);
-                    
+
                     if ($ticket) {
                         return [
                             'type' => 'seat',
@@ -111,19 +111,18 @@ class EoTiketController extends Controller
 
             // Get available ticket types from data
             $ticketTypes = $tickets->pluck('ticket_type')->unique()->values()->all();
-            
+
             // If no ticket types found, provide defaults
             if (empty($ticketTypes)) {
-                $ticketTypes = ['standard', 'VIP', 'VVIP', 'Regular'];
+                $ticketTypes = ['standard', 'VIP'];
             }
 
-            return Inertia::render('User/ShowTickets', [
+            return Inertia::render('User/MyTickets', [
                 'layout' => $layout,
                 'event' => $event,
                 'venue' => $venue,
                 'ticketTypes' => $ticketTypes
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error in show method: ' . $e->getMessage());
             return redirect()->back()->withErrors(['error' => 'Failed to load event tickets: ' . $e->getMessage()]);
