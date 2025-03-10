@@ -19,9 +19,6 @@ class DynamicSessionCookie
         $appName = config('app.name');
         $sessionCookieName = strtolower($appName) . ($isInSubdomain ? '_client_session' : '_session');
 
-        // Remove conflicting session cookies
-        Cookie::queue(Cookie::forget($isInSubdomain ? $sessionCookieName . '_admin' : $sessionCookieName . '_client'));
-
         // Dynamically set the session domain
         config([
             'session.cookie' => $sessionCookieName,
