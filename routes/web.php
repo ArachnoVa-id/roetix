@@ -38,12 +38,6 @@ Route::domain(config('app.domain'))
             $user = User::find($user->user_id);
             $firstTeam = optional($user->teams()->first())->name;
 
-            // if (!$firstTeam) {
-            //     // logout if no team found
-            //     Auth::logout();
-            //     return abort(403, 'No team found.');
-            // }
-
             return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam]);
         })->name('home');
 
@@ -70,12 +64,12 @@ Route::domain(config('app.domain'))
         });
     });
 
-    Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-    Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
-    Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-    Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
-    Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-    Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
+Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
+Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
+Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
+Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
+Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
 
 Route::domain('{client}.' . config('app.domain'))
     ->middleware('verify.subdomain')
