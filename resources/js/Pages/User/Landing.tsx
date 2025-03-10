@@ -90,7 +90,7 @@ export default function Landing({
 
         if (typeof price === 'string') {
             // Remove currency symbol, spaces, and non-numeric characters except decimals and commas
-            let cleaned = price.replace(/[^0-9,\.]/g, '');
+            let cleaned = price.replace(/[^0-9,.]/g, '');
 
             // Handle Indonesian number format: convert "200.000,00" to "200000.00"
             if (cleaned.includes(',') && cleaned.includes('.')) {
@@ -285,8 +285,8 @@ export default function Landing({
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <div className="w-full">
+                        <div className="flex justify-center overflow-x-auto">
+                            <div className="flex items-center justify-center">
                                 <SeatMapDisplay
                                     config={layout}
                                     onSeatClick={handleSeatClick}

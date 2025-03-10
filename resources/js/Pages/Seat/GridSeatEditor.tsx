@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { MousePointer, Square, Trash2 } from 'lucide-react';
+import { MousePointer, Plus, Square, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Category, Layout, LayoutItem, SeatItem, SeatStatus } from './types';
 
@@ -341,6 +341,65 @@ const GridSeatEditor: React.FC<Props> = ({
         reorderSeatNumbers();
     };
 
+    // Function to add seats to all empty cells in the blocked area
+    const addSeatsToBlockedArea = () => {
+        if (!blockedArea) return;
+
+        const newGrid = [...grid];
+
+        for (let i = blockedArea.minRow; i <= blockedArea.maxRow; i++) {
+            for (let j = blockedArea.minCol; j <= blockedArea.maxCol; j++) {
+                const cell = newGrid[i][j];
+                if (cell.type === 'empty' && cell.isBlocked) {
+                    const rowLabel = getAdjustedRowLabel(i, totalRows);
+                    const adjustedColumn = j + 1;
+
+                    const newSeat: SeatItem = {
+                        type: 'seat',
+                        seat_id: `${rowLabel}${adjustedColumn}`,
+                        seat_number: `${rowLabel}${adjustedColumn}`,
+                        row: rowLabel,
+                        column: adjustedColumn,
+                        status: defaultStatus,
+                        category: defaultCategory,
+                        price: 0,
+                    };
+
+                    newGrid[i][j] = {
+                        type: 'seat',
+                        item: newSeat,
+                        isBlocked: true,
+                    };
+                }
+            }
+        }
+
+        setGrid(newGrid);
+        reorderSeatNumbers();
+    };
+
+    // Function to delete all seats in the blocked area
+    const deleteSeatsFromBlockedArea = () => {
+        if (!blockedArea) return;
+
+        const newGrid = [...grid];
+
+        for (let i = blockedArea.minRow; i <= blockedArea.maxRow; i++) {
+            for (let j = blockedArea.minCol; j <= blockedArea.maxCol; j++) {
+                const cell = newGrid[i][j];
+                if (cell.type === 'seat' && cell.isBlocked) {
+                    newGrid[i][j] = {
+                        type: 'empty',
+                        isBlocked: true,
+                    };
+                }
+            }
+        }
+
+        setGrid(newGrid);
+        reorderSeatNumbers();
+    };
+
     const reorderSeatNumbers = () => {
         const newGrid = [...grid];
         const seatCounters: { [key: string]: number } = {};
@@ -364,22 +423,49 @@ const GridSeatEditor: React.FC<Props> = ({
         setGrid(newGrid);
     };
 
+    // Modified handleSave function to add seats to blocked empty spaces
+    // Modified handleSave function to respect deleted seats
     const handleSave = () => {
-        const items: SeatItem[] = [];
+        // Create a copy of the grid to work with
+        const newGrid = [...grid];
+
+        // Reorder seat numbers to ensure consistency
+        const tempGrid = [...newGrid];
+        const seatCounters: { [key: string]: number } = {};
 
         for (let i = totalRows - 1; i >= 0; i--) {
             const rowLabel = getAdjustedRowLabel(i, totalRows);
+            seatCounters[rowLabel] = 1;
 
-            grid[i].forEach((cell, colIndex) => {
-                if (cell.type === 'seat' && cell.item && !cell.isBlocked) {
-                    const adjustedColumn = colIndex + 1;
+            for (let j = 0; j < totalColumns; j++) {
+                const cell = tempGrid[i][j];
+                if (cell.type === 'seat' && cell.item) {
+                    cell.item.row = rowLabel;
+                    cell.item.seat_number = `${rowLabel}${seatCounters[rowLabel]}`;
+                    cell.item.seat_id = `${rowLabel}${seatCounters[rowLabel]}`;
+                    seatCounters[rowLabel]++;
+                }
+            }
+        }
+
+        // Now collect all seats for the final layout
+        const items: SeatItem[] = [];
+
+        for (let i = 0; i < totalRows; i++) {
+            const rowLabel = getAdjustedRowLabel(i, totalRows);
+
+            for (let j = 0; j < totalColumns; j++) {
+                const cell = tempGrid[i][j];
+                // We only include actual seats, not empty blocked spaces
+                if (cell.type === 'seat' && cell.item) {
+                    const adjustedColumn = j + 1;
                     items.push({
                         ...cell.item,
                         row: rowLabel,
                         column: adjustedColumn,
                     });
                 }
-            });
+            }
         }
 
         const layout: Layout = {
@@ -560,6 +646,42 @@ const GridSeatEditor: React.FC<Props> = ({
         </div>
     );
 
+    // Block area action buttons component
+    const BlockAreaActions = () => {
+        if (mode !== 'block' || !blockedArea) return null;
+
+        return (
+            <div className="mb-4 rounded border border-blue-300 bg-blue-50 p-2">
+                <div className="mb-2 text-sm font-medium">Area Selected:</div>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={addSeatsToBlockedArea}
+                        className="flex items-center gap-2 border-green-300 bg-white text-green-600 hover:bg-green-50"
+                    >
+                        <Plus size={16} />
+                        Add Seats
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={deleteSeatsFromBlockedArea}
+                        className="flex items-center gap-2 border-red-300 bg-white text-red-600 hover:bg-red-50"
+                    >
+                        <Trash2 size={16} />
+                        Delete Seats
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => setBlockedArea(null)}
+                        className="bg-white"
+                    >
+                        Cancel
+                    </Button>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="p-6">
             <DimensionControl />
@@ -590,6 +712,8 @@ const GridSeatEditor: React.FC<Props> = ({
                     Block Area
                 </Button>
             </div>
+
+            <BlockAreaActions />
 
             <div className="mb-2 text-sm">
                 {mode === 'add' && <p>Click on empty cells to add seats</p>}

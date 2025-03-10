@@ -86,7 +86,7 @@ class UserPageController extends Controller
 
                 // If no ticket types found, provide defaults
                 if (empty($ticketTypes)) {
-                    $ticketTypes = ['standard', 'VIP', 'VVIP', 'Regular'];
+                    $ticketTypes = ['standard', 'VIP'];
                 }
 
                 return Inertia::render('User/Landing', [

@@ -149,7 +149,7 @@ class SeatController extends Controller
             ];
 
             // Get available ticket types for dropdown
-            $ticketTypes = ['standard', 'VIP', 'VVIP', 'Regular'];
+            $ticketTypes = ['standard', 'VIP'];
 
             return Inertia::render('Seat/Edit', [
                 'layout' => $layout,
