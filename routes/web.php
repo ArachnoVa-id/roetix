@@ -84,7 +84,7 @@ Route::domain('{client}.' . config('app.domain'))
 
         // Any unregistered route will be redirected to the client's home page
         Route::fallback(function () {
-            return redirect()->route('client.home', ['client' => request()->route('client')]);
+            return redirect()->route('client.home', ['client' => request()->client]);
         });
     });
 
