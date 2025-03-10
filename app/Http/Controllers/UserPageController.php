@@ -89,7 +89,7 @@ class UserPageController extends Controller
                     $ticketTypes = ['standard', 'VIP', 'VVIP', 'Regular'];
                 }
 
-                return Inertia::render('User/ShowTickets', [
+                return Inertia::render('User/Landing', [
                     'client' => $client,
                     'layout' => $layout,
                     'event' => $event,

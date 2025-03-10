@@ -80,25 +80,29 @@ export default function Landing({
     const getSafePrice = (price: string | number | undefined): number => {
         if (price === undefined || price === null) return 0;
 
-        // For debugging, log the original price value
+        // For debugging
         console.log('Original price value:', price, 'Type:', typeof price);
 
+        // If it's already a number, return it directly
+        if (typeof price === 'number') {
+            return price;
+        }
+
         if (typeof price === 'string') {
-            // Remove currency symbol and spaces
-            let cleaned = price.replace(/Rp\s*/g, '');
+            // Remove currency symbol, spaces, and non-numeric characters except decimals and commas
+            let cleaned = price.replace(/[^0-9,\.]/g, '');
 
-            // Handle Indonesian number format: convert "20.000,00" to "20000.00"
-            // First, temporarily replace the decimal comma with a special character
-            cleaned = cleaned.replace(',', '#');
-
-            // Remove all periods (thousand separators in Indonesian format)
-            cleaned = cleaned.replace(/\./g, '');
-
-            // Replace the special character back to a decimal point
-            cleaned = cleaned.replace('#', '.');
-
-            // Remove any remaining non-numeric characters except the decimal point
-            cleaned = cleaned.replace(/[^\d.]/g, '');
+            // Handle Indonesian number format: convert "200.000,00" to "200000.00"
+            if (cleaned.includes(',') && cleaned.includes('.')) {
+                // This is likely Indonesian format with period as thousand separator
+                // First, remove all periods (thousand separators)
+                cleaned = cleaned.replace(/\./g, '');
+                // Then replace comma with period for decimal
+                cleaned = cleaned.replace(',', '.');
+            } else if (cleaned.includes(',')) {
+                // Just has a comma - replace with period for standard JS parsing
+                cleaned = cleaned.replace(',', '.');
+            }
 
             const numericPrice = parseFloat(cleaned);
 
@@ -113,9 +117,7 @@ export default function Landing({
             return isNaN(numericPrice) ? 0 : numericPrice;
         }
 
-        // If it's already a number
-        const numericPrice = Number(price);
-        return isNaN(numericPrice) ? 0 : numericPrice;
+        return 0;
     };
 
     // Format currency with proper Indonesian formatting without multiplying the value
