@@ -21,6 +21,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\Livewire;
+use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
 class EventResource extends Resource
 {
@@ -33,43 +34,58 @@ class EventResource extends Resource
         return $infolist->schema([
             Infolists\Components\Section::make()->schema([
                 Infolists\Components\TextEntry::make('name')
-                ->label('NAME')
-                ->icon('heroicon-m-film'),
+                    ->label('NAME')
+                    ->icon('heroicon-m-film'),
                 Infolists\Components\TextEntry::make('slug')
-                ->label('SLUG')
-                ->icon('heroicon-m-magnifying-glass-plus'),
+                    ->label('SLUG')
+                    ->icon('heroicon-m-magnifying-glass-plus'),
                 Infolists\Components\TextEntry::make('category')
-                ->label('CATEGORY')
-                ->icon('heroicon-m-tag'),
+                    ->label('CATEGORY')
+                    ->icon('heroicon-m-tag'),
                 Infolists\Components\TextEntry::make('status')
-                ->label('STATUS')
-                ->icon('heroicon-m-exclamation-triangle')
-                ->color('primary'),
+                    ->label('STATUS')
+                    ->icon('heroicon-m-exclamation-triangle')
+                    ->color('primary'),
                 Infolists\Components\TextEntry::make('start_date')
-                ->label('START')
-                ->icon('heroicon-m-calendar-date-range')
-                ->dateTime(),
+                    ->label('START')
+                    ->icon('heroicon-m-calendar-date-range')
+                    ->dateTime(),
                 Infolists\Components\TextEntry::make('end_date')
-                ->label('END')
-                ->icon('heroicon-m-calendar-date-range')
-                ->dateTime(),
+                    ->label('END')
+                    ->icon('heroicon-m-calendar-date-range')
+                    ->dateTime(),
                 Infolists\Components\TextEntry::make('location')
-                ->label('LOCATION')
-                ->icon('heroicon-m-map-pin')
-                ,
+                    ->label('LOCATION')
+                    ->icon('heroicon-m-map-pin'),
+                Infolists\Components\Actions::make([
+                    InfolistAction::make('editSeats')
+                        ->label('Edit Seats')
+                        ->icon('heroicon-m-pencil-square')
+                        ->button()
+                        ->color('primary')
+                        ->url(fn ($record) => "http://{$record->slug}." . env('APP_DOMAIN') . "/seats/edit?event_id={$record->event_id}")
+                        ->openUrlInNewTab(),
+                    InfolistAction::make('editVenue')
+                        ->label('Edit Venue')
+                        ->icon('heroicon-m-map')
+                        ->button()
+                        ->color('success')
+                        ->url(fn ($record) => "http://" . env('APP_DOMAIN') . "/seats/grid-edit?venue_id={$record->venue_id}")
+                        ->openUrlInNewTab(),
+                ]),
             ])->columns(2),
             Infolists\Components\Tabs::make('Tabs')
-            ->tabs([
-                Infolists\Components\Tabs\Tab::make('Settings')
-                    ->schema([
-                        Livewire::make('event-settings'),
-                    ]),
-                Infolists\Components\Tabs\Tab::make('Scan Tickets')
-                    ->schema([
-                        Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
-                    ]),
-            ])
-            ->columnSpan('full'),
+                ->tabs([
+                    Infolists\Components\Tabs\Tab::make('Settings')
+                        ->schema([
+                            Livewire::make('event-settings'),
+                        ]),
+                    Infolists\Components\Tabs\Tab::make('Scan Tickets')
+                        ->schema([
+                            Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
+                        ]),
+                ])
+                ->columnSpan('full'),
         ]);
     }
 
@@ -124,7 +140,7 @@ class EventResource extends Resource
                     ->label('Event Name')
                     ->sortable()
                     ->searchable()
-                    ->url(fn ($record) => TicketResource::getUrl('index', ['tableFilters[event_id][value]' => $record->event_id])),
+                    ->url(fn($record) => TicketResource::getUrl('index', ['tableFilters[event_id][value]' => $record->event_id])),
                 // Tables\Columns\TextColumn::make('event_id'),
                 Tables\Columns\TextColumn::make('category'),
                 Tables\Columns\TextColumn::make('start_date'),
@@ -141,8 +157,8 @@ class EventResource extends Resource
                     ->label('Scan Ticket')
                     ->icon('heroicon-o-qr-code')
                     ->color('success')
-                    ->url(fn ($record) => TicketScan::getUrl(['record' => $record])),
-                    // ->url(fn ($record) => Settings::getUrl(['record' => $record])),
+                    ->url(fn($record) => TicketScan::getUrl(['record' => $record])),
+                // ->url(fn ($record) => Settings::getUrl(['record' => $record])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
