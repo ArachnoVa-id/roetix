@@ -72,14 +72,14 @@ class EventResource extends Resource
                         ->icon('heroicon-m-pencil-square')
                         ->button()
                         ->color('primary')
-                        ->url(fn ($record) => "http://{$record->slug}." . env('APP_DOMAIN') . "/seats/edit?event_id={$record->event_id}")
+                        ->url(fn($record) => "/seats/edit?event_id={$record->event_id}")
                         ->openUrlInNewTab(),
                     InfolistAction::make('editVenue')
                         ->label('Edit Venue')
                         ->icon('heroicon-m-map')
                         ->button()
                         ->color('success')
-                        ->url(fn ($record) => "http://" . env('APP_DOMAIN') . "/seats/grid-edit?venue_id={$record->venue_id}")
+                        ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}")
                         ->openUrlInNewTab(),
                 ]),
             ])->columns(2),
