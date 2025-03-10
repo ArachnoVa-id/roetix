@@ -20,7 +20,7 @@ class ValidateMainDomain
 
         // Check if user is authenticated before accessing properties
         if (!Auth::check()) {
-            return redirect()->route('client.login'); // Redirect to login if unauthenticated
+            return redirect()->route('login'); // Redirect to login if unauthenticated
         }
 
         $user = Auth::user(); // Now safe to access
