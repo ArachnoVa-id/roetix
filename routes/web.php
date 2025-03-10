@@ -1,16 +1,16 @@
 <?php
 
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SeatController;
-use Illuminate\Support\Facades\Route;
-
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\SocialiteController;
-use App\Http\Controllers\UserPageController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SeatController;
+
 use App\Http\Controllers\EoTiketController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserPageController;
+use App\Http\Controllers\SocialiteController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
@@ -38,9 +38,11 @@ Route::domain(config('app.domain'))
             $user = User::find($user->user_id);
             $firstTeam = optional($user->teams()->first())->name;
 
-            if (!$firstTeam) {
-                return abort(403, 'No team found.');
-            }
+            // if (!$firstTeam) {
+            //     // logout if no team found
+            //     Auth::logout();
+            //     return abort(403, 'No team found.');
+            // }
 
             return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam]);
         })->name('home');
