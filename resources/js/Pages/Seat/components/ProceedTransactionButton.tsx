@@ -29,7 +29,11 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             }
 
             if (!grouped[category]) {
-                grouped[category] = { price, quantity: 0, seatNumbers: [] };
+                grouped[category] = {
+                    price: Number(price) || 0, // Convert to number and provide fallback
+                    quantity: 0,
+                    seatNumbers: [],
+                };
             }
 
             grouped[category].quantity += 1;

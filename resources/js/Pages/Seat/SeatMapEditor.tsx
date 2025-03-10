@@ -191,7 +191,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     // Set current values from the seat for editing
                     setSelectedStatus(seat.status);
                     setSelectedTicketType(seat.ticket_type || 'standard');
-                    setTicketPrice(seat.price || 0);
+                    setTicketPrice(Number(seat.price) || 0);
                     break;
 
                 case 'MULTIPLE':
