@@ -21,11 +21,6 @@ Route::domain(config('app.domain'))
             Route::get('/auth/google-callback', 'googleAuthentication')->name('auth.google-authentication');
         });
 
-        // Login Route
-        Route::get('/login', [AuthenticatedSessionController::class, 'create'])
-            ->name('login')
-            ->middleware('guest');
-
         // Midtrans Payment Callback
         Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
 
