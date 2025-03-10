@@ -13,7 +13,6 @@ class DynamicSessionCookie
     {
         $host = $request->getHost();
         $parts = explode('.', $host);
-        $appDomain = implode('.', array_slice($parts, -2)); // Extract base domain e.g., "novatix.id"
         $isInSubdomain = count($parts) > 2;
 
         // Define different session cookie names
@@ -26,7 +25,7 @@ class DynamicSessionCookie
         // Dynamically set the session domain
         config([
             'session.cookie' => $sessionCookieName,
-            'session.domain' => $isInSubdomain ? $host : null,  // Set subdomain-specific cookies
+            'session.domain' => '.' . config('app.domain'),
         ]);
 
         return $next($request);
