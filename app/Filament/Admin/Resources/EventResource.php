@@ -25,9 +25,18 @@ use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
 class EventResource extends Resource
 {
+
     protected static ?string $model = Event::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return in_array($user->role, ['admin', 'event-orginizer']);
+        // return in_array($user->role, ['admin', 'event-orginizer']);
+    }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
     {
