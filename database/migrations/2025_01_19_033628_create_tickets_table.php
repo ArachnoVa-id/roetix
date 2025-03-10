@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('team_id', 36);
             // $table->string('order_id', 36);
             $table->enum('ticket_type', ['standard', 'VIP'])->default('standard');
-            $table->decimal('price', 5, 2)->default(123.45);
+            $table->decimal('price', 10, 2);
             $table->enum('status', ['available', 'booked', 'reserved', 'in_transaction'])->default('available');
             $table->timestamps();
             

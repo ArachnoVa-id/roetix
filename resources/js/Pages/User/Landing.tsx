@@ -3,37 +3,46 @@ import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransaction
 import SeatMapDisplay from '@/Pages/Seat/SeatMapDisplay';
 import { Layout, SeatItem } from '@/Pages/Seat/types';
 import { Head } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+
+interface Venue {
+    venue_id: string;
+    name: string;
+}
 
 interface Event {
-    id: string;
+    event_id: string;
     name: string;
     date: string;
-    venue: {
-        id: string;
-        name: string;
-    };
+    venue_id: string;
 }
 
 interface Props {
     client: string;
     layout: Layout;
     event: Event;
+    venue: Venue;
     ticketTypes: string[];
+    error?: string;
 }
-
-const formatRupiah = (value: number): string =>
-    new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-    }).format(value);
 
 export default function Landing({
     client,
     layout,
     event,
+    venue,
     ticketTypes = ['standard', 'VIP', 'Regular'],
+    error,
 }: Props) {
+    console.log('Landing component rendered with props:', {
+        client,
+        layout,
+        event,
+        venue,
+        ticketTypes,
+        error,
+    });
+
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
 
     // Create a map of ticket types to colors for display
@@ -67,33 +76,121 @@ export default function Landing({
         }
     };
 
-    // Calculate subtotal, tax and total
-    const subtotal = selectedSeats.reduce((acc, seat) => {
-        // Explicit check and conversion with type assertions
-        let price = 0;
-        if (seat.price !== undefined && seat.price !== null) {
-            price =
-                typeof seat.price === 'string'
-                    ? parseFloat(
-                          (seat.price as string)
-                              .replace(/[^\d.,-]/g, '')
-                              .replace(',', '.'),
-                      )
-                    : Number(seat.price);
+    // Fixed price conversion function that preserves decimal places correctly
+    const getSafePrice = (price: string | number | undefined): number => {
+        if (price === undefined || price === null) return 0;
+
+        // For debugging, log the original price value
+        console.log('Original price value:', price, 'Type:', typeof price);
+
+        if (typeof price === 'string') {
+            // Remove currency symbol and spaces
+            let cleaned = price.replace(/Rp\s*/g, '');
+
+            // Handle Indonesian number format: convert "20.000,00" to "20000.00"
+            // First, temporarily replace the decimal comma with a special character
+            cleaned = cleaned.replace(',', '#');
+
+            // Remove all periods (thousand separators in Indonesian format)
+            cleaned = cleaned.replace(/\./g, '');
+
+            // Replace the special character back to a decimal point
+            cleaned = cleaned.replace('#', '.');
+
+            // Remove any remaining non-numeric characters except the decimal point
+            cleaned = cleaned.replace(/[^\d.]/g, '');
+
+            const numericPrice = parseFloat(cleaned);
+
+            // Log the cleaned string and the resulting number
+            console.log(
+                'Cleaned string:',
+                cleaned,
+                'Parsed number:',
+                numericPrice,
+            );
+
+            return isNaN(numericPrice) ? 0 : numericPrice;
         }
-        return acc + price;
-    }, 0);
-    const taxRate = 1; // 1% tax
-    const taxAmount = (subtotal * taxRate) / 100;
-    const total = subtotal + taxAmount;
+
+        // If it's already a number
+        const numericPrice = Number(price);
+        return isNaN(numericPrice) ? 0 : numericPrice;
+    };
+
+    // Format currency with proper Indonesian formatting without multiplying the value
+    const formatRupiah = (value: number): string => {
+        if (isNaN(value) || value === null || value === undefined) {
+            console.error('Attempting to format invalid value:', value);
+            return 'Rp 0,00';
+        }
+
+        // Log the value we're about to format for debugging
+        console.log('Formatting value:', value);
+
+        // Format with Indonesian locale (uses period for thousands, comma for decimal)
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(value);
+    };
+
+    // Calculate prices using useMemo to avoid recalculating on every render
+    const { subtotal, taxAmount, total } = useMemo(() => {
+        // Calculate subtotal with detailed logging
+        const subtotal = selectedSeats.reduce((acc, seat) => {
+            const seatPrice = getSafePrice(seat.price);
+            console.log(
+                `Seat ${seat.seat_number} price: ${seat.price} → ${seatPrice}`,
+            );
+            return acc + seatPrice;
+        }, 0);
+
+        console.log('Calculated subtotal:', subtotal);
+
+        // Calculate tax
+        const taxRate = 1; // 1%
+        const taxAmount = (subtotal * taxRate) / 100;
+
+        console.log('Calculated tax amount:', taxAmount);
+
+        // Calculate total
+        const total = subtotal + taxAmount;
+
+        console.log('Calculated total:', total);
+
+        return { subtotal, taxAmount, total };
+    }, [selectedSeats]);
 
     // Status legend
     const statusLegends = [
-        { label: 'Available', color: 'bg-white border-2 border-gray-300' },
         { label: 'Booked', color: 'bg-red-500' },
         { label: 'In Transaction', color: 'bg-yellow-500' },
-        { label: 'Not Available', color: 'bg-gray-400' },
+        { label: 'Reserved', color: 'bg-gray-400' },
     ];
+
+    // If we have an error, show it
+    if (error) {
+        return (
+            <AuthenticatedLayout client={client}>
+                <Head title="Error" />
+                <div className="py-8">
+                    <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                        <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                            <div className="p-6 text-gray-900">
+                                <h1 className="text-2xl font-bold text-red-600">
+                                    Error
+                                </h1>
+                                <p className="mt-4">{error}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </AuthenticatedLayout>
+        );
+    }
 
     return (
         <AuthenticatedLayout client={client}>
@@ -102,13 +199,13 @@ export default function Landing({
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">
-                            {event ? (
+                            {event && venue ? (
                                 <>
                                     <h1 className="text-2xl font-bold">
                                         {event.name}
                                     </h1>
                                     <p className="text-lg text-gray-600">
-                                        Venue: {event.venue.name}
+                                        Venue: {venue.name}
                                     </p>
                                     <p className="text-gray-600">
                                         Date:{' '}
@@ -225,7 +322,11 @@ export default function Landing({
                                             <div>
                                                 <p className="font-semibold">
                                                     Price:{' '}
-                                                    {formatRupiah(seat.price)}
+                                                    {formatRupiah(
+                                                        getSafePrice(
+                                                            seat.price,
+                                                        ),
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
@@ -244,7 +345,7 @@ export default function Landing({
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="font-medium">
-                                            Tax ({taxRate}%):
+                                            Tax (1%):
                                         </span>
                                         <span>{formatRupiah(taxAmount)}</span>
                                     </div>
