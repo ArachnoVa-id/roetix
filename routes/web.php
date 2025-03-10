@@ -38,6 +38,10 @@ Route::domain(config('app.domain'))
             $user = User::find($user->user_id);
             $firstTeam = optional($user->teams()->first())->name;
 
+            if (!$firstTeam) {
+                return abort(403, 'No team found.');
+            }
+
             return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam]);
         })->name('home');
 
