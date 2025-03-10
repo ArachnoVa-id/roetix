@@ -5,27 +5,29 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cookie;
 
 class DynamicSessionCookie
 {
     public function handle(Request $request, Closure $next)
     {
         $host = $request->getHost();
+        $parts = explode('.', $host);
+        $appDomain = implode('.', array_slice($parts, -2)); // Extract base domain e.g., "novatix.id"
+        $isInSubdomain = count($parts) > 2;
 
-        // Check if we are in a subdomain by checking the length of the host
-        $isInSubdomain = count(explode('.', $host)) > 2;
+        // Define different session cookie names
+        $appName = config('app.name');
+        $sessionCookieName = strtolower($appName) . ($isInSubdomain ? '_client_session' : '_session');
 
-        // Skip dynamic session handling for Filament (admin panel)
-        if (!$isInSubdomain) {
-            return $next($request);
-        }
+        // Remove conflicting session cookies
+        Cookie::queue(Cookie::forget($isInSubdomain ? $sessionCookieName . '_admin' : $sessionCookieName . '_client'));
 
-        config(['session.cookie' => 'session_user']);
-
-        // Continue with tenant-based session logic
-        // $subdomain = explode('.', $host)[0];
-        // config(['session.cookie' => 'session_' . $subdomain]);
+        // Dynamically set the session domain
+        config([
+            'session.cookie' => $sessionCookieName,
+            'session.domain' => $isInSubdomain ? $host : null,  // Set subdomain-specific cookies
+        ]);
 
         return $next($request);
     }
