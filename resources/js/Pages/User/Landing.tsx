@@ -34,14 +34,14 @@ export default function Landing({
     ticketTypes = ['standard', 'VIP', 'Regular'],
     error,
 }: Props) {
-    console.log('Landing component rendered with props:', {
-        client,
-        layout,
-        event,
-        venue,
-        ticketTypes,
-        error,
-    });
+    // console.log('Landing component rendered with props:', {
+    //     client,
+    //     layout,
+    //     event,
+    //     venue,
+    //     ticketTypes,
+    //     error,
+    // });
 
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
 
@@ -81,7 +81,7 @@ export default function Landing({
         if (price === undefined || price === null) return 0;
 
         // For debugging
-        console.log('Original price value:', price, 'Type:', typeof price);
+        // console.log('Original price value:', price, 'Type:', typeof price);
 
         // If it's already a number, return it directly
         if (typeof price === 'number') {
@@ -107,12 +107,12 @@ export default function Landing({
             const numericPrice = parseFloat(cleaned);
 
             // Log the cleaned string and the resulting number
-            console.log(
-                'Cleaned string:',
-                cleaned,
-                'Parsed number:',
-                numericPrice,
-            );
+            // console.log(
+            //     'Cleaned string:',
+            //     cleaned,
+            //     'Parsed number:',
+            //     numericPrice,
+            // );
 
             return isNaN(numericPrice) ? 0 : numericPrice;
         }
@@ -123,12 +123,12 @@ export default function Landing({
     // Format currency with proper Indonesian formatting without multiplying the value
     const formatRupiah = (value: number): string => {
         if (isNaN(value) || value === null || value === undefined) {
-            console.error('Attempting to format invalid value:', value);
+            // console.error('Attempting to format invalid value:', value);
             return 'Rp 0,00';
         }
 
         // Log the value we're about to format for debugging
-        console.log('Formatting value:', value);
+        // console.log('Formatting value:', value);
 
         // Format with Indonesian locale (uses period for thousands, comma for decimal)
         return new Intl.NumberFormat('id-ID', {
@@ -144,24 +144,24 @@ export default function Landing({
         // Calculate subtotal with detailed logging
         const subtotal = selectedSeats.reduce((acc, seat) => {
             const seatPrice = getSafePrice(seat.price);
-            console.log(
-                `Seat ${seat.seat_number} price: ${seat.price} → ${seatPrice}`,
-            );
+            // console.log(
+            //     `Seat ${seat.seat_number} price: ${seat.price} → ${seatPrice}`,
+            // );
             return acc + seatPrice;
         }, 0);
 
-        console.log('Calculated subtotal:', subtotal);
+        // console.log('Calculated subtotal:', subtotal);
 
         // Calculate tax
         const taxRate = 1; // 1%
         const taxAmount = (subtotal * taxRate) / 100;
 
-        console.log('Calculated tax amount:', taxAmount);
+        // console.log('Calculated tax amount:', taxAmount);
 
         // Calculate total
         const total = subtotal + taxAmount;
 
-        console.log('Calculated total:', total);
+        // console.log('Calculated total:', total);
 
         return { subtotal, taxAmount, total };
     }, [selectedSeats]);

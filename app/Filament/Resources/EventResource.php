@@ -31,8 +31,8 @@ class EventResource extends Resource
                     ->required()
                     ->options([
                         'concert' => 'concert',
-                        'sports' =>'sports',
-                        'workshop' =>'workshop',
+                        'sports' => 'sports',
+                        'workshop' => 'workshop',
                         'etc' => 'etc',
                     ])
                     ->default('etc'),
@@ -43,13 +43,13 @@ class EventResource extends Resource
                 Forms\Components\TextInput::make('location')
                     ->required()
                     ->maxLength(255),
-                    Forms\Components\Select::make('status')
+                Forms\Components\Select::make('status')
                     ->required()
                     ->options([
-                        'planned' => 'planned', 
-                        'active' => 'active', 
-                        'completed' => 'completed', 
-                        'cancelled' => 'cancelled', 
+                        'planned' => 'planned',
+                        'active' => 'active',
+                        'completed' => 'completed',
+                        'cancelled' => 'cancelled',
                     ])
                     ->default('planned'),
             ]);
