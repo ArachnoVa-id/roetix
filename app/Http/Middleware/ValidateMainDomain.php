@@ -10,7 +10,7 @@ class ValidateMainDomain
 {
     public function handle(Request $request, Closure $next)
     {
-        $mainDomain = config('app.main_domain');
+        $mainDomain = config('app.domain');
         $currentDomain = $request->getHost();
 
         // Ensure subdomains are blocked from the main domain
