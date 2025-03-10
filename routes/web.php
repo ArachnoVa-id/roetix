@@ -32,17 +32,17 @@ Route::domain(config('app.domain'))
             ]);
         });
 
+        // Redirect Home to Tenant Dashboard
+        Route::get('/', function () {
+            $user = Auth::user();
+            $user = User::find($user->user_id);
+            $firstTeam = optional($user->teams()->first())->name;
+
+            return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam]);
+        })->name('home');
+
         // Seat Management Routes (Protected)
         Route::middleware('auth')->group(function () {
-            // Redirect Home to Tenant Dashboard
-            Route::get('/', function () {
-                $user = Auth::user();
-                $user = User::find($user->user_id);
-                $firstTeam = optional($user->teams()->first())->name;
-
-                return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam]);
-            })->name('home');
-
             // Seats
             Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
             Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
