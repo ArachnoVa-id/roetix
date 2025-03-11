@@ -94,7 +94,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role == 'admin' || $this->role == 'vendor';   
+        return $this->role == 'admin' || $this->role == 'vendor';
     }
 
     // has tenant things
