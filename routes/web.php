@@ -12,6 +12,7 @@ use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
+
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
