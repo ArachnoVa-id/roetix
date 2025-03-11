@@ -17,7 +17,16 @@ class Venue extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    
+    protected $fillable = [
+        'venue_id',
+        'team_id',
+        'name',
+        'location',
+        'capacity',
+        'contact_info',
+        'status'
+    ];
+
     protected static function boot()
     {
         parent::boot();
