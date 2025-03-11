@@ -21,6 +21,7 @@ class Event extends Model
     protected $fillable = [
         'venue_id',
         'name',
+        'slug',
         'category',
         'start_date',
         'end_date',
@@ -59,5 +60,4 @@ class Event extends Model
     {
         return $this->belongsToMany(Order::class, 'ticket_order', 'event_id', 'order_id');
     }
-
 }

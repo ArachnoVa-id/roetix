@@ -2,26 +2,28 @@
 
 namespace App\Filament\Admin\Resources;
 
+use Filament\Forms;
+use Filament\Tables;
+use App\Models\Event;
+use Filament\Infolists;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
+use Illuminate\Support\Str;
+use Filament\Facades\Filament;
+use Filament\Resources\Resource;
+use Filament\Tables\Actions\Action;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
+use Filament\Infolists\Components\Livewire;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\Pages\Settings;
 use App\Filament\Admin\Resources\EventResource\Pages\TicketScan;
 use App\Filament\Admin\Resources\EventResource\RelationManagers;
-use Filament\Tables\Actions\Action;
-use App\Models\Event;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Infolists;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Facades\Filament;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Infolists\Components\Livewire;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
+use Illuminate\Support\Facades\Auth;
 
 class EventResource extends Resource
 {
@@ -32,10 +34,9 @@ class EventResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        return in_array($user->role, ['admin', 'event-orginizer']);
-        // return in_array($user->role, ['admin', 'event-orginizer']);
+        return $user && in_array($user->role, ['admin', 'event-organizer']);
     }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
@@ -107,7 +108,19 @@ class EventResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                        $foundEvent = Event::where('name', $get('name'))->first();
+                        if ($foundEvent) {
+                            $set('name', '');
+                        }
+
+                        $set('slug', Str::slug($get('name')));
+                    })
+                    ->debounce(1000),
+                Forms\Components\TextInput::make('slug')
+                    ->required()
+                    ->readOnly(),
                 Forms\Components\Select::make('category')
                     ->options([
                         'concert' => 'concert',
@@ -130,10 +143,18 @@ class EventResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('location')
                     ->required(),
+                Forms\Components\Select::make('venue_id')
+                    ->options(
+                        \App\Models\Venue::all()->pluck('name', 'venue_id')
+                    )
+                    ->required()
+                    ->label('Venue')
+                    ->placeholder('Select Venue'),
                 Forms\Components\TextInput::make('team_code')
                     ->label('Team')
                     ->default($tenant_name)
-                    ->disabled()
+                    ->hidden()
+                    ->readOnly()
                     ->required(),
                 Forms\Components\Hidden::make('team_id')
                     ->default($tenant)
@@ -148,8 +169,7 @@ class EventResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->label('Event Name')
                     ->sortable()
-                    ->searchable()
-                    ->url(fn($record) => TicketResource::getUrl('index', ['tableFilters[event_id][value]' => $record->event_id])),
+                    ->searchable(),
                 // Tables\Columns\TextColumn::make('event_id'),
                 Tables\Columns\TextColumn::make('category'),
                 Tables\Columns\TextColumn::make('start_date'),
@@ -161,13 +181,15 @@ class EventResource extends Resource
                 //
             ])
             ->actions([
-                // Tables\Actions\EditAction::make(),
-                Action::make('scanTicket')
-                    ->label('Scan Ticket')
-                    ->icon('heroicon-o-qr-code')
-                    ->color('success')
-                    ->url(fn($record) => TicketScan::getUrl(['record' => $record])),
-                // ->url(fn ($record) => Settings::getUrl(['record' => $record])),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\EditAction::make(),
+                    Action::make('scanTicket')
+                        ->label('Scan Ticket')
+                        ->icon('heroicon-o-qr-code')
+                        ->color('success')
+                        ->url(fn($record) => TicketScan::getUrl(['record' => $record])),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
