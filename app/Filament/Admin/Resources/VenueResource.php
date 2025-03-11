@@ -5,7 +5,6 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers;
 use App\Models\Venue;
-use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,20 +12,19 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class VenueResource extends Resource
 {
-    use HasPanelShield;
-
     protected static ?string $model = Venue::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        return in_array($user->role, ['admin', 'vendor']);
+        return $user && in_array($user->role, ['admin', 'vendor']);
         // return in_array($user->role, ['admin', 'event-orginizer']);
     }
 

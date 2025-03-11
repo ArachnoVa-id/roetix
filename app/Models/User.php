@@ -4,7 +4,6 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -20,23 +19,23 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 {
-    use HasFactory, Notifiable, HasRoles, HasPanelShield;
+    use HasFactory, Notifiable, HasRoles;
 
     /**
-    * Get the user's name for Filament.
-    *
-    * @return string
-    */
+     * Get the user's name for Filament.
+     *
+     * @return string
+     */
     public function getFilamentName(): string
     {
         return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';
     }
 
     /**
-    * Get the user's name for Filament.
-    *
-    * @return string
-    */
+     * Get the user's name for Filament.
+     *
+     * @return string
+     */
     public function getUserName(): string
     {
         return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';

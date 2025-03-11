@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
@@ -23,7 +24,6 @@ use App\Filament\Admin\Resources\EventResource\Pages\Settings;
 use App\Filament\Admin\Resources\EventResource\Pages\TicketScan;
 use App\Filament\Admin\Resources\EventResource\RelationManagers;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
-use Illuminate\Support\Facades\Auth;
 
 class EventResource extends Resource
 {

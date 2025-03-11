@@ -14,6 +14,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class TicketResource extends Resource
 {
@@ -23,9 +24,9 @@ class TicketResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        return in_array($user->role, ['admin', 'event-orginizer']);
+        return $user && in_array($user->role, ['admin', 'event-orginizer']);
         // return in_array($user->role, ['admin', 'event-orginizer']);
     }
 
@@ -36,7 +37,7 @@ class TicketResource extends Resource
                 Forms\Components\TextInput::make('ticket_id')
                     ->label('Ticket ID')
                     ->disabled(),
-                    // ->required(),
+                // ->required(),
                 Forms\Components\Select::make('event_id')
                     ->label('Event')
                     ->relationship('event', 'name')
@@ -68,7 +69,7 @@ class TicketResource extends Resource
                     ->label('Team')
                     ->relationship('team', 'name')
                     ->required(),
-                    // ->disabled(),
+                // ->disabled(),
             ]);
     }
 

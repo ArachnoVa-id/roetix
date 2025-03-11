@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class OrderResource extends Resource
 {
@@ -22,9 +23,9 @@ class OrderResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        return in_array($user->role, ['admin', 'event-orginizer']);
+        return $user && in_array($user->role, ['admin', 'event-orginizer']);
         // return in_array($user->role, ['admin', 'event-orginizer']);
     }
 
@@ -42,7 +43,7 @@ class OrderResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('order_id'),
                 Tables\Columns\TextColumn::make('order_date'),
-                Tables\Columns\TextColumn::make('total_price'),                
+                Tables\Columns\TextColumn::make('total_price'),
                 Tables\Columns\TextColumn::make('status'),
                 Tables\Columns\TextColumn::make('events.name'),
             ])
