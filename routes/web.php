@@ -14,6 +14,7 @@ use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
+
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
@@ -39,6 +40,10 @@ Route::domain(config('app.domain'))
             $user = Auth::user();
             $user = User::find($user->user_id);
             $firstTeam = optional($user->teams()->first())->name;
+            
+            if ($user->role == 'admin'){
+                return redirect()->route('filament.novatix-admin.pages.dashboard');
+            }
 
             return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam]);
         })->name('home');
