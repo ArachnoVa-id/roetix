@@ -70,6 +70,7 @@ Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
 Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
 Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
 Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
+Route::post('/seats/save-grid-layout', [SeatController::class, 'saveGridLayout'])->name('seats.save-grid-layout');
 
 Route::domain('{client}.' . config('app.domain'))
     ->middleware('verify.subdomain')

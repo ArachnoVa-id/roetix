@@ -44,8 +44,7 @@ class ImportSeatMap extends Command
                     $seatNumber = $this->generateSeatNumber($row);
 
                     // Generate unique seat_id
-                    $seatId = $this->generateUniqueSeatId();
-
+                    $seatId = $this->generateSeatId($config['venue_id'], $seatNumber);
                     $seat = Seat::create([
                         'seat_id'     => $seatId,
                         'venue_id'    => $config['venue_id'],
@@ -84,12 +83,18 @@ class ImportSeatMap extends Command
     /**
      * Generate unique seat_id
      */
-    private function generateUniqueSeatId(): string
+    private function generateSeatId(string $venueId, string $seatNumber): string
     {
-        do {
-            // Generate format: ST-XXXXX (X adalah random number)
-            $seatId = 'ST-' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
-        } while (Seat::where('seat_id', $seatId)->exists());
+        // Gabungkan venue_id dan seat_number
+        $seatId = $venueId . '-' . $seatNumber;
+
+        // Cek apakah ID sudah ada, jika ada tambahkan suffix
+        $counter = 1;
+        $originalSeatId = $seatId;
+        while (Seat::where('seat_id', $seatId)->exists()) {
+            $seatId = $originalSeatId . '-' . $counter;
+            $counter++;
+        }
 
         return $seatId;
     }

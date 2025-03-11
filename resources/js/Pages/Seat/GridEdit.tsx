@@ -34,14 +34,15 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                         typeof seatItem.row === 'string'
                             ? seatItem.row
                             : String.fromCharCode(65 + seatItem.row);
+
+                    // Perhatikan bahwa kita tidak perlu menetapkan seat_id di sini
+                    // seat_id akan dibuat di server berdasarkan venue_id dan seat_number
                     return {
                         type: 'seat',
-                        seat_id: seatItem.seat_id,
+                        seat_id: seatItem.seat_id, // Kirim seat_id yang ada (jika ada)
                         seat_number: seatItem.seat_number,
                         row: rowStr,
                         column: seatItem.column,
-                        status: seatItem.status,
-                        category: seatItem.category,
                         position: `${rowStr}${seatItem.column}`,
                     };
                 }
@@ -66,8 +67,18 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                 items: convertedItems,
             };
 
-            router.post('/seats/update-layout', payload, {
+            // Gunakan endpoint saveGridLayout yang baru
+            // Ini akan membuat seat_id berdasarkan venue_id dan seat_number di sisi server
+            router.post('/seats/save-grid-layout', payload, {
                 preserveScroll: true,
+                onSuccess: () => {
+                    setSuccess('Layout berhasil disimpan');
+                    setError(null);
+                },
+                onError: (errors) => {
+                    setError(Object.values(errors).join('\n'));
+                    setSuccess(null);
+                },
             });
         } catch (err) {
             console.error('Error in handleSave:', err);
