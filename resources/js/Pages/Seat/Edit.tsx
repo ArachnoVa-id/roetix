@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import SeatMapEditor, { UpdatedSeats } from './SeatMapEditor';
 import { Layout, SeatItem } from './types';
 
@@ -22,7 +22,32 @@ interface Props {
     ticketTypes: string[];
 }
 
+interface User {
+    user_id: string;
+    team_ids: string[];
+}
+
 const Edit: React.FC<Props> = ({ layout, event, venue, ticketTypes }) => {
+    const queryParams = new URLSearchParams(window.location.search); // Ambil query params manual
+    const eventId = queryParams.get('event_id'); // Dapatkan event_id dari URL
+
+    const [user, setUser] = useState<User | null>(null);
+    const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(true);
+
+    useEffect(() => {
+        if (!eventId) return;
+
+        fetch('/api/user')
+            .then((res) => res.json())
+            .then((data) => {
+                setUser(data);
+                setIsAuthorized(data.team_ids.includes(eventId));
+            })
+            .catch(() => setIsAuthorized(false))
+            .finally(() => setLoading(false));
+    }, [eventId]);
+
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [currentLayout, setCurrentLayout] = useState<Layout>(layout);

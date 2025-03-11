@@ -2,7 +2,9 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\SeatController;
 
 use App\Http\Controllers\EoTiketController;
@@ -46,7 +48,29 @@ Route::domain(config('app.domain'))
             // Seats
             Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
             Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
-            Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+            // Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+            Route::get('/seats/edit', function (Request $request) {
+                $userId = Auth::id();
+                $eventId = $request->query('event_id');
+
+                if (!$eventId) {
+                    abort(400, 'Missing event_id');
+                }
+                $userTeamIds = DB::table('user_team')
+                    ->where('user_id', $userId)
+                    ->pluck('team_id')
+                    ->toArray();
+
+                $eventTeamId = DB::table('events')
+                    ->where('event_id', $eventId)
+                    ->value('team_id');
+
+                if (!in_array($eventTeamId, $userTeamIds)) {
+                    abort(403, 'Unauthorized Access');
+                }
+
+                return app(SeatController::class)->edit($request);
+            });
             Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
             Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
             Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
