@@ -139,7 +139,7 @@ const SeatMapDisplay: React.FC<Props> = ({
                         key={reversedIndex}
                         className="flex items-center gap-1"
                     >
-                        <div className="flex gap-1">
+                        <div className="flex select-none gap-1">
                             {row.map((seat, colIndex) =>
                                 renderCell(seat, colIndex),
                             )}
