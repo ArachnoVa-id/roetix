@@ -97,6 +97,9 @@ export interface SeatMapConfig {
 
 export interface ProceedTransactionButtonProps {
     selectedSeats: SeatItem[];
+    taxAmount?: number; // Optional tax amount
+    subtotal?: number; // Optional subtotal
+    total?: number; // Optional total with tax
 }
 
 export interface GroupedItem {

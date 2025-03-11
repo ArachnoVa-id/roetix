@@ -362,6 +362,9 @@ export default function Landing({
                             {selectedSeats.length > 0 && (
                                 <ProceedTransactionButton
                                     selectedSeats={selectedSeats}
+                                    taxAmount={taxAmount}
+                                    subtotal={subtotal}
+                                    total={total}
                                 />
                             )}
                         </div>
