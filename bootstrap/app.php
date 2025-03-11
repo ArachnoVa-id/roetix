@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
             'verify.subdomain' => \App\Http\Middleware\ValidateSubdomain::class,
             'verify.maindomain' => \App\Http\Middleware\ValidateMainDomain::class,
+            'event.access' => \App\Http\Middleware\CheckEventAccess::class,
+            'venue.access' => \App\Http\Middleware\CheckVenueAccess::class,
         ]);
     })
 

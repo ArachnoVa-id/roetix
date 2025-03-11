@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Layout, LayoutItem, SeatItem } from './types';
 
 export interface UpdatedSeats {
@@ -39,10 +39,22 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
     );
     const [ticketPrice, setTicketPrice] = useState<number>(0);
 
-    // Drag selection state
+    // Enhanced drag selection state
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [dragStartSeat, setDragStartSeat] = useState<string | null>(null);
+    const [dragStartCoords, setDragStartCoords] = useState<{
+        x: number;
+        y: number;
+    } | null>(null);
+    const [selectionBox, setSelectionBox] = useState<{
+        left: number;
+        top: number;
+        width: number;
+        height: number;
+    } | null>(null);
+
     const gridRef = useRef<HTMLDivElement>(null);
+    const seatRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
     // Find highest row and column from existing seats
     const findHighestRow = (): number => {
@@ -100,14 +112,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
     };
 
     const getSeatColor = (seat: SeatItem): string => {
-        // Check if selected
-        const isSelected = selectedSeats.has(`${seat.row}${seat.column}`);
         let baseColor = '';
-
-        // If seat is selected, prioritize selection color
-        if (isSelected) {
-            return 'bg-blue-200 ring-2 ring-blue-500';
-        }
 
         if (seat.status !== 'available') {
             switch (seat.status) {
@@ -133,52 +138,137 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
     // Convert row and column to a unique ID
     const getSeatId = (seat: SeatItem): string => `${seat.row}${seat.column}`;
 
-    // Get row and column indices from seat ID
-    const getIndicesFromSeatId = (
-        seatId: string,
-    ): { rowIndex: number; colIndex: number } | null => {
-        // Find the seat in the grid
-        for (let rowIndex = 0; rowIndex < grid.length; rowIndex++) {
-            for (
-                let colIndex = 0;
-                colIndex < grid[rowIndex].length;
-                colIndex++
-            ) {
-                const item = grid[rowIndex][colIndex];
-                if (
-                    item &&
-                    'seat_id' in item &&
-                    getSeatId(item as SeatItem) === seatId
-                ) {
-                    return { rowIndex, colIndex };
-                }
-            }
+    // Mouse Up handler to end dragging - defined with useCallback to use in dependencies
+    const handleMouseUp = useCallback(() => {
+        if (isDragging) {
+            setIsDragging(false);
+            setDragStartSeat(null);
+            setDragStartCoords(null);
+            setSelectionBox(null);
         }
-        return null;
-    };
+    }, [isDragging]);
 
-    // Seat click handler
-    const handleSeatClick = (seat: SeatItem) => {
-        if (!isSeatEditable(seat)) return;
+    // Mouse Down handler for drag selection
+    const handleMouseDown = (event: React.MouseEvent, seat: SeatItem) => {
+        if (!isSeatEditable(seat) || selectionMode !== 'DRAG') return;
 
         const seatId = getSeatId(seat);
 
-        if (selectionMode === 'DRAG') {
-            // In drag mode, we just set the start seat
-            setDragStartSeat(seatId);
-            setIsDragging(true);
+        // Set starting position for the drag
+        setDragStartSeat(seatId);
+        setDragStartCoords({ x: event.clientX, y: event.clientY });
+        setIsDragging(true);
 
-            // Initialize selection with just this seat
+        // Clear previous selection or keep it based on modifier key
+        if (!event.shiftKey) {
+            setSelectedSeats(new Set([seatId]));
+        } else {
             setSelectedSeats((prev) => {
                 const next = new Set(prev);
-                if (!prev.has(seatId)) {
-                    next.clear();
-                    next.add(seatId);
-                }
+                next.add(seatId);
                 return next;
             });
-            return;
         }
+
+        // Prevent default browser behavior
+        event.preventDefault();
+    };
+
+    // Mouse Move handler for entire grid area during drag
+    const handleGridMouseMove = (event: React.MouseEvent) => {
+        if (!isDragging || selectionMode !== 'DRAG' || !gridRef.current) return;
+
+        const gridRect = gridRef.current.getBoundingClientRect();
+
+        // Ensure we have both starting coordinates
+        if (!dragStartCoords) return;
+
+        // Calculate the selection box coordinates relative to the grid
+        const left = Math.min(dragStartCoords.x, event.clientX) - gridRect.left;
+        const top = Math.min(dragStartCoords.y, event.clientY) - gridRect.top;
+        const width = Math.abs(event.clientX - dragStartCoords.x);
+        const height = Math.abs(event.clientY - dragStartCoords.y);
+
+        setSelectionBox({ left, top, width, height });
+
+        // Find all seats within the selection rectangle
+        const newSelectedSeats = new Set<string>();
+
+        // Add seats from previous selection if shift key was held
+        if (event.shiftKey && dragStartSeat) {
+            selectedSeats.forEach((id) => newSelectedSeats.add(id));
+        } else if (dragStartSeat) {
+            newSelectedSeats.add(dragStartSeat);
+        }
+
+        // Check each seat to see if it's in the selection box
+        layout.items.forEach((item) => {
+            if (item.type === 'seat' && isSeatEditable(item as SeatItem)) {
+                const seatId = getSeatId(item as SeatItem);
+                const seatRef = seatRefs.current.get(seatId);
+
+                if (seatRef) {
+                    const seatRect = seatRef.getBoundingClientRect();
+
+                    // Check if seat overlaps with selection box
+                    const isInSelection =
+                        Math.min(dragStartCoords.x, event.clientX) <=
+                            seatRect.right &&
+                        Math.max(dragStartCoords.x, event.clientX) >=
+                            seatRect.left &&
+                        Math.min(dragStartCoords.y, event.clientY) <=
+                            seatRect.bottom &&
+                        Math.max(dragStartCoords.y, event.clientY) >=
+                            seatRect.top;
+
+                    if (isInSelection) {
+                        newSelectedSeats.add(seatId);
+                    }
+                }
+            }
+        });
+
+        setSelectedSeats(newSelectedSeats);
+    };
+
+    // Add a window mouse up event listener to handle cases when mouse up occurs outside of grid
+    useEffect(() => {
+        const handleWindowMouseUp = () => {
+            handleMouseUp();
+        };
+
+        window.addEventListener('mouseup', handleWindowMouseUp);
+
+        return () => {
+            window.removeEventListener('mouseup', handleWindowMouseUp);
+        };
+    }, [handleMouseUp]);
+
+    // Key press handler for keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Cancel selection on Escape
+            if (e.key === 'Escape' && isDragging) {
+                setIsDragging(false);
+                setDragStartSeat(null);
+                setDragStartCoords(null);
+                setSelectionBox(null);
+                setSelectedSeats(new Set());
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isDragging]);
+
+    // Seat click handler (for single, multiple, and category selection modes)
+    const handleSeatClick = (seat: SeatItem) => {
+        if (!isSeatEditable(seat) || selectionMode === 'DRAG') return;
+
+        const seatId = getSeatId(seat);
 
         setSelectedSeats((prev) => {
             const next = new Set(prev);
@@ -222,75 +312,6 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
         });
     };
 
-    // Mouse move handler for drag selection
-    const handleMouseMove = (seat: SeatItem) => {
-        if (
-            !isDragging ||
-            !dragStartSeat ||
-            selectionMode !== 'DRAG' ||
-            !isSeatEditable(seat)
-        )
-            return;
-
-        const currentSeatId = getSeatId(seat);
-
-        // Get coordinates of start and current seat
-        const startIndices = getIndicesFromSeatId(dragStartSeat);
-        const currentIndices = getIndicesFromSeatId(currentSeatId);
-
-        if (!startIndices || !currentIndices) return;
-
-        // Determine the rectangle corners
-        const minRowIndex = Math.min(
-            startIndices.rowIndex,
-            currentIndices.rowIndex,
-        );
-        const maxRowIndex = Math.max(
-            startIndices.rowIndex,
-            currentIndices.rowIndex,
-        );
-        const minColIndex = Math.min(
-            startIndices.colIndex,
-            currentIndices.colIndex,
-        );
-        const maxColIndex = Math.max(
-            startIndices.colIndex,
-            currentIndices.colIndex,
-        );
-
-        // Create a new set of selected seats
-        const newSelectedSeats = new Set<string>();
-
-        // Add all seats in the rectangle to selection
-        for (let rowIndex = minRowIndex; rowIndex <= maxRowIndex; rowIndex++) {
-            for (
-                let colIndex = minColIndex;
-                colIndex <= maxColIndex;
-                colIndex++
-            ) {
-                const item = grid[rowIndex][colIndex];
-                if (
-                    item &&
-                    'seat_id' in item &&
-                    isSeatEditable(item as SeatItem)
-                ) {
-                    const id = getSeatId(item as SeatItem);
-                    newSelectedSeats.add(id);
-                }
-            }
-        }
-
-        setSelectedSeats(newSelectedSeats);
-    };
-
-    // Mouse up handler to end dragging
-    const handleMouseUp = () => {
-        if (isDragging) {
-            setIsDragging(false);
-            setDragStartSeat(null);
-        }
-    };
-
     const handleSelectCategory = (category: string) => {
         if (selectionMode !== 'CATEGORY') return;
 
@@ -314,14 +335,25 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
             const isEditable = isSeatEditable(seat);
             const seatId = getSeatId(seat);
             const isSelected = selectedSeats.has(seatId);
+            const seatColor = getSeatColor(seat);
 
             return (
                 <div
                     key={colIndex}
-                    onClick={() => isEditable && handleSeatClick(seat)}
-                    onMouseMove={() => isEditable && handleMouseMove(seat)}
-                    onMouseUp={handleMouseUp}
-                    className={`flex h-8 w-8 select-none items-center justify-center rounded border ${getSeatColor(seat)} ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
+                    ref={(el) => {
+                        if (el) seatRefs.current.set(seatId, el);
+                    }}
+                    onClick={() =>
+                        isEditable &&
+                        selectionMode !== 'DRAG' &&
+                        handleSeatClick(seat)
+                    }
+                    onMouseDown={(e) =>
+                        isEditable &&
+                        selectionMode === 'DRAG' &&
+                        handleMouseDown(e, seat)
+                    }
+                    className={`flex h-8 w-8 select-none items-center justify-center rounded border ${seatColor} ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
                     title={
                         !isEditable
                             ? 'This seat is booked and cannot be edited'
@@ -362,7 +394,11 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
         setSelectedCategory(null);
         setIsDragging(false);
         setDragStartSeat(null);
+        setDragStartCoords(null);
+        setSelectionBox(null);
     };
+
+    // Create selection box style object outside of render to avoid inline styles
 
     return (
         <div className="p-6">
@@ -418,8 +454,9 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
             {selectionMode === 'DRAG' && (
                 <div className="mb-4 rounded-lg bg-blue-50 p-4">
                     <p className="text-sm text-blue-700">
-                        Click and drag to select multiple seats at once. Only
-                        editable seats will be included in the selection.
+                        Click and drag to select multiple seats at once. Hold
+                        Shift to add to existing selection. Press Escape to
+                        cancel the current selection.
                     </p>
                 </div>
             )}
@@ -565,11 +602,23 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
 
             {/* Grid display */}
             <div
-                className="flex w-full flex-col items-center"
+                className="relative flex w-full flex-col items-center"
                 ref={gridRef}
+                onMouseMove={handleGridMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
             >
+                {/* Visual selection box overlay */}
+                {isDragging && selectionBox && (
+                    <div
+                        className="selection-box pointer-events-none absolute z-10 border-2 border-blue-500 bg-blue-100 bg-opacity-20"
+                        data-left={selectionBox.left}
+                        data-top={selectionBox.top}
+                        data-width={selectionBox.width}
+                        data-height={selectionBox.height}
+                    />
+                )}
+
                 <div className="grid gap-1">
                     {[...grid].reverse().map((row, reversedIndex) => {
                         return (

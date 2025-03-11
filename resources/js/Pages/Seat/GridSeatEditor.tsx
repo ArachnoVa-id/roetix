@@ -7,6 +7,7 @@ interface Props {
     initialLayout?: Layout;
     onSave?: (layout: Layout) => void;
     venueId: string;
+    isDisabled?: boolean;
 }
 
 interface GridCell {
@@ -37,6 +38,7 @@ type EditorMode = 'add' | 'delete' | 'block';
 const GridSeatEditor: React.FC<Props> = ({
     initialLayout,
     onSave,
+    isDisabled,
     // venueId,
 }) => {
     const [dimensions, setDimensions] = useState<GridDimensions>({
@@ -305,7 +307,7 @@ const GridSeatEditor: React.FC<Props> = ({
 
         const newSeat: SeatItem = {
             type: 'seat',
-            seat_id: `${rowLabel}${adjustedColumn}`,
+            seat_id: '', // Kosongkan seat_id, akan dibuat di backend
             seat_number: `${rowLabel}${adjustedColumn}`,
             row: rowLabel,
             column: adjustedColumn,
@@ -356,7 +358,7 @@ const GridSeatEditor: React.FC<Props> = ({
 
                     const newSeat: SeatItem = {
                         type: 'seat',
-                        seat_id: `${rowLabel}${adjustedColumn}`,
+                        seat_id: '', // Kosongkan seat_id, akan dibuat di backend
                         seat_number: `${rowLabel}${adjustedColumn}`,
                         row: rowLabel,
                         column: adjustedColumn,
@@ -414,7 +416,8 @@ const GridSeatEditor: React.FC<Props> = ({
                 if (cell.type === 'seat' && cell.item) {
                     cell.item.row = rowLabel;
                     cell.item.seat_number = `${rowLabel}${seatCounters[rowLabel]}`;
-                    cell.item.seat_id = `${rowLabel}${seatCounters[rowLabel]}`;
+                    // Hapus bagian ini, biarkan seat_id diatur oleh backend
+                    // cell.item.seat_id = `${rowLabel}${seatCounters[rowLabel]}`;
                     seatCounters[rowLabel]++;
                 }
             }
@@ -441,8 +444,12 @@ const GridSeatEditor: React.FC<Props> = ({
                 const cell = tempGrid[i][j];
                 if (cell.type === 'seat' && cell.item) {
                     cell.item.row = rowLabel;
+                    // Only generate seat_number, seat_id will be generated on server
                     cell.item.seat_number = `${rowLabel}${seatCounters[rowLabel]}`;
-                    cell.item.seat_id = `${rowLabel}${seatCounters[rowLabel]}`;
+
+                    // We're not setting seat_id here as it will be generated on the server
+                    // based on the venue_id and seat_number
+
                     seatCounters[rowLabel]++;
                 }
             }
@@ -816,9 +823,13 @@ const GridSeatEditor: React.FC<Props> = ({
                 </div>
             </div>
 
-            <Button onClick={handleSave} className="mt-4">
-                Save Layout
-            </Button>
+            <button
+                onClick={handleSave}
+                className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isDisabled}
+            >
+                {isDisabled ? 'Saving...' : 'Save Layout'}
+            </button>
         </div>
     );
 };
