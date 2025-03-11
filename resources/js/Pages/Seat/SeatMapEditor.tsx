@@ -100,14 +100,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
     };
 
     const getSeatColor = (seat: SeatItem): string => {
-        // Check if selected
-        const isSelected = selectedSeats.has(`${seat.row}${seat.column}`);
         let baseColor = '';
-
-        // If seat is selected, prioritize selection color
-        if (isSelected) {
-            return 'bg-blue-200 ring-2 ring-blue-500';
-        }
 
         if (seat.status !== 'available') {
             switch (seat.status) {
@@ -314,6 +307,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
             const isEditable = isSeatEditable(seat);
             const seatId = getSeatId(seat);
             const isSelected = selectedSeats.has(seatId);
+            const seatColor = getSeatColor(seat);
 
             return (
                 <div
@@ -321,7 +315,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     onClick={() => isEditable && handleSeatClick(seat)}
                     onMouseMove={() => isEditable && handleMouseMove(seat)}
                     onMouseUp={handleMouseUp}
-                    className={`flex h-8 w-8 select-none items-center justify-center rounded border ${getSeatColor(seat)} ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
+                    className={`flex h-8 w-8 select-none items-center justify-center rounded border ${seatColor} ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
                     title={
                         !isEditable
                             ? 'This seat is booked and cannot be edited'
