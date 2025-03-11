@@ -46,7 +46,12 @@ Route::get('/login', function () {
 
         $firstTeam = $userModel->teams()->first();
 
+        if ($userModel->role == 'admin') {
+            return redirect()->to(route('filament.novatix-admin.pages.dashboard'));
+        }
+
         return redirect()->to(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->name]));
+        
     } else {
         $page = new AuthenticatedSessionController();
         return $page->create();

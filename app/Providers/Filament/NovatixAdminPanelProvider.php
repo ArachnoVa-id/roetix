@@ -2,8 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Tenancy\RegisterTeam;
-use App\Models\Team;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -20,33 +18,22 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-use Inertia\Middleware;
-
-class AdminPanelProvider extends PanelProvider
+class NovatixAdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->id('admin')
-            ->path('admin')
+            ->id('novatix-admin')
+            ->path('novatix-admin')
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->tenant(Team::class, slugAttribute: 'name')
-            // ->tenantMiddleware([
-            //     \BezhanSalleh\FilamentShield\Middleware\SyncShieldTenant::class,
-            // ], isPersistent: true)
-            // ->plugins([
-            //     \BezhanSalleh\FilamentShield\FilamentShieldPlugin::make(),
-            // ])
-
-            ->tenantRegistration(RegisterTeam::class)
-            ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
-            ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
+            ->discoverResources(in: app_path('Filament/NovatixAdmin/Resources'), for: 'App\\Filament\\NovatixAdmin\\Resources')
+            ->discoverPages(in: app_path('Filament/NovatixAdmin/Pages'), for: 'App\\Filament\\NovatixAdmin\\Pages')
             ->pages([
                 Pages\Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
+            ->discoverWidgets(in: app_path('Filament/NovatixAdmin/Widgets'), for: 'App\\Filament\\NovatixAdmin\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
