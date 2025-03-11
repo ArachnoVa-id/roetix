@@ -2,10 +2,10 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Filament\Admin\Resources\OrderResource\Pages;
-use App\Filament\Admin\Resources\OrderResource\RelationManagers;
-use App\Models\Order;
-use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
+use App\Filament\Admin\Resources\VenueResource\Pages;
+use App\Filament\Admin\Resources\VenueResource\RelationManagers;
+use App\Models\Venue;
+use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -14,9 +14,11 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class OrderResource extends Resource
+class VenueResource extends Resource
 {
-    protected static ?string $model = Order::class;
+    use HasPanelShield;
+
+    protected static ?string $model = Venue::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
@@ -24,7 +26,7 @@ class OrderResource extends Resource
     {
         $user = auth()->user();
 
-        return in_array($user->role, ['admin', 'event-orginizer']);
+        return in_array($user->role, ['admin', 'vendor']);
         // return in_array($user->role, ['admin', 'event-orginizer']);
     }
 
@@ -40,22 +42,18 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('order_id'),
-                Tables\Columns\TextColumn::make('order_date'),
-                Tables\Columns\TextColumn::make('total_price'),                
-                Tables\Columns\TextColumn::make('status'),
-                Tables\Columns\TextColumn::make('events.name'),
+                //
             ])
             ->filters([
                 //
             ])
             ->actions([
-                // Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                // Tables\Actions\BulkActionGroup::make([
-                //     Tables\Actions\DeleteBulkAction::make(),
-                // ]),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
     }
 
@@ -69,9 +67,9 @@ class OrderResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListOrders::route('/'),
-            // 'create' => Pages\CreateOrder::route('/create'),
-            // 'edit' => Pages\EditOrder::route('/{record}/edit'),
+            'index' => Pages\ListVenues::route('/'),
+            'create' => Pages\CreateVenue::route('/create'),
+            'edit' => Pages\EditVenue::route('/{record}/edit'),
         ];
     }
 }

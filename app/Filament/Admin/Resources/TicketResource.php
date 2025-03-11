@@ -21,6 +21,14 @@ class TicketResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return in_array($user->role, ['admin', 'event-orginizer']);
+        // return in_array($user->role, ['admin', 'event-orginizer']);
+    }
+
     public static function form(Form $form): Form
     {
         return $form
