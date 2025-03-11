@@ -17,16 +17,10 @@ class PaymentController extends Controller
     {
         // Set up Midtrans configuration from a single place
         // Use the same config key in both __construct and charge method
-        Config::$serverKey = config('services.midtrans.server_key');
-        Config::$isProduction = config('services.midtrans.is_production', false);
-        Config::$isSanitized = true;
-        Config::$is3ds = true;
-
-        // Log Midtrans configuration for debugging
-        Log::info('Midtrans Configuration Loaded', [
-            'server_key_exists' => !empty(Config::$serverKey),
-            'is_production' => Config::$isProduction,
-        ]);
+        Config::$serverKey = config('midtrans.server_key');
+        Config::$isProduction = config('midtrans.is_production', false);
+        Config::$isSanitized = config('midtrans.is_sanitized', true);
+        Config::$is3ds = config('midtrans.is_3ds', true);
     }
 
     /**
@@ -123,14 +117,13 @@ class PaymentController extends Controller
                 'transaction_id' => $orderId,
                 'client_key' => config('services.midtrans.client_key'),
             ]);
-            
         } catch (\Exception $e) {
             Log::error('Error in payment charge: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
                 'message' => 'Payment processing failed: ' . $e->getMessage(),
                 'file' => $e->getFile(),
@@ -145,7 +138,7 @@ class PaymentController extends Controller
     public function midtransCallback(Request $request)
     {
         $data = $request->all();
-        
+
         Log::info('Midtrans callback received', ['data' => $data]);
 
         try {
@@ -160,12 +153,12 @@ class PaymentController extends Controller
                     // Payment success - update order status
                     $this->updateOrderStatus($data['order_id'], 'paid', $data);
                     break;
-                    
+
                 case 'pending':
                     // Payment pending
                     $this->updateOrderStatus($data['order_id'], 'pending', $data);
                     break;
-                    
+
                 case 'deny':
                 case 'expire':
                 case 'cancel':
@@ -175,13 +168,12 @@ class PaymentController extends Controller
             }
 
             return response()->json(['message' => 'Callback processed successfully']);
-            
         } catch (\Exception $e) {
             Log::error('Error processing payment callback: ' . $e->getMessage(), [
                 'data' => $data,
                 'exception' => $e,
             ]);
-            
+
             return response()->json(['error' => 'Failed to process callback'], 500);
         }
     }

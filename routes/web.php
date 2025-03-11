@@ -87,7 +87,7 @@ Route::domain('{client}.' . config('app.domain'))
         Route::get('/events/tickets', [EoTiketController::class, 'show'])->name('events.tickets.index');
 
         // Ticket
-        Route::post('/payment/charge', [PaymentController::class, 'createCharge'])->name('payment.charge');
+        Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
 
         // Any unregistered route will be redirected to the client's home page
         Route::fallback(function () {
