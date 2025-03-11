@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CheckEventAccess
 {
@@ -18,7 +19,14 @@ class CheckEventAccess
     public function handle(Request $request, Closure $next)
     {
         $userId = Auth::id();
-        $eventId = $request->route('event_id');
+
+        // Check both route parameter and query parameter for event_id
+        $eventId = $request->route('event_id') ?? $request->query('event_id');
+
+        if (!$eventId) {
+            abort(400, 'Missing event_id');
+        }
+
         $userTeamIds = DB::table('user_team')
             ->where('user_id', $userId)
             ->pluck('team_id')
@@ -28,8 +36,16 @@ class CheckEventAccess
             ->where('event_id', $eventId)
             ->value('team_id');
 
-        if (!in_array($eventTeamId, $userTeamIds)) {
-            abort(403, 'Unauthorized Access');
+        if (!$eventTeamId || !in_array($eventTeamId, $userTeamIds)) {
+            // Add logging to help debug
+            Log::error('Event access denied', [
+                'user_id' => $userId,
+                'event_id' => $eventId,
+                'user_team_ids' => $userTeamIds,
+                'event_team_id' => $eventTeamId
+            ]);
+
+            abort(403, 'Unauthorized Access to Event');
         }
 
         return $next($request);

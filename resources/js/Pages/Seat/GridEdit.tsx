@@ -11,31 +11,9 @@ interface Props {
     flash?: { success?: string };
 }
 
-interface User {
-    user_id: string;
-    team_ids: string[];
-}
-
 const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
-    const queryParams = new URLSearchParams(window.location.search); 
-    const venueId = queryParams.get('venue_id');
+    // We don't need to check authorization here anymore since middleware handles it
 
-    const [user, setUser] = useState<User | null>(null);
-    const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
-    const [loading, setLoading] = useState<boolean>(true);
-
-    useEffect(() => {
-        if (!venueId) return;
-
-        fetch('/api/user')
-            .then((res) => res.json())
-            .then((data) => {
-                setUser(data);
-                setIsAuthorized(data.team_ids.includes(venueId));
-            })
-            .catch(() => setIsAuthorized(false))
-            .finally(() => setLoading(false));
-    }, [venueId]);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
