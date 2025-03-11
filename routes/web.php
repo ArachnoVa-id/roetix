@@ -47,30 +47,13 @@ Route::domain(config('app.domain'))
         Route::middleware('auth')->group(function () {
             // Seats
             Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-            Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
+            Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])
+                ->middleware('venue.access')
+                ->name('seats.grid-edit');
             // Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-            Route::get('/seats/edit', function (Request $request) {
-                $userId = Auth::id();
-                $eventId = $request->query('event_id');
-
-                if (!$eventId) {
-                    abort(400, 'Missing event_id');
-                }
-                $userTeamIds = DB::table('user_team')
-                    ->where('user_id', $userId)
-                    ->pluck('team_id')
-                    ->toArray();
-
-                $eventTeamId = DB::table('events')
-                    ->where('event_id', $eventId)
-                    ->value('team_id');
-
-                if (!in_array($eventTeamId, $userTeamIds)) {
-                    abort(403, 'Unauthorized Access');
-                }
-
-                return app(SeatController::class)->edit($request);
-            });
+            Route::get('/seats/edit', [SeatController::class, 'edit'])
+                ->middleware('event.access')
+                ->name('seats.edit');
             Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
             Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
             Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
