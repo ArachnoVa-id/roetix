@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use App\Models\Event;
 use App\Models\Team;
+use App\Models\Venue;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Event>
@@ -32,6 +33,7 @@ class EventFactory extends Factory
         return [
             'event_id' => (string) Str::uuid(),
             'team_id' => Team::inRandomOrder()->first()?->team_id,
+            'venue_id' => Venue::inRandomOrder()->first()?->venue_id,
             'name' => $name,
             'slug' => $slug,
             'category' => $this->faker->randomElement(['concert', 'sports', 'workshop', 'etc']),

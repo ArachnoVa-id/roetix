@@ -19,7 +19,9 @@ class Event extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'venue_id',
         'name',
+        'slug',
         'category',
         'start_date',
         'end_date',
@@ -49,9 +51,13 @@ class Event extends Model
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
     }
 
+    public function venue(): BelongsTo
+    {
+        return $this->belongsTo(Venue::class, 'venue_id', 'venue_id');
+    }
+
     public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'ticket_order', 'event_id', 'order_id');
     }
-
 }

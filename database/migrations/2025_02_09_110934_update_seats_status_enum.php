@@ -9,11 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE seats MODIFY COLUMN status ENUM('available', 'booked', 'in_transaction', 'not_available') DEFAULT 'available'");
+        DB::statement("ALTER TABLE tickets MODIFY COLUMN status ENUM('available', 'booked', 'in_transaction', 'reserved') DEFAULT 'available'");
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE seats MODIFY COLUMN status ENUM('available', 'booked', 'in_transaction') DEFAULT 'available'");
+        DB::statement("ALTER TABLE tickets MODIFY COLUMN status ENUM('available', 'booked', 'in_transaction') DEFAULT 'available'");
     }
 };

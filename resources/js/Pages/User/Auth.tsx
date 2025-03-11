@@ -46,7 +46,9 @@ export default function Welcome({
                 </header>
 
                 <main className="flex w-full grow items-center justify-center">
-                    <div>{(client ? 'Staging for: ' : 'Staging') + client}</div>
+                    <div>
+                        {(client ? 'Production for: ' : 'Production') + client}
+                    </div>
                 </main>
             </div>
         </>

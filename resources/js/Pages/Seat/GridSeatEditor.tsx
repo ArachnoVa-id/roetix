@@ -1,28 +1,5 @@
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/Components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { MousePointer, Plus, Square, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Category, Layout, LayoutItem, SeatItem, SeatStatus } from './types';
 
@@ -35,6 +12,7 @@ interface Props {
 interface GridCell {
     type: 'empty' | 'seat' | 'label';
     item?: SeatItem;
+    isBlocked?: boolean;
 }
 
 interface GridDimensions {
@@ -43,21 +21,6 @@ interface GridDimensions {
     left: number;
     right: number;
 }
-
-// Helper function to convert number to Excel-style column label
-// const getRowLabel = (num: number): string => {
-//     let dividend = num;
-//     let columnName = '';
-//     let modulo;
-
-//     while (dividend > 0) {
-//         modulo = (dividend - 1) % 26;
-//         columnName = String.fromCharCode(65 + modulo) + columnName;
-//         dividend = Math.floor((dividend - 1) / 26);
-//     }
-
-//     return columnName;
-// };
 
 // Helper function to convert Excel-style column label to number
 const getRowNumber = (label: string): number => {
@@ -68,6 +31,8 @@ const getRowNumber = (label: string): number => {
     }
     return result;
 };
+
+type EditorMode = 'add' | 'delete' | 'block';
 
 const GridSeatEditor: React.FC<Props> = ({
     initialLayout,
@@ -82,20 +47,52 @@ const GridSeatEditor: React.FC<Props> = ({
     });
 
     const [grid, setGrid] = useState<GridCell[][]>([]);
-    const [selectedCell, setSelectedCell] = useState<{
+    const [mode, setMode] = useState<EditorMode>('add');
+    const [isMouseDown, setIsMouseDown] = useState(false);
+    const [startCell, setStartCell] = useState<{
         row: number;
         col: number;
     } | null>(null);
-    const [showSeatDialog, setShowSeatDialog] = useState(false);
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [editMode, setEditMode] = useState<'add' | 'edit' | null>(null);
-    const [selectedCategory, setSelectedCategory] =
-        useState<Category>('silver');
-    const [selectedStatus, setSelectedStatus] =
-        useState<SeatStatus>('available');
+    const [endCell, setEndCell] = useState<{ row: number; col: number } | null>(
+        null,
+    );
+
+    // State for improved block mode
+    const [isDragging, setIsDragging] = useState<boolean>(false);
+    const [blockedArea, setBlockedArea] = useState<{
+        minRow: number;
+        maxRow: number;
+        minCol: number;
+        maxCol: number;
+    } | null>(null);
+
+    // Default values for new seats
+    const defaultCategory: Category = 'standard';
+    const defaultStatus: SeatStatus = 'available';
 
     const totalRows = dimensions.top + dimensions.bottom;
     const totalColumns = dimensions.left + dimensions.right;
+
+    // Function to check if a cell is in the most recently blocked/unblocked area
+    const isInBlockedArea = (rowIndex: number, colIndex: number): boolean => {
+        if (!blockedArea) return false;
+
+        return (
+            rowIndex >= blockedArea.minRow &&
+            rowIndex <= blockedArea.maxRow &&
+            colIndex >= blockedArea.minCol &&
+            colIndex <= blockedArea.maxCol
+        );
+    };
+
+    // Handle mode change with cleanup
+    const handleModeChange = (newMode: EditorMode) => {
+        // Clear blocked area highlight when switching out of block mode
+        if (mode === 'block') {
+            setBlockedArea(null);
+        }
+        setMode(newMode);
+    };
 
     // Function to find highest row and adjust dimensions
     const findHighestRow = (items: LayoutItem[]): number => {
@@ -123,7 +120,6 @@ const GridSeatEditor: React.FC<Props> = ({
         return maxCol;
     };
 
-    //
     const initializeGrid = useCallback(() => {
         const newGrid: GridCell[][] = Array(totalRows)
             .fill(null)
@@ -191,27 +187,101 @@ const GridSeatEditor: React.FC<Props> = ({
         }
     }, [initialLayout]);
 
+    // Reset state when mode changes
+    useEffect(() => {
+        setIsDragging(false);
+        setIsMouseDown(false);
+        setStartCell(null);
+        setEndCell(null);
+        setBlockedArea(null);
+    }, [mode]);
+
     const handleCellClick = (rowIndex: number, colIndex: number) => {
-        setSelectedCell({ row: rowIndex, col: colIndex });
         const cell = grid[rowIndex][colIndex];
 
-        if (cell.type === 'empty') {
-            setEditMode('add');
-            setShowSeatDialog(true);
-            setSelectedStatus('available');
-            setSelectedCategory('silver');
-        } else if (cell.type === 'seat' && cell.item) {
-            setEditMode('edit');
-            setShowSeatDialog(true);
-            setSelectedCategory(cell.item.category);
-            setSelectedStatus(cell.item.status);
+        if (mode === 'add') {
+            if (cell.type === 'empty' && !cell.isBlocked) {
+                // Immediately add a seat with default values
+                addSeatAtPosition(rowIndex, colIndex);
+            }
+        } else if (mode === 'delete') {
+            if (cell.type === 'seat') {
+                // Delete seat directly without confirmation
+                deleteSeat(rowIndex, colIndex);
+            }
+        } else if (mode === 'block') {
+            // Toggle blocked status
+            toggleBlockedCell(rowIndex, colIndex);
         }
     };
 
-    // Fungsi untuk mendapatkan row label yang benar berdasarkan posisi dari bawah
+    const handleMouseDown = (rowIndex: number, colIndex: number) => {
+        if (mode !== 'block') return;
+
+        setIsMouseDown(true);
+        setIsDragging(true);
+        setStartCell({ row: rowIndex, col: colIndex });
+        setEndCell({ row: rowIndex, col: colIndex });
+    };
+
+    const handleMouseOver = (rowIndex: number, colIndex: number) => {
+        if (!isMouseDown || mode !== 'block') return;
+
+        setEndCell({ row: rowIndex, col: colIndex });
+    };
+
+    const handleMouseUp = () => {
+        if (!isMouseDown || mode !== 'block' || !startCell || !endCell) return;
+
+        // Process blocked area
+        const minRow = Math.min(startCell.row, endCell.row);
+        const maxRow = Math.max(startCell.row, endCell.row);
+        const minCol = Math.min(startCell.col, endCell.col);
+        const maxCol = Math.max(startCell.col, endCell.col);
+
+        const newGrid = [...grid];
+
+        // Determine if we're blocking or unblocking based on the first cell
+        const firstCell = newGrid[startCell.row][startCell.col];
+        const isBlocking = !firstCell.isBlocked;
+
+        for (let i = minRow; i <= maxRow; i++) {
+            for (let j = minCol; j <= maxCol; j++) {
+                // Toggle isBlocked flag instead of changing the cell type
+                newGrid[i][j] = {
+                    ...newGrid[i][j],
+                    isBlocked: isBlocking,
+                };
+            }
+        }
+
+        // Save the blocked area so we can highlight it
+        setBlockedArea({ minRow, maxRow, minCol, maxCol });
+
+        setGrid(newGrid);
+        setIsMouseDown(false);
+        setIsDragging(false);
+        setStartCell(null);
+        setEndCell(null);
+    };
+
+    // Function to toggle a single cell's blocked status
+    const toggleBlockedCell = (rowIndex: number, colIndex: number) => {
+        const newGrid = [...grid];
+        const currentCell = newGrid[rowIndex][colIndex];
+
+        // Toggle the isBlocked flag
+        newGrid[rowIndex][colIndex] = {
+            ...currentCell,
+            isBlocked: !currentCell.isBlocked,
+        };
+
+        setGrid(newGrid);
+    };
+
+    // Function to get row label from bottom-up position
     const getAdjustedRowLabel = (index: number, totalRows: number): string => {
-        // index adalah posisi dari atas, kita perlu mengonversinya ke posisi dari bawah
-        const rowFromBottom = index + 1; // Mulai dari 1 untuk baris paling bawah
+        const rowFromBottom = index + 1;
 
         if (rowFromBottom <= 0 || rowFromBottom > totalRows) return '';
 
@@ -227,14 +297,11 @@ const GridSeatEditor: React.FC<Props> = ({
         return label;
     };
 
-    const handleAddSeat = () => {
-        if (!selectedCell) return;
-
+    // Function to add a seat at the specified position
+    const addSeatAtPosition = (rowIndex: number, colIndex: number) => {
         const newGrid = [...grid];
-        const rowLabel = getAdjustedRowLabel(selectedCell.row, totalRows);
-
-        // Perbaikan perhitungan kolom
-        const adjustedColumn = selectedCell.col + 1; // Tambah 1 karena indeks dimulai dari 0
+        const rowLabel = getAdjustedRowLabel(rowIndex, totalRows);
+        const adjustedColumn = colIndex + 1;
 
         const newSeat: SeatItem = {
             type: 'seat',
@@ -242,30 +309,94 @@ const GridSeatEditor: React.FC<Props> = ({
             seat_number: `${rowLabel}${adjustedColumn}`,
             row: rowLabel,
             column: adjustedColumn,
-            status: selectedStatus,
-            category: selectedCategory,
+            status: defaultStatus,
+            category: defaultCategory,
             price: 0,
-            seat_type: 'regular',
         };
 
-        newGrid[selectedCell.row][selectedCell.col] = {
+        // Keep the isBlocked flag if it exists
+        const isBlocked = newGrid[rowIndex][colIndex].isBlocked || false;
+
+        newGrid[rowIndex][colIndex] = {
             type: 'seat',
             item: newSeat,
+            isBlocked,
         };
 
         setGrid(newGrid);
-        setShowSeatDialog(false);
         reorderSeatNumbers();
     };
 
-    const handleDeleteSeat = () => {
-        if (!selectedCell) return;
-
+    const deleteSeat = (rowIndex: number, colIndex: number) => {
         const newGrid = [...grid];
-        newGrid[selectedCell.row][selectedCell.col] = { type: 'empty' };
+        // Preserve the isBlocked flag when deleting a seat
+        const isBlocked = newGrid[rowIndex][colIndex].isBlocked || false;
+
+        newGrid[rowIndex][colIndex] = {
+            type: 'empty',
+            isBlocked,
+        };
 
         setGrid(newGrid);
-        setShowDeleteDialog(false);
+        reorderSeatNumbers();
+    };
+
+    // Function to add seats to all empty cells in the blocked area
+    const addSeatsToBlockedArea = () => {
+        if (!blockedArea) return;
+
+        const newGrid = [...grid];
+
+        for (let i = blockedArea.minRow; i <= blockedArea.maxRow; i++) {
+            for (let j = blockedArea.minCol; j <= blockedArea.maxCol; j++) {
+                const cell = newGrid[i][j];
+                if (cell.type === 'empty' && cell.isBlocked) {
+                    const rowLabel = getAdjustedRowLabel(i, totalRows);
+                    const adjustedColumn = j + 1;
+
+                    const newSeat: SeatItem = {
+                        type: 'seat',
+                        seat_id: `${rowLabel}${adjustedColumn}`,
+                        seat_number: `${rowLabel}${adjustedColumn}`,
+                        row: rowLabel,
+                        column: adjustedColumn,
+                        status: defaultStatus,
+                        category: defaultCategory,
+                        price: 0,
+                    };
+
+                    newGrid[i][j] = {
+                        type: 'seat',
+                        item: newSeat,
+                        isBlocked: true,
+                    };
+                }
+            }
+        }
+
+        setGrid(newGrid);
+        reorderSeatNumbers();
+    };
+
+    // Function to delete all seats in the blocked area
+    const deleteSeatsFromBlockedArea = () => {
+        if (!blockedArea) return;
+
+        const newGrid = [...grid];
+
+        for (let i = blockedArea.minRow; i <= blockedArea.maxRow; i++) {
+            for (let j = blockedArea.minCol; j <= blockedArea.maxCol; j++) {
+                const cell = newGrid[i][j];
+                if (cell.type === 'seat' && cell.isBlocked) {
+                    newGrid[i][j] = {
+                        type: 'empty',
+                        isBlocked: true,
+                    };
+                }
+            }
+        }
+
+        setGrid(newGrid);
         reorderSeatNumbers();
     };
 
@@ -273,7 +404,7 @@ const GridSeatEditor: React.FC<Props> = ({
         const newGrid = [...grid];
         const seatCounters: { [key: string]: number } = {};
 
-        // Proses dari bawah ke atas
+        // Process from bottom to top
         for (let i = totalRows - 1; i >= 0; i--) {
             const rowLabel = getAdjustedRowLabel(i, totalRows);
             seatCounters[rowLabel] = 1;
@@ -292,22 +423,49 @@ const GridSeatEditor: React.FC<Props> = ({
         setGrid(newGrid);
     };
 
+    // Modified handleSave function to add seats to blocked empty spaces
+    // Modified handleSave function to respect deleted seats
     const handleSave = () => {
-        const items: SeatItem[] = [];
+        // Create a copy of the grid to work with
+        const newGrid = [...grid];
+
+        // Reorder seat numbers to ensure consistency
+        const tempGrid = [...newGrid];
+        const seatCounters: { [key: string]: number } = {};
 
         for (let i = totalRows - 1; i >= 0; i--) {
             const rowLabel = getAdjustedRowLabel(i, totalRows);
+            seatCounters[rowLabel] = 1;
 
-            grid[i].forEach((cell, colIndex) => {
+            for (let j = 0; j < totalColumns; j++) {
+                const cell = tempGrid[i][j];
                 if (cell.type === 'seat' && cell.item) {
-                    const adjustedColumn = colIndex + 1; // Perbaikan perhitungan kolom
+                    cell.item.row = rowLabel;
+                    cell.item.seat_number = `${rowLabel}${seatCounters[rowLabel]}`;
+                    cell.item.seat_id = `${rowLabel}${seatCounters[rowLabel]}`;
+                    seatCounters[rowLabel]++;
+                }
+            }
+        }
+
+        // Now collect all seats for the final layout
+        const items: SeatItem[] = [];
+
+        for (let i = 0; i < totalRows; i++) {
+            const rowLabel = getAdjustedRowLabel(i, totalRows);
+
+            for (let j = 0; j < totalColumns; j++) {
+                const cell = tempGrid[i][j];
+                // We only include actual seats, not empty blocked spaces
+                if (cell.type === 'seat' && cell.item) {
+                    const adjustedColumn = j + 1;
                     items.push({
                         ...cell.item,
                         row: rowLabel,
                         column: adjustedColumn,
                     });
                 }
-            });
+            }
         }
 
         const layout: Layout = {
@@ -332,21 +490,23 @@ const GridSeatEditor: React.FC<Props> = ({
                     return 'bg-red-500';
                 case 'in_transaction':
                     return 'bg-yellow-500';
-                case 'not_available':
+                case 'reserved':
                     return 'bg-gray-400';
             }
         }
 
         switch (seat.category) {
-            case 'diamond':
+            case 'standard':
                 return 'bg-cyan-400';
-            case 'gold':
+            case 'VIP':
                 return 'bg-yellow-400';
-            case 'silver':
-                return 'bg-gray-300';
             default:
                 return 'bg-gray-200';
         }
+    };
+
+    const getModeButtonVariant = (buttonMode: EditorMode) => {
+        return mode === buttonMode ? 'default' : 'outline';
     };
 
     const DimensionControl = () => (
@@ -354,7 +514,7 @@ const GridSeatEditor: React.FC<Props> = ({
             <div className="flex items-center gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">
-                        Top Rows
+                        Bottom Rows
                     </label>
                     <div className="flex items-center gap-2">
                         <Button
@@ -384,7 +544,7 @@ const GridSeatEditor: React.FC<Props> = ({
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700">
-                        Bottom Rows
+                        Top Rows
                     </label>
                     <div className="flex items-center gap-2">
                         <Button
@@ -486,36 +646,166 @@ const GridSeatEditor: React.FC<Props> = ({
         </div>
     );
 
+    // Block area action buttons component
+    const BlockAreaActions = () => {
+        if (mode !== 'block' || !blockedArea) return null;
+
+        return (
+            <div className="mb-4 rounded border border-blue-300 bg-blue-50 p-2">
+                <div className="mb-2 text-sm font-medium">Area Selected:</div>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={addSeatsToBlockedArea}
+                        className="flex items-center gap-2 border-green-300 bg-white text-green-600 hover:bg-green-50"
+                    >
+                        <Plus size={16} />
+                        Add Seats
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={deleteSeatsFromBlockedArea}
+                        className="flex items-center gap-2 border-red-300 bg-white text-red-600 hover:bg-red-50"
+                    >
+                        <Trash2 size={16} />
+                        Delete Seats
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => setBlockedArea(null)}
+                        className="bg-white"
+                    >
+                        Cancel
+                    </Button>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="p-6">
             <DimensionControl />
 
-            <div className="mb-6 flex flex-col items-center">
+            <div className="mb-4 flex gap-2">
+                <Button
+                    variant={getModeButtonVariant('add')}
+                    onClick={() => handleModeChange('add')}
+                    className="flex items-center gap-2"
+                >
+                    <MousePointer size={16} />
+                    Add Seats
+                </Button>
+                <Button
+                    variant={getModeButtonVariant('delete')}
+                    onClick={() => handleModeChange('delete')}
+                    className="flex items-center gap-2"
+                >
+                    <Trash2 size={16} />
+                    Delete Seats
+                </Button>
+                <Button
+                    variant={getModeButtonVariant('block')}
+                    onClick={() => handleModeChange('block')}
+                    className="flex items-center gap-2"
+                >
+                    <Square size={16} />
+                    Block Area
+                </Button>
+            </div>
+
+            <BlockAreaActions />
+
+            <div className="mb-2 text-sm">
+                {mode === 'add' && <p>Click on empty cells to add seats</p>}
+                {mode === 'delete' && <p>Click on seats to delete them</p>}
+                {mode === 'block' && (
+                    <p>
+                        Click and drag to block/unblock multiple cells (works on
+                        seats and empty areas)
+                    </p>
+                )}
+            </div>
+
+            <div
+                className="mb-6 flex flex-col items-center"
+                onMouseUp={handleMouseUp}
+                onMouseLeave={() => {
+                    if (isMouseDown) {
+                        handleMouseUp();
+                    }
+                }}
+            >
                 <div className="grid w-full gap-1">
                     {[...grid].reverse().map((row, reversedIndex) => {
-                        // const originalIndex = grid.length - 1 - reversedIndex;
-                        // const adjustedRowIndex = originalIndex - dimensions.top;
-                        // const rowLabel = getAdjustedRowLabel(
-                        //     reversedIndex,
-                        //     totalRows,
-                        // );
                         return (
                             <div key={reversedIndex} className="flex gap-1">
-                                {row.map((cell, colIndex) => (
-                                    <div
-                                        key={colIndex}
-                                        onClick={() =>
-                                            handleCellClick(
-                                                grid.length - 1 - reversedIndex,
-                                                colIndex,
-                                            )
-                                        }
-                                        className={`flex h-8 w-8 items-center justify-center rounded border ${getCellColor(cell)} cursor-pointer text-xs hover:opacity-80`}
-                                    >
-                                        {cell.type === 'seat' &&
-                                            cell.item?.seat_number}
-                                    </div>
-                                ))}
+                                {row.map((cell, colIndex) => {
+                                    const actualRowIndex =
+                                        grid.length - 1 - reversedIndex;
+
+                                    return (
+                                        <div
+                                            key={colIndex}
+                                            onClick={() =>
+                                                handleCellClick(
+                                                    actualRowIndex,
+                                                    colIndex,
+                                                )
+                                            }
+                                            onMouseDown={() =>
+                                                handleMouseDown(
+                                                    actualRowIndex,
+                                                    colIndex,
+                                                )
+                                            }
+                                            onMouseOver={() =>
+                                                handleMouseOver(
+                                                    actualRowIndex,
+                                                    colIndex,
+                                                )
+                                            }
+                                            className={`flex h-8 w-8 cursor-pointer select-none items-center justify-center rounded text-xs hover:opacity-80 ${getCellColor(cell)} ${cell.isBlocked ? 'border-0' : 'border'} ${
+                                                // Show blue ring during dragging
+                                                (isDragging &&
+                                                    mode === 'block' &&
+                                                    startCell &&
+                                                    endCell &&
+                                                    actualRowIndex >=
+                                                        Math.min(
+                                                            startCell.row,
+                                                            endCell.row,
+                                                        ) &&
+                                                    actualRowIndex <=
+                                                        Math.max(
+                                                            startCell.row,
+                                                            endCell.row,
+                                                        ) &&
+                                                    colIndex >=
+                                                        Math.min(
+                                                            startCell.col,
+                                                            endCell.col,
+                                                        ) &&
+                                                    colIndex <=
+                                                        Math.max(
+                                                            startCell.col,
+                                                            endCell.col,
+                                                        )) ||
+                                                // Keep blue ring after blocking/unblocking
+                                                (mode === 'block' &&
+                                                    isInBlockedArea(
+                                                        actualRowIndex,
+                                                        colIndex,
+                                                    ))
+                                                    ? 'ring-2 ring-blue-500'
+                                                    : ''
+                                            }`}
+                                            draggable={false}
+                                        >
+                                            {cell.type === 'seat' &&
+                                                cell.item?.seat_number}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         );
                     })}
@@ -529,117 +819,6 @@ const GridSeatEditor: React.FC<Props> = ({
             <Button onClick={handleSave} className="mt-4">
                 Save Layout
             </Button>
-
-            {/* Add/Edit Seat Dialog */}
-            <Dialog open={showSeatDialog} onOpenChange={setShowSeatDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            {editMode === 'add' ? 'Add New Seat' : 'Edit Seat'}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">
-                                Category
-                            </label>
-                            <Select
-                                value={selectedCategory}
-                                onValueChange={(value: Category) =>
-                                    setSelectedCategory(value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="diamond">
-                                        Diamond
-                                    </SelectItem>
-                                    <SelectItem value="gold">Gold</SelectItem>
-                                    <SelectItem value="silver">
-                                        Silver
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">
-                                Status
-                            </label>
-                            <Select
-                                value={selectedStatus}
-                                onValueChange={(value: SeatStatus) =>
-                                    setSelectedStatus(value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="available">
-                                        Available
-                                    </SelectItem>
-                                    <SelectItem value="booked">
-                                        Booked
-                                    </SelectItem>
-                                    <SelectItem value="in_transaction">
-                                        In Transaction
-                                    </SelectItem>
-                                    <SelectItem value="not_available">
-                                        Not Available
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowSeatDialog(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button onClick={handleAddSeat}>
-                            {editMode === 'add' ? 'Add Seat' : 'Update Seat'}
-                        </Button>
-                        {editMode === 'edit' && (
-                            <Button
-                                variant="destructive"
-                                onClick={() => {
-                                    setShowSeatDialog(false);
-                                    setShowDeleteDialog(true);
-                                }}
-                            >
-                                Delete Seat
-                            </Button>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog
-                open={showDeleteDialog}
-                onOpenChange={setShowDeleteDialog}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Seat</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to delete this seat? This
-                            action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteSeat}>
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 };

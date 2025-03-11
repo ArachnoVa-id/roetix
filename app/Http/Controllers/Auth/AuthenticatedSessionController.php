@@ -49,6 +49,7 @@ class AuthenticatedSessionController extends Controller
             );
         }
 
+
         if ($userModel->role === 'admin')
         {
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));

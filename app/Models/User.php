@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -21,20 +22,20 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
     use HasFactory, Notifiable, HasRoles;
 
     /**
-    * Get the user's name for Filament.
-    *
-    * @return string
-    */
+     * Get the user's name for Filament.
+     *
+     * @return string
+     */
     public function getFilamentName(): string
     {
         return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';
     }
 
     /**
-    * Get the user's name for Filament.
-    *
-    * @return string
-    */
+     * Get the user's name for Filament.
+     *
+     * @return string
+     */
     public function getUserName(): string
     {
         return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';
@@ -94,7 +95,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role == 'admin' || $this->role == 'vendor';
+        return $this->role == 'admin' || $this->role == 'vendor' || $this->role == 'event-orginizer';
     }
 
     // has tenant things

@@ -16,6 +16,14 @@ class UserContact extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
+    protected $fillable = [
+        'contact_id',
+        'phone_number',
+        'email',
+        'whatsapp_number',
+        'instagram'
+    ];
+
     protected static function boot()
     {
         parent::boot();
