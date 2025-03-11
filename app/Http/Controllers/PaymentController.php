@@ -16,7 +16,6 @@ class PaymentController extends Controller
     public function __construct()
     {
         // Set up Midtrans configuration from a single place
-        // Use the same config key in both __construct and charge method
         Config::$serverKey = config('midtrans.server_key');
         Config::$isProduction = config('midtrans.is_production', false);
         Config::$isSanitized = config('midtrans.is_sanitized', true);
@@ -41,6 +40,8 @@ class PaymentController extends Controller
                 'email' => 'required|email',
                 'amount' => 'required|numeric|min:0',
                 'grouped_items' => 'required',
+                'tax_amount' => 'numeric',
+                'total_with_tax' => 'numeric',
             ]);
 
             if ($validator->fails()) {
@@ -84,13 +85,31 @@ class PaymentController extends Controller
                 ];
             }
 
-            // Make sure to convert amount to integer (Midtrans requirement)
-            $amount = (int)$request->amount;
+            // Get total amount with tax from request, or calculate it if not provided
+            $totalWithTax = $request->total_with_tax;
+            if (empty($totalWithTax)) {
+                $amount = (int)$request->amount;
+                $taxAmount = (int)($request->tax_amount ?? ($amount * 1 / 100)); // Default 1% tax if not provided
+                $totalWithTax = $amount + $taxAmount;
+            } else {
+                $totalWithTax = (int)$totalWithTax;
+            }
 
+            // Add tax as a separate item to make it visible on Midtrans
+            if ($request->has('tax_amount') && $request->tax_amount > 0) {
+                $itemDetails[] = [
+                    'id' => 'TAX-1PCT',
+                    'price' => (int)$request->tax_amount,
+                    'quantity' => 1,
+                    'name' => 'Tax (1%)',
+                ];
+            }
+
+            // Make sure the total amount matches the sum of all items (required by Midtrans)
             $params = [
                 'transaction_details' => [
                     'order_id' => $orderId,
-                    'gross_amount' => $amount,
+                    'gross_amount' => $totalWithTax, // Use total with tax
                 ],
                 'credit_card' => [
                     'secure' => true,

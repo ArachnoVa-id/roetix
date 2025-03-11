@@ -285,8 +285,8 @@ export default function Landing({
                             </div>
                         </div>
 
-                        <div className="flex justify-center overflow-x-auto">
-                            <div className="flex items-center justify-center">
+                        <div className="overflow-x-auto">
+                            <div className="flex min-w-max justify-center">
                                 <SeatMapDisplay
                                     config={layout}
                                     onSeatClick={handleSeatClick}
@@ -362,6 +362,9 @@ export default function Landing({
                             {selectedSeats.length > 0 && (
                                 <ProceedTransactionButton
                                     selectedSeats={selectedSeats}
+                                    taxAmount={taxAmount}
+                                    subtotal={subtotal}
+                                    total={total}
                                 />
                             )}
                         </div>

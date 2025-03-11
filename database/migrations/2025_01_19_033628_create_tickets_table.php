@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('tickets', function (Blueprint $table) {
             $table->string('ticket_id', 36)->primary();
             $table->string('event_id', 36);
-            $table->string('seat_id', 36);
+            $table->string('seat_id', 50);
             $table->string('team_id', 36);
             // $table->string('order_id', 36);
             $table->enum('ticket_type', ['standard', 'VIP'])->default('standard');

@@ -9,6 +9,9 @@ import {
 
 const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     selectedSeats,
+    taxAmount,
+    subtotal,
+    total,
 }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -56,7 +59,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
         if (typeof price === 'string') {
             // Clean the price string (remove currency symbols, spaces, etc.)
-            let cleaned = price.replace(/[^0-9,\.]/g, '');
+            let cleaned = price.replace(/[^0-9,.]/g, '');
 
             // Handle Indonesian number format (periods for thousands, comma for decimal)
             if (cleaned.includes(',') && cleaned.includes('.')) {
@@ -130,11 +133,21 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         try {
             // Prepare the payment data
             const groupedItems = transformSeatsToGroupedItems(selectedSeats);
-            const totalAmount = calculateTotalAmount(groupedItems);
+            const calculatedSubtotal =
+                subtotal || calculateTotalAmount(groupedItems);
+
+            // Calculate tax if not provided
+            const calculatedTaxAmount = taxAmount || calculatedSubtotal * 0.01; // 1% tax
+
+            // Calculate total with tax if not provided
+            const calculatedTotal =
+                total || calculatedSubtotal + calculatedTaxAmount;
 
             console.log('Payment data:', {
                 groupedItems,
-                totalAmount,
+                subtotal: calculatedSubtotal,
+                taxAmount: calculatedTaxAmount,
+                total: calculatedTotal,
             });
 
             // Get the current user's email or use a default
@@ -144,7 +157,9 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             // Create the request payload
             const payload = {
                 email: userEmail,
-                amount: totalAmount,
+                amount: calculatedSubtotal, // Original amount before tax
+                tax_amount: calculatedTaxAmount, // Tax amount
+                total_with_tax: calculatedTotal, // Total with tax
                 grouped_items: groupedItems,
             };
 

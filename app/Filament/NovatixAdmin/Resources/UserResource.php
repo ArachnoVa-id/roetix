@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\NovatixAdmin\Resources;
 
-use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
+use App\Filament\NovatixAdmin\Resources\UserResource\Pages;
+use App\Filament\NovatixAdmin\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -19,33 +19,32 @@ class UserResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()->role == 'admin';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('password')
-                    ->password()
-                    ->required()
-                    ->maxLength(255),
-                    Forms\Components\Select::make('role')
-                    ->required()
-                    ->options([
-                        'user' => 'user',
-                        'admin' => 'admin',
-                        'vendor' => 'vendor',
-                    ])
-                    ->default('etc'),
                 Forms\Components\TextInput::make('first_name')
                     ->required()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('last_name')
                     ->required()
                     ->maxLength(255),
-                // Forms\Components\DateTimePicker::make('email_verified_at'),
+                Forms\Components\TextInput::make('email')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('password')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\Select::make('role')
+                    ->options([
+                        'vendor' => 'vendor',
+                        'event-orginizer' => 'event-orginizer',
+                    ]),
             ]);
     }
 
@@ -53,17 +52,10 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('first_name'),
+                Tables\Columns\TextColumn::make('last_name'),
+                Tables\Columns\TextColumn::make('email'),
                 Tables\Columns\TextColumn::make('role'),
-                Tables\Columns\TextColumn::make('first_name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('last_name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
