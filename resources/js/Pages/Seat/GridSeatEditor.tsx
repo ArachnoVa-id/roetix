@@ -7,6 +7,7 @@ interface Props {
     initialLayout?: Layout;
     onSave?: (layout: Layout) => void;
     venueId: string;
+    isDisabled?: boolean;
 }
 
 interface GridCell {
@@ -37,6 +38,7 @@ type EditorMode = 'add' | 'delete' | 'block';
 const GridSeatEditor: React.FC<Props> = ({
     initialLayout,
     onSave,
+    isDisabled,
     // venueId,
 }) => {
     const [dimensions, setDimensions] = useState<GridDimensions>({
@@ -821,9 +823,13 @@ const GridSeatEditor: React.FC<Props> = ({
                 </div>
             </div>
 
-            <Button onClick={handleSave} className="mt-4">
-                Save Layout
-            </Button>
+            <button
+                onClick={handleSave}
+                className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isDisabled}
+            >
+                {isDisabled ? 'Saving...' : 'Save Layout'}
+            </button>
         </div>
     );
 };

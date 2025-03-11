@@ -9,13 +9,13 @@ interface Props {
     venue_id: string;
     errors?: { [key: string]: string };
     flash?: { success?: string };
+    isDisabled?: boolean;
 }
 
 const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
-    // We don't need to check authorization here anymore since middleware handles it
-
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
     useEffect(() => {
         if (errors && Object.keys(errors).length > 0) {
@@ -28,6 +28,8 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
     }, [errors, flash]);
 
     const handleSave = async (updatedLayout: Layout) => {
+        setIsSubmitting(true);
+
         try {
             const convertedItems = updatedLayout.items.map((item) => {
                 if (item.type === 'seat') {
@@ -37,11 +39,9 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                             ? seatItem.row
                             : String.fromCharCode(65 + seatItem.row);
 
-                    // Perhatikan bahwa kita tidak perlu menetapkan seat_id di sini
-                    // seat_id akan dibuat di server berdasarkan venue_id dan seat_number
                     return {
                         type: 'seat',
-                        seat_id: seatItem.seat_id, // Kirim seat_id yang ada (jika ada)
+                        seat_id: seatItem.seat_id,
                         seat_number: seatItem.seat_number,
                         row: rowStr,
                         column: seatItem.column,
@@ -69,23 +69,29 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                 items: convertedItems,
             };
 
-            // Gunakan endpoint saveGridLayout yang baru
-            // Ini akan membuat seat_id berdasarkan venue_id dan seat_number di sisi server
+            // Use Inertia router for the form submission
             router.post('/seats/save-grid-layout', payload, {
                 preserveScroll: true,
+                preserveState: true,
                 onSuccess: () => {
                     setSuccess('Layout berhasil disimpan');
                     setError(null);
+                    setIsSubmitting(false);
                 },
                 onError: (errors) => {
                     setError(Object.values(errors).join('\n'));
                     setSuccess(null);
+                    setIsSubmitting(false);
+                },
+                onFinish: () => {
+                    setIsSubmitting(false);
                 },
             });
         } catch (err) {
             console.error('Error in handleSave:', err);
             setError('Failed to process layout data');
             setSuccess(null);
+            setIsSubmitting(false);
         }
     };
 
@@ -129,6 +135,7 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                                             initialLayout={layout}
                                             onSave={handleSave}
                                             venueId={venue_id}
+                                            isDisabled={isSubmitting}
                                         />
                                     </div>
                                 </div>

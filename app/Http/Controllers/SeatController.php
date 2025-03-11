@@ -556,16 +556,27 @@ class SeatController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Grid layout updated successfully'
-            ]);
+            // // Check if it's an XHR/AJAX request
+            // if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+            //     return response()->json([
+            //         'success' => true,
+            //         'message' => 'Grid layout updated successfully'
+            //     ]);
+            // }
+
+            // // Return Inertia redirect for normal requests
+            // return redirect()->back()->with('success', 'Grid layout updated successfully');
         } catch (ValidationException $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'errors' => $e->errors()
-            ], 422);
+
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors($e->errors());
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error saving grid layout:', [
@@ -573,26 +584,30 @@ class SeatController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to save grid layout: ' . $e->getMessage()
-            ], 500);
+            // if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'error' => 'Failed to save grid layout: ' . $e->getMessage()
+            //     ], 500);
+            // }
+
+            return redirect()->back()->withErrors(['error' => 'Failed to save grid layout: ' . $e->getMessage()]);
         }
     }
 
     private function generateUniqueSeatId(string $venueId, string $seatNumber): string
-{
-    // Gunakan seluruh venue_id, bukan hanya 8 karakter pertama
-    $seatId = $venueId . '-' . $seatNumber;
-    
-    // Cek apakah ID sudah ada, jika ada tambahkan suffix
-    $counter = 1;
-    $originalSeatId = $seatId;
-    while (Seat::where('seat_id', $seatId)->exists()) {
-        $seatId = $originalSeatId . '-' . $counter;
-        $counter++;
+    {
+        // Gunakan seluruh venue_id, bukan hanya 8 karakter pertama
+        $seatId = $venueId . '-' . $seatNumber;
+
+        // Cek apakah ID sudah ada, jika ada tambahkan suffix
+        $counter = 1;
+        $originalSeatId = $seatId;
+        while (Seat::where('seat_id', $seatId)->exists()) {
+            $seatId = $originalSeatId . '-' . $counter;
+            $counter++;
+        }
+
+        return $seatId;
     }
-    
-    return $seatId;
-}
 }
