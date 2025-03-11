@@ -44,13 +44,13 @@ Route::domain(config('app.domain'))
         // Seat Management Routes (Protected)
         Route::middleware('auth')->group(function () {
             // Seats
-            // Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-            // Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-            // Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
-            // Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-            Route::get('/seats/spreadsheet', [SeatController::class, 'spreadsheet'])->name('seats.spreadsheet');
-            // Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
-            // Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
+            Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
+            Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
+            Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+            Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
+            Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
+            Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
+            Route::post('/seats/save-grid-layout', [SeatController::class, 'saveGridLayout'])->name('seats.save-grid-layout');
 
             // Profile
             Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -64,13 +64,13 @@ Route::domain(config('app.domain'))
         });
     });
 
-Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
-Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
-Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
-Route::post('/seats/save-grid-layout', [SeatController::class, 'saveGridLayout'])->name('seats.save-grid-layout');
+// Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
+// Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
+// Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
+// Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
+// Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
+// Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
+// Route::post('/seats/save-grid-layout', [SeatController::class, 'saveGridLayout'])->name('seats.save-grid-layout');
 
 Route::domain('{client}.' . config('app.domain'))
     ->middleware('verify.subdomain')
