@@ -56,6 +56,7 @@ class TicketResource extends Resource
                 Forms\Components\TextInput::make('price')
                     ->label('Price')
                     ->numeric()
+                    ->minValue(0)
                     ->required(),
                 Forms\Components\Select::make('status')
                     ->label('Status')
