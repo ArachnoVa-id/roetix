@@ -105,8 +105,7 @@ Route::domain('{client}.' . config('app.domain'))
     ->group(function () {
         // User Page
         Route::get('/', [UserPageController::class, 'landing'])
-            ->name('client.home')
-            ->middleware('auth');
+            ->name('client.home');
         Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
             ->name('client.my_tickets');
         Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])
