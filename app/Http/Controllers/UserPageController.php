@@ -22,94 +22,87 @@ class UserPageController extends Controller
 
         $props = EventVariables::findOrFail($event->event_variables_id);
 
-        if (Auth::check()) {
-            try {
-                $venue = Venue::findOrFail($event->venue_id);
+        try {
+            $venue = Venue::findOrFail($event->venue_id);
 
-                // Get all tickets for this event
-                $tickets = Ticket::where('event_id', $event->event_id)
-                    ->get();
+            // Get all tickets for this event
+            $tickets = Ticket::where('event_id', $event->event_id)
+                ->get();
 
-                // Get all seats for this venue
-                $seats = Seat::where('venue_id', $venue->venue_id)
-                    ->orderBy('row')
-                    ->orderBy('column')
-                    ->get();
+            // Get all seats for this venue
+            $seats = Seat::where('venue_id', $venue->venue_id)
+                ->orderBy('row')
+                ->orderBy('column')
+                ->get();
 
-                // Create a map of tickets by seat_id for easy lookup
-                $ticketsBySeatId = $tickets->keyBy('seat_id');
+            // Create a map of tickets by seat_id for easy lookup
+            $ticketsBySeatId = $tickets->keyBy('seat_id');
 
-                // Format data for the frontend
-                $layout = [
-                    'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
-                    'totalColumns' => $seats->max('column'),
-                    'items' => $seats->map(function ($seat) use ($ticketsBySeatId) {
-                        $ticket = $ticketsBySeatId->get($seat->seat_id);
+            // Format data for the frontend
+            $layout = [
+                'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
+                'totalColumns' => $seats->max('column'),
+                'items' => $seats->map(function ($seat) use ($ticketsBySeatId) {
+                    $ticket = $ticketsBySeatId->get($seat->seat_id);
 
-                        if ($ticket) {
-                            return [
-                                'type' => 'seat',
-                                'seat_id' => $seat->seat_id,
-                                'seat_number' => $seat->seat_number,
-                                'row' => $seat->row,
-                                'column' => $seat->column,
-                                'status' => $ticket->status,
-                                'ticket_type' => $ticket->ticket_type,
-                                'price' => $ticket->price,
-                                'category' => $ticket->ticket_type // Map ticket_type to category for display
-                            ];
-                        } else {
-                            // Fallback for seats without tickets
-                            return [
-                                'type' => 'seat',
-                                'seat_id' => $seat->seat_id,
-                                'seat_number' => $seat->seat_number,
-                                'row' => $seat->row,
-                                'column' => $seat->column,
-                                'status' => 'reserved',
-                                'ticket_type' => 'standard',
-                                'price' => 0,
-                                'category' => 'standard'
-                            ];
-                        }
-                    })->values()
-                ];
+                    if ($ticket) {
+                        return [
+                            'type' => 'seat',
+                            'seat_id' => $seat->seat_id,
+                            'seat_number' => $seat->seat_number,
+                            'row' => $seat->row,
+                            'column' => $seat->column,
+                            'status' => $ticket->status,
+                            'ticket_type' => $ticket->ticket_type,
+                            'price' => $ticket->price,
+                            'category' => $ticket->ticket_type // Map ticket_type to category for display
+                        ];
+                    } else {
+                        // Fallback for seats without tickets
+                        return [
+                            'type' => 'seat',
+                            'seat_id' => $seat->seat_id,
+                            'seat_number' => $seat->seat_number,
+                            'row' => $seat->row,
+                            'column' => $seat->column,
+                            'status' => 'reserved',
+                            'ticket_type' => 'standard',
+                            'price' => 0,
+                            'category' => 'standard'
+                        ];
+                    }
+                })->values()
+            ];
 
-                // Add stage label
-                $layout['items'][] = [
-                    'type' => 'label',
-                    'row' => $layout['totalRows'],
-                    'column' => floor($layout['totalColumns'] / 2),
-                    'text' => 'STAGE'
-                ];
+            // Add stage label
+            $layout['items'][] = [
+                'type' => 'label',
+                'row' => $layout['totalRows'],
+                'column' => floor($layout['totalColumns'] / 2),
+                'text' => 'STAGE'
+            ];
 
-                // Get available ticket types from data
-                $ticketTypes = $tickets->pluck('ticket_type')->unique()->values()->all();
+            // Get available ticket types from data
+            $ticketTypes = $tickets->pluck('ticket_type')->unique()->values()->all();
 
-                // If no ticket types found, provide defaults
-                if (empty($ticketTypes)) {
-                    $ticketTypes = ['standard', 'VIP'];
-                }
-
-                return Inertia::render('User/Landing', [
-                    'client' => $client,
-                    'layout' => $layout,
-                    'event' => $event,
-                    'venue' => $venue,
-                    'ticketTypes' => $ticketTypes,
-                    'props' => $props
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Error in landing method: ' . $e->getMessage());
-                return Inertia::render('User/Landing', [
-                    'client' => $client,
-                    'error' => 'Failed to load event data: ' . $e->getMessage(),
-                    'props' => $props
-                ]);
+            // If no ticket types found, provide defaults
+            if (empty($ticketTypes)) {
+                $ticketTypes = ['standard', 'VIP'];
             }
-        } else {
-            return Inertia::render('User/Auth', [
+
+            return Inertia::render('User/Landing', [
                 'client' => $client,
+                'layout' => $layout,
+                'event' => $event,
+                'venue' => $venue,
+                'ticketTypes' => $ticketTypes,
+                'props' => $props
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in landing method: ' . $e->getMessage());
+            return Inertia::render('User/Landing', [
+                'client' => $client,
+                'error' => 'Failed to load event data: ' . $e->getMessage(),
                 'props' => $props
             ]);
         }
