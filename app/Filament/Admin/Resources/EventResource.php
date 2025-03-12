@@ -108,7 +108,6 @@ class EventResource extends Resource
                         if ($foundEvent) {
                             $set('name', '');
                         }
-
                         $set('slug', Str::slug($get('name')));
                     })
                     ->debounce(1000),
@@ -162,7 +161,8 @@ class EventResource extends Resource
                                 Forms\Components\TextInput::make('name')
                                     ->label('Category Name')
                                     ->required(),
-                                Forms\Components\TextInput::make('color')
+                                Forms\Components\ColorPicker::make('color')
+                                    ->rgb()
                                     ->label('Category Color')
                                     ->required(),
 
@@ -185,6 +185,7 @@ class EventResource extends Resource
                                     ])
                                     ->label('Ticket Time Bound Price')
                             ])
+
                             ->label('Ticket Categories')
                             ->columnSpan(2)
                     ]),
