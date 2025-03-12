@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\EventVariables;
 use App\Models\Ticket;
 use App\Models\Seat;
 use App\Models\Venue;
@@ -15,13 +16,14 @@ class UserPageController extends Controller
 {
     public function landing(Request $request, string $client = '')
     {
+        // Get the event and associated venue
+        $event = Event::where('slug', $client)
+            ->first();
+
+        $props = EventVariables::findOrFail($event->event_variables_id);
+
         if (Auth::check()) {
             try {
-                // Get the event and associated venue
-                $event = Event::where('slug', $client)
-                    ->first();
-                // $event = Event::where('event_id', '')
-                //     ->first();
                 $venue = Venue::findOrFail($event->venue_id);
 
                 // Get all tickets for this event
@@ -94,26 +96,48 @@ class UserPageController extends Controller
                     'layout' => $layout,
                     'event' => $event,
                     'venue' => $venue,
-                    'ticketTypes' => $ticketTypes
+                    'ticketTypes' => $ticketTypes,
+                    'props' => $props
                 ]);
             } catch (\Exception $e) {
                 Log::error('Error in landing method: ' . $e->getMessage());
                 return Inertia::render('User/Landing', [
                     'client' => $client,
-                    'error' => 'Failed to load event data: ' . $e->getMessage()
+                    'error' => 'Failed to load event data: ' . $e->getMessage(),
+                    'props' => $props
                 ]);
             }
         } else {
             return Inertia::render('User/Auth', [
-                'client' => $client
+                'client' => $client,
+                'props' => $props
             ]);
         }
     }
 
     public function my_tickets(string $client = '')
     {
-        return Inertia::render('User/MyTickets', [
-            'client' => $client
-        ]);
+        // Get the event and associated venue
+        $event = Event::where('slug', $client)
+            ->first();
+
+        $props = EventVariables::findOrFail($event->event_variables_id);
+
+        if (Auth::check()) {
+            try {
+                return Inertia::render('User/MyTickets', [
+                    'client' => $client,
+                    'props' => $props
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error in my_tickets method: ' . $e->getMessage());
+                // throw back to login page
+                return Inertia::render('User/Auth', [
+                    'client' => $client,
+                    'error' => 'Failed to load event data: ' . $e->getMessage(),
+                    'props' => $props
+                ]);
+            }
+        }
     }
 }

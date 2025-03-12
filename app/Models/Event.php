@@ -20,6 +20,7 @@ class Event extends Model
 
     protected $fillable = [
         'venue_id',
+        'event_variables_id',
         'name',
         'slug',
         'category',

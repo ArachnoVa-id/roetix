@@ -1,26 +1,59 @@
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
+import { EventProps } from '@/types/front-end';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
+import styled from 'styled-components';
 
 export default function Authenticated({
     header,
     children,
     footer,
     client,
+    props,
 }: PropsWithChildren<{
     header?: ReactNode;
     footer?: ReactNode;
     client: string;
+    props: EventProps;
 }>) {
     const user = usePage().props.auth.user;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
 
+    const StyledButton = styled.button`
+        color: ${props.text_primary_color};
+        &:hover {
+            color: ${props.text_secondary_color};
+        }
+        background-color: ${props.primary_color};
+        border-color: ${props.text_primary_color};
+        &:hover {
+            background-color: ${props.secondary_color};
+            border-color: ${props.text_secondary_color};
+        }
+        &:focus {
+            background-color: ${props.secondary_color};
+            border-color: ${props.text_secondary_color};
+        }
+    `;
+
     return (
-        <div className="flex min-h-screen flex-col bg-gray-100">
-            <nav className="border-b border-gray-100 bg-white">
+        <div
+            className="flex min-h-screen flex-col"
+            style={{
+                backgroundColor: props.secondary_color,
+                color: props.text_secondary_color,
+            }}
+        >
+            <nav
+                className="border-b"
+                style={{
+                    backgroundColor: props.primary_color,
+                    borderColor: props.text_primary_color,
+                }}
+            >
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
@@ -28,7 +61,7 @@ export default function Authenticated({
                                 <Link href="/">
                                     {/* <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" /> */}
                                     <img
-                                        src="/images/novatix-logo.jpeg"
+                                        src={props.logo}
                                         alt="ArachnoVa"
                                         className="h-8"
                                     />
@@ -81,13 +114,13 @@ export default function Authenticated({
                         </div>
 
                         <div className="-me-2 flex items-center sm:hidden">
-                            <button
+                            <StyledButton
                                 onClick={() =>
                                     setShowingNavigationDropdown(
                                         (previousState) => !previousState,
                                     )
                                 }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
+                                className="inline-flex items-center justify-center rounded-md p-2 transition duration-150 ease-in-out focus:outline-none"
                                 aria-label="Toggle navigation menu"
                             >
                                 <svg
@@ -119,7 +152,7 @@ export default function Authenticated({
                                         d="M6 18L18 6M6 6l12 12"
                                     />
                                 </svg>
-                            </button>
+                            </StyledButton>
                         </div>
                     </div>
                 </div>
@@ -145,12 +178,27 @@ export default function Authenticated({
                         </ResponsiveNavLink>
                     </div>
 
-                    <div className="border-t border-gray-200 pb-1 pt-4">
+                    <div
+                        className="border-t pb-1 pt-4"
+                        style={{
+                            borderColor: props.primary_color,
+                        }}
+                    >
                         <div className="px-4">
-                            <div className="text-base font-medium text-gray-800">
+                            <div
+                                className="text-base font-medium"
+                                style={{
+                                    color: props.text_primary_color,
+                                }}
+                            >
                                 {user.name}
                             </div>
-                            <div className="text-sm font-medium text-gray-500">
+                            <div
+                                className="text-sm font-medium"
+                                style={{
+                                    color: props.text_secondary_color,
+                                }}
+                            >
                                 {user.email}
                             </div>
                         </div>
@@ -172,7 +220,12 @@ export default function Authenticated({
             </nav>
 
             {header && (
-                <header className="bg-white shadow">
+                <header
+                    className="shadow"
+                    style={{
+                        backgroundColor: props.primary_color,
+                    }}
+                >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         {header}
                     </div>
@@ -182,21 +235,40 @@ export default function Authenticated({
             <main className="grow">{children}</main>
 
             {footer ? (
-                <footer className="border-t border-gray-100 bg-white">
+                <footer
+                    className="border-t"
+                    style={{
+                        backgroundColor: props.primary_color,
+                        borderColor: props.text_primary_color,
+                        color: props.text_primary_color,
+                    }}
+                >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         {footer}
                     </div>
                 </footer>
             ) : (
-                <footer className="border-t border-gray-100 bg-white">
+                <footer
+                    className="border-t"
+                    style={{
+                        color: props.text_primary_color,
+                        backgroundColor: props.primary_color,
+                        borderColor: props.text_primary_color,
+                    }}
+                >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         <div className="flex justify-between">
                             <img
-                                src="/images/novatix-logo.jpeg"
+                                src={props.logo}
                                 alt="ArachnoVa"
                                 className="h-8"
                             />
-                            <p className="text-sm text-gray-600">
+                            <p
+                                className="text-sm"
+                                style={{
+                                    color: props.text_primary_color,
+                                }}
+                            >
                                 &copy; 2025 ArachnoVa. All rights reserved.
                             </p>
                         </div>

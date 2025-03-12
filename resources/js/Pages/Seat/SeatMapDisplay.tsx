@@ -1,3 +1,4 @@
+import { EventProps } from '@/types/front-end';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Layout, SeatItem } from './types';
 
@@ -6,6 +7,7 @@ interface Props {
     onSeatClick?: (seat: SeatItem) => void;
     selectedSeats?: SeatItem[];
     ticketTypeColors?: Record<string, string>;
+    props: EventProps;
 }
 
 const SeatMapDisplay: React.FC<Props> = ({
@@ -13,6 +15,7 @@ const SeatMapDisplay: React.FC<Props> = ({
     onSeatClick,
     selectedSeats = [],
     ticketTypeColors = {},
+    props,
 }) => {
     const [rows, setRows] = useState(config.totalRows);
     const [columns, setColumns] = useState(config.totalColumns);
@@ -149,7 +152,12 @@ const SeatMapDisplay: React.FC<Props> = ({
             </div>
 
             {/* Stage */}
-            <div className="mt-12 flex h-12 w-full max-w-4xl items-center justify-center rounded border border-gray-200 bg-white">
+            <div
+                className="mt-12 flex h-12 w-full max-w-4xl items-center justify-center rounded"
+                style={{
+                    backgroundColor: props.secondary_color,
+                }}
+            >
                 Stage
             </div>
         </div>

@@ -28,13 +28,31 @@ class EventVariablesFactory extends Factory
     {
         return [
             'event_variables_id' => (string) Str::uuid(),
+
             'is_locked' => $this->faker->boolean,
+            'locked_password' => $this->faker->word,
+
             'is_maintenance' => $this->faker->boolean,
-            'var_title' => $this->faker->word,
-            'expected_finish' => now(),
-            'password' => $this->faker->word,
+            'maintenance_expected_finish' => now(),
+            'maintenance_title' => $this->faker->sentence,
+            'maintenance_message' => $this->faker->sentence,
+
+            'logo' => 'public/images/novatix-logo/favicon-32x32.png',
+            'logo_alt' => 'Novatix Logo',
+            'favicon' => 'public/images/novatix-logo/favicon.ico',
+            'primary_color' => $this->randomColor(),
+            'secondary_color' => $this->randomColor(),
+            'text_primary_color' => $this->randomColor(),
+            'text_secondary_color' => $this->randomColor(),
+
             'created_at' => now(),
             'updated_at' => now(),
         ];
+    }
+
+    // Random color picker in hex
+    public function randomColor(): string
+    {
+        return '#' . str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
     }
 }
