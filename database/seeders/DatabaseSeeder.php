@@ -13,6 +13,7 @@ use App\Models\TicketCategory;
 use App\Models\User;
 use App\Models\UserContact;
 use App\Models\Venue;
+use App\Models\EventCategoryTimeboundPrice;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -50,6 +51,7 @@ class DatabaseSeeder extends Seeder
             TicketSeeder::class,
             TicketCategorySeeder::class,
             CouponSeeder::class,
+            EventCategoryTimeboundPriceSeeder::class,
             // OrderSeeder::class,
         ]);
     }
