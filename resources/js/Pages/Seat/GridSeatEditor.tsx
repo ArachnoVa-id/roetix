@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button } from '@/Components/ui/button';
 import { MousePointer, Plus, Square, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Category, Layout, LayoutItem, SeatItem, SeatStatus } from './types';

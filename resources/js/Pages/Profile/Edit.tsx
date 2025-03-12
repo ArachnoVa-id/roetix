@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
+import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
@@ -9,7 +10,13 @@ export default function Edit({
     mustVerifyEmail,
     status,
     client,
-}: PageProps<{ mustVerifyEmail: boolean; status?: string; client: string }>) {
+    eventProps, // Assuming this is passed as part of PageProps
+}: PageProps<{
+    mustVerifyEmail: boolean;
+    status?: string;
+    client: string;
+    eventProps: EventProps;
+}>) {
     return (
         <AuthenticatedLayout
             client={client}
@@ -18,6 +25,7 @@ export default function Edit({
                     Profile
                 </h2>
             }
+            props={eventProps} // Pass the required `props` here
         >
             <Head title="Profile" />
 
