@@ -24,6 +24,7 @@ use App\Filament\Admin\Resources\EventResource\Pages\TicketScan;
 use App\Filament\Admin\Resources\EventResource\RelationManagers;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
+
 class EventResource extends Resource
 {
 
@@ -106,7 +107,6 @@ class EventResource extends Resource
                         if ($foundEvent) {
                             $set('name', '');
                         }
-
                         $set('slug', Str::slug($get('name')));
                     })
                     ->debounce(1000),
@@ -151,6 +151,43 @@ class EventResource extends Resource
                 Forms\Components\Hidden::make('team_id')
                     ->default($tenant)
                     ->required(),
+
+                // Adding Repeater for ticket categories
+                Forms\Components\Fieldset::make('Ticket Categories & Price Bounds')
+                    ->schema([
+                        Forms\Components\Repeater::make('ticket_categories')
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Category Name')
+                                    ->required(),
+                                Forms\Components\ColorPicker::make('color')
+                                    ->rgb()
+                                    ->label('Category Color')
+                                    ->required(),
+
+                                // Adding Repeater for ticket time bound price
+                                Forms\Components\Repeater::make('event_category_timebound_prices')
+                                    ->schema([
+                                        Forms\Components\DatePicker::make('start_date')
+                                            ->label('Start Date')
+                                            ->required(),
+
+                                        Forms\Components\DatePicker::make('end_date')
+                                            ->label('End Date')
+                                            ->required(),
+
+                                        Forms\Components\TextInput::make('price')
+                                            ->label('Price')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->required(),
+                                    ])
+                                    ->label('Ticket Time Bound Price')
+                            ])
+
+                            ->label('Ticket Categories')
+                            ->columnSpan(2)
+                    ]),
             ]);
     }
 

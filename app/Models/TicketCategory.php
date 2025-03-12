@@ -18,6 +18,7 @@ class TicketCategory extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'event_id',
         'name',
         'color',
     ];
