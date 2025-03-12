@@ -19,13 +19,17 @@ Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
         // Socialite Authentication
-        Route::controller(SocialiteController::class)->group(function () {
-            Route::get('/auth/google', 'googleLogin')->name('auth.google');
-            Route::get('/auth/google-callback', 'googleAuthentication')->name('auth.google-authentication');
-        });
+        Route::controller(SocialiteController::class)
+            ->group(function () {
+                Route::get('/auth/google', 'googleLogin')
+                    ->name('auth.google');
+                Route::get('/auth/google-callback', 'googleAuthentication')
+                    ->name('auth.google-authentication');
+            });
 
         // Midtrans Payment Callback
-        Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])->name('payment.midtranscallback');
+        Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])
+            ->name('payment.midtranscallback');
 
         // Session Debugging Route
         Route::get('/check-session', function () {
@@ -40,8 +44,8 @@ Route::domain(config('app.domain'))
             $user = Auth::user();
             $user = User::find($user->user_id);
             $firstTeam = optional($user->teams()->first())->name;
-            
-            if ($user->role == 'admin'){
+
+            if ($user->role == 'admin') {
                 return redirect()->route('filament.novatix-admin.pages.dashboard');
             }
 
@@ -51,7 +55,8 @@ Route::domain(config('app.domain'))
         // Seat Management Routes (Protected)
         Route::middleware('auth')->group(function () {
             // Seats
-            Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
+            Route::get('/seats', [SeatController::class, 'index'])
+                ->name('seats.index');
             Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])
                 ->middleware('venue.access')
                 ->name('seats.grid-edit');
@@ -59,15 +64,22 @@ Route::domain(config('app.domain'))
             Route::get('/seats/edit', [SeatController::class, 'edit'])
                 ->middleware('event.access')
                 ->name('seats.edit');
-            Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
-            Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-            Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
-            Route::post('/seats/save-grid-layout', [SeatController::class, 'saveGridLayout'])->name('seats.save-grid-layout');
+            Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])
+                ->name('seats.update-layout');
+            Route::post('/seats/update', [SeatController::class, 'update'])
+                ->name('seats.update');
+            Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])
+                ->name('seats.update-event-seats');
+            Route::post('/seats/save-grid-layout', [SeatController::class, 'saveGridLayout'])
+                ->name('seats.save-grid-layout');
 
             // Profile
-            Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-            Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-            Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+            Route::get('/profile', [ProfileController::class, 'edit'])
+                ->name('profile.edit');
+            Route::patch('/profile', [ProfileController::class, 'update'])
+                ->name('profile.update');
+            Route::delete('/profile', [ProfileController::class, 'destroy'])
+                ->name('profile.destroy');
         });
 
         // Any unregistered route will be redirected to the main domain
@@ -75,14 +87,6 @@ Route::domain(config('app.domain'))
             return redirect()->route('home');
         });
     });
-
-// Route::get('/seats', [SeatController::class, 'index'])->name('seats.index');
-// Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])->name('seats.grid-edit');
-// Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
-// Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])->name('seats.update-layout');
-// Route::post('/seats/update', [SeatController::class, 'update'])->name('seats.update');
-// Route::post('/seats/update-event-seats', [SeatController::class, 'updateEventSeats'])->name('seats.update-event-seats');
-// Route::post('/seats/save-grid-layout', [SeatController::class, 'saveGridLayout'])->name('seats.save-grid-layout');
 
 Route::domain('{client}.' . config('app.domain'))
     ->middleware('verify.subdomain')
@@ -94,13 +98,16 @@ Route::domain('{client}.' . config('app.domain'))
         Route::get('/login', [AuthenticatedSessionController::class, 'create'])
             ->name('client.login')
             ->middleware('guest');
-        Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])->name('client.my_tickets');
-
-        Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])->name('events.tickets.show');
-        Route::get('/events/tickets', [EoTiketController::class, 'show'])->name('events.tickets.index');
+        Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
+            ->name('client.my_tickets');
+        Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])
+            ->name('events.tickets.show');
+        Route::get('/events/tickets', [EoTiketController::class, 'show'])
+            ->name('events.tickets.index');
 
         // Ticket
-        Route::post('/payment/charge', [PaymentController::class, 'charge'])->name('payment.charge');
+        Route::post('/payment/charge', [PaymentController::class, 'charge'])
+            ->name('payment.charge');
 
         // Any unregistered route will be redirected to the client's home page
         Route::fallback(function () {

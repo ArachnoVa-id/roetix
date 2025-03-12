@@ -20,7 +20,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Infolists\Components\Livewire;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\EventResource\Pages;
-use App\Filament\Admin\Resources\EventResource\Pages\Settings;
 use App\Filament\Admin\Resources\EventResource\Pages\TicketScan;
 use App\Filament\Admin\Resources\EventResource\RelationManagers;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
@@ -36,7 +35,7 @@ class EventResource extends Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin', 'event-organizer']);
+        return $user && in_array($user->role, ['admin', 'event-orginizer']);
     }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
@@ -177,11 +176,11 @@ class EventResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
-                    Action::make('scanTicket')
-                        ->label('Scan Ticket')
-                        ->icon('heroicon-o-qr-code')
-                        ->color('success')
-                        ->url(fn($record) => TicketScan::getUrl(['record' => $record])),
+                    // Action::make('scanTicket')
+                    //     ->label('Scan Ticket')
+                    //     ->icon('heroicon-o-qr-code')
+                    //     ->color('success')
+                    //     ->url(fn($record) => TicketScan::getUrl(['record' => $record])),
                 ]),
             ])
             ->bulkActions([
@@ -205,8 +204,6 @@ class EventResource extends Resource
             'create' => Pages\CreateEvent::route('/create'),
             'edit' => Pages\EditEvent::route('/{record}/edit'),
             'view' => Pages\ViewEvent::route('/{record}'),
-            'ticket-scan' => Pages\TicketScan::route('/{record}/ticket-scan'),
-            'settings' => Pages\Settings::route('/{record}/settings'),
         ];
     }
 }

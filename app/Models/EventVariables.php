@@ -23,12 +23,18 @@ class EventVariables extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'event_variables_id',
         'is_locked',
+        'locked_password',
+
         'is_maintenance',
-        'var_title',
-        'expected_finish',
-        'password'
+        'maintenance_title',
+        'maintenance_message',
+        'maintenance_expected_finish',
+
+        'logo',
+        'favicon',
+        'primary_color',
+        'secondary_color'
     ];
 
     protected static function boot()

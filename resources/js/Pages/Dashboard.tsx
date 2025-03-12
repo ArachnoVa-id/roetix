@@ -1,10 +1,18 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
 
-export default function Dashboard({ client }: { client: string }) {
+export default function Dashboard({
+    client,
+    props,
+}: {
+    client: string;
+    props: EventProps;
+}) {
     return (
         <AuthenticatedLayout
             client={client}
+            props={props}
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
                     Dashboard
