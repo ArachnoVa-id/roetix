@@ -2,12 +2,20 @@ import { EventProps } from '@/types/front-end';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Layout, SeatItem } from './types';
 
+interface Timeline {
+    timeline_id: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+}
+
 interface Props {
     config: Layout;
     onSeatClick?: (seat: SeatItem) => void;
     selectedSeats?: SeatItem[];
     ticketTypeColors?: Record<string, string>;
     props: EventProps;
+    currentTimeline?: Timeline;
 }
 
 const SeatMapDisplay: React.FC<Props> = ({
@@ -16,6 +24,7 @@ const SeatMapDisplay: React.FC<Props> = ({
     selectedSeats = [],
     ticketTypeColors = {},
     props,
+    currentTimeline,
 }) => {
     const [rows, setRows] = useState(config.totalRows);
     const [columns, setColumns] = useState(config.totalColumns);
@@ -98,7 +107,7 @@ const SeatMapDisplay: React.FC<Props> = ({
             }
         }
 
-        // If available, use ticket type color
+        // If available, use ticket type color from provided colors
         const ticketType = seat.ticket_type || 'standard';
         return (
             ticketTypeColors[ticketType] || 'bg-white border-2 border-gray-300'
@@ -136,6 +145,24 @@ const SeatMapDisplay: React.FC<Props> = ({
 
     return (
         <div className="flex w-full flex-col items-center">
+            {/* Timeline Information */}
+            {currentTimeline && (
+                <div className="mb-4 w-full rounded-lg bg-blue-50 p-3 text-center">
+                    <h3 className="font-medium text-blue-800">
+                        {currentTimeline.name}
+                    </h3>
+                    <p className="text-sm text-blue-600">
+                        {new Date(
+                            currentTimeline.start_date,
+                        ).toLocaleDateString()}{' '}
+                        -{' '}
+                        {new Date(
+                            currentTimeline.end_date,
+                        ).toLocaleDateString()}
+                    </p>
+                </div>
+            )}
+
             <div className="grid w-full gap-1 overflow-x-auto">
                 {reversedGrid.map((row, reversedIndex) => (
                     <div

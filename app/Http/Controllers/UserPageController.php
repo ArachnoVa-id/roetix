@@ -7,10 +7,15 @@ use App\Models\EventVariables;
 use App\Models\Ticket;
 use App\Models\Seat;
 use App\Models\Venue;
+use App\Models\TimelineSession;
+use App\Models\TicketCategory;;
+
+use App\Models\EventCategoryTimeboundPrice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class UserPageController extends Controller
 {
@@ -19,6 +24,14 @@ class UserPageController extends Controller
         // Get the event and associated venue
         $event = Event::where('slug', $client)
             ->first();
+
+        if (!$event) {
+            return Inertia::render('User/Landing', [
+                'client' => $client,
+                'error' => 'Event not found.',
+                'props' => new \stdClass() // Empty props as fallback
+            ]);
+        }
 
         $props = EventVariables::findOrFail($event->event_variables_id);
 
@@ -55,7 +68,8 @@ class UserPageController extends Controller
                             'status' => $ticket->status,
                             'ticket_type' => $ticket->ticket_type,
                             'price' => $ticket->price,
-                            'category' => $ticket->ticket_type // Map ticket_type to category for display
+                            'category' => $ticket->ticket_type, // Map ticket_type to category for display
+                            'ticket_category_id' => $ticket->ticket_category_id,
                         ];
                     } else {
                         // Fallback for seats without tickets
@@ -82,12 +96,45 @@ class UserPageController extends Controller
                 'text' => 'STAGE'
             ];
 
-            // Get available ticket types from data
-            $ticketTypes = $tickets->pluck('ticket_type')->unique()->values()->all();
+            // Get ticket categories for this specific event
+            $ticketCategories = TicketCategory::where('event_id', $event->event_id)->get();
 
-            // If no ticket types found, provide defaults
-            if (empty($ticketTypes)) {
-                $ticketTypes = ['standard', 'VIP'];
+            // If no ticket categories found, create default ones
+            if ($ticketCategories->isEmpty()) {
+                $ticketCategories = collect([
+                    (object)['ticket_category_id' => 'standard', 'name' => 'standard', 'color' => '#4AEDC4'],
+                    (object)['ticket_category_id' => 'vip', 'name' => 'VIP', 'color' => '#F9A825']
+                ]);
+            }
+
+            // Find current timeline based on current date
+            $currentDate = Carbon::now();
+            $currentTimeline = TimelineSession::where('event_id', $event->event_id)
+                ->where('start_date', '<=', $currentDate)
+                ->where('end_date', '>=', $currentDate)
+                ->first();
+
+            // If no current timeline found, get the first upcoming one
+            if (!$currentTimeline) {
+                $currentTimeline = TimelineSession::where('event_id', $event->event_id)
+                    ->where('start_date', '>', $currentDate)
+                    ->orderBy('start_date', 'asc')
+                    ->first();
+            }
+
+            // If still no timeline found, get the most recent past one
+            if (!$currentTimeline) {
+                $currentTimeline = TimelineSession::where('event_id', $event->event_id)
+                    ->where('end_date', '<', $currentDate)
+                    ->orderBy('end_date', 'desc')
+                    ->first();
+            }
+
+            // Get category prices for the current timeline
+            $categoryPrices = [];
+            if ($currentTimeline) {
+                $categoryPrices = EventCategoryTimeboundPrice::where('timeline_id', $currentTimeline->timeline_id)
+                    ->get();
             }
 
             return Inertia::render('User/Landing', [
@@ -95,7 +142,9 @@ class UserPageController extends Controller
                 'layout' => $layout,
                 'event' => $event,
                 'venue' => $venue,
-                'ticketTypes' => $ticketTypes,
+                'ticketCategories' => $ticketCategories,
+                'currentTimeline' => $currentTimeline, // Only passing the current timeline, not all
+                'categoryPrices' => $categoryPrices,
                 'props' => $props
             ]);
         } catch (\Exception $e) {
@@ -114,23 +163,38 @@ class UserPageController extends Controller
         $event = Event::where('slug', $client)
             ->first();
 
+        if (!$event) {
+            return redirect()->route('login');
+        }
+
         $props = EventVariables::findOrFail($event->event_variables_id);
 
         if (Auth::check()) {
             try {
+                // Get user tickets
+                $userTickets = Ticket::where('event_id', $event->event_id)
+                    ->where('user_id', Auth::id())
+                    ->with(['seat'])
+                    ->get();
+
                 return Inertia::render('User/MyTickets', [
                     'client' => $client,
-                    'props' => $props
+                    'props' => $props,
+                    'tickets' => $userTickets,
+                    'event' => $event
                 ]);
             } catch (\Exception $e) {
                 Log::error('Error in my_tickets method: ' . $e->getMessage());
                 // throw back to login page
                 return Inertia::render('User/Auth', [
                     'client' => $client,
-                    'error' => 'Failed to load event data: ' . $e->getMessage(),
+                    'error' => 'Failed to load ticket data: ' . $e->getMessage(),
                     'props' => $props
                 ]);
             }
+        } else {
+            // Redirect to login if not authenticated
+            return redirect()->route('login', ['client' => $client]);
         }
     }
 }

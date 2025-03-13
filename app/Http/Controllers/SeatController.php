@@ -12,12 +12,17 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Models\TicketCategory;
+use Carbon\Carbon;
+use App\Models\TimelineSession;
+use App\Models\EventCategoryTimeboundPrice;
 
 
 class SeatController extends Controller
 {
     public function index()
     {
+        // Original method unchanged
         $seats = Seat::orderBy('row')->orderBy('column')->get();
 
         $layout = [
@@ -27,7 +32,7 @@ class SeatController extends Controller
                 return [
                     'type' => 'seat',
                     'seat_id' => $seat->seat_id,
-                    'seat_number' => $seat->seat_number, // Tambahkan ini
+                    'seat_number' => $seat->seat_number,
                     'row' => $seat->row,
                     'column' => $seat->column,
                     'status' => $seat->status,
@@ -83,164 +88,279 @@ class SeatController extends Controller
     }
 
     public function edit(Request $request)
-    {
-        try {
-            // Get event_id from request
-            $eventId = $request->event_id;
+{
+    try {
+        // Get event_id from request
+        $eventId = $request->event_id;
 
-            if (!$eventId) {
-                return redirect()->back()->withErrors(['error' => 'Event ID is required']);
-            }
+        if (!$eventId) {
+            return redirect()->back()->withErrors(['error' => 'Event ID is required']);
+        }
 
-            // Get the event and associated venue
-            $event = Event::findOrFail($eventId);
-            $venue = Venue::findOrFail($event->venue_id);
+        // Get the event and associated venue
+        $event = Event::findOrFail($eventId);
+        $venue = Venue::findOrFail($event->venue_id);
 
-            // Get all seats for this venue
-            $seats = Seat::where('venue_id', $venue->venue_id)
-                ->orderBy('row')
-                ->orderBy('column')
+        // Get all seats for this venue
+        $seats = Seat::where('venue_id', $venue->venue_id)
+            ->orderBy('row')
+            ->orderBy('column')
+            ->get();
+
+        // Get existing tickets for this event
+        $existingTickets = Ticket::where('event_id', $eventId)
+            ->get()
+            ->keyBy('seat_id');
+
+        // Get ticket categories for this event
+        $ticketCategories = TicketCategory::where('event_id', $eventId)->get();
+
+        // Get current timeline session
+        $currentDate = Carbon::now();
+        $currentTimeline = TimelineSession::where('event_id', $eventId)
+            ->where('start_date', '<=', $currentDate)
+            ->where('end_date', '>=', $currentDate)
+            ->first();
+
+        // Get all timeline sessions for reference
+        $allTimelines = TimelineSession::where('event_id', $eventId)->get();
+
+        // If no current timeline, use the first available one or null
+        if (!$currentTimeline && $allTimelines->isNotEmpty()) {
+            $currentTimeline = $allTimelines->first();
+        }
+
+        // Get all timebound prices for this event
+        $allPrices = [];
+        if ($currentTimeline) {
+            // Get all timeline IDs for this event
+            $timelineIds = $allTimelines->pluck('timeline_id')->toArray();
+            
+            // Get all category IDs for this event
+            $categoryIds = $ticketCategories->pluck('ticket_category_id')->toArray();
+            
+            // Get all prices for these categories and timelines
+            $allPrices = EventCategoryTimeboundPrice::whereIn('timeline_id', $timelineIds)
+                ->whereIn('ticket_category_id', $categoryIds)
                 ->get();
+        }
 
-            // Get existing tickets for this event
-            $existingTickets = Ticket::where('event_id', $eventId)
-                ->get()
-                ->keyBy('seat_id');
+        // Get prices for the current timeline
+        $prices = [];
+        if ($currentTimeline) {
+            $priceData = EventCategoryTimeboundPrice::where('timeline_id', $currentTimeline->timeline_id)->get();
+            foreach ($priceData as $price) {
+                $prices[$price->ticket_category_id] = $price->price;
+            }
+        }
 
-            // Format data for the frontend, prioritizing ticket data
-            $layout = [
-                'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
-                'totalColumns' => $seats->max('column'),
-                'items' => $seats->map(function ($seat) use ($existingTickets) {
-                    $ticket = $existingTickets->get($seat->seat_id);
+        // Format data for the frontend, prioritizing ticket data
+        $layout = [
+            'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
+            'totalColumns' => $seats->max('column'),
+            'items' => $seats->map(function ($seat) use ($existingTickets, $ticketCategories, $prices) {
+                $ticket = $existingTickets->get($seat->seat_id);
 
-                    // Base seat data
-                    $seatData = [
-                        'type' => 'seat',
-                        'seat_id' => $seat->seat_id,
-                        'seat_number' => $seat->seat_number,
-                        'row' => $seat->row,
-                        'column' => $seat->column
-                    ];
+                // Base seat data
+                $seatData = [
+                    'type' => 'seat',
+                    'seat_id' => $seat->seat_id,
+                    'seat_number' => $seat->seat_number,
+                    'row' => $seat->row,
+                    'column' => $seat->column
+                ];
 
-                    // Add ticket data if it exists
-                    if ($ticket) {
-                        $seatData['status'] = $ticket->status;
-                        $seatData['ticket_type'] = $ticket->ticket_type;
-                        $seatData['price'] = $ticket->price;
+                // Add ticket data if it exists
+                if ($ticket) {
+                    $seatData['status'] = $ticket->status;
+
+                    // Use linked ticket category if available
+                    if ($ticket->ticket_category_id && $categoryObj = $ticketCategories->firstWhere('ticket_category_id', $ticket->ticket_category_id)) {
+                        $seatData['ticket_type'] = $categoryObj->name;
+
+                        // Use price from timebound prices if available
+                        if (isset($prices[$ticket->ticket_category_id])) {
+                            $seatData['price'] = $prices[$ticket->ticket_category_id];
+                        } else {
+                            $seatData['price'] = $ticket->price ?? 0;
+                        }
                     } else {
-                        // Default values for seats without tickets
-                        $seatData['status'] = 'reserved';
-                        $seatData['ticket_type'] = 'standard';
-                        $seatData['price'] = 0;
+                        // Fallback to stored ticket type
+                        $seatData['ticket_type'] = $ticket->ticket_type ?? 'standard';
+                        $seatData['price'] = $ticket->price ?? 0;
                     }
-
-                    return $seatData;
-                })->values()
-            ];
-
-            // Add stage label
-            $layout['items'][] = [
-                'type' => 'label',
-                'row' => $layout['totalRows'],
-                'column' => floor($layout['totalColumns'] / 2),
-                'text' => 'STAGE'
-            ];
-
-            // Get available ticket types for dropdown
-            $ticketTypes = ['standard', 'VIP'];
-
-            return Inertia::render('Seat/Edit', [
-                'layout' => $layout,
-                'event' => $event,
-                'venue' => $venue,
-                'ticketTypes' => $ticketTypes
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error in edit method: ' . $e->getMessage());
-            return redirect()->back()->withErrors(['error' => 'Failed to load seat map: ' . $e->getMessage()]);
-        }
-    }
-
-    public function updateEventSeats(Request $request)
-    {
-        Log::info('Request headers:', $request->headers->all());
-        Log::info('Request body:', $request->all());
-
-        $validated = $request->validate([
-            'event_id' => 'required|string',
-            'seats' => 'required|array',
-            'seats.*.seat_id' => 'required|string',
-            'seats.*.status' => 'required|string|in:available,booked,in_transaction,not_available,reserved',
-            'seats.*.ticket_type' => 'required|string',
-            'seats.*.price' => 'required|numeric|max:10000000' // Adding max value constraint
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            $eventId = $validated['event_id'];
-            $event = Event::findOrFail($eventId);
-
-            // Get all seats for this venue
-            $venueId = $event->venue_id;
-            $allSeats = Seat::where('venue_id', $venueId)->get();
-
-            // Get existing tickets for this event
-            $existingTickets = Ticket::where('event_id', $eventId)->get()->keyBy('seat_id');
-
-            // Get the selected seats from the request
-            $selectedSeatIds = collect($validated['seats'])->pluck('seat_id')->toArray();
-            $selectedSeatsData = collect($validated['seats'])->keyBy('seat_id');
-
-            // Process only the selected seats
-            foreach ($selectedSeatIds as $seatId) {
-                $seatData = $selectedSeatsData[$seatId];
-
-                Ticket::updateOrCreate(
-                    [
-                        'event_id' => $eventId,
-                        'seat_id' => $seatId
-                    ],
-                    [
-                        'status' => $seatData['status'],
-                        'ticket_type' => $seatData['ticket_type'],
-                        'price' => $seatData['price'],
-                        'team_id' => $event->team_id
-                    ]
-                );
-            }
-
-            // For any seats that don't have tickets yet, create them with default values
-            foreach ($allSeats as $seat) {
-                if (!isset($existingTickets[$seat->seat_id]) && !in_array($seat->seat_id, $selectedSeatIds)) {
-                    Ticket::create([
-                        'event_id' => $eventId,
-                        'seat_id' => $seat->seat_id,
-                        'status' => 'reserved',
-                        'ticket_type' => 'standard',
-                        'price' => 0,
-                        'team_id' => $event->team_id
-                    ]);
+                } else {
+                    // Default values for seats without tickets
+                    $seatData['status'] = 'reserved';
+                    $seatData['ticket_type'] = 'standard';
+                    $seatData['price'] = 0;
                 }
+
+                return $seatData;
+            })->values()
+        ];
+
+        // Add stage label
+        $layout['items'][] = [
+            'type' => 'label',
+            'row' => $layout['totalRows'],
+            'column' => floor($layout['totalColumns'] / 2),
+            'text' => 'STAGE'
+        ];
+
+        // Get available ticket types from TicketCategory
+        $ticketTypes = $ticketCategories->pluck('name')->toArray();
+
+        // If no categories are defined, use default
+        if (empty($ticketTypes)) {
+            $ticketTypes = ['standard', 'VIP'];
+        }
+
+        // Category colors for UI
+        $categoryColors = $ticketCategories->pluck('color', 'name')->toArray();
+
+        return Inertia::render('Seat/Edit', [
+            'layout' => $layout,
+            'event' => $event,
+            'venue' => $venue,
+            'ticketTypes' => $ticketTypes,
+            'categoryColors' => $categoryColors,
+            'currentTimeline' => $currentTimeline,
+            'allTimelines' => $allTimelines,
+            'ticketCategories' => $ticketCategories,
+            'categoryPrices' => $allPrices
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error in edit method: ' . $e->getMessage());
+        return redirect()->back()->withErrors(['error' => 'Failed to load seat map: ' . $e->getMessage()]);
+    }
+}
+public function updateEventSeats(Request $request)
+{
+    Log::info('Request headers:', $request->headers->all());
+    Log::info('Request body:', $request->all());
+
+    $validated = $request->validate([
+        'event_id' => 'required|string',
+        'seats' => 'required|array',
+        'seats.*.seat_id' => 'required|string',
+        'seats.*.status' => 'required|string|in:available,booked,in_transaction,not_available,reserved',
+        'seats.*.ticket_type' => 'required|string',
+        'seats.*.price' => 'required|numeric|max:10000000'
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        $eventId = $validated['event_id'];
+        $event = Event::findOrFail($eventId);
+
+        // Get ticket categories for this event
+        $ticketCategories = TicketCategory::where('event_id', $eventId)->get()->keyBy('name');
+
+        // Get all seats for this venue
+        $venueId = $event->venue_id;
+        $allSeats = Seat::where('venue_id', $venueId)->get();
+
+        // Get existing tickets for this event
+        $existingTickets = Ticket::where('event_id', $eventId)->get()->keyBy('seat_id');
+
+        // Find current timeline for this event
+        $currentDate = Carbon::now();
+        $currentTimeline = TimelineSession::where('event_id', $eventId)
+            ->where('start_date', '<=', $currentDate)
+            ->where('end_date', '>=', $currentDate)
+            ->first();
+
+        if (!$currentTimeline) {
+            $currentTimeline = TimelineSession::where('event_id', $eventId)
+                ->orderBy('start_date')
+                ->first();
+        }
+
+        // Get prices for the current timeline and categories
+        $categoryPrices = [];
+        if ($currentTimeline) {
+            $prices = EventCategoryTimeboundPrice::where('timeline_id', $currentTimeline->timeline_id)->get();
+            foreach ($prices as $price) {
+                $categoryPrices[$price->ticket_category_id] = $price->price;
+            }
+        }
+
+        // Get the selected seats from the request
+        $selectedSeatIds = collect($validated['seats'])->pluck('seat_id')->toArray();
+        $selectedSeatsData = collect($validated['seats'])->keyBy('seat_id');
+
+        // Process only the selected seats
+        foreach ($selectedSeatIds as $seatId) {
+            $seatData = $selectedSeatsData[$seatId];
+
+            // Find the ticket category ID based on the ticket type name
+            $ticketCategoryId = null;
+            $price = $seatData['price']; // Use the price sent from the frontend
+
+            if (isset($ticketCategories[$seatData['ticket_type']])) {
+                $category = $ticketCategories[$seatData['ticket_type']];
+                $ticketCategoryId = $category->ticket_category_id;
             }
 
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Tickets updated successfully'
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error updating event seats: ' . $e->getMessage());
-            Log::error('Error trace: ' . $e->getTraceAsString());
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to update tickets: ' . $e->getMessage()
-            ], 422);
+            Ticket::updateOrCreate(
+                [
+                    'event_id' => $eventId,
+                    'seat_id' => $seatId
+                ],
+                [
+                    'status' => $seatData['status'],
+                    'ticket_type' => $seatData['ticket_type'], // Keep for backward compatibility
+                    'ticket_category_id' => $ticketCategoryId, // Store the category ID
+                    'price' => $price, // Use the price from the frontend
+                    'team_id' => $event->team_id
+                ]
+            );
         }
+
+        // For any seats that don't have tickets yet, create them with default values
+        foreach ($allSeats as $seat) {
+            if (!isset($existingTickets[$seat->seat_id]) && !in_array($seat->seat_id, $selectedSeatIds)) {
+                // Get default category if available
+                $defaultCategory = $ticketCategories->first();
+                $defaultCategoryId = $defaultCategory ? $defaultCategory->ticket_category_id : null;
+                $defaultType = $defaultCategory ? $defaultCategory->name : 'standard';
+                
+                // Get default price if available
+                $defaultPrice = 0;
+                if ($defaultCategoryId && isset($categoryPrices[$defaultCategoryId])) {
+                    $defaultPrice = $categoryPrices[$defaultCategoryId];
+                }
+
+                Ticket::create([
+                    'event_id' => $eventId,
+                    'seat_id' => $seat->seat_id,
+                    'status' => 'reserved',
+                    'ticket_type' => $defaultType, // For backward compatibility
+                    'ticket_category_id' => $defaultCategoryId,
+                    'price' => $defaultPrice,
+                    'team_id' => $event->team_id
+                ]);
+            }
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tickets updated successfully'
+        ]);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error updating event seats: ' . $e->getMessage());
+        Log::error('Error trace: ' . $e->getTraceAsString());
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to update tickets: ' . $e->getMessage()
+        ], 422);
     }
+}
 
     // SeatController.php
     public function update(Request $request)
