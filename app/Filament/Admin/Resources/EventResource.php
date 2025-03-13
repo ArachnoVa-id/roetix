@@ -44,38 +44,29 @@ class EventResource extends Resource
         return $infolist->schema([
             Infolists\Components\Section::make()->schema([
                 Infolists\Components\TextEntry::make('name')
-                    ->label('NAME')
+                    ->label('Name')
                     ->icon('heroicon-m-film'),
                 Infolists\Components\TextEntry::make('slug')
-                    ->label('SLUG')
+                    ->label('Slug')
                     ->icon('heroicon-m-magnifying-glass-plus'),
                 Infolists\Components\TextEntry::make('category')
-                    ->label('CATEGORY')
+                    ->label('Category')
                     ->icon('heroicon-m-tag'),
                 Infolists\Components\TextEntry::make('status')
-                    ->label('STATUS')
+                    ->label('Status')
                     ->icon('heroicon-m-exclamation-triangle')
                     ->color('primary'),
                 Infolists\Components\TextEntry::make('start_date')
-                    ->label('START')
+                    ->label('Start')
                     ->icon('heroicon-m-calendar-date-range')
                     ->dateTime(),
                 Infolists\Components\TextEntry::make('end_date')
-                    ->label('END')
+                    ->label('End')
                     ->icon('heroicon-m-calendar-date-range')
                     ->dateTime(),
                 Infolists\Components\TextEntry::make('location')
-                    ->label('LOCATION')
+                    ->label('Location')
                     ->icon('heroicon-m-map-pin'),
-                Infolists\Components\Actions::make([
-                    InfolistAction::make('editSeats')
-                        ->label('Edit Seats')
-                        ->icon('heroicon-m-pencil-square')
-                        ->button()
-                        ->color('primary')
-                        ->url(fn($record) => "/seats/edit?event_id={$record->event_id}")
-                        ->openUrlInNewTab(),
-                ]),
             ])->columns(2),
             Infolists\Components\Tabs::make('Tabs')
                 ->tabs([
@@ -86,7 +77,7 @@ class EventResource extends Resource
                     Infolists\Components\Tabs\Tab::make('Scan Tickets')
                         ->schema([
                             Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
-                        ]),
+                        ])
                 ])
                 ->columnSpan('full'),
         ]);
@@ -94,99 +85,197 @@ class EventResource extends Resource
 
     public static function form(Form $form): Form
     {
-        $tenant = Filament::getTenant()->team_id;
-        $tenant_name = Filament::getTenant()->code;
-
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255)
-                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                        $foundEvent = Event::where('name', $get('name'))->first();
-                        if ($foundEvent) {
-                            $set('name', '');
-                        }
-                        $set('slug', Str::slug($get('name')));
-                    })
-                    ->debounce(1000),
-                Forms\Components\TextInput::make('slug')
-                    ->required()
-                    ->readOnly(),
-                Forms\Components\Select::make('category')
-                    ->options([
-                        'concert' => 'concert',
-                        'sports' => 'sports',
-                        'workshop' => 'workshop',
-                        'etc' => 'etc'
-                    ])
-                    ->required(),
-                Forms\Components\Select::make('status')
-                    ->options([
-                        'planned' => 'planned',
-                        'active' => 'active',
-                        'completed' => 'completed',
-                        'cancelled' => 'cancelled'
-                    ])
-                    ->required(),
-                Forms\Components\DatePicker::make('start_date')
-                    ->required(),
-                Forms\Components\DatePicker::make('end_date')
-                    ->required(),
-                Forms\Components\TextInput::make('location')
-                    ->required(),
-                Forms\Components\Select::make('venue_id')
-                    ->options(
-                        \App\Models\Venue::all()->pluck('name', 'venue_id')
-                    )
-                    ->required()
-                    ->label('Venue')
-                    ->placeholder('Select Venue'),
-                Forms\Components\TextInput::make('team_code')
-                    ->label('Team')
-                    ->default($tenant_name)
-                    ->hidden()
-                    ->readOnly()
-                    ->required(),
-                Forms\Components\Hidden::make('team_id')
-                    ->default($tenant)
-                    ->required(),
-
-                // Adding Repeater for ticket categories
-                Forms\Components\Fieldset::make('Ticket Categories & Price Bounds')
+                Forms\Components\Tabs::make('Event Variables')
+                    ->columnSpan('full')
                     ->schema([
-                        Forms\Components\Repeater::make('ticket_categories')
+                        Forms\Components\Tabs\Tab::make('General')
+                            ->columns(2)
                             ->schema([
                                 Forms\Components\TextInput::make('name')
-                                    ->label('Category Name')
-                                    ->required(),
-                                Forms\Components\ColorPicker::make('color')
-                                    ->rgb()
-                                    ->label('Category Color')
-                                    ->required(),
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                        // reject if name already used
+                                        $event_id = $get('event_id');
+                                        $foundEvent = Event::where('name', $get('name'))->first();
+                                        if ($foundEvent && $foundEvent->event_id != $event_id) {
+                                            $set('name', null);
+                                            $set('slug', null);
+                                        }
 
-                                // Adding Repeater for ticket time bound price
-                                Forms\Components\Repeater::make('event_category_timebound_prices')
-                                    ->schema([
-                                        Forms\Components\DatePicker::make('start_date')
-                                            ->label('Start Date')
-                                            ->required(),
+                                        // incrementing slug if exist same slug
+                                        $increment = 0;
+                                        $base_slug = Str::slug($get('name'));
+                                        $slug = $base_slug;
 
-                                        Forms\Components\DatePicker::make('end_date')
-                                            ->label('End Date')
-                                            ->required(),
+                                        $foundEvent = Event::where('slug', $slug)->first();
 
-                                        Forms\Components\TextInput::make('price')
-                                            ->label('Price')
-                                            ->numeric()
-                                            ->minValue(0)
-                                            ->required(),
+                                        while ($foundEvent && $foundEvent->event_id != $event_id) {
+                                            if ($increment > 0) {
+                                                $slug = $base_slug . '-' . $increment;
+                                                $foundEvent = Event::where('slug', $slug)->first();
+                                            }
+                                            $increment++;
+                                        }
+                                        $set('slug', $slug);
+                                    })
+                                    ->debounce(1000),
+                                Forms\Components\TextInput::make('slug')
+                                    ->required()
+                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                        // incrementing slug if exist same slug
+                                        $increment = 0;
+                                        $base_slug = Str::slug($get('slug'));
+                                        $slug = $base_slug;
+
+                                        // current event id
+                                        $event_id = $get('event_id');
+                                        $foundEvent = Event::where('slug', $slug)->first();
+
+                                        while ($foundEvent && $foundEvent->event_id != $event_id) {
+                                            if ($increment > 0) {
+                                                $slug = $base_slug . '-' . $increment;
+                                                $foundEvent = Event::where('slug', $slug)->first();
+                                            }
+                                            $increment++;
+                                        }
+                                        $set('slug', $slug);
+                                    })
+                                    ->reactive(),
+                                Forms\Components\Select::make('category')
+                                    ->options([
+                                        'concert' => 'concert',
+                                        'sports' => 'sports',
+                                        'workshop' => 'workshop',
+                                        'etc' => 'etc'
                                     ])
-                                    ->label('Ticket Time Bound Price')
-                            ])
+                                    ->required(),
+                                Forms\Components\Select::make('status')
+                                    ->options([
+                                        'planned' => 'planned',
+                                        'active' => 'active',
+                                        'completed' => 'completed',
+                                        'cancelled' => 'cancelled'
+                                    ])
+                                    ->required(),
+                                Forms\Components\DatePicker::make('start_date')
+                                    ->label('Start Date')
+                                    ->minDate(now()->toDateString())
+                                    ->required()
+                                    ->reactive(),
+                                Forms\Components\DatePicker::make('end_date')
+                                    ->label('End Date')
+                                    ->minDate(fn(Forms\Get $get) => $get('start_date'))
+                                    ->required(),
+                                Forms\Components\Select::make('venue_id')
+                                    ->options(
+                                        \App\Models\Venue::all()->pluck('name', 'venue_id')
+                                    )
+                                    ->required()
+                                    ->label('Venue')
+                                    ->placeholder('Select Venue')
+                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                        $venue = \App\Models\Venue::find($get('venue_id'));
+                                        if ($venue) {
+                                            $set('location', $venue->location);
+                                        }
+                                    })
+                                    ->reactive(),
+                                Forms\Components\TextInput::make('location')
+                                    ->required(),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Timeline')
+                            ->schema([
+                                Forms\Components\Repeater::make('ticket_categories')
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Category Name')
+                                            ->required(),
+                                        Forms\Components\ColorPicker::make('color')
+                                            ->hex()
+                                            ->label('Category Color')
+                                            ->required(),
+                                        Forms\Components\Section::make('Timeline')
+                                            ->schema([
+                                                Forms\Components\Repeater::make('event_category_timebound_prices')
+                                                    ->columns(2)
+                                                    ->grid(2)
+                                                    ->schema([
+                                                        Forms\Components\DatePicker::make('start_date')
+                                                            ->label('Start Date')
+                                                            ->minDate(now()->toDateString())
+                                                            ->reactive()
+                                                            ->columnSpan(1)
+                                                            ->required(),
 
-                            ->label('Ticket Categories')
-                            ->columnSpan(2)
+                                                        Forms\Components\DatePicker::make('end_date')
+                                                            ->label('End Date')
+                                                            ->minDate(fn(Forms\Get $get) => $get('start_date'))
+                                                            ->columnSpan(1)
+                                                            ->required(),
+
+                                                        Forms\Components\TextInput::make('price')
+                                                            ->columnSpan(2)
+                                                            ->label('Price')
+                                                            ->numeric()
+                                                            ->minValue(0)
+                                                            ->required(),
+                                                    ])
+                                                    ->label('')
+                                            ])
+                                            ->label('Ticket Categories')
+                                    ])
+                                    ->label('')
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Locking')
+                            ->schema([
+                                Forms\Components\Toggle::make('is_locked')
+                                    ->label('Is Locked'),
+                                Forms\Components\TextInput::make('locked_password')
+                                    ->label('Locked Password'),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Maintenance')
+                            ->schema([
+                                Forms\Components\Toggle::make('is_maintenance')
+                                    ->label('Is Maintenance'),
+                                Forms\Components\TextInput::make('maintenance_title')
+                                    ->label('Maintenance Title'),
+                                Forms\Components\TextInput::make('maintenance_message')
+                                    ->label('Maintenance Message'),
+                                Forms\Components\DatePicker::make('maintenance_expected_finish')
+                                    ->label('Maintenance Expected Finish'),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Colors')
+                            ->columns(4)
+                            ->schema([
+
+                                Forms\Components\ColorPicker::make('primary_color')
+                                    ->hex()
+                                    ->required()
+                                    ->label('Primary Color'),
+                                Forms\Components\ColorPicker::make('secondary_color')
+                                    ->hex()
+                                    ->required()
+                                    ->label('Secondary Color'),
+                                Forms\Components\ColorPicker::make('text_primary_color')
+                                    ->hex()
+                                    ->required()
+                                    ->label('Text Primary Color'),
+                                Forms\Components\ColorPicker::make('text_secondary_color')
+                                    ->hex()
+                                    ->required()
+                                    ->label('Text Secondary Color'),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Identity')
+                            ->schema([
+                                Forms\Components\TextInput::make('logo')
+                                    ->label('Logo'),
+                                Forms\Components\TextInput::make('favicon')
+                                    ->label('Favicon'),
+                            ])
                     ]),
             ]);
     }

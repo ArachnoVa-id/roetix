@@ -17,10 +17,6 @@ class EditEvent extends EditRecord
         // Ambil event_id dari record yang sedang diedit
         $eventId = $this->record->event_id;
 
-        // $data = TicketCategory::where('event_id', $eventId)->get();
-
-        // dd($data);
-
         // Ambil semua Ticket Categories yang terkait dengan event ini
         $ticketCategories = TicketCategory::where('event_id', $eventId)->get()->map(function ($category) {
             return [

@@ -34,7 +34,9 @@ class EventVariables extends Model
         'logo',
         'favicon',
         'primary_color',
-        'secondary_color'
+        'secondary_color',
+        'text_primary_color',
+        'text_secondary_color',
     ];
 
     protected static function boot()
@@ -46,5 +48,10 @@ class EventVariables extends Model
                 $model->event_variables_id = (string) Str::uuid();
             }
         });
+    }
+
+    public function event()
+    {
+        return $this->hasOne(Event::class, 'event_variables_id', 'event_variables_id');
     }
 }
