@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Models;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -10,7 +8,6 @@ use Illuminate\Support\Str;
 class EventCategoryTimeboundPrice extends Model
 {
     use HasFactory, HasUuids;
-
     /**
      * The attributes that are mass assignable.
      *
@@ -18,26 +15,21 @@ class EventCategoryTimeboundPrice extends Model
      */
     protected $fillable = [
         'ticket_category_id',
-        'start_date',
-        'end_date',
+        'timeline_id',
         'price',
     ];
-
     /**
      * The attributes that should be cast.
      *
      * @var array
      */
     protected $casts = [
-        'start_date' => 'datetime',
-        'end_date' => 'datetime',
         'price' => 'decimal:2',
     ];
-
+    
     /**
-     * Get the ticket category that owns the timebound price.
+     * Boot the model.
      */
-
      protected static function boot()
      {
          parent::boot();
@@ -49,25 +41,36 @@ class EventCategoryTimeboundPrice extends Model
          });
      }
      
+    /**
+     * Get the ticket category that owns the timebound price.
+     */
     public function ticketCategory()
     {
         return $this->belongsTo(TicketCategory::class, 'ticket_category_id', 'ticket_category_id');
     }
 
     /**
+     * Get the timeline session that owns the timebound price.
+     */
+    public function timelineSession()
+    {
+        return $this->belongsTo(TimelineSession::class, 'timeline_id', 'timeline_id');
+    }
+    
+    /**
      * Indicates if the model's ID is auto-incrementing.
      *
      * @var bool
      */
     public $incrementing = false;
-
+    
     /**
      * The data type of the auto-incrementing ID.
      *
      * @var string
      */
     protected $keyType = 'string';
-
+    
     /**
      * The primary key for the model.
      *

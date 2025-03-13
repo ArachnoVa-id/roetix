@@ -1,11 +1,10 @@
 <?php
-
 namespace Database\Factories;
-
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use App\Models\EventCategoryTimeboundPrice;
 use App\Models\TicketCategory;
+use App\Models\TimelineSession;
 use Carbon\Carbon;
 
 /**
@@ -19,7 +18,7 @@ class EventCategoryTimeboundPriceFactory extends Factory
      * @var string
      */
     protected $model = EventCategoryTimeboundPrice::class;
-
+    
     /**
      * Define the model's default state.
      *
@@ -27,18 +26,22 @@ class EventCategoryTimeboundPriceFactory extends Factory
      */
     public function definition(): array
     {
-        $start_date = $this->faker->dateTimeBetween('-1 month', '+1 month');
-        $end_date = $this->faker->dateTimeBetween($start_date, '+3 months');
-
+        $ticketCategory = TicketCategory::inRandomOrder()->first();
+        $eventId = $ticketCategory?->event_id;
+        
+        // Cari timeline session yang berhubungan dengan event dari ticket category
+        $timelineSession = TimelineSession::where('event_id', $eventId)
+            ->inRandomOrder()
+            ->first();
+            
         return [
             'timebound_price_id' => (string) Str::uuid(),
-            'ticket_category_id' => TicketCategory::inRandomOrder()->first()?->ticket_category_id,
-            'start_date' => $start_date,
-            'end_date' => $end_date,
-            'price' => $this->faker->randomFloat(2, 10, 500),
+            'ticket_category_id' => $ticketCategory?->ticket_category_id,
+            'timeline_id' => $timelineSession?->timeline_id,
+            'price' => $this->faker->numberBetween(100000, 500000), // Harga dalam ribuan
         ];
     }
-
+    
     /**
      * Define an early bird price variant.
      *
@@ -47,17 +50,25 @@ class EventCategoryTimeboundPriceFactory extends Factory
     public function earlyBird()
     {
         return $this->state(function (array $attributes) {
-            $start_date = $this->faker->dateTimeBetween('-1 month', 'now');
-            $end_date = $this->faker->dateTimeBetween('+1 day', '+2 weeks');
-            
+            // Coba ambil timeline yang sesuai dengan "Early Bird"
+            $timelineSession = TimelineSession::where('name', 'like', '%Early Bird%')
+                ->orWhere('name', 'like', '%Presale 1%')
+                ->inRandomOrder()
+                ->first();
+                
+            if ($timelineSession) {
+                return [
+                    'timeline_id' => $timelineSession->timeline_id,
+                    'price' => $this->faker->numberBetween(50000, 150000), // 50K-150K
+                ];
+            }
+           
             return [
-                'start_date' => $start_date,
-                'end_date' => $end_date,
-                'price' => $this->faker->randomFloat(2, 10, 100),
+                'price' => $this->faker->numberBetween(50000, 150000), // 50K-150K
             ];
         });
     }
-
+    
     /**
      * Define a regular price variant.
      *
@@ -66,17 +77,25 @@ class EventCategoryTimeboundPriceFactory extends Factory
     public function regularPrice()
     {
         return $this->state(function (array $attributes) {
-            $start_date = $this->faker->dateTimeBetween('+1 day', '+2 weeks');
-            $end_date = $this->faker->dateTimeBetween('+3 weeks', '+2 months');
-            
+            // Coba ambil timeline yang sesuai dengan "Regular"
+            $timelineSession = TimelineSession::where('name', 'like', '%Regular%')
+                ->orWhere('name', 'like', '%General%')
+                ->inRandomOrder()
+                ->first();
+                
+            if ($timelineSession) {
+                return [
+                    'timeline_id' => $timelineSession->timeline_id,
+                    'price' => $this->faker->numberBetween(150000, 300000), // 150K-300K
+                ];
+            }
+           
             return [
-                'start_date' => $start_date,
-                'end_date' => $end_date,
-                'price' => $this->faker->randomFloat(2, 100, 300),
+                'price' => $this->faker->numberBetween(150000, 300000), // 150K-300K
             ];
         });
     }
-
+    
     /**
      * Define a last minute price variant.
      *
@@ -85,15 +104,21 @@ class EventCategoryTimeboundPriceFactory extends Factory
     public function lastMinute()
     {
         return $this->state(function (array $attributes) {
-            // Menggunakan Carbon untuk menghindari masalah interval
-            $now = Carbon::now();
-            $start_date = $now->copy()->addDays(30); // 1 bulan dari sekarang
-            $end_date = $now->copy()->addDays(60);   // 2 bulan dari sekarang
-            
+            // Coba ambil timeline yang sesuai dengan "Last Minute"
+            $timelineSession = TimelineSession::where('name', 'like', '%Last Minute%')
+                ->orWhere('name', 'like', '%Flash%')
+                ->inRandomOrder()
+                ->first();
+                
+            if ($timelineSession) {
+                return [
+                    'timeline_id' => $timelineSession->timeline_id,
+                    'price' => $this->faker->numberBetween(250000, 500000), // 250K-500K
+                ];
+            }
+           
             return [
-                'start_date' => $start_date,
-                'end_date' => $end_date,
-                'price' => $this->faker->randomFloat(2, 300, 500),
+                'price' => $this->faker->numberBetween(250000, 500000), // 250K-500K
             ];
         });
     }
