@@ -37,6 +37,7 @@ class DatabaseSeeder extends Seeder
             TicketSeeder::class,
             TicketCategorySeeder::class,
             CouponSeeder::class,
+            TimelineSessionSeeder::class,
             EventCategoryTimeboundPriceSeeder::class,
             // OrderSeeder::class,
         ]);
