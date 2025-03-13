@@ -20,12 +20,13 @@ class ValidateMainDomain
         }
 
         // Check if user is authenticated before accessing properties
-        if (!Auth::check()) {
+        $user = Auth::user();
+
+        if (!$user) {
             if ($request->route()->getName() !== 'login') return redirect()->route('login');
             return $next($request);
         }
 
-        $user = Auth::user();
         $user = User::find($user->user_id);
 
         if ($user->role === 'user') {
@@ -33,10 +34,17 @@ class ValidateMainDomain
             abort(403, 'Forbidden Account');
         }
 
-        $firstTeam = optional($user->teams()->first())->name;
+        $firstTeam = optional($user->teams()->first());
         if (!$firstTeam) {
             Auth::logout();
             return redirect()->route('login');
+        }
+
+        if ($request->route()->getName() === 'login') {
+            if ($user->role == 'admin') {
+                return redirect()->route('filament.novatix-admin.pages.dashboard');
+            }
+            return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]);
         }
 
         return $next($request);

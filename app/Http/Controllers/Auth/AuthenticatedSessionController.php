@@ -57,11 +57,8 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-        $userModel = User::find($user->user_id);
-        $firstTeam = $userModel->teams()->first();
-        $tenantName = $firstTeam ? $firstTeam->name : 'default';
 
-        if ($request->client) {
+        if ($request->client && $user) {
             return redirect()->intended(
                 $request->client
                     ? route('client.home', ['client' => $request->client], false)
@@ -69,11 +66,14 @@ class AuthenticatedSessionController extends Controller
             );
         }
 
+        $userModel = User::find($user->user_id);
+        $firstTeam = $userModel->teams()->first();
+
         if ($userModel->role === 'admin') {
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
         }
 
-        return Inertia::location(route('filament.admin.pages.dashboard', ['tenant' => $tenantName]));
+        return Inertia::location(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]));
     }
 
     /**

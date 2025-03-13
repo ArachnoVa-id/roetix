@@ -58,19 +58,7 @@ Route::domain(config('app.domain'))
         });
 
         // Redirect Home to Tenant Dashboard
-        Route::get('/', function () {
-            $user = Auth::user();
-            $user = User::find($user->user_id);
-            $firstTeam = optional($user->teams()->first())->name;
-
-            if ($user) {
-                if ($user->role == 'admin') {
-                    return redirect()->route('filament.novatix-admin.pages.dashboard');
-                }
-            }
-
-            return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam]);
-        })->name('home');
+        Route::get('/', function () {})->name('home');
 
         // Seat Management Routes (Protected)
         Route::middleware('auth')->group(function () {
