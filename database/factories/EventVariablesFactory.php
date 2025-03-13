@@ -37,9 +37,9 @@ class EventVariablesFactory extends Factory
             'maintenance_title' => $this->faker->sentence,
             'maintenance_message' => $this->faker->sentence,
 
-            'logo' => 'public/images/novatix-logo/favicon-32x32.png',
+            'logo' => '/images/novatix-logo/favicon-32x32.png',
             'logo_alt' => 'Novatix Logo',
-            'favicon' => 'public/images/novatix-logo/favicon.ico',
+            'favicon' => '/images/novatix-logo/favicon.ico',
             'primary_color' => $this->randomColor(),
             'secondary_color' => $this->randomColor(),
             'text_primary_color' => $this->randomColor(),

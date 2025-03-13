@@ -1,9 +1,28 @@
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { EventProps } from '@/types/front-end';
+import { deconstructEventColorProps } from '@/types/deconstruct-front-end';
+import { EventColorProps, EventProps } from '@/types/front-end';
 import { Link, usePage } from '@inertiajs/react';
-import { PropsWithChildren, ReactNode, useState } from 'react';
+import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
+
+const StyledButton = styled.button<{ $props: EventColorProps }>`
+    ${({ $props }) => `
+    color: ${$props?.text_primary_color};
+    &:hover {
+        color: ${$props?.text_secondary_color};
+    }
+    background-color: ${$props?.primary_color};
+    border-color: ${$props?.text_primary_color};
+    &:hover {
+        background-color: ${$props?.secondary_color};
+        border-color: ${$props?.text_secondary_color};
+    }
+    &:focus {
+        background-color: ${$props?.secondary_color};
+        border-color: ${$props?.text_secondary_color};
+    }`}
+`;
 
 export default function Authenticated({
     header,
@@ -17,41 +36,31 @@ export default function Authenticated({
     client: string;
     props: EventProps;
 }>) {
-    const user = usePage().props.auth.user;
+    const user = usePage().props?.auth.user;
+    const [eventColorProps, setEventColorProps] = useState<EventColorProps>(
+        {} as EventColorProps,
+    );
+
+    useEffect(() => {
+        if (props) setEventColorProps(deconstructEventColorProps(props));
+    }, [props]);
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
-        useState(false);
-
-    const StyledButton = styled.button`
-        color: ${props.text_primary_color};
-        &:hover {
-            color: ${props.text_secondary_color};
-        }
-        background-color: ${props.primary_color};
-        border-color: ${props.text_primary_color};
-        &:hover {
-            background-color: ${props.secondary_color};
-            border-color: ${props.text_secondary_color};
-        }
-        &:focus {
-            background-color: ${props.secondary_color};
-            border-color: ${props.text_secondary_color};
-        }
-    `;
+        useState<boolean>(false);
 
     return (
         <div
             className="flex min-h-screen flex-col"
             style={{
-                backgroundColor: props.secondary_color,
-                color: props.text_secondary_color,
+                backgroundColor: props?.secondary_color,
+                color: props?.text_secondary_color,
             }}
         >
             <nav
                 className="border-b"
                 style={{
-                    backgroundColor: props.primary_color,
-                    borderColor: props.text_primary_color,
+                    backgroundColor: props?.primary_color,
+                    borderColor: props?.text_primary_color,
                 }}
             >
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -59,10 +68,9 @@ export default function Authenticated({
                         <div className="flex">
                             <div className="flex shrink-0 items-center">
                                 <Link href="/">
-                                    {/* <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" /> */}
                                     <img
-                                        src={props.logo}
-                                        alt="ArachnoVa"
+                                        src={props?.logo}
+                                        alt={props?.logo_alt}
                                         className="h-8"
                                     />
                                 </Link>
@@ -70,13 +78,23 @@ export default function Authenticated({
 
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
-                                    href={route('client.home', client)}
+                                    eventProps={props}
+                                    href={
+                                        client
+                                            ? route('client.home', client)
+                                            : ''
+                                    }
                                     active={route().current('client.home')}
                                 >
                                     Beli Tiket
                                 </NavLink>
                                 <NavLink
-                                    href={route('client.my_tickets', client)}
+                                    eventProps={props}
+                                    href={
+                                        client
+                                            ? route('client.my_tickets', client)
+                                            : ''
+                                    }
                                     active={route().current(
                                         'client.my_tickets',
                                     )}
@@ -89,15 +107,22 @@ export default function Authenticated({
                         <div className="flex">
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
-                                    href={route('profile.edit')}
+                                    eventProps={props}
+                                    href={
+                                        client
+                                            ? route('profile.edit', client)
+                                            : ''
+                                    }
                                     active={route().current('profile.edit')}
                                 >
                                     Profile
                                 </NavLink>
                                 <NavLink
+                                    eventProps={props}
                                     method="post"
                                     href={route('logout')}
-                                    as="button"
+                                    target="_blank"
+                                    // as="button"
                                     active={false}
                                     headers={{
                                         'X-CSRF-TOKEN':
@@ -115,6 +140,7 @@ export default function Authenticated({
 
                         <div className="-me-2 flex items-center sm:hidden">
                             <StyledButton
+                                $props={eventColorProps}
                                 onClick={() =>
                                     setShowingNavigationDropdown(
                                         (previousState) => !previousState,
@@ -165,13 +191,15 @@ export default function Authenticated({
                 >
                     <div className="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
-                            href={route('client.home', client)}
+                            href={client ? route('client.home', client) : ''}
                             active={route().current('client.home')}
                         >
                             Beli Tiket
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
-                            href={route('client.my_tickets', client)}
+                            href={
+                                client ? route('client.my_tickets', client) : ''
+                            }
                             active={route().current('client.my_tickets')}
                         >
                             Tiket Saya
@@ -181,14 +209,14 @@ export default function Authenticated({
                     <div
                         className="border-t pb-1 pt-4"
                         style={{
-                            borderColor: props.primary_color,
+                            borderColor: props?.primary_color,
                         }}
                     >
                         <div className="px-4">
                             <div
                                 className="text-base font-medium"
                                 style={{
-                                    color: props.text_primary_color,
+                                    color: props?.text_primary_color,
                                 }}
                             >
                                 {user.name}
@@ -196,7 +224,7 @@ export default function Authenticated({
                             <div
                                 className="text-sm font-medium"
                                 style={{
-                                    color: props.text_secondary_color,
+                                    color: props?.text_secondary_color,
                                 }}
                             >
                                 {user.email}
@@ -204,7 +232,11 @@ export default function Authenticated({
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
+                            <ResponsiveNavLink
+                                href={
+                                    client ? route('profile.edit', client) : ''
+                                }
+                            >
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
@@ -223,7 +255,7 @@ export default function Authenticated({
                 <header
                     className="shadow"
                     style={{
-                        backgroundColor: props.primary_color,
+                        backgroundColor: props?.primary_color,
                     }}
                 >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -238,9 +270,9 @@ export default function Authenticated({
                 <footer
                     className="border-t"
                     style={{
-                        backgroundColor: props.primary_color,
-                        borderColor: props.text_primary_color,
-                        color: props.text_primary_color,
+                        backgroundColor: props?.primary_color,
+                        borderColor: props?.text_primary_color,
+                        color: props?.text_primary_color,
                     }}
                 >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -251,22 +283,22 @@ export default function Authenticated({
                 <footer
                     className="border-t"
                     style={{
-                        color: props.text_primary_color,
-                        backgroundColor: props.primary_color,
-                        borderColor: props.text_primary_color,
+                        color: props?.text_primary_color,
+                        backgroundColor: props?.primary_color,
+                        borderColor: props?.text_primary_color,
                     }}
                 >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         <div className="flex justify-between">
                             <img
-                                src={props.logo}
-                                alt="ArachnoVa"
+                                src={props?.logo}
+                                alt={props?.logo_alt}
                                 className="h-8"
                             />
                             <p
                                 className="text-sm"
                                 style={{
-                                    color: props.text_primary_color,
+                                    color: props?.text_primary_color,
                                 }}
                             >
                                 &copy; 2025 ArachnoVa. All rights reserved.

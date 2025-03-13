@@ -21,7 +21,8 @@ class ValidateMainDomain
 
         // Check if user is authenticated before accessing properties
         if (!Auth::check()) {
-            return redirect()->route('login'); // Redirect to login if unauthenticated
+            if ($request->route()->getName() !== 'login') return redirect()->route('login');
+            return $next($request);
         }
 
         $user = Auth::user();
@@ -29,7 +30,7 @@ class ValidateMainDomain
 
         if ($user->role === 'user') {
             Auth::logout();
-            return redirect()->route('login');
+            abort(403, 'Forbidden Account');
         }
 
         $firstTeam = optional($user->teams()->first())->name;

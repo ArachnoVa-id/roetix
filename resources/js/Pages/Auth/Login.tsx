@@ -4,17 +4,23 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
+import { Event, EventProps } from '@/types/front-end';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import axios from 'axios';
+import { FormEventHandler, useEffect } from 'react';
 
 export default function Login({
     status,
     canResetPassword,
+    event,
     client,
+    props,
 }: {
     status?: string;
     canResetPassword: boolean;
+    event: Event;
     client: string;
+    props: EventProps;
 }) {
     const { data, setData, post, processing, errors, reset } = useForm<{
         email: string;
@@ -28,10 +34,16 @@ export default function Login({
         client: client,
     });
 
-    const submit: FormEventHandler = (e) => {
+    useEffect(() => {
+        axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+    }, []);
+
+    const submit: FormEventHandler = async (e) => {
         e.preventDefault();
 
-        post(route('login'), {
+        await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+
+        post(route('post.login'), {
             onSuccess: () => {
                 window.location.reload();
             },
@@ -40,7 +52,7 @@ export default function Login({
     };
 
     return (
-        <GuestLayout>
+        <GuestLayout props={props}>
             <Head title="Log in" />
 
             {status && (
@@ -49,7 +61,7 @@ export default function Login({
                 </div>
             )}
 
-            <div>Active Client: {client ? client : 'Admin AV'}</div>
+            <div className="mb-6 text-center font-bold">{event.name}</div>
             <form onSubmit={submit}>
                 <div>
                     <InputLabel htmlFor="email" value="Email" />

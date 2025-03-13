@@ -1,13 +1,20 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
+import { EventProps } from '@/types/front-end';
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
 
-export default function Guest({ children }: PropsWithChildren) {
+export default function Guest({
+    children,
+    props,
+}: PropsWithChildren & { props: EventProps }) {
     return (
         <div className="flex min-h-screen flex-col items-center bg-gray-100 pt-6 sm:justify-center sm:pt-0">
             <div>
                 <Link href="/">
-                    <ApplicationLogo className="h-20 w-20 fill-current text-gray-500" />
+                    <img
+                        src={props.logo}
+                        alt={props.logo_alt}
+                        className="asspect-[1/1] w-40"
+                    />
                 </Link>
             </div>
 

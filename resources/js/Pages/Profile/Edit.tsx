@@ -10,22 +10,22 @@ export default function Edit({
     mustVerifyEmail,
     status,
     client,
-    eventProps, // Assuming this is passed as part of PageProps
+    props,
 }: PageProps<{
     mustVerifyEmail: boolean;
     status?: string;
     client: string;
-    eventProps: EventProps;
+    props: EventProps;
 }>) {
     return (
         <AuthenticatedLayout
+            props={props}
             client={client}
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
                     Profile
                 </h2>
             }
-            props={eventProps} // Pass the required `props` here
         >
             <Head title="Profile" />
 
