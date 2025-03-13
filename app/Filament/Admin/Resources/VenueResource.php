@@ -22,7 +22,6 @@ class VenueResource extends Resource
         $user = Auth::user();
 
         return $user && in_array($user->role, ['admin', 'vendor']);
-        // return in_array($user->role, ['admin', 'event-orginizer']);
     }
 
     public static function form(Form $form): Form

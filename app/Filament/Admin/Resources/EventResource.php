@@ -36,7 +36,7 @@ class EventResource extends Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin', 'event-orginizer']);
+        return $user && in_array($user->role, ['admin', 'event-organizer']);
     }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
