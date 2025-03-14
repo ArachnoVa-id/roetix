@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import SeatMapEditor, { UpdatedSeats } from './SeatMapEditor';
 import { Layout, SeatItem } from './types';
 
@@ -44,6 +45,8 @@ interface Props {
     ticketCategories?: TicketCategory[];
     categoryPrices?: CategoryPrice[];
 }
+
+const mountElement = document.getElementById('seat-map-editor');
 
 const Edit: React.FC<Props> = ({
     layout,
@@ -286,5 +289,22 @@ const Edit: React.FC<Props> = ({
         </>
     );
 };
+
+if (mountElement) {
+    const layout = JSON.parse(mountElement.dataset.layout || '{}');
+    const event = JSON.parse(mountElement.dataset.event || '{}');
+    const venue = JSON.parse(mountElement.dataset.venue || '{}');
+    const ticketTypes = JSON.parse(mountElement.dataset.tickettypes || '[]');
+
+    const root = createRoot(mountElement);
+    root.render(
+        <Edit
+            layout={layout}
+            event={event}
+            venue={venue}
+            ticketTypes={ticketTypes}
+        />,
+    );
+}
 
 export default Edit;

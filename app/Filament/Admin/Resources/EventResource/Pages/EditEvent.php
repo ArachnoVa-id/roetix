@@ -43,6 +43,9 @@ class EditEvent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            EventResource::EditSeatsButton(
+                Actions\Action::make('Edit Seats')
+            )->button(),
             Actions\DeleteAction::make(),
         ];
     }

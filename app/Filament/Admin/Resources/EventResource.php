@@ -6,24 +6,16 @@ use Filament\Forms;
 use Filament\Tables;
 use App\Models\Event;
 use Filament\Infolists;
-use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
-use Filament\Facades\Filament;
+use Filament\Actions;
 use Filament\Resources\Resource;
-use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\DatePicker;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Infolists\Components\Livewire;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Livewire\Livewire;
 use App\Filament\Admin\Resources\EventResource\Pages;
-use App\Filament\Admin\Resources\EventResource\Pages\TicketScan;
-use App\Filament\Admin\Resources\EventResource\RelationManagers;
-use Filament\Infolists\Components\Actions\Action as InfolistAction;
-
+use App\Models\Seat;
+use App\Models\Ticket;
+use App\Models\Venue;
 
 class EventResource extends Resource
 {
@@ -37,6 +29,106 @@ class EventResource extends Resource
         $user = Auth::user();
 
         return $user && in_array($user->role, ['admin', 'event-organizer']);
+    }
+
+    public static function EditSeatsButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Seating')
+            ->icon('heroicon-o-adjustments-horizontal')
+            ->color('info')
+            // ->modalHeading('Edit Seating')
+            // ->modalContent(function ($record) {
+            //     $eventId = $record->event_id;
+            //     try {
+            //         if (!$eventId) {
+            //             // return redirect()->back()->withErrors(['error' => 'Event ID is required']);
+            //             return;
+            //         }
+
+            //         // Get the event and associated venue
+            //         $event = Event::findOrFail($eventId);
+            //         $venue = Venue::findOrFail($event->venue_id);
+
+            //         // Get all seats for this venue
+            //         $seats = Seat::where('venue_id', $venue->venue_id)
+            //             ->orderBy('row')
+            //             ->orderBy('column')
+            //             ->get();
+
+            //         // Get existing tickets for this event
+            //         $existingTickets = Ticket::where('event_id', $eventId)
+            //             ->get()
+            //             ->keyBy('seat_id');
+
+            //         // Format data for the frontend, prioritizing ticket data
+            //         $layout = [
+            //             'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
+            //             'totalColumns' => $seats->max('column'),
+            //             'items' => $seats->map(function ($seat) use ($existingTickets) {
+            //                 $ticket = $existingTickets->get($seat->seat_id);
+
+            //                 // Base seat data
+            //                 $seatData = [
+            //                     'type' => 'seat',
+            //                     'seat_id' => $seat->seat_id,
+            //                     'seat_number' => $seat->seat_number,
+            //                     'row' => $seat->row,
+            //                     'column' => $seat->column
+            //                 ];
+
+            //                 // Add ticket data if it exists
+            //                 if ($ticket) {
+            //                     $seatData['status'] = $ticket->status;
+            //                     $seatData['ticket_type'] = $ticket->ticket_type;
+            //                     $seatData['price'] = $ticket->price;
+            //                 } else {
+            //                     // Default values for seats without tickets
+            //                     $seatData['status'] = 'reserved';
+            //                     $seatData['ticket_type'] = 'standard';
+            //                     $seatData['price'] = 0;
+            //                 }
+
+            //                 return $seatData;
+            //             })->values()
+            //         ];
+
+            //         // Add stage label
+            //         $layout['items'][] = [
+            //             'type' => 'label',
+            //             'row' => $layout['totalRows'],
+            //             'column' => floor($layout['totalColumns'] / 2),
+            //             'text' => 'STAGE'
+            //         ];
+
+            //         // Get available ticket types for dropdown
+            //         $ticketTypes = ['standard', 'VIP'];
+
+            //         return view('modals.edit-seats-modal', [
+            //             'layout' => $layout,
+            //             'event' => $event,
+            //             'venue' => $venue,
+            //             'ticketTypes' => $ticketTypes
+            //         ]);
+            //     } catch (\Exception $e) {
+            //         // return redirect()->back()->withErrors(['error' => 'Failed to load seat map: ' . $e->getMessage()]);
+            //         return;
+            //     }
+            // })
+            // ->modalSubmitAction(false); // Hide default Filament save button
+
+            // ->modalButton('Close')
+            // ->modalHeading('Edit Seating Layout')
+            // ->modalWidth('7xl')
+            // ->form([
+            //     Forms\Components\Placeholder::make('blade_component')
+            //         ->content('')
+            //         ->extraAttributes(fn($record) => [
+            //             'x-html' => '<iframe src="' . route('hello') . '" width="100%" height="500px" style="border: none;"></iframe>',
+            //         ]),
+            // ]);
+            ->url(fn($record) => "/seats/edit?event_id={$record->event_id}")
+            ->openUrlInNewTab();
     }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
@@ -72,19 +164,20 @@ class EventResource extends Resource
                 ->tabs([
                     Infolists\Components\Tabs\Tab::make('Settings')
                         ->schema([
-                            Livewire::make('event-settings'),
+                            Infolists\Components\Livewire::make('event-settings'),
                         ]),
                     Infolists\Components\Tabs\Tab::make('Scan Tickets')
                         ->schema([
-                            Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
+                            Infolists\Components\Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
                         ])
                 ])
                 ->columnSpan('full'),
         ]);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Forms\Form $form): Forms\Form
     {
+        $eventVariables = $form->model->eventVariables;
         return $form
             ->schema([
                 Forms\Components\Tabs::make('Event Variables')
@@ -233,38 +326,48 @@ class EventResource extends Resource
                         Forms\Components\Tabs\Tab::make('Locking')
                             ->schema([
                                 Forms\Components\Toggle::make('is_locked')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->is_locked : '')
                                     ->label('Is Locked'),
                                 Forms\Components\TextInput::make('locked_password')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->locked_password : '')
                                     ->label('Locked Password'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Maintenance')
                             ->schema([
                                 Forms\Components\Toggle::make('is_maintenance')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->is_maintenance : '')
                                     ->label('Is Maintenance'),
                                 Forms\Components\TextInput::make('maintenance_title')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->maintenance_title : '')
                                     ->label('Maintenance Title'),
                                 Forms\Components\TextInput::make('maintenance_message')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->maintenance_message : '')
                                     ->label('Maintenance Message'),
                                 Forms\Components\DatePicker::make('maintenance_expected_finish')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->maintenance_expected_finish : '')
+                                    ->minDate(now()->toDateString())
                                     ->label('Maintenance Expected Finish'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Colors')
                             ->columns(4)
                             ->schema([
-
                                 Forms\Components\ColorPicker::make('primary_color')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->primary_color : '')
                                     ->hex()
                                     ->required()
                                     ->label('Primary Color'),
                                 Forms\Components\ColorPicker::make('secondary_color')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->secondary_color : '')
                                     ->hex()
                                     ->required()
                                     ->label('Secondary Color'),
                                 Forms\Components\ColorPicker::make('text_primary_color')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->text_primary_color : '')
                                     ->hex()
                                     ->required()
                                     ->label('Text Primary Color'),
                                 Forms\Components\ColorPicker::make('text_secondary_color')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->text_secondary_color : '')
                                     ->hex()
                                     ->required()
                                     ->label('Text Secondary Color'),
@@ -272,8 +375,10 @@ class EventResource extends Resource
                         Forms\Components\Tabs\Tab::make('Identity')
                             ->schema([
                                 Forms\Components\TextInput::make('logo')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->logo : '')
                                     ->label('Logo'),
                                 Forms\Components\TextInput::make('favicon')
+                                    ->formatStateUsing(fn() => $eventVariables ? $eventVariables->favicon : '')
                                     ->label('Favicon'),
                             ])
                     ]),
@@ -302,11 +407,8 @@ class EventResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
-                    // Action::make('scanTicket')
-                    //     ->label('Scan Ticket')
-                    //     ->icon('heroicon-o-qr-code')
-                    //     ->color('success')
-                    //     ->url(fn($record) => TicketScan::getUrl(['record' => $record])),
+                    self::EditSeatsButton(Tables\Actions\Action::make('editSeats')),
+                    Tables\Actions\DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([

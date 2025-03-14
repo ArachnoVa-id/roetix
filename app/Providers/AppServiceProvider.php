@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use BladeUI\Icons\Factory;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 

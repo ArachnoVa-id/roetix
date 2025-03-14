@@ -14,6 +14,10 @@ use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
+// Route::get('/hello', function () {
+//     return view('test-livewire');
+// });
+
 // Guest Routes for Authentication
 Route::middleware('guest')->group(function () {
     // Main Domain Login

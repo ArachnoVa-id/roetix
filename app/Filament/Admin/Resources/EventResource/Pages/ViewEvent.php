@@ -15,15 +15,11 @@ class ViewEvent extends ViewRecord
         return [
             Actions\EditAction::make('Edit Event')
                 ->icon('heroicon-o-pencil'),
+            EventResource::EditSeatsButton(
+                Actions\Action::make('Edit Seats')
+            )->button(),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
-            Actions\Action::make('editSeats')
-                ->label('Edit Seats')
-                ->icon('heroicon-m-pencil-square')
-                ->button()
-                ->color('primary')
-                ->url(fn($record) => "/seats/edit?event_id={$record->event_id}")
-                ->openUrlInNewTab(),
         ];
     }
 }
