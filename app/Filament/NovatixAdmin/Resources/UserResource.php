@@ -12,6 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\Team;
+use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resource
 {
@@ -21,7 +23,9 @@ class UserResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()->role == 'admin';
+        $user = Auth::user();
+
+        return $user && in_array($user->role, ['admin']);
     }
 
     public static function form(Form $form): Form
@@ -36,15 +40,23 @@ class UserResource extends Resource
                     ->maxLength(255),
                 Forms\Components\TextInput::make('email')
                     ->required()
+                    ->email()
+                    ->unique('users', 'email')
                     ->maxLength(255),
                 Forms\Components\TextInput::make('password')
                     ->required()
+                    ->password()
                     ->maxLength(255),
                 Forms\Components\Select::make('role')
                     ->options([
                         'vendor' => 'vendor',
-                        'event-orginizer' => 'event-orginizer',
-                    ]),
+                        'event-organizer' => 'event-organizer',
+                    ])
+                    ->required(),
+                Forms\Components\Select::make('team_id')
+                    ->label('Assign to Team')
+                    ->options(Team::pluck('name', 'team_id'))
+                    ->required(),
             ]);
     }
 
@@ -52,16 +64,26 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('first_name'),
-                Tables\Columns\TextColumn::make('last_name'),
+                Tables\Columns\TextColumn::make('first_name')->label('First Name'),
+                Tables\Columns\TextColumn::make('last_name')->label('Last Name'),
                 Tables\Columns\TextColumn::make('email'),
                 Tables\Columns\TextColumn::make('role'),
+                Tables\Columns\TextColumn::make('teams.name')
+                    ->label('Teams')
+                    ->sortable()
+                    ->searchable()
+                    ->getStateUsing(fn(User $record) => $record->teams->pluck('name')->join(', ')),
+
             ])
             ->filters([
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

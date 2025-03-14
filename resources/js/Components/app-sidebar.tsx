@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 
 import { Link } from '@inertiajs/react';
 
@@ -14,7 +14,7 @@ import {
     SidebarMenuItem,
     SidebarMenuSub,
     SidebarMenuSubItem,
-} from '@/components/ui/sidebar';
+} from '@/Components/ui/sidebar';
 
 import {
     DropdownMenu,
@@ -22,13 +22,13 @@ import {
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@/Components/ui/dropdown-menu';
 
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+} from '@/Components/ui/collapsible';
 import {
     Building,
     ChartGantt,

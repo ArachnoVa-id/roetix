@@ -23,12 +23,20 @@ class EventVariables extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'event_variables_id',
         'is_locked',
+        'locked_password',
+
         'is_maintenance',
-        'var_title',
-        'expected_finish',
-        'password'
+        'maintenance_title',
+        'maintenance_message',
+        'maintenance_expected_finish',
+
+        'logo',
+        'favicon',
+        'primary_color',
+        'secondary_color',
+        'text_primary_color',
+        'text_secondary_color',
     ];
 
     protected static function boot()
@@ -40,5 +48,10 @@ class EventVariables extends Model
                 $model->event_variables_id = (string) Str::uuid();
             }
         });
+    }
+
+    public function event()
+    {
+        return $this->hasOne(Event::class, 'event_variables_id', 'event_variables_id');
     }
 }

@@ -1,10 +1,12 @@
 import { PageProps } from '@/types';
+import { EventProps } from '@/types/front-end';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Welcome({
     auth,
     client,
-}: PageProps & { client: string }) {
+    props,
+}: PageProps & { client: string; props: EventProps }) {
     return (
         <>
             <Head title="Welcome" />
@@ -13,8 +15,8 @@ export default function Welcome({
                     <nav className="flex w-full flex-1 justify-between px-10 py-2">
                         <div className="flex gap-5">
                             <img
-                                src="/images/novatix-logo.jpeg"
-                                alt="ArachnoVa"
+                                src={props.logo}
+                                alt={props.logo_alt}
                                 className="h-8"
                             />
                             <div>NovaTix</div>
@@ -47,7 +49,8 @@ export default function Welcome({
 
                 <main className="flex w-full grow items-center justify-center">
                     <div>
-                        {(client ? 'Production for: ' : 'Production') + client}
+                        {(client ? 'Controlling for: ' : 'Hello there!') +
+                            client}
                     </div>
                 </main>
             </div>

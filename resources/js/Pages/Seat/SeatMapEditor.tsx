@@ -12,22 +12,27 @@ interface Props {
     layout: Layout;
     onSave: (updatedSeats: UpdatedSeats[]) => void;
     ticketTypes: string[];
+    categoryColors?: Record<string, string>;
+    currentTimeline?: {
+        timeline_id: string;
+        name: string;
+        start_date: string;
+        end_date: string;
+    };
+    // Add categoryPrices prop
+    categoryPrices?: Record<string, number>;
 }
 
 type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
 
-const categoryColors: Record<string, string> = {
-    standard: 'bg-blue-300',
-    VIP: 'bg-yellow-400',
-};
-
-const statusLegends = [
-    { label: 'Booked', color: 'bg-red-500' },
-    { label: 'In Transaction', color: 'bg-yellow-500' },
-    { label: 'Reserved', color: 'bg-gray-400' },
-];
-
-const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
+const SeatMapEditor: React.FC<Props> = ({
+    layout,
+    onSave,
+    ticketTypes,
+    categoryColors = {},
+    currentTimeline,
+    categoryPrices = {}, // Default to empty object
+}) => {
     const [selectionMode, setSelectionMode] = useState<SelectionMode>('SINGLE');
     const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
     const [selectedCategory, setSelectedCategory] = useState<string | null>(
@@ -37,7 +42,18 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
     const [selectedTicketType, setSelectedTicketType] = useState<string>(
         ticketTypes[0] || 'standard',
     );
-    const [ticketPrice, setTicketPrice] = useState<number>(0);
+
+    // Calculate current price based on selected ticket type
+    const [currentPrice, setCurrentPrice] = useState<number>(
+        categoryPrices[ticketTypes[0]] || 0,
+    );
+
+    // Update the price when ticket type changes
+    useEffect(() => {
+        if (selectedTicketType && categoryPrices) {
+            setCurrentPrice(categoryPrices[selectedTicketType] || 0);
+        }
+    }, [selectedTicketType, categoryPrices]);
 
     // Enhanced drag selection state
     const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -55,6 +71,28 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
 
     const gridRef = useRef<HTMLDivElement>(null);
     const seatRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+    // Use provided category colors or defaults
+    const getColorForCategory = (category: string): string => {
+        if (categoryColors && categoryColors[category]) {
+            return categoryColors[category];
+        }
+
+        // Default colors if not provided
+        const defaultColors: Record<string, string> = {
+            standard: 'bg-blue-300',
+            VIP: 'bg-yellow-400',
+        };
+
+        return defaultColors[category] || 'bg-gray-200';
+    };
+
+    // Status color definitions
+    const statusLegends = [
+        { label: 'Booked', color: 'bg-red-500' },
+        { label: 'In Transaction', color: 'bg-yellow-500' },
+        { label: 'Reserved', color: 'bg-gray-400' },
+    ];
 
     // Find highest row and column from existing seats
     const findHighestRow = (): number => {
@@ -129,7 +167,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
         } else {
             // If available, show ticket type color
             const ticketType = seat.ticket_type || 'standard';
-            baseColor = categoryColors[ticketType] || 'bg-gray-200';
+            baseColor = getColorForCategory(ticketType);
         }
 
         return baseColor;
@@ -280,7 +318,6 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     // Set current values from the seat for editing
                     setSelectedStatus(seat.status);
                     setSelectedTicketType(seat.ticket_type || 'standard');
-                    setTicketPrice(Number(seat.price) || 0);
                     break;
 
                 case 'MULTIPLE':
@@ -357,7 +394,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     title={
                         !isEditable
                             ? 'This seat is booked and cannot be edited'
-                            : `${seat.seat_number} - ${seat.ticket_type || 'Standard'} - ${seat.status}`
+                            : `${seat.seat_number} - ${seat.ticket_type || 'Standard'} - ${seat.status} - ${seat.price || 0}`
                     }
                     draggable={false}
                 >
@@ -369,6 +406,9 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
     };
 
     const handleUpdateSelectedSeats = () => {
+        if (selectedSeats.size === 0) return;
+
+        // Find all the selected seats in the layout
         const updatedSeats = layout.items
             .filter(
                 (item) =>
@@ -376,14 +416,18 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     selectedSeats.has(getSeatId(item as SeatItem)) &&
                     isSeatEditable(item as SeatItem),
             )
-            .map((item) => ({
-                seat_id: (item as SeatItem).seat_id,
-                status: selectedStatus,
-                ticket_type: selectedTicketType,
-                price: ticketPrice,
-            }));
+            .map((item) => {
+                return {
+                    seat_id: (item as SeatItem).seat_id,
+                    status: selectedStatus,
+                    ticket_type: selectedTicketType,
+                    // Use the calculated price from the selected ticket type
+                    price: currentPrice,
+                };
+            });
 
         if (updatedSeats.length > 0) {
+            console.log('Sending updated seats:', updatedSeats);
             onSave(updatedSeats);
         }
     };
@@ -398,10 +442,29 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
         setSelectionBox(null);
     };
 
-    // Create selection box style object outside of render to avoid inline styles
-
     return (
         <div className="p-6">
+            {/* Current Timeline Information */}
+            {currentTimeline && (
+                <div className="mb-4 rounded-lg bg-blue-50 p-4">
+                    <h3 className="font-semibold text-blue-800">
+                        Current Timeline: {currentTimeline.name}
+                    </h3>
+                    <p className="text-sm text-blue-600">
+                        {new Date(
+                            currentTimeline.start_date,
+                        ).toLocaleDateString()}{' '}
+                        -{' '}
+                        {new Date(
+                            currentTimeline.end_date,
+                        ).toLocaleDateString()}
+                    </p>
+                    <p className="mt-2 text-xs text-blue-500">
+                        Prices are managed in the ticket category settings.
+                    </p>
+                </div>
+            )}
+
             {/* Mode Selection */}
             <div className="flex gap-4 rounded-lg bg-gray-100 p-4">
                 <button
@@ -440,7 +503,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                                 selectedCategory === category
                                     ? 'ring-2 ring-blue-500'
                                     : ''
-                            } ${categoryColors[category] || 'bg-gray-200'} text-black`}
+                            } ${getColorForCategory(category)} text-black`}
                             onClick={() => handleSelectCategory(category)}
                         >
                             {category.charAt(0).toUpperCase() +
@@ -461,8 +524,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                 </div>
             )}
 
-            {/* Ticket Type and Status Configuration */}
-            <div className="mt-4 grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-4">
+            <div className="mt-4 grid grid-cols-3 gap-4 rounded-lg bg-gray-50 p-4">
                 <div>
                     <label
                         htmlFor="ticketType"
@@ -509,6 +571,7 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     </select>
                 </div>
 
+                {/* Price Display Field (Read-only) */}
                 <div>
                     <label
                         htmlFor="ticketPrice"
@@ -516,22 +579,28 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     >
                         Price
                     </label>
-                    <input
-                        id="ticketPrice"
-                        name="ticketPrice"
-                        type="number"
-                        min="0"
-                        step="1000"
-                        className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                        value={ticketPrice}
-                        onChange={(e) => setTicketPrice(Number(e.target.value))}
-                        disabled={selectedSeats.size === 0}
-                        aria-label="Ticket price"
-                        placeholder="Enter ticket price"
-                    />
+                    <div className="mt-1 flex rounded-md shadow-sm">
+                        <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
+                            Rp
+                        </span>
+                        <input
+                            type="text"
+                            name="ticketPrice"
+                            id="ticketPrice"
+                            className="block w-full min-w-0 flex-1 rounded-none rounded-r-md border-gray-300 bg-gray-100 py-2 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            value={currentPrice.toLocaleString()}
+                            disabled
+                            readOnly
+                            aria-label="Ticket price"
+                        />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                        Price is determined by ticket category and cannot be
+                        edited directly
+                    </p>
                 </div>
 
-                <div className="flex items-end">
+                <div className="col-span-3 flex items-end">
                     <button
                         className="w-full rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
                         onClick={handleUpdateSelectedSeats}
@@ -556,11 +625,17 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                                     className="flex flex-col items-center"
                                 >
                                     <div
-                                        className={`h-8 w-8 ${categoryColors[type] || 'bg-gray-200'} rounded-full shadow-md`}
+                                        className={`h-8 w-8 ${getColorForCategory(type)} rounded-full shadow-md`}
                                     ></div>
                                     <span className="mt-1 text-sm">
                                         {type.charAt(0).toUpperCase() +
                                             type.slice(1)}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        Rp{' '}
+                                        {(
+                                            categoryPrices[type] || 0
+                                        ).toLocaleString()}
                                     </span>
                                 </div>
                             ))}
@@ -595,7 +670,8 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                     </h4>
                     <p className="text-sm text-blue-600">
                         Will be configured as {selectedTicketType} tickets with{' '}
-                        {selectedStatus} status at price {ticketPrice}
+                        {selectedStatus} status at Rp{' '}
+                        {currentPrice.toLocaleString()} each
                     </p>
                 </div>
             )}
@@ -611,11 +687,13 @@ const SeatMapEditor: React.FC<Props> = ({ layout, onSave, ticketTypes }) => {
                 {/* Visual selection box overlay */}
                 {isDragging && selectionBox && (
                     <div
-                        className="selection-box pointer-events-none absolute z-10 border-2 border-blue-500 bg-blue-100 bg-opacity-20"
-                        data-left={selectionBox.left}
-                        data-top={selectionBox.top}
-                        data-width={selectionBox.width}
-                        data-height={selectionBox.height}
+                        className="pointer-events-none absolute z-10 border-2 border-blue-500 bg-blue-100 bg-opacity-20"
+                        style={{
+                            left: selectionBox.left + 'px',
+                            top: selectionBox.top + 'px',
+                            width: selectionBox.width + 'px',
+                            height: selectionBox.height + 'px',
+                        }}
                     />
                 )}
 

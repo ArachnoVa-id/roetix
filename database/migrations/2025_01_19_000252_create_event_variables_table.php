@@ -13,11 +13,23 @@ return new class extends Migration
     {
         Schema::create('event_variables', function (Blueprint $table) {
             $table->string('event_variables_id', 36)->primary(); // Menggunakan string dengan panjang 36 untuk UUID
+
             $table->boolean('is_locked')->default(false);
+            $table->string('locked_password')->default('');
+
             $table->boolean('is_maintenance')->default(false);
-            $table->string('var_title')->default('');
-            $table->date('expected_finish')->default(now());
-            $table->string('password')->default('');
+            $table->string('maintenance_title')->default('');
+            $table->string('maintenance_message')->default('');
+            $table->date('maintenance_expected_finish')->default(now());
+
+            $table->string('logo')->default('');
+            $table->string('logo_alt')->default('');
+            $table->string('favicon')->default('');
+            $table->string('primary_color')->default('');
+            $table->string('secondary_color')->default('');
+            $table->string('text_primary_color')->default('');
+            $table->string('text_secondary_color')->default('');
+
             $table->timestamps();
         });
     }

@@ -26,8 +26,7 @@ class TicketResource extends Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin', 'event-orginizer']);
-        // return in_array($user->role, ['admin', 'event-orginizer']);
+        return $user && in_array($user->role, ['admin', 'event-organizer']);
     }
 
     public static function form(Form $form): Form
@@ -56,6 +55,7 @@ class TicketResource extends Resource
                 Forms\Components\TextInput::make('price')
                     ->label('Price')
                     ->numeric()
+                    ->minValue(0)
                     ->required(),
                 Forms\Components\Select::make('status')
                     ->label('Status')

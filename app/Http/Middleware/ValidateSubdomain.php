@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Event;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class ValidateSubdomain
@@ -23,6 +24,14 @@ class ValidateSubdomain
 
         if (!$client || !Event::where('slug', $client)->exists()) {
             abort(404);
+        }
+
+        if (!Auth::check()) {
+            if ($request->route()->getName() !== 'client.login')
+                return redirect()->route('client.login', ['client' => $client]);
+            return $next($request);
+        } else if ($request->route()->getName() === 'client.login') {
+            return redirect()->route('client.home', ['client' => $client]);
         }
 
         return $next($request);

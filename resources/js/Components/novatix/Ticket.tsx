@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button } from '@/Components/ui/button';
 
 function RowComponent({ idtf, content }: { idtf: string; content: string }) {
     return (

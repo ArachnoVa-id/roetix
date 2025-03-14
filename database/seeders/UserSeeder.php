@@ -57,7 +57,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'eo1',
-                'role' => 'event-orginizer',
+                'role' => 'event-organizer',
             ],
 
             // eo2
@@ -66,12 +66,11 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'eo2',
-                'role' => 'event-orginizer',
+                'role' => 'event-organizer',
             ],
         ];
-        
-        foreach($data as $user)
-        {
+
+        foreach ($data as $user) {
             $created_user = User::create([
                 'email' => $user['email'],
                 'password' => $user['password'],

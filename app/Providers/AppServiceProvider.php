@@ -2,9 +2,8 @@
 
 namespace App\Providers;
 
+use BladeUI\Icons\Factory;
 use Illuminate\Support\Facades\Vite;
-use App\Models\Permission;
-use App\Models\Role;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,10 +21,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        app(\Spatie\Permission\PermissionRegistrar::class)
-            ->setPermissionClass(Permission::class)
-            ->setRoleClass(Role::class);
-
         Vite::prefetch(concurrency: 3);
     }
 }

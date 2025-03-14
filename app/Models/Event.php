@@ -20,6 +20,7 @@ class Event extends Model
 
     protected $fillable = [
         'venue_id',
+        'event_variables_id',
         'name',
         'slug',
         'category',
@@ -39,6 +40,10 @@ class Event extends Model
                 $model->event_id = (string) Str::uuid();
             }
         });
+
+        static::deleting(function ($event) {
+            $event->eventVariables()->delete();
+        });
     }
 
     public function tikcetcategory(): HasMany
@@ -49,6 +54,11 @@ class Event extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
+    }
+
+    public function eventVariables(): BelongsTo
+    {
+        return $this->belongsTo(EventVariables::class, 'event_variables_id', 'event_variables_id');
     }
 
     public function venue(): BelongsTo

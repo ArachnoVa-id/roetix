@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\Event;
+use App\Models\EventVariables;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,10 +23,28 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(string $client = ''): Response
     {
+        if ($client) {
+            // Get the event and associated venue
+            $event = Event::where('slug', $client)
+                ->first();
+
+            $props = EventVariables::findOrFail($event->event_variables_id);
+        } else {
+            $event = [
+                'name' => 'Admin NovaTix'
+            ];
+            $props = [
+                'logo' => '/images/novatix-logo/android-chrome-512x512.png',
+                'alt' => 'Novatix Logo'
+            ];
+        }
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
-            'client' => $client
+            'event' => $event,
+            'client' => $client,
+            'props' => $props,
         ]);
     }
 
@@ -37,25 +57,23 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-        $userModel = User::find($user->user_id);
-        $firstTeam = $userModel->teams()->first();
-        $tenantName = $firstTeam ? $firstTeam->name : 'default';
 
-        if ($userModel->role === 'user') {
+        if ($request->client && $user) {
             return redirect()->intended(
                 $request->client
                     ? route('client.home', ['client' => $request->client], false)
-                    : route('login')
+                    : route('client.login', ['client' => $request->client], false)
             );
         }
 
+        $userModel = User::find($user->user_id);
+        $firstTeam = $userModel->teams()->first();
 
-        if ($userModel->role === 'admin')
-        {
+        if ($userModel->role === 'admin') {
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
         }
 
-        return Inertia::location(route('filament.admin.pages.dashboard', ['tenant' => $tenantName]));
+        return Inertia::location(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]));
     }
 
     /**
@@ -68,6 +86,6 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/login');
     }
 }

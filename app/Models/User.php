@@ -15,11 +15,10 @@ use Filament\Models\Contracts\HasTenants;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
-use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 {
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable;
 
     /**
      * Get the user's name for Filament.
@@ -95,7 +94,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role == 'admin' || $this->role == 'vendor' || $this->role == 'event-orginizer';
+        return $this->role == 'admin' || $this->role == 'vendor' || $this->role == 'event-organizer';
     }
 
     // has tenant things
