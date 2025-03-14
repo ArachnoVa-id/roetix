@@ -17,21 +17,29 @@ class ValidateSubdomain
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // NOTE: this only occurs when there exist the subdomain, because the main root is redirected to another route
-        $client = request()->getHost();
-        // cut the subdomain
-        $client = explode('.', $client)[0];
+        // get host
+        $host = $request->getHost();
 
-        if (!$client || !Event::where('slug', $client)->exists()) {
+        // check host length divided by .
+        if (count(explode('.', $host)) < 2) {
+            abort(404);
+        }
+
+        // get subdomain
+        $client = explode('.', $host)[0];
+
+        $event = Event::where('slug', $client)->firstOrFail();
+
+        if (!$event) {
             abort(404);
         }
 
         if (!Auth::check()) {
-            if ($request->route()->getName() !== 'client.login')
-                return redirect()->route('client.login', ['client' => $client]);
-            return $next($request);
+            if ($request->route()->getName() !== 'client.login') {
+                return redirect()->route('client.login', ['client' => $event->slug]);
+            }
         } else if ($request->route()->getName() === 'client.login') {
-            return redirect()->route('client.home', ['client' => $client]);
+            return redirect()->route('client.home', ['client' => $event->slug]);
         }
 
         return $next($request);

@@ -177,7 +177,11 @@ class EventResource extends Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
-        $eventVariables = $form->model->eventVariables;
+        if (is_string($form->model)) {
+            $eventVariables = null;
+        } else {
+            $eventVariables = $form->model->eventVariables;
+        }
         return $form
             ->schema([
                 Forms\Components\Tabs::make('Event Variables')
@@ -297,6 +301,11 @@ class EventResource extends Resource
                                                     ->columns(2)
                                                     ->grid(2)
                                                     ->schema([
+                                                        Forms\Components\TextInput::make('name')
+                                                            ->label('Name')
+                                                            ->columnSpan(2)
+                                                            ->required(),
+
                                                         Forms\Components\DatePicker::make('start_date')
                                                             ->label('Start Date')
                                                             ->minDate(now()->toDateString())
