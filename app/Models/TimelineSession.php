@@ -21,6 +21,7 @@ class TimelineSession extends Model
      * @var array
      */
     protected $fillable = [
+        'timeline_id',
         'event_id',
         'name',
         'start_date',
@@ -57,5 +58,4 @@ class TimelineSession extends Model
     {
         return $this->belongsTo(Event::class, 'event_id', 'event_id');
     }
-
 }

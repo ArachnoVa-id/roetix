@@ -14,7 +14,7 @@ class EditSeatsModal extends Component
     // Accept values when the component is initialized
     public function mount($layout, $event, $venue, $ticketTypes)
     {
-        dd($layout);
+        // dd($layout);
         $this->layout = $layout;
         $this->event = $event;
         $this->venue = $venue;

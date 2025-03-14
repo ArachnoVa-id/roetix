@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\TicketCategory;
 use App\Models\EventCategoryTimeboundPrice;
 use App\Models\EventVariables;
+use App\Models\TimelineSession;
 use Filament\Facades\Filament;
 use Illuminate\Support\Str;
 
@@ -50,11 +51,18 @@ class CreateEvent extends CreateRecord
 
                 if (!empty($category['event_category_timebound_prices'])) {
                     foreach ($category['event_category_timebound_prices'] as $timeboundPrice) {
+                        $timeline = TimelineSession::create([
+                            'timeline_id' => Str::uuid(),
+                            'event_id' => $event_id,
+                            'name' => $timeboundPrice['name'],
+                            'start_date' => $timeboundPrice['start_date'],
+                            'end_date' => $timeboundPrice['end_date'],
+                        ]);
+
                         EventCategoryTimeboundPrice::create([
                             'timebound_price_id' => Str::uuid(),
                             'ticket_category_id' => $ticketCategory->ticket_category_id,
-                            'start_date' => $timeboundPrice['start_date'],
-                            'end_date' => $timeboundPrice['end_date'],
+                            'timeline_id' => $timeline->timeline_id,
                             'price' => $timeboundPrice['price'],
                         ]);
                     }
@@ -64,13 +72,15 @@ class CreateEvent extends CreateRecord
 
         // Create Event Variables
         $eventVariables = [
-            'is_locked' => $data['is_locked'] ?? false,
+            'is_locked' => $data['is_locked'] ? (int) $data['is_locked'] : 0,
             'locked_password' => $data['locked_password'] ?? '',
 
-            'is_maintenance' => $data['is_maintenance'] ?? false,
+            'is_maintenance' => $data['is_maintenance'] ? (int) $data['is_locked'] : 0,
             'maintenance_title' => $data['maintenance_title'] ?? '',
             'maintenance_message' => $data['maintenance_message'] ?? '',
-            'maintenance_expected_finish' => $data['maintenance_expected_finish'] ?? date('Y-m-d H:i:s', strtotime('+100 years')),
+            'maintenance_expected_finish' => !empty($data['maintenance_expected_finish'])
+                ? $data['maintenance_expected_finish']
+                : now(), // Set to current timestamp if empty
 
             'logo' => $data['logo'] ?? '',
             'favicon' => $data['favicon'] ?? '',

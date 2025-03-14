@@ -130,7 +130,7 @@ jobs:
           cd ~/novatix/app/develop
           php artisan migrate:fresh --force --seed
           php artisan config:clear
-          php artisan cache:clear
+          sudo php artisan cache:clear
           php artisan route:cache
           EOT
           chmod +x ~/novatix/setups/deploy_laravel.sh
