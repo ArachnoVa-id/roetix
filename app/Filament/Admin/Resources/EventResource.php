@@ -414,7 +414,6 @@ class EventResource extends Resource
                                         }
 
                                         // Save the corrected ticket categories
-                                        // dd($newCategories);
                                         $set('ticket_categories', $newCategories);
                                     })
                                     // Make all start_date equals end_date of previous timeline
@@ -434,7 +433,6 @@ class EventResource extends Resource
                                     // // Update
                                     // $set('event_timeline', $newTimelines);
                                     ->schema([
-                                        Forms\Components\Hidden::make('timeline_id'),
                                         Forms\Components\TextInput::make('name')
                                             ->label('Name')
                                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
@@ -799,9 +797,6 @@ class EventResource extends Resource
                                                                 ->default(true)
                                                                 ->label(fn($state) => $state ? 'On' : 'Off'),
                                                         ])->columns(2),
-
-                                                        Forms\Components\Hidden::make('timeline_id')
-                                                            ->default(''),
                                                         Forms\Components\Hidden::make('name')
                                                             ->default('')
                                                             ->formatStateUsing(function (Forms\Get $get) {
