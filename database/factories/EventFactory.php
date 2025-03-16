@@ -31,14 +31,10 @@ class EventFactory extends Factory
         $name = $this->faker->sentence(3);
         $slug = Str::slug($name);
 
-        // random EventVariables
-        $eventVariables = EventVariables::inRandomOrder()->first();
-
         return [
             'event_id' => (string) Str::uuid(),
             'team_id' => Team::inRandomOrder()->first()?->team_id,
             'venue_id' => Venue::inRandomOrder()->first()?->venue_id,
-            'event_variables_id' => $eventVariables?->event_variables_id,
             'name' => $name,
             'slug' => $slug,
             'category' => $this->faker->randomElement(['concert', 'sports', 'workshop', 'etc']),

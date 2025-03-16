@@ -44,19 +44,18 @@ class Ticket extends Model
         });
     }
 
-    public function event()
+    public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id', 'event_id');
     }
 
-    public function seat()
+    public function seat(): BelongsTo
     {
         return $this->belongsTo(Seat::class, 'seat_id', 'seat_id');
     }
 
-    public function team() : BelongsTo
+    public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
     }
-
 }

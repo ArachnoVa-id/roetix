@@ -16,7 +16,7 @@ class ValidateMainDomain
 
         // Ensure subdomains are blocked from the main domain
         if ($currentDomain !== $mainDomain) {
-            abort(403, 'Access denied');
+            return redirect()->route('client.home');
         }
 
         // Check if user is authenticated before accessing properties
@@ -31,7 +31,7 @@ class ValidateMainDomain
 
         if ($user->role === 'user') {
             Auth::logout();
-            abort(403, 'Forbidden Account');
+            return redirect()->route('login');
         }
 
         $firstTeam = optional($user->teams()->first());

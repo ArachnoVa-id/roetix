@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Request;
 
 class Event extends Model
 {
@@ -20,7 +22,6 @@ class Event extends Model
 
     protected $fillable = [
         'venue_id',
-        'event_variables_id',
         'name',
         'slug',
         'category',
@@ -29,6 +30,11 @@ class Event extends Model
         'location',
         'status',
         'team_id',
+    ];
+
+    protected $casts = [
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
     ];
 
     protected static function boot()
@@ -41,14 +47,44 @@ class Event extends Model
             }
         });
 
-        static::deleting(function ($event) {
-            $event->eventVariables()->delete();
+        static::saving(function ($model) {
+            // launch on edit only
+            if (!$model->exists) return;
+
+            $request = Request::all();
+            // check if components key exists
+            if (!isset($request['components'][0]['updates'][0])) return;
+
+            $updates = $request['components'][0]['updates'];
+            // $dataArray = json_decode($formData, true)['data']['data'][0];
+            $cleanedChanges = [];
+            foreach ($updates as $key => $value) {
+                $cleanedKey = str_replace("data.", "", $key);
+                $cleanedChanges[$cleanedKey] = $value;
+            }
+
+            $eventVariables = $model->eventVariables;
+
+            // loop the keys of eventVariables and update the model if the updated key exist in cleanChanges
+            foreach ($eventVariables->getAttributes() as $key => $value) {
+                if (array_key_exists($key, $cleanedChanges)) {
+                    $eventVariables->$key = $cleanedChanges[$key];
+                }
+            }
+
+            // save
+            $eventVariables->save();
         });
     }
 
-    public function tikcetcategory(): HasMany
+    public function timelineSessions(): HasMany
     {
-        return $this->hasMany(TicketCategory::class, 'event_id', 'event_id');
+        return $this->hasMany(TimelineSession::class, 'event_id', 'event_id')->orderBy('start_date');
+    }
+
+    public function ticketCategories(): HasMany
+    {
+        return $this->hasMany(TicketCategory::class, 'event_id', 'event_id')->orderBy('created_at');
     }
 
     public function team(): BelongsTo
@@ -56,9 +92,9 @@ class Event extends Model
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
     }
 
-    public function eventVariables(): BelongsTo
+    public function eventVariables(): HasOne
     {
-        return $this->belongsTo(EventVariables::class, 'event_variables_id', 'event_variables_id');
+        return $this->hasOne(EventVariables::class, 'event_id', 'event_id');
     }
 
     public function venue(): BelongsTo
