@@ -19,6 +19,59 @@ use Carbon\Carbon;
 
 class UserPageController extends Controller
 {
+    // export interface EventColorProps {
+    //     primary_color: string;
+    //     secondary_color: string;
+    //     text_primary_color: string;
+    //     text_secondary_color: string;
+    // }
+
+    // export interface EventMaintenanceProps {
+    //     is_mainenance: boolean;
+    //     maintenance_expected_finish: Date;
+    //     maintenance_title: string;
+    //     maintenance_message: string;
+    // }
+
+    // export interface EventPasswordProps {
+    //     is_locked: boolean;
+    //     locked_password: string;
+    // }
+
+    // export interface EventLogoProps {
+    //     logo: string;
+    //     logo_alt: string;
+    //     favicon: string;
+    // }
+
+    // export interface EventProps
+    //     extends EventColorProps,
+    //         EventMaintenanceProps,
+    //         EventPasswordProps,
+    //         EventLogoProps {}
+
+    private function getDefaultValue()
+    {
+        $defaultValues = [
+            'primary_color' => '#FFF',
+            'secondary_color' => '#9FF',
+            'text_primary_color' => '#000000',
+            'text_secondary_color' => '#000000',
+            'is_maintenance' => false,
+            'maintenance_title' => '',
+            'maintenance_message' => '',
+            'maintenance_expected_finish' => now(),
+            'is_locked' => false,
+            'locked_password' => '',
+            'logo' => '/images/novatix-logo/favicon-32x32.png',
+            'logo_alt' => 'Novatix Logo',
+            'favicon' => '/images/novatix-logo/favicon.ico',
+        ];
+
+        return $defaultValues;
+    }
+
+
     public function landing(Request $request, string $client = '')
     {
         // Get the event and associated venue
@@ -29,13 +82,22 @@ class UserPageController extends Controller
             return Inertia::render('User/Landing', [
                 'client' => $client,
                 'error' => 'Event not found.',
-                'props' => new \stdClass() // Empty props as fallback
+                'props' => $this->getDefaultValue()
             ]);
         }
 
-        $props = EventVariables::findOrFail($event->event_variables_id);
+        $props = $event->eventVariables;
+
+        if (!$props) {
+            return Inertia::render('User/Landing', [
+                'client' => $client,
+                'error' => 'Event variables not found for ' . $event->name . '.',
+                'props' => $this->getDefaultValue()
+            ]);
+        }
 
         try {
+            // Get the venue for this event
             $venue = Venue::findOrFail($event->venue_id);
 
             // Get all tickets for this event
@@ -148,7 +210,6 @@ class UserPageController extends Controller
                 'props' => $props
             ]);
         } catch (\Exception $e) {
-            Log::error('Error in landing method: ' . $e->getMessage());
             return Inertia::render('User/Landing', [
                 'client' => $client,
                 'error' => 'Failed to load event data: ' . $e->getMessage(),
@@ -184,7 +245,6 @@ class UserPageController extends Controller
                     'event' => $event
                 ]);
             } catch (\Exception $e) {
-                Log::error('Error in my_tickets method: ' . $e->getMessage());
                 // throw back to login page
                 return Inertia::render('User/Auth', [
                     'client' => $client,

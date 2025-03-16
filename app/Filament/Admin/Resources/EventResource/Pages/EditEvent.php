@@ -19,7 +19,6 @@ class EditEvent extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $eventId = $this->record->event_id;
-
         // Get event variable based on eventId
         $eventVariables = EventVariables::where('event_id', $eventId)->first();
 

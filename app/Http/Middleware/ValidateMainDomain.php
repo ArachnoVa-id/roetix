@@ -4,8 +4,11 @@ namespace App\Http\Middleware;
 
 use App\Models\User;
 use Closure;
+use Illuminate\Container\Attributes\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Facade;
+use Illuminate\Support\Facades\Log as FacadesLog;
 
 class ValidateMainDomain
 {
@@ -23,7 +26,9 @@ class ValidateMainDomain
         $user = Auth::user();
 
         if (!$user) {
-            if ($request->route()->getName() !== 'login') return redirect()->route('login');
+            if ($request->route()->getName() !== 'login') {
+                return redirect()->route('login');
+            }
             return $next($request);
         }
 
