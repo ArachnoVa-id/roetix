@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\EventCategoryTimeboundPrice;
@@ -16,7 +17,7 @@ class EventCategoryTimeboundPriceController extends Controller
      */
     public function index()
     {
-        $timeboundPrices = EventCategoryTimeboundPrice::with(['ticketCategory', 'timelineSession'])->get();
+        $timeboundPrices = EventCategoryTimeboundPrice::with(['ticketCategories', 'timelineSession'])->get();
         return response()->json(['data' => $timeboundPrices], 200);
     }
 
@@ -42,7 +43,7 @@ class EventCategoryTimeboundPriceController extends Controller
         $exists = EventCategoryTimeboundPrice::where('ticket_category_id', $request->ticket_category_id)
             ->where('timeline_id', $request->timeline_id)
             ->exists();
-            
+
         if ($exists) {
             return response()->json(['message' => 'A price for this ticket category and timeline already exists'], 422);
         }
@@ -60,7 +61,7 @@ class EventCategoryTimeboundPriceController extends Controller
      */
     public function show($id)
     {
-        $timeboundPrice = EventCategoryTimeboundPrice::with(['ticketCategory', 'timelineSession'])->find($id);
+        $timeboundPrice = EventCategoryTimeboundPrice::with(['ticketCategories', 'timelineSession'])->find($id);
 
         if (!$timeboundPrice) {
             return response()->json(['message' => 'Timebound price not found'], 404);
@@ -93,16 +94,17 @@ class EventCategoryTimeboundPriceController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
-        
+
         // If changing ticket_category_id or timeline_id, check for existing combinations
         if (($request->has('ticket_category_id') && $request->ticket_category_id != $timeboundPrice->ticket_category_id) ||
-            ($request->has('timeline_id') && $request->timeline_id != $timeboundPrice->timeline_id)) {
-            
+            ($request->has('timeline_id') && $request->timeline_id != $timeboundPrice->timeline_id)
+        ) {
+
             $exists = EventCategoryTimeboundPrice::where('ticket_category_id', $request->ticket_category_id ?? $timeboundPrice->ticket_category_id)
                 ->where('timeline_id', $request->timeline_id ?? $timeboundPrice->timeline_id)
                 ->where('timebound_price_id', '!=', $id)
                 ->exists();
-                
+
             if ($exists) {
                 return response()->json(['message' => 'A price for this ticket category and timeline already exists'], 422);
             }
@@ -149,20 +151,20 @@ class EventCategoryTimeboundPriceController extends Controller
         }
 
         $date = $request->has('date') ? Carbon::parse($request->date) : Carbon::now();
-        
+
         // Find active timelines for the given date
         $activeTimelines = TimelineSession::where('start_date', '<=', $date)
             ->where('end_date', '>=', $date)
             ->pluck('timeline_id');
-            
+
         // Get prices for those timelines
-        $activePrices = EventCategoryTimeboundPrice::with(['ticketCategory', 'timelineSession'])
+        $activePrices = EventCategoryTimeboundPrice::with(['ticketCategories', 'timelineSession'])
             ->whereIn('timeline_id', $activeTimelines)
             ->get();
 
         return response()->json(['data' => $activePrices], 200);
     }
-    
+
     /**
      * Get prices by timeline.
      *
@@ -171,25 +173,25 @@ class EventCategoryTimeboundPriceController extends Controller
      */
     public function getPricesByTimeline($timelineId)
     {
-        $prices = EventCategoryTimeboundPrice::with(['ticketCategory', 'timelineSession'])
+        $prices = EventCategoryTimeboundPrice::with(['ticketCategories', 'timelineSession'])
             ->where('timeline_id', $timelineId)
             ->get();
-            
+
         return response()->json(['data' => $prices], 200);
     }
-    
+
     /**
      * Get prices by ticket category.
      *
-     * @param  string  $ticketCategoryId
+     * @param  string  $ticketCategoriesId
      * @return \Illuminate\Http\Response
      */
-    public function getPricesByTicketCategory($ticketCategoryId)
+    public function getPricesByticketCategories($ticketCategoriesId)
     {
-        $prices = EventCategoryTimeboundPrice::with(['ticketCategory', 'timelineSession'])
-            ->where('ticket_category_id', $ticketCategoryId)
+        $prices = EventCategoryTimeboundPrice::with(['ticketCategories', 'timelineSession'])
+            ->where('ticket_category_id', $ticketCategoriesId)
             ->get();
-            
+
         return response()->json(['data' => $prices], 200);
     }
 }

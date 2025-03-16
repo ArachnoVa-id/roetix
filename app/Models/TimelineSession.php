@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TimelineSession extends Model
 {
@@ -21,7 +22,6 @@ class TimelineSession extends Model
      * @var array
      */
     protected $fillable = [
-        'timeline_id',
         'event_id',
         'name',
         'start_date',
@@ -57,5 +57,10 @@ class TimelineSession extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id', 'event_id');
+    }
+
+    public function eventCategoryTimeboundPrices(): HasMany
+    {
+        return $this->hasMany(EventCategoryTimeboundPrice::class, 'timeline_id', 'timeline_id');
     }
 }

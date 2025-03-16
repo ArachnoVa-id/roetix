@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 
@@ -23,6 +25,8 @@ class EventVariables extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'event_id',
+
         'is_locked',
         'locked_password',
 
@@ -50,8 +54,8 @@ class EventVariables extends Model
         });
     }
 
-    public function event()
+    public function event(): BelongsTo
     {
-        return $this->hasOne(Event::class, 'event_variables_id', 'event_variables_id');
+        return $this->belongsTo(Event::class, 'event_id', 'event_id');
     }
 }

@@ -38,7 +38,7 @@ class Venue extends Model
         });
     }
 
-    public function contactinfo()
+    public function contactInfo(): BelongsTo
     {
         return $this->belongsTo(UserContact::class, 'contact_info', 'contact_id');
     }

@@ -39,6 +39,7 @@ class EventCategoryTimeboundPriceFactory extends Factory
             'ticket_category_id' => $ticketCategory?->ticket_category_id,
             'timeline_id' => $timelineSession?->timeline_id,
             'price' => $this->faker->numberBetween(100000, 500000), // Harga dalam ribuan
+            'is_active' => $this->faker->numberBetween(0, 1)
         ];
     }
     

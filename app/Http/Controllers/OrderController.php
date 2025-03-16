@@ -31,7 +31,7 @@ class OrderController extends Controller
         // ->latest()
         // ->get();
 
-        $data = Venue::with('contactinfo')->get();
+        $data = Venue::with('contactInfo')->get();
 
         return $data;
     }

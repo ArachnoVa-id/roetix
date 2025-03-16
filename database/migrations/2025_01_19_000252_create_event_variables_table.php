@@ -12,7 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('event_variables', function (Blueprint $table) {
-            $table->string('event_variables_id', 36)->primary(); // Menggunakan string dengan panjang 36 untuk UUID
+            $table->string('event_variables_id', 36)->primary();
+
+            $table->string('event_id', 36)->nullable();
+            $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
 
             $table->boolean('is_locked')->default(false);
             $table->string('locked_password')->default('');
@@ -20,11 +23,12 @@ return new class extends Migration
             $table->boolean('is_maintenance')->default(false);
             $table->string('maintenance_title')->default('');
             $table->string('maintenance_message')->default('');
-            $table->date('maintenance_expected_finish')->default(now());
+            $table->date('maintenance_expected_finish')->default(now())->nullable();
 
-            $table->string('logo')->default('');
+            $table->string('logo', 2048);
             $table->string('logo_alt')->default('');
             $table->string('favicon')->default('');
+
             $table->string('primary_color')->default('');
             $table->string('secondary_color')->default('');
             $table->string('text_primary_color')->default('');

@@ -4,13 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 
-
 class TicketCategory extends Model
 {
-    /** @use HasFactory<\Database\Factories\TicketCategoryFactory> */
     use HasFactory, Notifiable;
 
     protected $primaryKey = 'ticket_category_id';
@@ -34,8 +34,13 @@ class TicketCategory extends Model
         });
     }
 
-    public function event()
+    public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id', 'event_id');
+    }
+
+    public function eventCategoryTimeboundPrices(): HasMany
+    {
+        return $this->hasMany(EventCategoryTimeboundPrice::class, 'ticket_category_id', 'ticket_category_id');
     }
 }

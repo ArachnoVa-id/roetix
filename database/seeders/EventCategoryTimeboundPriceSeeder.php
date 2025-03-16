@@ -1,5 +1,7 @@
 <?php
+
 namespace Database\Seeders;
+
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\EventCategoryTimeboundPrice;
@@ -19,33 +21,33 @@ class EventCategoryTimeboundPriceSeeder extends Seeder
             $this->command->info('No ticket categories found. Please run the TicketCategorySeeder first.');
             return;
         }
-        
+
         // Make sure we have timeline sessions
         if (TimelineSession::count() === 0) {
             $this->command->info('No timeline sessions found. Please run the TimelineSessionSeeder first.');
             return;
         }
-        
+
         // Bersihkan data yang ada
         EventCategoryTimeboundPrice::query()->delete();
-        
+
         // Buat harga untuk setiap kategori tiket dengan setiap timeline pada event
         TicketCategory::all()->each(function ($ticketCategory) {
             // Get event ID dari ticket category
             $eventId = $ticketCategory->event_id;
-            
+
             // Get all timelines untuk event ini
             $timelines = TimelineSession::where('event_id', $eventId)->get();
-            
+
             if ($timelines->isEmpty()) {
                 $this->command->info("No timeline sessions found for event: {$eventId}");
                 return;
             }
-            
+
             // Kategori VIP atau VVIP biasanya lebih mahal
             $isVip = str_contains(strtolower($ticketCategory->name), 'vip');
             $multiplier = $isVip ? 2 : 1;
-            
+
             // Buat harga untuk setiap timeline
             foreach ($timelines as $timeline) {
                 EventCategoryTimeboundPrice::create([
@@ -55,17 +57,15 @@ class EventCategoryTimeboundPriceSeeder extends Seeder
                 ]);
             }
         });
-        
-        $this->command->info('Created ' . EventCategoryTimeboundPrice::count() . ' timebound prices.');
     }
-    
+
     /**
      * Determine price based on timeline name
      */
     private function getPriceBasedOnTimelineName($name)
     {
         $nameInLowerCase = strtolower($name);
-        
+
         // Harga dasar berdasarkan nama timeline
         if (str_contains($nameInLowerCase, 'early') || str_contains($nameInLowerCase, 'presale 1')) {
             // Early Bird atau Presale 1 - harga terendah

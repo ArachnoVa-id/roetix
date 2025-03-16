@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Event;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use App\Models\EventVariables;
@@ -26,8 +27,12 @@ class EventVariablesFactory extends Factory
      */
     public function definition(): array
     {
+        $event = Event::inRandomOrder()->first();
+
         return [
             'event_variables_id' => (string) Str::uuid(),
+
+            'event_id' => $event->event_id,
 
             'is_locked' => $this->faker->boolean,
             'locked_password' => $this->faker->word,
