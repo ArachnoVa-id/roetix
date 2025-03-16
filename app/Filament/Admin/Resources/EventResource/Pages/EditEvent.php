@@ -8,7 +8,6 @@ use App\Models\EventVariables;
 use App\Models\TicketCategory;
 use App\Models\TimelineSession;
 use Filament\Actions;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -62,8 +61,6 @@ class EditEvent extends EditRecord
 
         // Track valid timeline sessions
         $existingTimelineSessionIds = [];
-        $existingCategoryIds = [];
-
         $timelineIdMap = []; // To map dummy keys to actual IDs
 
         // Process timelineSessions
@@ -75,9 +72,6 @@ class EditEvent extends EditRecord
                 $timelineSession = TimelineSession::find($session['timeline_id']);
                 if ($timelineSession) {
                     $existingTimelineSessionIds[] = $session['timeline_id'];
-                    // Save changes
-                    $timelineSession->fill($session);
-                    $timelineSession->save();
                 }
             } else {
                 // Create a new timeline session
@@ -91,34 +85,28 @@ class EditEvent extends EditRecord
             }
         }
 
+        // Timeline Sessions Manual Handling because Filament is Stupid on Handling it
+
         // Process ticketCategories
         foreach ($ticketCategories as $key => $category) {
             unset($category['event_category_timebound_prices'], $category['created_at'], $category['updated_at']);
 
             // Check if the category exists by name and event_id
             $existingCategory = TicketCategory::where('event_id', $eventId)
-                ->where('ticket_category_id', $category['ticket_category_id'])
+                ->where('ticket_category_id', $category['ticket_category_id']) // Adjust based on unique attributes
                 ->first();
 
-            if ($existingCategory) {
-                // Update existing category
-                $existingCategory->fill($category);
-                $existingCategory->save();
-                $ticketCategories[$key]['ticket_category_id'] = $existingCategory->ticket_category_id;
-                // Store real ID mapping
-                $existingCategoryIds[] = $existingCategory->ticket_category_id;
-            } else {
+            if (!$existingCategory) {
                 // Create a new category only if it doesn't exist
                 $category['event_id'] = $eventId;
                 $newCategory = TicketCategory::create($category);
                 $ticketCategories[$key]['ticket_category_id'] = $newCategory->ticket_category_id;
-                // Store real ID mapping
-                $existingCategoryIds[] = $newCategory->ticket_category_id;
             }
         }
 
         // Process event_category_timebound_prices
         foreach ($ticketCategories as $key1 => $category) {
+            // Ensure ticket_category_id is available
             if (!isset($category['ticket_category_id']) || empty($category['ticket_category_id'])) {
                 continue; // Skip this category if ID is missing
             }
@@ -142,47 +130,17 @@ class EditEvent extends EditRecord
                     ->where('timeline_id', $price['timeline_id'])
                     ->first();
 
-                if ($existingPrice) {
-                    // Update existing price
-                    $existingPrice->fill($price);
-                    $existingPrice->save();
-                    $ticketCategories[$key1]['event_category_timebound_prices'][$key2]['timebound_price_id'] = $existingPrice->timebound_price_id;
-                } else {
-                    // Create a new price
+                if (!$existingPrice) {
                     $newEventCategoryTimebound = EventCategoryTimeboundPrice::create($price);
                     $ticketCategories[$key1]['event_category_timebound_prices'][$key2]['timebound_price_id'] = $newEventCategoryTimebound->timebound_price_id;
+                } else {
+                    $ticketCategories[$key1]['event_category_timebound_prices'][$key2]['timebound_price_id'] = $existingPrice->timebound_price_id;
                 }
             }
         }
 
-        // Delete unused timeline
-        TimelineSession::where('event_id', $eventId)
-            ->whereNotIn('timeline_id', $existingTimelineSessionIds)
-            ->delete();
-
-        // Delete unused categories
-        TicketCategory::where('event_id', $eventId)
-            ->whereNotIn('ticket_category_id', $existingCategoryIds)
-            ->delete();
-
-        // Ensure updated data is reflected in the form
-        $this->data['ticket_categories'] = $ticketCategories;
-        $this->data['event_timeline'] = $timelineSessions;
-
-        // Sync the form state
-        $this->form->fill($this->data);
-
-        if ($this->record) {
-            $this->record->fill($this->form->getState());
-            $this->record->save();
-
-            Notification::make('saved')
-                ->success()
-                ->title('Saved')
-                ->send();
-
-            $this->halt();
-        }
+        // Cut off $ticketCategories from $this->data
+        unset($this->data['ticket_categories']);
     }
 
     protected function getHeaderActions(): array

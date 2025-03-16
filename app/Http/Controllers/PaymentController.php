@@ -213,6 +213,21 @@ class PaymentController extends Controller
             // Example:
             // Order::where('transaction_id', $orderId)
             //     ->update(['status' => $status]);
+            // $order = Order::where('order_id', $orderId)->first();
+
+            // if ($order) {
+            //     $order->update([
+            //         'status' => $status,
+            //         'total_price' => $transactionData['gross_amount'] ?? $order->total_price,
+            //     ]);
+            //     Log::info('Order status updated successfully', ['order_id' => $orderId]);
+            // } else {
+            //     Log::warning('Order not found', ['order_id' => $orderId]);
+            // }
+            Log::info('Received payment status update', [
+                'order_id' => $orderId,
+                'status' => $status,
+            ]);
         } catch (\Exception $e) {
             Log::error('Failed to update order: ' . $e->getMessage());
         }
