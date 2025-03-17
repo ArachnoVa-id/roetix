@@ -33,9 +33,6 @@ Route::middleware('guest')->group(function () {
         });
 });
 
-// Midtrans Payment Callback 2
-Route::post('/payment/callback', [PaymentController::class, 'callback']);
-
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {

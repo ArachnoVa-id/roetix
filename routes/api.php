@@ -1,4 +1,6 @@
 <?php
+
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -20,3 +22,6 @@ Route::middleware('auth:sanctum')->get('/api/user', function () {
         'team_ids' => $teamIds,
     ]);
 });
+
+// Midtrans Payment Callback 2
+Route::post('/payment/callback', [PaymentController::class, 'callback']);
