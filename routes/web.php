@@ -53,6 +53,9 @@ Route::domain(config('app.domain'))
         Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])
             ->name('payment.midtranscallback');
 
+        // Midtrans Payment Callback 2
+        Route::post('/payment/callback', [PaymentController::class, 'callback']);
+
         // Session Debugging Route
         Route::get('/check-session', function () {
             return response()->json([
