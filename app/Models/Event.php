@@ -46,35 +46,6 @@ class Event extends Model
                 $model->event_id = (string) Str::uuid();
             }
         });
-
-        static::saving(function ($model) {
-            // launch on edit only
-            if (!$model->exists) return;
-
-            $request = Request::all();
-            // check if components key exists
-            if (!isset($request['components'][0]['updates'][0])) return;
-
-            $updates = $request['components'][0]['updates'];
-            // $dataArray = json_decode($formData, true)['data']['data'][0];
-            $cleanedChanges = [];
-            foreach ($updates as $key => $value) {
-                $cleanedKey = str_replace("data.", "", $key);
-                $cleanedChanges[$cleanedKey] = $value;
-            }
-
-            $eventVariables = $model->eventVariables;
-
-            // loop the keys of eventVariables and update the model if the updated key exist in cleanChanges
-            foreach ($eventVariables->getAttributes() as $key => $value) {
-                if (array_key_exists($key, $cleanedChanges)) {
-                    $eventVariables->$key = $cleanedChanges[$key];
-                }
-            }
-
-            // save
-            $eventVariables->save();
-        });
     }
 
     public function timelineSessions(): HasMany
