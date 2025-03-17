@@ -11,7 +11,7 @@ class EoVenueController extends Controller
     public function index()
     {
 
-        $data = Venue::with('contactinfo')->get();
+        $data = Venue::with('contactInfo')->get();
 
         return Inertia::render('EventOrganizer/EoVenue/Index', [
             'venues' => $data,

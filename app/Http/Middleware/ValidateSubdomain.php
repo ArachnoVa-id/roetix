@@ -6,6 +6,7 @@ use App\Models\Event;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class ValidateSubdomain
@@ -21,12 +22,13 @@ class ValidateSubdomain
         $host = $request->getHost();
 
         // check host length divided by .
-        if (count(explode('.', $host)) < 2) {
+        $exploded = explode('.', $host);
+        if (count($exploded) < 2) {
             abort(404);
         }
 
         // get subdomain
-        $client = explode('.', $host)[0];
+        $client = $exploded[0];
 
         $event = Event::where('slug', $client)->firstOrFail();
 

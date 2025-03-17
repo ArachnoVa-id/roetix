@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('events', function (Blueprint $table) {
             $table->string('event_id', 36)->primary();
             $table->string('team_id', 36);
-            $table->string('event_variables_id', 36)->nullable();
             $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
 
             // Kolom venue_id dengan nilai default '123'

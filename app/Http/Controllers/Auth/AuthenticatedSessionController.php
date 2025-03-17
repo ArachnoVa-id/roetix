@@ -28,8 +28,9 @@ class AuthenticatedSessionController extends Controller
             $event = Event::where('slug', $client)
                 ->first();
 
-            $props = EventVariables::findOrFail($event->event_variables_id);
+            $props = $event->eventVariables;
         } else {
+            // dd('nonclient');
             $event = [
                 'name' => 'Admin NovaTix'
             ];
@@ -58,12 +59,14 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
-        if ($request->client && $user) {
-            return redirect()->intended(
-                $request->client
-                    ? route('client.home', ['client' => $request->client], false)
-                    : route('client.login', ['client' => $request->client], false)
-            );
+        if ($request->client) {
+            // redirecting to
+            $redirectProps = [
+                'route' => ($user ? 'client.home' : 'client.login'),
+                'client' => $request->client,
+            ];
+
+            return redirect()->route($redirectProps['route'], $redirectProps['client']);
         }
 
         $userModel = User::find($user->user_id);

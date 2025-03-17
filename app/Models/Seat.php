@@ -49,9 +49,8 @@ class Seat extends Model
     //     return $this->belongsTo(Section::class, 'section_id', 'id');
     // }
 
-    public function venue()
+    public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class, 'venue_id', 'venue_id');
     }
-
 }

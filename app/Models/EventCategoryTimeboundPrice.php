@@ -1,8 +1,11 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class EventCategoryTimeboundPrice extends Model
@@ -17,6 +20,7 @@ class EventCategoryTimeboundPrice extends Model
         'ticket_category_id',
         'timeline_id',
         'price',
+        'is_active',
     ];
     /**
      * The attributes that should be cast.
@@ -26,25 +30,25 @@ class EventCategoryTimeboundPrice extends Model
     protected $casts = [
         'price' => 'decimal:2',
     ];
-    
+
     /**
      * Boot the model.
      */
-     protected static function boot()
-     {
-         parent::boot();
- 
-         static::creating(function ($model) {
-             if (empty($model->timebound_price_id)) {
-                 $model->timebound_price_id = (string) Str::uuid();
-             }
-         });
-     }
-     
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->timebound_price_id)) {
+                $model->timebound_price_id = (string) Str::uuid();
+            }
+        });
+    }
+
     /**
      * Get the ticket category that owns the timebound price.
      */
-    public function ticketCategory()
+    public function ticketCategories(): BelongsTo
     {
         return $this->belongsTo(TicketCategory::class, 'ticket_category_id', 'ticket_category_id');
     }
@@ -52,25 +56,25 @@ class EventCategoryTimeboundPrice extends Model
     /**
      * Get the timeline session that owns the timebound price.
      */
-    public function timelineSession()
-    {
-        return $this->belongsTo(TimelineSession::class, 'timeline_id', 'timeline_id');
-    }
-    
+    // public function timelineSession(): BelongsTo
+    // {
+    //     return $this->belongsTo(TimelineSession::class, 'timeline_id', 'timeline_id');
+    // }
+
     /**
      * Indicates if the model's ID is auto-incrementing.
      *
      * @var bool
      */
     public $incrementing = false;
-    
+
     /**
      * The data type of the auto-incrementing ID.
      *
      * @var string
      */
     protected $keyType = 'string';
-    
+
     /**
      * The primary key for the model.
      *
