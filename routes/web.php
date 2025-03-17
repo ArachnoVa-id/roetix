@@ -14,15 +14,11 @@ use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
-// Route::get('/hello', function () {
-//     return view('test-livewire');
-// });
-
 // Guest Routes for Authentication
 Route::middleware('guest')->group(function () {
     // Main Domain Login
     Route::domain(config('app.domain'))
-        ->middleware('verify.maindomain') // Middleware applied at correct scope
+        ->middleware('verify.maindomain')
         ->group(function () {
             Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');
@@ -30,7 +26,7 @@ Route::middleware('guest')->group(function () {
 
     // Subdomain Login
     Route::domain('{client}.' . config('app.domain'))
-        ->middleware('verify.subdomain') // Middleware applied at correct scope
+        ->middleware('verify.subdomain')
         ->group(function () {
             Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('client.login');
@@ -72,7 +68,6 @@ Route::domain(config('app.domain'))
             Route::get('/seats/grid-edit', [SeatController::class, 'gridEdit'])
                 ->middleware('venue.access')
                 ->name('seats.grid-edit');
-            // Route::get('/seats/edit', [SeatController::class, 'edit'])->name('seats.edit');
             Route::get('/seats/edit', [SeatController::class, 'edit'])
                 ->middleware('event.access')
                 ->name('seats.edit');
@@ -98,12 +93,18 @@ Route::domain('{client}.' . config('app.domain'))
         // User Page
         Route::get('/', [UserPageController::class, 'landing'])
             ->name('client.home');
-        Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
-            ->name('client.my_tickets');
+
+        // Fix: Add auth middleware to my_tickets route to ensure user authentication
+        Route::middleware('auth')->group(function () {
+            Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
+                ->name('client.my_tickets');
+        });
+
         Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])
             ->name('events.tickets.show');
         Route::get('/events/tickets', [EoTiketController::class, 'show'])
             ->name('events.tickets.index');
+
         // Profile
         Route::get('/profile', [ProfileController::class, 'edit'])
             ->name('profile.edit');
