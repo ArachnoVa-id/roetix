@@ -32,7 +32,6 @@ class DatabaseSeeder extends Seeder
             TeamSeeder::class,
             VenueSeeder::class,
             EventSeeder::class,
-            EventVariablesSeeder::class,
             UserContactSeeder::class,
             TicketSeeder::class,
             TicketCategorySeeder::class,
