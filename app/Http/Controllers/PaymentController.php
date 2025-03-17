@@ -220,64 +220,7 @@ class PaymentController extends Controller
 
     public function callback(Request $request)
     {
-        try {
-            Log::info('Midtrans callback received', ['payload' => $request->all()]);
-
-            // Pastikan server key sama dengan konfigurasi di Midtrans
-            $serverKey = config('midtrans.server_key'); 
-
-            // Validasi signature key dari Midtrans
-            $expectedSignature = hash('sha512', 
-                $request->order_id . 
-                $request->status_code . 
-                $request->gross_amount . 
-                $serverKey
-            );
-
-            if ($request->signature_key !== $expectedSignature) {
-                Log::warning('Invalid signature key', [
-                    'expected' => $expectedSignature,
-                    'received' => $request->signature_key,
-                ]);
-                return response()->json(['message' => 'Invalid signature'], 403);
-            }
-
-            // Proses status pembayaran
-            $transactionStatus = $request->transaction_status; // capture, settlement, pending, deny, cancel, expire
-            $orderId = $request->order_id;
-
-            // Contoh update database
-            $order = Order::where('order_id', $orderId)->first();
-            if (!$order) {
-                Log::error('Order not found', ['order_id' => $orderId]);
-                return response()->json(['message' => 'Order not found'], 404);
-            }
-
-            switch ($transactionStatus) {
-                case 'capture':
-                case 'settlement':
-                    $order->update(['status' => 'paid']);
-                    break;
-                case 'pending':
-                    $order->update(['status' => 'pending']);
-                    break;
-                case 'deny':
-                case 'cancel':
-                case 'expire':
-                    $order->update(['status' => 'failed']);
-                    break;
-            }
-
-            Log::info('Order updated successfully', ['order_id' => $orderId, 'status' => $transactionStatus]);
-
-            return response()->json(['message' => 'Callback processed successfully']);
-        } catch (\Exception $e) {
-            Log::error('Error processing Midtrans callback', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return response()->json(['message' => 'Server error'], 500);
-        }
+        Log::info('Midtrans Callback Received', $request->all());
+        return response()->json(['message' => 'Callback received']);
     }
-}
+}    
