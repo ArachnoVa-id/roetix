@@ -53,6 +53,11 @@ class EventCategoryTimeboundPrice extends Model
         return $this->belongsTo(TicketCategory::class, 'ticket_category_id', 'ticket_category_id');
     }
 
+    public function timelineSession(): BelongsTo
+    {
+        return $this->belongsTo(TimelineSession::class, 'timeline_id', 'timeline_id');
+    }
+
     /**
      * Get the timeline session that owns the timebound price.
      */

@@ -181,6 +181,10 @@ class EventResource extends Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
+        // get current form values
+        $currentModel = $form->model;
+        $modelExists = !is_string($currentModel);
+
         return $form
             ->schema([
                 Forms\Components\Tabs::make('Event Variables')
@@ -258,7 +262,9 @@ class EventResource extends Resource
                                     ->required(),
                                 Forms\Components\DatePicker::make('start_date')
                                     ->label('Start Date')
-                                    ->minDate(now()->toDateString())
+                                    ->minDate(fn() => $modelExists
+                                        ? min(now()->toDateString(), optional($currentModel->start_date)->toDateString() ?? now()->toDateString())
+                                        : now()->toDateString())
                                     ->reactive()
                                     ->required()
                                     ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
@@ -744,7 +750,7 @@ class EventResource extends Resource
                                         Forms\Components\Section::make('Category')
                                             ->columnSpan(1)
                                             ->schema([
-                                                Forms\Components\TextInput::make('ticket_category_id')
+                                                Forms\Components\Hidden::make('ticket_category_id')
                                                     ->default('-'),
                                                 Forms\Components\TextInput::make('name')
                                                     ->default('')
@@ -825,48 +831,40 @@ class EventResource extends Resource
                         Forms\Components\Tabs\Tab::make('Locking')
                             ->schema([
                                 Forms\Components\Toggle::make('is_locked')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->is_locked : '')
                                     ->label('Is Locked'),
                                 Forms\Components\TextInput::make('locked_password')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->locked_password : '')
                                     ->label('Locked Password'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Maintenance')
                             ->schema([
                                 Forms\Components\Toggle::make('is_maintenance')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->is_maintenance : '')
                                     ->label('Is Maintenance'),
                                 Forms\Components\TextInput::make('maintenance_title')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->maintenance_title : '')
                                     ->label('Maintenance Title'),
                                 Forms\Components\TextInput::make('maintenance_message')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->maintenance_message : '')
                                     ->label('Maintenance Message'),
                                 Forms\Components\DatePicker::make('maintenance_expected_finish')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->maintenance_expected_finish : '')
-                                    ->minDate(now()->toDateString())
+                                    ->minDate(fn() => $modelExists
+                                        ? min(now()->toDateString(), optional($currentModel->start_date)->toDateString() ?? now()->toDateString())
+                                        : now()->toDateString())
                                     ->label('Maintenance Expected Finish'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Colors')
                             ->columns(4)
                             ->schema([
                                 Forms\Components\ColorPicker::make('primary_color')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->primary_color : '')
                                     ->hex()
                                     ->required()
                                     ->label('Primary Color'),
                                 Forms\Components\ColorPicker::make('secondary_color')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->secondary_color : '')
                                     ->hex()
                                     ->required()
                                     ->label('Secondary Color'),
                                 Forms\Components\ColorPicker::make('text_primary_color')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->text_primary_color : '')
                                     ->hex()
                                     ->required()
                                     ->label('Text Primary Color'),
                                 Forms\Components\ColorPicker::make('text_secondary_color')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->text_secondary_color : '')
                                     ->hex()
                                     ->required()
                                     ->label('Text Secondary Color'),
@@ -874,13 +872,10 @@ class EventResource extends Resource
                         Forms\Components\Tabs\Tab::make('Identity')
                             ->schema([
                                 Forms\Components\TextInput::make('logo')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->logo : '')
                                     ->label('Logo'),
                                 Forms\Components\TextInput::make('logo_alt')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->logo : '')
                                     ->label('Logo Alt'),
                                 Forms\Components\TextInput::make('favicon')
-                                    // ->formatStateUsing(fn() => $eventVariables ? $eventVariables->favicon : '')
                                     ->label('Favicon'),
                             ])
                     ]),
