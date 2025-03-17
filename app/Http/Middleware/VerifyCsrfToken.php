@@ -18,6 +18,7 @@ class VerifyCsrfToken extends Middleware
         // to properly handle CSRF tokens
         // 'payment/webhook', // Example: exclude payment webhooks
         'payment/charge',
+        'payment/callback',
     ];
     
     /**
