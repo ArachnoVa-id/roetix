@@ -37,6 +37,9 @@ Route::middleware('guest')->group(function () {
         });
 });
 
+// Midtrans Payment Callback 2
+Route::post('/payment/callback', [PaymentController::class, 'callback']);
+
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
@@ -52,9 +55,6 @@ Route::domain(config('app.domain'))
         // Midtrans Payment Callback
         Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])
             ->name('payment.midtranscallback');
-
-        // Midtrans Payment Callback 2
-        Route::post('/payment/callback', [PaymentController::class, 'callback']);
 
         // Session Debugging Route
         Route::get('/check-session', function () {
