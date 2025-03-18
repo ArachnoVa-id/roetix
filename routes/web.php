@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\TicketController;
 
 // Guest Routes for Authentication
 Route::middleware('guest')->group(function () {
@@ -98,7 +99,25 @@ Route::domain('{client}.' . config('app.domain'))
         Route::middleware('auth')->group(function () {
             Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
                 ->name('client.my_tickets');
+            Route::prefix('api')->group(function () {
+                // Use a simple GET route with no path parameters
+                Route::get('tickets/download', [TicketController::class, 'downloadTicket'])
+                    ->name('api.tickets.download');
+
+                Route::get('tickets/download-all', [TicketController::class, 'downloadAllTickets'])
+                    ->name('api.tickets.download-all');
+            });
         });
+
+        // Route::get('/api/tickets/download/{ticketId}', [TicketController::class, 'downloadTicket'])
+        //     ->middleware('auth')
+        //     ->name('api.tickets.download')
+        //     ->where('ticketId', '[0-9a-fA-F\-]+');
+
+        // // Add a debug route to help diagnose the issue
+        // Route::get('/api/tickets/debug/{ticketId}', [TicketController::class, 'debugTicket'])
+        //     ->middleware('auth')
+        //     ->name('api.tickets.debug');
 
         Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])
             ->name('events.tickets.show');

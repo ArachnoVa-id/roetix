@@ -26,6 +26,7 @@ return new class extends Migration
             $table->enum('category', ['concert', 'sports', 'workshop', 'etc']);
             $table->dateTime('start_date');
             $table->dateTime('end_date');
+            $table->dateTime('event_date')->nullable(); // Added event_date field
             $table->string('location');
             $table->enum('status', ['planned', 'active', 'completed', 'cancelled']);
             $table->timestamps();

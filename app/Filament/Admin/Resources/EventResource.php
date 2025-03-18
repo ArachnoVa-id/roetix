@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Cache;
 use App\Filament\Admin\Resources\EventResource\Pages;
+use Filament\Infolists\Infolist;
 
 class EventResource extends Resource
 {
@@ -41,96 +42,6 @@ class EventResource extends Resource
             ->label('Seating')
             ->icon('heroicon-o-adjustments-horizontal')
             ->color('info')
-            // ->modalHeading('Edit Seating')
-            // ->modalContent(function ($record) {
-            //     $eventId = $record->event_id;
-            //     try {
-            //         if (!$eventId) {
-            //             // return redirect()->back()->withErrors(['error' => 'Event ID is required']);
-            //             return;
-            //         }
-
-            //         // Get the event and associated venue
-            //         $event = Event::findOrFail($eventId);
-            //         $venue = Venue::findOrFail($event->venue_id);
-
-            //         // Get all seats for this venue
-            //         $seats = Seat::where('venue_id', $venue->venue_id)
-            //             ->orderBy('row')
-            //             ->orderBy('column')
-            //             ->get();
-
-            //         // Get existing tickets for this event
-            //         $existingTickets = Ticket::where('event_id', $eventId)
-            //             ->get()
-            //             ->keyBy('seat_id');
-
-            //         // Format data for the frontend, prioritizing ticket data
-            //         $layout = [
-            //             'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
-            //             'totalColumns' => $seats->max('column'),
-            //             'items' => $seats->map(function ($seat) use ($existingTickets) {
-            //                 $ticket = $existingTickets->get($seat->seat_id);
-
-            //                 // Base seat data
-            //                 $seatData = [
-            //                     'type' => 'seat',
-            //                     'seat_id' => $seat->seat_id,
-            //                     'seat_number' => $seat->seat_number,
-            //                     'row' => $seat->row,
-            //                     'column' => $seat->column
-            //                 ];
-
-            //                 // Add ticket data if it exists
-            //                 if ($ticket) {
-            //                     $seatData['status'] = $ticket->status;
-            //                     $seatData['ticket_type'] = $ticket->ticket_type;
-            //                     $seatData['price'] = $ticket->price;
-            //                 } else {
-            //                     // Default values for seats without tickets
-            //                     $seatData['status'] = 'reserved';
-            //                     $seatData['ticket_type'] = 'standard';
-            //                     $seatData['price'] = 0;
-            //                 }
-
-            //                 return $seatData;
-            //             })->values()
-            //         ];
-
-            //         // Add stage label
-            //         $layout['items'][] = [
-            //             'type' => 'label',
-            //             'row' => $layout['totalRows'],
-            //             'column' => floor($layout['totalColumns'] / 2),
-            //             'text' => 'STAGE'
-            //         ];
-
-            //         // Get available ticket types for dropdown
-            //         $ticketTypes = ['standard', 'VIP'];
-
-            //         return view('modals.edit-seats-modal', [
-            //             'layout' => $layout,
-            //             'event' => $event,
-            //             'venue' => $venue,
-            //             'ticketTypes' => $ticketTypes
-            //         ]);
-            //     } catch (\Exception $e) {
-            //         // return redirect()->back()->withErrors(['error' => 'Failed to load seat map: ' . $e->getMessage()]);
-            //         return;
-            //     }
-            // })
-            // ->modalSubmitAction(false); // Hide default Filament save button
-
-            // ->modalButton('Close')
-            // ->modalHeading('Edit Seating Layout')
-            // ->modalWidth('7xl')
-            // ->form([
-            //     Forms\Components\Placeholder::make('blade_component')
-            //         ->content('')
-            //         ->extraAttributes(fn($record) => [
-            //             'x-html' => '<iframe src="' . route('hello') . '" width="100%" height="500px" style="border: none;"></iframe>',
-            //         ]),
-            // ]);
             ->url(fn($record) => "/seats/edit?event_id={$record->event_id}")
             ->openUrlInNewTab();
     }
@@ -152,6 +63,10 @@ class EventResource extends Resource
                     ->label('Status')
                     ->icon('heroicon-m-exclamation-triangle')
                     ->color('primary'),
+                Infolists\Components\TextEntry::make('event_date')
+                    ->label('Event Date')
+                    ->icon('heroicon-m-calendar')
+                    ->dateTime(),
                 Infolists\Components\TextEntry::make('start_date')
                     ->label('Start')
                     ->icon('heroicon-m-calendar-date-range')
@@ -256,6 +171,10 @@ class EventResource extends Resource
                                         'cancelled' => 'cancelled'
                                     ])
                                     ->required(),
+                                Forms\Components\DateTimePicker::make('event_date')
+                                    ->label('Event Date/Time')
+                                    ->required()
+                                    ->minDate(now()->toDateString()),
                                 Forms\Components\DatePicker::make('start_date')
                                     ->label('Start Date')
                                     ->minDate(now()->toDateString())
@@ -416,22 +335,6 @@ class EventResource extends Resource
                                         // Save the corrected ticket categories
                                         $set('ticket_categories', $newCategories);
                                     })
-                                    // Make all start_date equals end_date of previous timeline
-                                    // $indexedArray = array_values($eventTimelinesWithKeys);
-                                    // $newTimelines = [];
-                                    // foreach ($indexedArray as $idx => $timeline) {
-                                    //     $uuid = $timeline['timeline_id'];
-
-                                    //     if ($idx > 0) {
-                                    //         $previous = $indexedArray[$idx - 1];
-                                    //         $timeline['start_date'] = $previous['end_date'];
-                                    //     }
-
-                                    //     $newTimelines[$uuid] = $timeline;
-                                    // }
-
-                                    // // Update
-                                    // $set('event_timeline', $newTimelines);
                                     ->schema([
                                         Forms\Components\TextInput::make('name')
                                             ->label('Name')
@@ -587,19 +490,6 @@ class EventResource extends Resource
                                                         if ($next['start_date'] <= $get('end_date')) {
                                                             $nextUUID = $keysArray[$index + 1];
                                                             $array[$nextUUID]['start_date'] = null;
-
-                                                            // for ($i = $index + 1; $i <= $lastIdx; $i++) {
-                                                            //     $prevIterUUID = $keysArray[$i - 1];
-                                                            //     $iterUUID = $keysArray[$i];
-
-                                                            //     // break if next start doesnt conflict current
-                                                            //     if ($indexedArray[$i]['start_date'] > $get('end_date')) break;
-
-                                                            //     $array[$iterUUID]['start_date'] = null;
-                                                            //     $array[$iterUUID]['end_date'] = null;
-                                                            // }
-
-                                                            // update the data
                                                             $set('../', $array);
                                                         }
                                                     }
@@ -695,9 +585,6 @@ class EventResource extends Resource
                                                         // insert to new prices
                                                         $newPrices[] = $price;
                                                         // remove id from nonExistingKeys
-                                                        // $nonExistingKeys = array_filter($nonExistingKeys, function ($key) use ($timeline) {
-                                                        //     $key != $timeline['timeline_id'];
-                                                        // });
                                                         $nonExistingKeys = array_filter($nonExistingKeys, function ($key) use ($timeline) {
                                                             return $key !== $timeline['timeline_id'];
                                                         });
@@ -897,6 +784,9 @@ class EventResource extends Resource
                     ->searchable(),
                 // Tables\Columns\TextColumn::make('event_id'),
                 Tables\Columns\TextColumn::make('category'),
+                Tables\Columns\TextColumn::make('event_date')
+                    ->dateTime()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('start_date'),
                 Tables\Columns\TextColumn::make('end_date'),
                 Tables\Columns\TextColumn::make('location'),

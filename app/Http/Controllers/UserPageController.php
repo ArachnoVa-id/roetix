@@ -254,10 +254,10 @@ class UserPageController extends Controller
                 // Determine ticket type
                 $typeName = $ticket->ticket_type ? ucfirst($ticket->ticket_type) : 'Standard';
 
-                // Special handling for VIP tickets
-                if (strtolower($typeName) === 'vip') {
-                    $typeName = 'VIP+';
-                }
+                // // Special handling for VIP tickets
+                // if (strtolower($typeName) === 'vip') {
+                //     $typeName = 'VIP+';
+                // }
 
                 return [
                     'id' => $ticket->ticket_id,
