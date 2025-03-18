@@ -76,30 +76,21 @@ export default function Landing({
     const ticketTypeColors: Record<string, string> = useMemo(() => {
         const colors: Record<string, string> = {};
 
-        // If we have ticket categories with colors, use those
+        // Jika ada kategori tiket dengan warna, gunakan itu
         if (ticketCategories.length > 0) {
             ticketCategories.forEach((category) => {
-                colors[category.name] = category.color.startsWith('#')
-                    ? `bg-[${category.color}]`
-                    : category.color;
+                // Gunakan nilai hex langsung dari database
+                colors[category.name] = category.color;
             });
         } else {
-            // Fallback colors
-            const fallbackColors = [
-                'bg-cyan-400', // For VIP or first type
-                'bg-yellow-400', // For standard or second type
-                'bg-green-400', // For third type
-                'bg-purple-400', // For fourth type
-                'bg-gray-300', // For any additional type
-            ];
-
-            ticketTypes.forEach((type, index) => {
-                colors[type] = fallbackColors[index] || 'bg-gray-300';
-            });
+            // Fallback colors dalam hex
+            colors['VIP'] = '#FFD54F'; // Kuning
+            colors['standard'] = '#90CAF9'; // Biru
+            colors['Regular'] = '#A5D6A7'; // Hijau
         }
 
         return colors;
-    }, [ticketCategories, ticketTypes]);
+    }, [ticketCategories]);
 
     // Function to get price for a seat based on its category and current timeline
     const getSeatPrice = (seat: SeatItem): number => {
@@ -374,7 +365,13 @@ export default function Landing({
                                                 className="flex flex-col items-center"
                                             >
                                                 <div
-                                                    className={`h-8 w-8 ${ticketTypeColors[type]} rounded-full shadow-lg`}
+                                                    className="h-8 w-8 rounded-full shadow-lg"
+                                                    style={{
+                                                        backgroundColor:
+                                                            ticketTypeColors[
+                                                                type
+                                                            ],
+                                                    }}
                                                 ></div>
                                                 <span className="mt-2 text-sm font-medium">
                                                     {type

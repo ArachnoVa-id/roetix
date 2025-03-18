@@ -67,6 +67,10 @@ const Edit: React.FC<Props> = ({
         Record<string, number>
     >({});
 
+    const [categoryColorMap, setCategoryColorMap] = useState<
+        Record<string, string>
+    >({});
+
     // Process category prices based on current timeline and categories
     useEffect(() => {
         if (
@@ -75,12 +79,16 @@ const Edit: React.FC<Props> = ({
             categoryPrices.length > 0
         ) {
             const priceMap: Record<string, number> = {};
+            const colorMap: Record<string, string> = {}; // Tambahkan map untuk warna
 
-            // Create a mapping of category IDs to category names
+            // Create a mapping of category IDs to category names and colors
             const categoryIdToNameMap: Record<string, string> = {};
             ticketCategories.forEach((category) => {
                 categoryIdToNameMap[category.ticket_category_id] =
                     category.name;
+
+                // Map category name to its color (hex value)
+                colorMap[category.name] = category.color;
             });
 
             // Find prices for the current timeline
@@ -98,6 +106,7 @@ const Edit: React.FC<Props> = ({
             });
 
             setCategoryNameToPriceMap(priceMap);
+            setCategoryColorMap(colorMap); // Simpan pemetaan warna
         }
     }, [currentTimeline, ticketCategories, categoryPrices]);
 
@@ -276,7 +285,7 @@ const Edit: React.FC<Props> = ({
                                         layout={currentLayout}
                                         onSave={handleSave}
                                         ticketTypes={ticketTypes}
-                                        categoryColors={categoryColors}
+                                        categoryColors={categoryColorMap} // Gunakan map warna yang baru dibuat
                                         currentTimeline={currentTimeline}
                                         categoryPrices={categoryNameToPriceMap}
                                     />
