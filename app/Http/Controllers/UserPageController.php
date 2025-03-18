@@ -20,28 +20,6 @@ use Carbon\Carbon;
 
 class UserPageController extends Controller
 {
-    private function getDefaultValue()
-    {
-        $defaultValues = [
-            'primary_color' => '#FFF',
-            'secondary_color' => '#9FF',
-            'text_primary_color' => '#000000',
-            'text_secondary_color' => '#000000',
-            'is_maintenance' => false,
-            'maintenance_title' => '',
-            'maintenance_message' => '',
-            'maintenance_expected_finish' => now(),
-            'is_locked' => false,
-            'locked_password' => '',
-            'logo' => '/images/novatix-logo/favicon-32x32.png',
-            'logo_alt' => 'Novatix Logo',
-            'favicon' => '/images/novatix-logo/favicon.ico',
-        ];
-
-        return $defaultValues;
-    }
-
-    // Your landing method (kept unchanged)
     public function landing(Request $request, string $client = '')
     {
         // Get the event and associated venue
@@ -52,7 +30,7 @@ class UserPageController extends Controller
             return Inertia::render('User/Landing', [
                 'client' => $client,
                 'error' => 'Event not found.',
-                'props' => $this->getDefaultValue()
+                'props' => EventVariables::getDefaultValue()
             ]);
         }
 
@@ -62,7 +40,7 @@ class UserPageController extends Controller
             return Inertia::render('User/Landing', [
                 'client' => $client,
                 'error' => 'Event variables not found for ' . $event->name . '.',
-                'props' => $this->getDefaultValue()
+                'props' => EventVariables::getDefaultValue()
             ]);
         }
 
