@@ -16,6 +16,7 @@ interface Props {
     ticketTypeColors?: Record<string, string>;
     props: EventProps;
     currentTimeline?: Timeline;
+    eventStatus?: string; // Tambahkan ini
 }
 
 const SeatMapDisplay: React.FC<Props> = ({
@@ -25,6 +26,7 @@ const SeatMapDisplay: React.FC<Props> = ({
     ticketTypeColors = {},
     props,
     currentTimeline,
+    eventStatus = 'active', // Nilai default
 }) => {
     const [rows, setRows] = useState(config.totalRows);
     const [columns, setColumns] = useState(config.totalColumns);
@@ -117,7 +119,7 @@ const SeatMapDisplay: React.FC<Props> = ({
 
     // Function to determine if a seat is selectable
     const isSeatSelectable = (seat: SeatItem): boolean => {
-        return seat.status === 'available';
+        return seat.status === 'available' && eventStatus === 'active';
     };
 
     // Render a single seat cell
@@ -147,6 +149,19 @@ const SeatMapDisplay: React.FC<Props> = ({
 
     return (
         <div className="flex w-full flex-col items-center">
+            {/* Tampilkan pesan status event jika tidak active */}
+            {eventStatus !== 'active' && (
+                <div className="mb-4 w-full rounded-lg bg-yellow-50 p-3 text-center">
+                    <p className="text-yellow-800">
+                        {eventStatus === 'planned' &&
+                            'This event is not yet ready for booking'}
+                        {eventStatus === 'completed' &&
+                            'This event does not accept booking anymore'}
+                        {eventStatus === 'cancelled' &&
+                            'This event has been cancelled'}
+                    </p>
+                </div>
+            )}
             {/* Timeline Information */}
             {currentTimeline && (
                 <div className="mb-4 w-full rounded-lg bg-blue-50 p-3 text-center">

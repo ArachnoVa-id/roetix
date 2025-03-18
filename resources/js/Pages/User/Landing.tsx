@@ -16,6 +16,7 @@ interface Event {
     name: string;
     date: string;
     venue_id: string;
+    status: string; // Tambahkan ini
 }
 
 interface Timeline {
@@ -62,6 +63,27 @@ export default function Landing({
     props,
 }: Props) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
+
+    // Tentukan apakah booking diperbolehkan berdasarkan status event
+    const isBookingAllowed = useMemo(() => {
+        return event && event.status === 'active';
+    }, [event]);
+
+    // Tambahkan pesan status yang akan ditampilkan jika booking tidak diizinkan
+    const eventStatusMessage = useMemo(() => {
+        if (!event) return '';
+
+        switch (event.status) {
+            case 'planned':
+                return 'This event is not yet ready for booking';
+            case 'completed':
+                return 'This event does not accept booking anymore';
+            case 'cancelled':
+                return 'This event has been cancelled';
+            default:
+                return '';
+        }
+    }, [event]);
 
     // Extract ticket types from categories
     const ticketTypes = useMemo(
@@ -127,6 +149,10 @@ export default function Landing({
     };
 
     const handleSeatClick = (seat: SeatItem) => {
+        if (!isBookingAllowed) {
+            return;
+        }
+
         if (seat.status !== 'available') {
             return; // Only allow selecting available seats
         }
@@ -249,6 +275,18 @@ export default function Landing({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title="Book Tickets" />
+            {/* Tampilkan pesan status event jika tidak active */}
+            {!isBookingAllowed && event && (
+                <div className="py-2">
+                    <div className="mx-auto w-full sm:px-6 lg:px-8">
+                        <div className="overflow-hidden bg-yellow-100 p-4 shadow-md sm:rounded-lg">
+                            <p className="text-center font-medium text-yellow-800">
+                                {eventStatusMessage}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div
@@ -423,6 +461,7 @@ export default function Landing({
                                     selectedSeats={selectedSeats}
                                     ticketTypeColors={ticketTypeColors}
                                     currentTimeline={currentTimeline}
+                                    eventStatus={event?.status} // Tambahkan ini
                                 />
                             </div>
                         </div>
@@ -507,7 +546,7 @@ export default function Landing({
                             )}
 
                             {/* Proceed Button */}
-                            {selectedSeats.length > 0 && (
+                            {selectedSeats.length > 0 && isBookingAllowed && (
                                 <ProceedTransactionButton
                                     selectedSeats={selectedSeats}
                                     taxAmount={taxAmount}
