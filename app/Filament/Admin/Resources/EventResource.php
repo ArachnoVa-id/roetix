@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Cache;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use Filament\Infolists\Infolist;
+use Illuminate\Console\View\Components\Info;
 
 class EventResource extends Resource
 {
@@ -44,6 +45,96 @@ class EventResource extends Resource
             ->color('info')
             ->url(fn($record) => "/seats/edit?event_id={$record->event_id}")
             ->openUrlInNewTab();
+        // ->modalHeading('Edit Seating')
+        // ->modalContent(function ($record) {
+        //     $eventId = $record->event_id;
+        //     try {
+        //         if (!$eventId) {
+        //             // return redirect()->back()->withErrors(['error' => 'Event ID is required']);
+        //             return;
+        //         }
+
+        //         // Get the event and associated venue
+        //         $event = Event::findOrFail($eventId);
+        //         $venue = Venue::findOrFail($event->venue_id);
+
+        //         // Get all seats for this venue
+        //         $seats = Seat::where('venue_id', $venue->venue_id)
+        //             ->orderBy('row')
+        //             ->orderBy('column')
+        //             ->get();
+
+        //         // Get existing tickets for this event
+        //         $existingTickets = Ticket::where('event_id', $eventId)
+        //             ->get()
+        //             ->keyBy('seat_id');
+
+        //         // Format data for the frontend, prioritizing ticket data
+        //         $layout = [
+        //             'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
+        //             'totalColumns' => $seats->max('column'),
+        //             'items' => $seats->map(function ($seat) use ($existingTickets) {
+        //                 $ticket = $existingTickets->get($seat->seat_id);
+
+        //                 // Base seat data
+        //                 $seatData = [
+        //                     'type' => 'seat',
+        //                     'seat_id' => $seat->seat_id,
+        //                     'seat_number' => $seat->seat_number,
+        //                     'row' => $seat->row,
+        //                     'column' => $seat->column
+        //                 ];
+
+        //                 // Add ticket data if it exists
+        //                 if ($ticket) {
+        //                     $seatData['status'] = $ticket->status;
+        //                     $seatData['ticket_type'] = $ticket->ticket_type;
+        //                     $seatData['price'] = $ticket->price;
+        //                 } else {
+        //                     // Default values for seats without tickets
+        //                     $seatData['status'] = 'reserved';
+        //                     $seatData['ticket_type'] = 'standard';
+        //                     $seatData['price'] = 0;
+        //                 }
+
+        //                 return $seatData;
+        //             })->values()
+        //         ];
+
+        //         // Add stage label
+        //         $layout['items'][] = [
+        //             'type' => 'label',
+        //             'row' => $layout['totalRows'],
+        //             'column' => floor($layout['totalColumns'] / 2),
+        //             'text' => 'STAGE'
+        //         ];
+
+        //         // Get available ticket types for dropdown
+        //         $ticketTypes = ['standard', 'VIP'];
+
+        //         return view('modals.edit-seats-modal', [
+        //             'layout' => $layout,
+        //             'event' => $event,
+        //             'venue' => $venue,
+        //             'ticketTypes' => $ticketTypes
+        //         ]);
+        //     } catch (\Exception $e) {
+        //         // return redirect()->back()->withErrors(['error' => 'Failed to load seat map: ' . $e->getMessage()]);
+        //         return;
+        //     }
+        // })
+        // ->modalSubmitAction(false); // Hide default Filament save button
+
+        // ->modalButton('Close')
+        // ->modalHeading('Edit Seating Layout')
+        // ->modalWidth('7xl')
+        // ->form([
+        //     Forms\Components\Placeholder::make('blade_component')
+        //         ->content('')
+        //         ->extraAttributes(fn($record) => [
+        //             'x-html' => '<iframe src="' . route('hello') . '" width="100%" height="500px" style="border: none;"></iframe>',
+        //         ]),
+        // ]);
     }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
@@ -81,9 +172,108 @@ class EventResource extends Resource
             ])->columns(2),
             Infolists\Components\Tabs::make('Tabs')
                 ->tabs([
-                    Infolists\Components\Tabs\Tab::make('Settings')
+                    Infolists\Components\Tabs\Tab::make('Timeline and Categories')
                         ->schema([
-                            Infolists\Components\Livewire::make('event-settings'),
+                            Infolists\Components\Section::make('Timeline')
+                                ->schema([
+                                    Infolists\Components\RepeatableEntry::make('timelineSessions')
+                                        ->label('')
+                                        ->columns(3)
+                                        ->grid(2)
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('name'),
+                                            Infolists\Components\TextEntry::make('start_date'),
+                                            Infolists\Components\TextEntry::make('end_date'),
+                                        ])
+                                ]),
+                            Infolists\Components\Section::make('Categories')
+                                ->columnSpan(1)
+                                ->schema([
+                                    Infolists\Components\RepeatableEntry::make('ticketCategories')
+                                        ->label('')
+                                        ->columns(2)
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('name')
+                                                ->columnSpan(1),
+                                            Infolists\Components\ColorEntry::make('color')
+                                                ->columnSpan(1),
+                                            Infolists\Components\RepeatableEntry::make('eventCategoryTimeboundPrices')
+                                                ->label('Timeline')
+                                                ->columnSpan(2)
+                                                ->columns(3)
+                                                ->schema([
+                                                    Infolists\Components\TextEntry::make('price'),
+                                                    Infolists\Components\TextEntry::make('is_active'),
+                                                    Infolists\Components\TextEntry::make('timelineSession.name')
+                                                ])
+                                        ])
+                                ]),
+                        ]),
+
+                    Infolists\Components\Tabs\Tab::make('Event Variables')
+                        ->columns(4)
+                        ->schema([
+                            Infolists\Components\Section::make('Lock')
+                                ->relationship('eventVariables')
+                                ->columnSpan(1)
+                                ->schema([
+                                    Infolists\Components\TextEntry::make('is_locked')
+                                        ->label('Is Locked')
+                                        ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+
+                                    Infolists\Components\TextEntry::make('locked_password')
+                                        ->label('Locked Password'),
+                                ]),
+
+                            Infolists\Components\Section::make('Maintenance')
+                                ->relationship('eventVariables')
+                                ->columnSpan(1)
+                                ->schema([
+                                    Infolists\Components\TextEntry::make('is_maintenance')
+                                        ->label('Is Maintenance')
+                                        ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+
+                                    Infolists\Components\TextEntry::make('maintenance_title')
+                                        ->label('Maintenance Title'),
+
+                                    Infolists\Components\TextEntry::make('maintenance_message')
+                                        ->label('Maintenance Message'),
+
+                                    Infolists\Components\TextEntry::make('maintenance_expected_finish')
+                                        ->label('Maintenance Expected Finish'),
+                                ]),
+
+                            Infolists\Components\Section::make('Logo')
+                                ->relationship('eventVariables')
+                                ->columnSpan(1)
+                                ->schema([
+                                    Infolists\Components\TextEntry::make('logo')
+                                        ->label('Logo'),
+
+                                    Infolists\Components\TextEntry::make('logo_alt')
+                                        ->label('Logo Alt'),
+
+                                    Infolists\Components\TextEntry::make('favicon')
+                                        ->label('Favicon'),
+
+                                ]),
+
+                            Infolists\Components\Section::make('Colors')
+                                ->relationship('eventVariables')
+                                ->columnSpan(1)
+                                ->schema([
+                                    Infolists\Components\ColorEntry::make('primary_color')
+                                        ->label('Primary Color'),
+
+                                    Infolists\Components\ColorEntry::make('secondary_color')
+                                        ->label('Secondary Color'),
+
+                                    Infolists\Components\ColorEntry::make('text_primary_color')
+                                        ->label('Text Primary Color'),
+
+                                    Infolists\Components\ColorEntry::make('text_secondary_color')
+                                        ->label('Text Secondary Color'),
+                                ])
                         ]),
                     Infolists\Components\Tabs\Tab::make('Scan Tickets')
                         ->schema([

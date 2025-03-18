@@ -73,7 +73,10 @@ class Event extends Model
     }
     public function ticketCategories(): HasMany
     {
-        return $this->hasMany(TicketCategory::class, 'event_id', 'event_id')->orderBy('created_at');
+        return $this->hasMany(TicketCategory::class, 'event_id', 'event_id')
+            ->join('event_category_timebound_prices', 'ticket_categories.ticket_category_id', '=', 'event_category_timebound_prices.ticket_category_id')
+            ->join('timeline_sessions', 'event_category_timebound_prices.timeline_id', '=', 'timeline_sessions.timeline_id')
+            ->orderBy('timeline_sessions.created_at');
     }
     public function team(): BelongsTo
     {

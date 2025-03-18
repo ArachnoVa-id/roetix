@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
@@ -33,5 +34,15 @@ class UserContact extends Model
                 $model->contact_id = (string) Str::uuid();
             }
         });
+    }
+
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class, 'contact_info', 'contact_id');
+    }
+
+    public function venue(): HasOne
+    {
+        return $this->hasOne(Venue::class, 'contact_info', 'contact_id');
     }
 }

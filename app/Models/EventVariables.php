@@ -36,6 +36,7 @@ class EventVariables extends Model
         'maintenance_expected_finish',
 
         'logo',
+        'logo_alt',
         'favicon',
         'primary_color',
         'secondary_color',
