@@ -39,7 +39,7 @@ class TimelineSessionSeeder extends Seeder
         foreach ($events as $event) {
             // Ambil tanggal awal dan akhir event
             $eventStartDate = Carbon::parse($event->start_date);
-            $eventEndDate = Carbon::parse($event->end_date);
+            $eventEndDate = Carbon::parse($event->event_date);
 
             // Hitung berapa hari sebelum event dimulai untuk timeline session
             // Kita akan mulai 30 hari sebelum event

@@ -216,20 +216,17 @@ class PaymentController extends Controller
             switch ($data['transaction_status']) {
                 case 'capture':
                 case 'settlement':
-                    // Payment success - update order status
-                    $this->updateStatus($data['order_id'], 'paid', $data);
+                    $this->updateStatus($data['order_id'], 'completed', $data);
                     break;
 
                 case 'pending':
-                    // Payment pending
                     $this->updateStatus($data['order_id'], 'pending', $data);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
-                    // Payment failed or canceled
-                    $this->updateStatus($data['order_id'], 'failed', $data);
+                    $this->updateStatus($data['order_id'], 'cancelled', $data);
                     break;
             }
 
@@ -250,27 +247,30 @@ class PaymentController extends Controller
      */
     private function updateStatus($orderId, $status, $transactionData)
     {
-        // Implement your order update logic here
-        DB::beginTransaction();
         try {
+            // Update order status
             Order::where('order_id', $orderId)->update([
                 'status' => $status
             ]);
 
-            DB::commit();
+            // Update ticket statuses
+            $ticketOrders = TicketOrder::where('order_id', $orderId)->get();
+            foreach ($ticketOrders as $ticketOrder) {
+                $ticket = Ticket::find($ticketOrder->ticket_id);
+                if ($ticket) { // Ensure the ticket exists before updating
+                    $ticket->status = $status === 'paid' ? 'booked' : 'available';
+                    $ticket->save();
+                } else {
+                    Log::warning('Ticket not found', ['ticket_id' => $ticketOrder->ticket_id]);
+                }
+            }
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Failed to update order status', [
                 'order_id' => $orderId,
                 'status' => $status,
                 'error' => $e->getMessage(),
             ]);
+            throw $e; // Re-throw the exception to ensure the outer transaction rolls back
         }
-    }
-
-    public function callback(Request $request)
-    {
-        // Log::info('Midtrans Callback Received', $request->all());
-        return response()->json(['message' => 'Callback received']);
     }
 }
