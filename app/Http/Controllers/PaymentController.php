@@ -258,7 +258,7 @@ class PaymentController extends Controller
             foreach ($ticketOrders as $ticketOrder) {
                 $ticket = Ticket::find($ticketOrder->ticket_id);
                 if ($ticket) { // Ensure the ticket exists before updating
-                    $ticket->status = $status === 'paid' ? 'booked' : 'available';
+                    $ticket->status = $status === 'completed' ? 'booked' : 'available';
                     $ticket->save();
                 } else {
                     Log::warning('Ticket not found', ['ticket_id' => $ticketOrder->ticket_id]);
