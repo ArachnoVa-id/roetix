@@ -23,8 +23,6 @@ return new class extends Migration
 
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
             $table->foreign('coupon_id')->references('coupon_id')->on('coupons')->onDelete('cascade');
-            // $table->foreign('ticket_id')->references('ticket_id')->on('tickets')->onDelete('cascade');
-
         });
 
         Schema::create('ticket_order', function (Blueprint $table) {
@@ -35,7 +33,6 @@ return new class extends Migration
 
             $table->foreign('ticket_id')->references('ticket_id')->on('tickets')->onDelete('cascade');
             $table->foreign('order_id')->references('order_id')->on('orders')->onDelete('cascade');
-
         });
     }
 

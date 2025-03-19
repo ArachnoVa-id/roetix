@@ -3,21 +3,21 @@
 namespace App\Filament\NovatixAdmin\Resources;
 
 use App\Filament\NovatixAdmin\Resources\TeamResource\Pages;
-use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers;
+use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\EventsRelationManager;
+use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\UsersRelationManager;
+use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\VenuesRelationManager;
 use App\Models\Team;
 use Filament\Forms;
 use Filament\Infolists;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 
 class TeamResource extends Resource
 {
     protected static ?string $model = Team::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
     public static function canAccess(): bool
     {
@@ -32,10 +32,31 @@ class TeamResource extends Resource
             ->schema([
                 Infolists\Components\Section::make('Team Information')
                     ->columns(2)
+                    ->columnSpanFull()
                     ->schema([
                         Infolists\Components\TextEntry::make('name'),
                         Infolists\Components\TextEntry::make('code'),
                     ]),
+                Infolists\Components\Tabs::make('')
+                    ->columnSpanFull()
+                    ->schema([
+                        Infolists\Components\Tabs\Tab::make('Members')
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(UsersRelationManager::class)
+                            ]),
+                        Infolists\Components\Tabs\Tab::make('Events')
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(EventsRelationManager::class)
+                            ]),
+                        Infolists\Components\Tabs\Tab::make('Venues')
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(VenuesRelationManager::class)
+                            ]),
+                    ]),
+
             ]);
     }
 
@@ -74,8 +95,14 @@ class TeamResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name'),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('code')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50)
             ])
             ->filters([
                 //

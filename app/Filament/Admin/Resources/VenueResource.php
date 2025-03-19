@@ -9,13 +9,14 @@ use Filament\Infolists;
 use Filament\Resources;
 use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\VenueResource\Pages;
+use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
 use Filament\Actions;
 
 class VenueResource extends Resources\Resource
 {
     protected static ?string $model = Venue::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-map-pin';
 
     public static function canAccess(): bool
     {
@@ -55,6 +56,23 @@ class VenueResource extends Resources\Resource
                         Infolists\Components\TextEntry::make('email'),
                         Infolists\Components\TextEntry::make('whatsapp_number'),
                         Infolists\Components\TextEntry::make('instagram'),
+                    ]),
+                Infolists\Components\Section::make('Venue Owner')
+                    ->columnSpanFull()
+                    ->relationship('team', 'team_id')
+                    ->columns(2)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('name'),
+                        Infolists\Components\TextEntry::make('code'),
+                    ]),
+                Infolists\Components\Tabs::make()
+                    ->columnSpanFull()
+                    ->schema([
+                        Infolists\Components\Tabs\Tab::make('Events')
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(EventsRelationManager::class)
+                            ])
                     ])
             ]);
     }
@@ -115,15 +133,39 @@ class VenueResource extends Resources\Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('venue_id')
+                    ->limit(50)
                     ->label('Venue'),
-                Tables\Columns\TextColumn::make('name'),
-                Tables\Columns\TextColumn::make('location'),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('location')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('capacity'),
                 Tables\Columns\TextColumn::make('status'),
             ])
-            ->filters([
-                //
-            ])
+            ->filters(
+                [
+                    Tables\Filters\Filter::make('capacity')
+                        ->columns(2)
+                        ->form(
+                            [
+                                Forms\Components\TextInput::make('min')->label('Min Capacity')->columnSpan(1),
+                                Forms\Components\TextInput::make('max')->label('Max Capacity')->columnSpan(1),
+                            ]
+                        )
+                        ->query(function ($query, array $data) {
+                            return $query
+                                ->when($data['min'], fn($q) => $q->where('capacity', '>=', $data['min']))
+                                ->when($data['max'], fn($q) => $q->where('capacity', '<=', $data['max']));
+                        }),
+                    Tables\Filters\SelectFilter::make('status')
+                        ->multiple(),
+                ],
+                layout: Tables\Enums\FiltersLayout::Modal
+            )
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),

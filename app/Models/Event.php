@@ -24,8 +24,7 @@ class Event extends Model
         'slug',
         'category',
         'start_date',
-        'end_date',
-        'event_date', // Added the event_date field
+        'event_date',
         'location',
         'status',
         'team_id',

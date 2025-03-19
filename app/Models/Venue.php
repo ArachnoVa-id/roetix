@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
@@ -46,5 +47,10 @@ class Venue extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
+    }
+
+    public function events(): BelongsToMany
+    {
+        return $this->belongsToMany(Event::class, 'venues', 'venue_id', 'venue_id');
     }
 }

@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,7 +21,22 @@ class TicketResource extends Resource
 {
     protected static ?string $model = Ticket::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-ticket';
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
 
     public static function canAccess(): bool
     {
@@ -77,10 +93,9 @@ class TicketResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('ticket_id'),
+                Tables\Columns\TextColumn::make('ticket_id')
+                    ->label('ID'),
                 Tables\Columns\TextColumn::make('event.name'),
-                // Tables\Columns\TextColumn::make('event_id'),
-                // Tables\Columns\TextColumn::make('seat_id'),
                 Tables\Columns\TextColumn::make('ticket_type'),
                 Tables\Columns\TextColumn::make('price'),
                 Tables\Columns\TextColumn::make('status'),
@@ -92,14 +107,8 @@ class TicketResource extends Resource
                     ->searchable()
                     ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
             ])
-            ->actions([
-                // Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->actions([])
+            ->bulkActions([]);
     }
 
     public static function getRelations(): array

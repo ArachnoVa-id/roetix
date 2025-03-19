@@ -42,7 +42,6 @@ class EditEvent extends EditRecord
     protected function beforeSave()
     {
         DB::beginTransaction();
-        Log::info('Try');
         try {
             $ticketCategories = $this->data['ticket_categories'];
             $timelineSessions = $this->data['event_timeline'];

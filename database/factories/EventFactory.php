@@ -30,13 +30,10 @@ class EventFactory extends Factory
     {
         $name = $this->faker->sentence(3);
         $slug = Str::slug($name);
-        
+
         // Create end_date 1-2 months in the future
         $endDate = $this->faker->dateTimeBetween('+1 month', '+2 months');
-        
-        // Create event_date 1-7 days after end_date
-        $eventDateCarbon = Carbon::instance($endDate)->addDays($this->faker->numberBetween(1, 7));
-        
+
         return [
             'event_id' => (string) Str::uuid(),
             'team_id' => Team::inRandomOrder()->first()?->team_id,
@@ -45,8 +42,7 @@ class EventFactory extends Factory
             'slug' => $slug,
             'category' => $this->faker->randomElement(['concert', 'sports', 'workshop', 'etc']),
             'start_date' => $this->faker->dateTimeBetween('now', '+1 month'),
-            'end_date' => $endDate,
-            'event_date' => $eventDateCarbon->toDateTime(), // 1-7 days after end_date
+            'event_date' => $endDate,
             'location' => $this->faker->address(),
             'status' => $this->faker->randomElement(['planned', 'active', 'completed', 'cancelled']),
         ];

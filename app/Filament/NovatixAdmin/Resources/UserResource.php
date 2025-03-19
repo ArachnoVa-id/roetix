@@ -3,6 +3,7 @@
 namespace App\Filament\NovatixAdmin\Resources;
 
 use App\Filament\NovatixAdmin\Resources\UserResource\Pages;
+use App\Filament\NovatixAdmin\Resources\UserResource\RelationManagers\TeamsRelationManager;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Resources;
@@ -15,7 +16,7 @@ class UserResource extends Resources\Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-user';
 
     public static function canAccess(): bool
     {
@@ -29,15 +30,24 @@ class UserResource extends Resources\Resource
         return $infolist
             ->schema([
                 Infolists\Components\Section::make('User Information')
+                    ->columnSpanFull()
                     ->columns(2)
                     ->schema([
-                        Infolists\Components\TextEntry::make('first_name'),
-                        Infolists\Components\TextEntry::make('last_name'),
+                        Infolists\Components\TextEntry::make('first_name')
+                            ->label('First Name'),
+                        Infolists\Components\TextEntry::make('last_name')
+                            ->label('Last Name'),
                         Infolists\Components\TextEntry::make('email'),
                         Infolists\Components\TextEntry::make('role'),
-                        Infolists\Components\TextEntry::make('team_id')
-                            ->label('Team')
-                            ->getStateUsing(fn(User $record) => $record->teams->pluck('name')->join(', ')),
+                    ]),
+                Infolists\Components\Tabs::make('')
+                    ->columnSpanFull()
+                    ->schema([
+                        Infolists\Components\Tabs\Tab::make('Teams')
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(TeamsRelationManager::class),
+                            ]),
                     ]),
             ]);
     }
@@ -97,19 +107,43 @@ class UserResource extends Resources\Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('first_name')->label('First Name'),
-                Tables\Columns\TextColumn::make('last_name')->label('Last Name'),
-                Tables\Columns\TextColumn::make('email'),
+                Tables\Columns\TextColumn::make('first_name')
+                    ->label('First Name')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('last_name')
+                    ->label('Last Name')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('email')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('role'),
                 Tables\Columns\TextColumn::make('teams.name')
                     ->label('Teams')
                     ->searchable()
+                    ->formatStateUsing(fn() => 'Hover to View')
+                    ->tooltip(
+                        fn(User $record) =>
+                        $record->teams->pluck('name')->sort()->join(', ')
+                    )
                     ->getStateUsing(fn(User $record) => $record->teams->pluck('name')->join(', ')),
 
             ])
-            ->filters([
-                //
-            ])
+            ->filters(
+                [
+                    Tables\Filters\SelectFilter::make('role')
+                        ->options([
+                            'vendor' => 'vendor',
+                            'event-organizer' => 'event-organizer',
+                        ])
+                        ->multiple()
+                ],
+                layout: Tables\Enums\FiltersLayout::Modal
+            )
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
