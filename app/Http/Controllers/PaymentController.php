@@ -217,4 +217,10 @@ class PaymentController extends Controller
             Log::error('Failed to update order: ' . $e->getMessage());
         }
     }
-}
+
+    public function callback(Request $request)
+    {
+        Log::info('Midtrans Callback Received', $request->all());
+        return response()->json(['message' => 'Callback received']);
+    }
+}    
