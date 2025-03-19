@@ -3,23 +3,20 @@
 namespace App\Filament\NovatixAdmin\Resources;
 
 use App\Filament\NovatixAdmin\Resources\UserResource\Pages;
-use App\Filament\NovatixAdmin\Resources\UserResource\RelationManagers;
+use App\Filament\NovatixAdmin\Resources\UserResource\RelationManagers\TeamsRelationManager;
 use App\Models\User;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use Filament\Resources;
 use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Models\Team;
+use Filament\Infolists;
 use Illuminate\Support\Facades\Auth;
 
-class UserResource extends Resource
+class UserResource extends Resources\Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-user';
 
     public static function canAccess(): bool
     {
@@ -28,56 +25,125 @@ class UserResource extends Resource
         return $user && in_array($user->role, ['admin']);
     }
 
-    public static function form(Form $form): Form
+    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
     {
-        return $form
+        return $infolist
             ->schema([
-                Forms\Components\TextInput::make('first_name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('last_name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->required()
-                    ->email()
-                    ->unique('users', 'email')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('password')
-                    ->required()
-                    ->password()
-                    ->maxLength(255),
-                Forms\Components\Select::make('role')
-                    ->options([
-                        'vendor' => 'vendor',
-                        'event-organizer' => 'event-organizer',
-                    ])
-                    ->required(),
-                Forms\Components\Select::make('team_id')
-                    ->label('Assign to Team')
-                    ->options(Team::pluck('name', 'team_id'))
-                    ->required(),
+                Infolists\Components\Section::make('User Information')
+                    ->columnSpanFull()
+                    ->columns(2)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('first_name')
+                            ->label('First Name'),
+                        Infolists\Components\TextEntry::make('last_name')
+                            ->label('Last Name'),
+                        Infolists\Components\TextEntry::make('email'),
+                        Infolists\Components\TextEntry::make('role'),
+                    ]),
+                Infolists\Components\Tabs::make('')
+                    ->columnSpanFull()
+                    ->schema([
+                        Infolists\Components\Tabs\Tab::make('Teams')
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(TeamsRelationManager::class),
+                            ]),
+                    ]),
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function form(Forms\Form $form): Forms\Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('User Information')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\Group::make([
+                            Forms\Components\TextInput::make('first_name')
+                                ->label('First Name')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('last_name')
+                                ->label('Last Name')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('email')
+                                ->required()
+                                ->email()
+                                ->unique('users', 'email', ignoreRecord: true)
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('password')
+                                ->required()
+                                ->password()
+                                ->maxLength(255),
+                            Forms\Components\Select::make('role')
+                                ->options([
+                                    'vendor' => 'vendor',
+                                    'event-organizer' => 'event-organizer',
+                                ])
+                                ->required(),
+                        ]),
+                        Forms\Components\Section::make('Teams')
+                            ->columnSpan(1)
+                            ->schema([
+                                Forms\Components\Repeater::make('teams')
+                                    ->relationship('teams')
+                                    ->label('')
+                                    ->schema([
+                                        Forms\Components\Select::make('team_id')
+                                            ->label('Assign to Team')
+                                            ->options(Team::pluck('name', 'team_id'))
+                                            ->searchable()
+                                            ->optionsLimit(5)
+                                            ->required(),
+                                    ])
+                            ]),
+                    ])
+            ]);
+    }
+
+    public static function table(Tables\Table $table): Tables\Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('first_name')->label('First Name'),
-                Tables\Columns\TextColumn::make('last_name')->label('Last Name'),
-                Tables\Columns\TextColumn::make('email'),
+                Tables\Columns\TextColumn::make('first_name')
+                    ->label('First Name')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('last_name')
+                    ->label('Last Name')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('email')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('role'),
                 Tables\Columns\TextColumn::make('teams.name')
                     ->label('Teams')
-                    ->sortable()
                     ->searchable()
+                    ->formatStateUsing(fn() => 'Hover to View')
+                    ->tooltip(
+                        fn(User $record) =>
+                        $record->teams->pluck('name')->sort()->join(', ')
+                    )
                     ->getStateUsing(fn(User $record) => $record->teams->pluck('name')->join(', ')),
 
             ])
-            ->filters([
-                //
-            ])
+            ->filters(
+                [
+                    Tables\Filters\SelectFilter::make('role')
+                        ->options([
+                            'vendor' => 'vendor',
+                            'event-organizer' => 'event-organizer',
+                        ])
+                        ->multiple()
+                ],
+                layout: Tables\Enums\FiltersLayout::Modal
+            )
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
@@ -105,6 +171,7 @@ class UserResource extends Resource
             'index' => Pages\ListUsers::route('/'),
             'create' => Pages\CreateUser::route('/create'),
             'edit' => Pages\EditUser::route('/{record}/edit'),
+            'view' => Pages\ViewUser::route('/{record}'),
         ];
     }
 }

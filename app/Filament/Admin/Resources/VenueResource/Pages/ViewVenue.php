@@ -1,22 +1,22 @@
 <?php
 
-namespace App\Filament\Admin\Resources\EventResource\Pages;
+namespace App\Filament\Admin\Resources\VenueResource\Pages;
 
-use App\Filament\Admin\Resources\EventResource;
+use App\Filament\Admin\Resources\VenueResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 
-class ViewEvent extends ViewRecord
+class ViewVenue extends ViewRecord
 {
-    protected static string $resource = EventResource::class;
+    protected static string $resource = VenueResource::class;
 
     public function getHeaderActions(): array
     {
         return [
             Actions\EditAction::make('Edit Event')
                 ->icon('heroicon-o-pencil'),
-            EventResource::EditSeatsButton(
-                Actions\Action::make('editSeats')
+            VenueResource::EditVenueButton(
+                Actions\Action::make('Edit Venue')
             )->button(),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),

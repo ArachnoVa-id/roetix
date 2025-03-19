@@ -37,7 +37,7 @@ class Order extends Model
         });
     }
 
-    public function ticket(): HasMany
+    public function tickets(): HasMany
     {
         return $this->HasMany(Ticket::class, 'ticket_id', 'ticket_id');
     }

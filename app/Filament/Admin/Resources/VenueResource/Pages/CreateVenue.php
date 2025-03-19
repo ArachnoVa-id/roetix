@@ -15,12 +15,13 @@ class CreateVenue extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         // Create new UserContact
+        $contactInfo = $this->data['contactInfo'];
         $contact = UserContact::create([
             'contact_id' => Str::uuid(),
-            'phone_number' => $data['phone_number'],
-            'email' => $data['email'],
-            'whatsapp_number' => $data['whatsapp_number'] ?? null,
-            'instagram' => $data['instagram'] ?? null,
+            'phone_number' => $contactInfo['phone_number'],
+            'email' => $contactInfo['email'],
+            'whatsapp_number' => $contactInfo['whatsapp_number'] ?? null,
+            'instagram' => $contactInfo['instagram'] ?? null,
         ]);
 
         // Assign the new contact to the venue data

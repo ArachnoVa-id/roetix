@@ -1,11 +1,12 @@
+import Toaster from '@/Components/novatix/Toaster'; // Import the Toaster component
+import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransactionButton';
 import SeatMapDisplay from '@/Pages/Seat/SeatMapDisplay';
 import { Layout, SeatItem } from '@/Pages/Seat/types';
 import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
-
+import { useEffect, useMemo, useState } from 'react';
 interface Venue {
     venue_id: string;
     name: string;
@@ -16,6 +17,7 @@ interface Event {
     name: string;
     date: string;
     venue_id: string;
+    status: string; // Tambahkan ini
 }
 
 interface Timeline {
@@ -62,6 +64,35 @@ export default function Landing({
     props,
 }: Props) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
+    const { toasterState, showSuccess, showError, hideToaster } = useToaster();
+
+    // Show error if it exists when component mounts
+    useEffect(() => {
+        if (error) {
+            showError(error);
+        }
+    }, [error]);
+
+    // Tentukan apakah booking diperbolehkan berdasarkan status event
+    const isBookingAllowed = useMemo(() => {
+        return event && event.status === 'active';
+    }, [event]);
+
+    // Tambahkan pesan status yang akan ditampilkan jika booking tidak diizinkan
+    const eventStatusMessage = useMemo(() => {
+        if (!event) return '';
+
+        switch (event.status) {
+            case 'planned':
+                return 'This event is not yet ready for booking';
+            case 'completed':
+                return 'This event does not accept booking anymore';
+            case 'cancelled':
+                return 'This event has been cancelled';
+            default:
+                return '';
+        }
+    }, [event]);
 
     // Extract ticket types from categories
     const ticketTypes = useMemo(
@@ -76,30 +107,21 @@ export default function Landing({
     const ticketTypeColors: Record<string, string> = useMemo(() => {
         const colors: Record<string, string> = {};
 
-        // If we have ticket categories with colors, use those
+        // Jika ada kategori tiket dengan warna, gunakan itu
         if (ticketCategories.length > 0) {
             ticketCategories.forEach((category) => {
-                colors[category.name] = category.color.startsWith('#')
-                    ? `bg-[${category.color}]`
-                    : category.color;
+                // Gunakan nilai hex langsung dari database
+                colors[category.name] = category.color;
             });
         } else {
-            // Fallback colors
-            const fallbackColors = [
-                'bg-cyan-400', // For VIP or first type
-                'bg-yellow-400', // For standard or second type
-                'bg-green-400', // For third type
-                'bg-purple-400', // For fourth type
-                'bg-gray-300', // For any additional type
-            ];
-
-            ticketTypes.forEach((type, index) => {
-                colors[type] = fallbackColors[index] || 'bg-gray-300';
-            });
+            // Fallback colors dalam hex
+            colors['VIP'] = '#FFD54F'; // Kuning
+            colors['standard'] = '#90CAF9'; // Biru
+            colors['Regular'] = '#A5D6A7'; // Hijau
         }
 
         return colors;
-    }, [ticketCategories, ticketTypes]);
+    }, [ticketCategories]);
 
     // Function to get price for a seat based on its category and current timeline
     const getSeatPrice = (seat: SeatItem): number => {
@@ -136,8 +158,14 @@ export default function Landing({
     };
 
     const handleSeatClick = (seat: SeatItem) => {
+        if (!isBookingAllowed) {
+            showError('Booking is not allowed at this time');
+            return;
+        }
+
         if (seat.status !== 'available') {
-            return; // Only allow selecting available seats
+            showError('This seat is not available');
+            return;
         }
 
         const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
@@ -145,6 +173,7 @@ export default function Landing({
             setSelectedSeats(
                 selectedSeats.filter((s) => s.seat_id !== seat.seat_id),
             );
+            showSuccess(`Seat ${seat.seat_number} removed from selection`);
         } else {
             if (selectedSeats.length < 5) {
                 // Calculate correct price based on category and timeline
@@ -153,6 +182,9 @@ export default function Landing({
                     price: getSeatPrice(seat),
                 };
                 setSelectedSeats([...selectedSeats, updatedSeat]);
+                showSuccess(`Seat ${seat.seat_number} added to selection`);
+            } else {
+                showError('You can only select up to 5 seats');
             }
         }
     };
@@ -258,6 +290,18 @@ export default function Landing({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title="Book Tickets" />
+            {/* Tampilkan pesan status event jika tidak active */}
+            {!isBookingAllowed && event && (
+                <div className="py-2">
+                    <div className="mx-auto w-full sm:px-6 lg:px-8">
+                        <div className="overflow-hidden bg-yellow-100 p-4 shadow-md sm:rounded-lg">
+                            <p className="text-center font-medium text-yellow-800">
+                                {eventStatusMessage}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div
@@ -374,7 +418,13 @@ export default function Landing({
                                                 className="flex flex-col items-center"
                                             >
                                                 <div
-                                                    className={`h-8 w-8 ${ticketTypeColors[type]} rounded-full shadow-lg`}
+                                                    className="h-8 w-8 rounded-full shadow-lg"
+                                                    style={{
+                                                        backgroundColor:
+                                                            ticketTypeColors[
+                                                                type
+                                                            ],
+                                                    }}
                                                 ></div>
                                                 <span className="mt-2 text-sm font-medium">
                                                     {type
@@ -426,6 +476,7 @@ export default function Landing({
                                     selectedSeats={selectedSeats}
                                     ticketTypeColors={ticketTypeColors}
                                     currentTimeline={currentTimeline}
+                                    eventStatus={event?.status} // Tambahkan ini
                                 />
                             </div>
                         </div>
@@ -510,7 +561,7 @@ export default function Landing({
                             )}
 
                             {/* Proceed Button */}
-                            {selectedSeats.length > 0 && (
+                            {selectedSeats.length > 0 && isBookingAllowed && (
                                 <ProceedTransactionButton
                                     selectedSeats={selectedSeats}
                                     taxAmount={taxAmount}
@@ -522,6 +573,12 @@ export default function Landing({
                     </div>
                 </div>
             </div>
+            <Toaster
+                message={toasterState.message}
+                type={toasterState.type}
+                isVisible={toasterState.isVisible}
+                onClose={hideToaster}
+            />
         </AuthenticatedLayout>
     );
 }

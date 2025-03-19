@@ -4,5 +4,5 @@ return [
     App\Providers\AppServiceProvider::class,
     App\Providers\Filament\AdminPanelProvider::class,
     App\Providers\Filament\NovatixAdminPanelProvider::class,
-    App\Providers\Filament\PanelDashboardPanelProvider::class,
+    App\Providers\RouteServiceProvider::class
 ];

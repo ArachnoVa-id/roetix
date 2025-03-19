@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\EventVariables;
 use App\Models\Team;
 use App\Models\Venue;
+use Carbon\Carbon;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Event>
@@ -20,7 +21,6 @@ class EventFactory extends Factory
      * @var string
      */
     protected $model = Event::class;
-
     /**
      * Define the model's default state.
      *
@@ -31,6 +31,9 @@ class EventFactory extends Factory
         $name = $this->faker->sentence(3);
         $slug = Str::slug($name);
 
+        // Create end_date 1-2 months in the future
+        $endDate = $this->faker->dateTimeBetween('+1 month', '+2 months');
+
         return [
             'event_id' => (string) Str::uuid(),
             'team_id' => Team::inRandomOrder()->first()?->team_id,
@@ -39,7 +42,7 @@ class EventFactory extends Factory
             'slug' => $slug,
             'category' => $this->faker->randomElement(['concert', 'sports', 'workshop', 'etc']),
             'start_date' => $this->faker->dateTimeBetween('now', '+1 month'),
-            'end_date' => $this->faker->dateTimeBetween('+1 month', '+2 months'),
+            'event_date' => $endDate,
             'location' => $this->faker->address(),
             'status' => $this->faker->randomElement(['planned', 'active', 'completed', 'cancelled']),
         ];

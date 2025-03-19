@@ -11,6 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,7 +19,22 @@ class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
 
     public static function canAccess(): bool
     {
@@ -39,23 +55,31 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('order_id'),
-                Tables\Columns\TextColumn::make('order_date'),
-                Tables\Columns\TextColumn::make('total_price'),
+                Tables\Columns\TextColumn::make('order_id')
+                    ->label('Order'),
+                Tables\Columns\TextColumn::make('user')
+                    ->formatStateUsing(function ($state) {
+                        return $state->getUserName();
+                    })
+                    ->label('User'),
+                Tables\Columns\TextColumn::make('order_date')
+                    ->label('Date'),
+                Tables\Columns\TextColumn::make('total_price')
+                    ->label('Total'),
                 Tables\Columns\TextColumn::make('status'),
-                Tables\Columns\TextColumn::make('events.name'),
+                Tables\Columns\TextColumn::make('events.name')
+                    ->label('Event')
+                    ->formatStateUsing(function ($state) {
+                        $parsed = explode(',', $state);
+                        return $parsed[0];
+                    }),
+
             ])
             ->filters([
                 //
             ])
-            ->actions([
-                // Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                // Tables\Actions\BulkActionGroup::make([
-                //     Tables\Actions\DeleteBulkAction::make(),
-                // ]),
-            ]);
+            ->actions([])
+            ->bulkActions([]);
     }
 
     public static function getRelations(): array

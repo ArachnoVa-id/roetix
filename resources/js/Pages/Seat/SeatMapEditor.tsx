@@ -74,17 +74,19 @@ const SeatMapEditor: React.FC<Props> = ({
 
     // Use provided category colors or defaults
     const getColorForCategory = (category: string): string => {
+        // Jika categoryColors (dari ticket categories) tersedia, gunakan itu
         if (categoryColors && categoryColors[category]) {
+            // Gunakan nilai hex langsung dari database
             return categoryColors[category];
         }
 
-        // Default colors if not provided
+        // Default colors jika tidak disediakan (gunakan hex)
         const defaultColors: Record<string, string> = {
-            standard: 'bg-blue-300',
-            VIP: 'bg-yellow-400',
+            standard: '#90CAF9', // biru
+            VIP: '#FFD54F', // kuning
         };
 
-        return defaultColors[category] || 'bg-gray-200';
+        return defaultColors[category] || '#E0E0E0'; // default abu-abu
     };
 
     // Status color definitions
@@ -155,17 +157,17 @@ const SeatMapEditor: React.FC<Props> = ({
         if (seat.status !== 'available') {
             switch (seat.status) {
                 case 'booked':
-                    baseColor = 'bg-red-500';
+                    baseColor = '#F44336'; // Merah
                     break;
                 case 'in_transaction':
-                    baseColor = 'bg-yellow-500';
+                    baseColor = '#FF9800'; // Oranye
                     break;
                 case 'reserved':
-                    baseColor = 'bg-gray-400';
+                    baseColor = '#9E9E9E'; // Abu-abu
                     break;
             }
         } else {
-            // If available, show ticket type color
+            // Jika available, tampilkan warna tipe tiket
             const ticketType = seat.ticket_type || 'standard';
             baseColor = getColorForCategory(ticketType);
         }
@@ -390,7 +392,8 @@ const SeatMapEditor: React.FC<Props> = ({
                         selectionMode === 'DRAG' &&
                         handleMouseDown(e, seat)
                     }
-                    className={`flex h-8 w-8 select-none items-center justify-center rounded border ${seatColor} ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
+                    className={`flex h-8 w-8 select-none items-center justify-center rounded border ${isEditable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'} ${seat.status === 'booked' ? 'opacity-75' : ''} ${isSelected ? 'ring-2 ring-blue-500' : ''} text-xs`}
+                    style={{ backgroundColor: seatColor }}
                     title={
                         !isEditable
                             ? 'This seat is booked and cannot be edited'
@@ -625,7 +628,11 @@ const SeatMapEditor: React.FC<Props> = ({
                                     className="flex flex-col items-center"
                                 >
                                     <div
-                                        className={`h-8 w-8 ${getColorForCategory(type)} rounded-full shadow-md`}
+                                        className="h-8 w-8 rounded-full shadow-md"
+                                        style={{
+                                            backgroundColor:
+                                                getColorForCategory(type),
+                                        }}
                                     ></div>
                                     <span className="mt-1 text-sm">
                                         {type.charAt(0).toUpperCase() +

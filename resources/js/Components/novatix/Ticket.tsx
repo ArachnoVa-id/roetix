@@ -24,6 +24,16 @@ interface TicketComponentProps {
     ticketCode: string;
     ticketURL: string;
     ticketData: TicketData;
+    eventId: string;
+    userData?: {
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
+    eventInfo?: {
+        location: string;
+        eventDate: string;
+    };
 }
 
 export default function Ticket({
@@ -31,11 +41,43 @@ export default function Ticket({
     ticketCode,
     ticketData,
     ticketURL,
+    eventId,
+    // userData,
+    // eventInfo,
 }: TicketComponentProps): React.ReactElement {
     // Function to handle ticket download
     const handleDownload = (): void => {
-        // Implementation can be added later for actual download functionality
-        alert('Download functionality will be implemented');
+        try {
+            // Dispatch a custom event for the parent component to show a toaster
+            const ticketActionEvent = new CustomEvent('ticket-action', {
+                detail: {
+                    action: 'download',
+                    ticketId: ticketCode,
+                    ticketType: ticketType,
+                },
+                bubbles: true,
+            });
+            window.dispatchEvent(ticketActionEvent);
+
+            // Call the ticket download endpoint
+            const downloadUrl = `/api/tickets/download?ticket_id=${ticketCode}&event_id=${eventId}`;
+
+            // Open in a new window/tab
+            window.open(downloadUrl, '_blank');
+        } catch (error) {
+            console.error('Error downloading ticket:', error);
+
+            // Dispatch error event
+            const errorEvent = new CustomEvent('ticket-action', {
+                detail: {
+                    action: 'error',
+                    ticketId: ticketCode,
+                    error: 'Failed to download ticket',
+                },
+                bubbles: true,
+            });
+            window.dispatchEvent(errorEvent);
+        }
     };
 
     // Determine color scheme based on ticket type
@@ -149,7 +191,7 @@ export default function Ticket({
                 className={`${colors.light} px-4 py-2 text-center text-xs ${colors.text} flex items-center justify-between font-medium`}
             >
                 <span>Scan QR code for verification</span>
-                {/* <span>Novatix ID: {ticketCode.substring(0, 8)}</span> */}
+                <span>Novatix ID: {ticketCode.substring(0, 8)}</span>
             </div>
         </div>
     );
