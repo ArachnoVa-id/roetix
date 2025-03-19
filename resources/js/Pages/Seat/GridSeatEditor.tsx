@@ -512,181 +512,181 @@ const GridSeatEditor: React.FC<Props> = ({
         }
     };
 
-    const getModeButtonVariant = (buttonMode: EditorMode) => {
-        return mode === buttonMode ? 'default' : 'outline';
-    };
-    const DimensionControl = () => (
-        <div className="mb-6 space-y-4">
-            <div className="flex items-center gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                        Bottom Rows
-                    </label>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setDimensions((d) => ({
-                                    ...d,
-                                    top: Math.max(0, d.top - 1),
-                                }))
-                            }
-                        >
-                            -
-                        </Button>
-                        <span className="w-8 text-center">
-                            {dimensions.top}
-                        </span>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setDimensions((d) => ({ ...d, top: d.top + 1 }))
-                            }
-                        >
-                            +
-                        </Button>
-                    </div>
-                </div>
+    // const getModeButtonVariant = (buttonMode: EditorMode) => {
+    //     return mode === buttonMode ? 'default' : 'outline';
+    // };
+    // const DimensionControl = () => (
+    //     <div className="mb-6 space-y-4">
+    //         <div className="flex items-center gap-4">
+    //             <div>
+    //                 <label className="block text-sm font-medium text-gray-700">
+    //                     Bottom Rows
+    //                 </label>
+    //                 <div className="flex items-center gap-2">
+    //                     <Button
+    //                         variant="outline"
+    //                         onClick={() =>
+    //                             setDimensions((d) => ({
+    //                                 ...d,
+    //                                 top: Math.max(0, d.top - 1),
+    //                             }))
+    //                         }
+    //                     >
+    //                         -
+    //                     </Button>
+    //                     <span className="w-8 text-center">
+    //                         {dimensions.top}
+    //                     </span>
+    //                     <Button
+    //                         variant="outline"
+    //                         onClick={() =>
+    //                             setDimensions((d) => ({ ...d, top: d.top + 1 }))
+    //                         }
+    //                     >
+    //                         +
+    //                     </Button>
+    //                 </div>
+    //             </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                        Top Rows
-                    </label>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setDimensions((d) => ({
-                                    ...d,
-                                    bottom: Math.max(1, d.bottom - 1),
-                                }))
-                            }
-                        >
-                            -
-                        </Button>
-                        <span className="w-8 text-center">
-                            {dimensions.bottom}
-                        </span>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setDimensions((d) => ({
-                                    ...d,
-                                    bottom: d.bottom + 1,
-                                }))
-                            }
-                        >
-                            +
-                        </Button>
-                    </div>
-                </div>
-            </div>
+    //             <div>
+    //                 <label className="block text-sm font-medium text-gray-700">
+    //                     Top Rows
+    //                 </label>
+    //                 <div className="flex items-center gap-2">
+    //                     <Button
+    //                         variant="outline"
+    //                         onClick={() =>
+    //                             setDimensions((d) => ({
+    //                                 ...d,
+    //                                 bottom: Math.max(1, d.bottom - 1),
+    //                             }))
+    //                         }
+    //                     >
+    //                         -
+    //                     </Button>
+    //                     <span className="w-8 text-center">
+    //                         {dimensions.bottom}
+    //                     </span>
+    //                     <Button
+    //                         variant="outline"
+    //                         onClick={() =>
+    //                             setDimensions((d) => ({
+    //                                 ...d,
+    //                                 bottom: d.bottom + 1,
+    //                             }))
+    //                         }
+    //                     >
+    //                         +
+    //                     </Button>
+    //                 </div>
+    //             </div>
+    //         </div>
 
-            <div className="flex items-center gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                        Left Columns
-                    </label>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setDimensions((d) => ({
-                                    ...d,
-                                    left: Math.max(0, d.left - 1),
-                                }))
-                            }
-                        >
-                            -
-                        </Button>
-                        <span className="w-8 text-center">
-                            {dimensions.left}
-                        </span>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setDimensions((d) => ({
-                                    ...d,
-                                    left: d.left + 1,
-                                }))
-                            }
-                        >
-                            +
-                        </Button>
-                    </div>
-                </div>
+    //         <div className="flex items-center gap-4">
+    //             <div>
+    //                 <label className="block text-sm font-medium text-gray-700">
+    //                     Left Columns
+    //                 </label>
+    //                 <div className="flex items-center gap-2">
+    //                     <Button
+    //                         variant="outline"
+    //                         onClick={() =>
+    //                             setDimensions((d) => ({
+    //                                 ...d,
+    //                                 left: Math.max(0, d.left - 1),
+    //                             }))
+    //                         }
+    //                     >
+    //                         -
+    //                     </Button>
+    //                     <span className="w-8 text-center">
+    //                         {dimensions.left}
+    //                     </span>
+    //                     <Button
+    //                         variant="outline"
+    //                         onClick={() =>
+    //                             setDimensions((d) => ({
+    //                                 ...d,
+    //                                 left: d.left + 1,
+    //                             }))
+    //                         }
+    //                     >
+    //                         +
+    //                     </Button>
+    //                 </div>
+    //             </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                        Right Columns
-                    </label>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setDimensions((d) => ({
-                                    ...d,
-                                    right: Math.max(1, d.right - 1),
-                                }))
-                            }
-                        >
-                            -
-                        </Button>
-                        <span className="w-8 text-center">
-                            {dimensions.right}
-                        </span>
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                setDimensions((d) => ({
-                                    ...d,
-                                    right: d.right + 1,
-                                }))
-                            }
-                        >
-                            +
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+    //             <div>
+    //                 <label className="block text-sm font-medium text-gray-700">
+    //                     Right Columns
+    //                 </label>
+    //                 <div className="flex items-center gap-2">
+    //                     <Button
+    //                         variant="outline"
+    //                         onClick={() =>
+    //                             setDimensions((d) => ({
+    //                                 ...d,
+    //                                 right: Math.max(1, d.right - 1),
+    //                             }))
+    //                         }
+    //                     >
+    //                         -
+    //                     </Button>
+    //                     <span className="w-8 text-center">
+    //                         {dimensions.right}
+    //                     </span>
+    //                     <Button
+    //                         variant="outline"
+    //                         onClick={() =>
+    //                             setDimensions((d) => ({
+    //                                 ...d,
+    //                                 right: d.right + 1,
+    //                             }))
+    //                         }
+    //                     >
+    //                         +
+    //                     </Button>
+    //                 </div>
+    //             </div>
+    //         </div>
+    //     </div>
+    // );
 
     // Block area action buttons component
-    const BlockAreaActions = () => {
-        if (mode !== 'block' || !blockedArea) return null;
+    // const BlockAreaActions = () => {
+    //     if (mode !== 'block' || !blockedArea) return null;
 
-        return (
-            <div className="mb-4 rounded border border-blue-300 bg-blue-50 p-2">
-                <div className="mb-2 text-sm font-medium">Area Selected:</div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={addSeatsToBlockedArea}
-                        className="flex items-center gap-2 border-green-300 bg-white text-green-600 hover:bg-green-50"
-                    >
-                        <Plus size={16} />
-                        Add Seats
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={deleteSeatsFromBlockedArea}
-                        className="flex items-center gap-2 border-red-300 bg-white text-red-600 hover:bg-red-50"
-                    >
-                        <Trash2 size={16} />
-                        Delete Seats
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => setBlockedArea(null)}
-                        className="bg-white"
-                    >
-                        Cancel
-                    </Button>
-                </div>
-            </div>
-        );
-    };
+    //     return (
+    //         <div className="mb-4 rounded border border-blue-300 bg-blue-50 p-2">
+    //             <div className="mb-2 text-sm font-medium">Area Selected:</div>
+    //             <div className="flex gap-2">
+    //                 <Button
+    //                     variant="outline"
+    //                     onClick={addSeatsToBlockedArea}
+    //                     className="flex items-center gap-2 border-green-300 bg-white text-green-600 hover:bg-green-50"
+    //                 >
+    //                     <Plus size={16} />
+    //                     Add Seats
+    //                 </Button>
+    //                 <Button
+    //                     variant="outline"
+    //                     onClick={deleteSeatsFromBlockedArea}
+    //                     className="flex items-center gap-2 border-red-300 bg-white text-red-600 hover:bg-red-50"
+    //                 >
+    //                     <Trash2 size={16} />
+    //                     Delete Seats
+    //                 </Button>
+    //                 <Button
+    //                     variant="outline"
+    //                     onClick={() => setBlockedArea(null)}
+    //                     className="bg-white"
+    //                 >
+    //                     Cancel
+    //                 </Button>
+    //             </div>
+    //         </div>
+    //     );
+    // };
 
     return (
         <div className="flex h-screen flex-col">
