@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Coupon;
+use App\Models\Event;
 use App\Models\Order;
+use App\Models\Seat;
 use App\Models\Team;
+use App\Models\Ticket;
+use App\Models\TicketOrder;
+use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
 {
@@ -27,14 +32,8 @@ class PaymentController extends Controller
      */
     public function charge(Request $request)
     {
+        DB::beginTransaction();
         try {
-            // Log full request for debugging
-            Log::info('Payment request received', [
-                'method' => $request->method(),
-                'all' => $request->all(),
-                'headers' => $request->headers->all(),
-            ]);
-
             // Validate the request
             $validator = Validator::make($request->all(), [
                 'email' => 'required|email',
@@ -45,38 +44,33 @@ class PaymentController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::warning('Payment validation failed', ['errors' => $validator->errors()]);
+                DB::rollBack();
                 return response()->json([
                     'message' => 'Validation error',
                     'errors' => $validator->errors()
                 ], 422);
             }
 
-            // Parse grouped_items if it's a string (from form submission)
-            $groupedItems = $request->grouped_items;
-            if (is_string($groupedItems)) {
-                $groupedItems = json_decode($groupedItems, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    Log::error('Failed to decode grouped_items JSON', ['error' => json_last_error_msg()]);
-                    return response()->json([
-                        'message' => 'Invalid grouped_items format',
-                        'error' => json_last_error_msg()
-                    ], 422);
-                }
+            // Ensure user is authenticated
+            if (!Auth::check()) {
+                DB::rollBack();
+                return response()->json(['message' => 'Unauthorized'], 401);
             }
 
-            // Generate a unique order ID
+            // Check Array
+            $groupedItems = $request->grouped_items;
+            if (!is_array($groupedItems)) {
+                DB::rollBack();
+                return response()->json(['message' => 'Invalid grouped_items format'], 422);
+            }
+
+            // Generate order ID
             $orderId = 'ORDER-' . time() . '-' . rand(1000, 9999);
 
             // Prepare transaction parameters
             $itemDetails = [];
             foreach ($groupedItems as $category => $item) {
-                // Format seat numbers if available
-                $seatLabel = '';
-                if (isset($item['seatNumbers']) && !empty($item['seatNumbers'])) {
-                    $seatLabel = ' (' . implode(', ', $item['seatNumbers']) . ')';
-                }
-
+                $seatLabel = isset($item['seatNumbers']) ? ' (' . implode(', ', $item['seatNumbers']) . ')' : '';
                 $itemDetails[] = [
                     'id' => 'TICKET-' . strtoupper($category),
                     'price' => (int)$item['price'],
@@ -85,69 +79,123 @@ class PaymentController extends Controller
                 ];
             }
 
-            // Get total amount with tax from request, or calculate it if not provided
-            $totalWithTax = $request->total_with_tax;
-            if (empty($totalWithTax)) {
-                $amount = (int)$request->amount;
-                $taxAmount = (int)($request->tax_amount ?? ($amount * 1 / 100)); // Default 1% tax if not provided
-                $totalWithTax = $amount + $taxAmount;
-            } else {
-                $totalWithTax = (int)$totalWithTax;
-            }
+            // Calculate total price with tax
+            $amount = (int)$request->amount;
+            $defaultTaxRate = config('app.default_tax_rate', 1);
+            $taxAmount = (int)($request->tax_amount ?? ($amount * $defaultTaxRate / 100));
+            $totalWithTax = $amount + $taxAmount;
 
-            // Add tax as a separate item to make it visible on Midtrans
-            if ($request->has('tax_amount') && $request->tax_amount > 0) {
+            // Add tax item
+            if ($taxAmount > 0) {
                 $itemDetails[] = [
-                    'id' => 'TAX-1PCT',
-                    'price' => (int)$request->tax_amount,
+                    'id' => 'TAX-' . $defaultTaxRate . 'PCT',
+                    'price' => $taxAmount,
                     'quantity' => 1,
-                    'name' => 'Tax (1%)',
+                    'name' => 'Tax (' . $defaultTaxRate . '%)',
                 ];
             }
 
-            // Make sure the total amount matches the sum of all items (required by Midtrans)
-            $params = [
-                'transaction_details' => [
+            // Validate host
+            $hostParts = explode('.', $request->getHost());
+            if (count($hostParts) < 2) {
+                DB::rollBack();
+                return response()->json(['message' => 'Invalid host'], 400);
+            }
+
+            $client = $hostParts[0];
+            $event = Event::where('slug', $client)->first();
+            if (!$event) {
+                DB::rollBack();
+                return response()->json(['message' => 'Event not found'], 404);
+            }
+
+            $team = Team::where('team_id', $event->team_id)->first();
+            if (!$team) {
+                DB::rollBack();
+                return response()->json(['message' => 'Team not found'], 404);
+            }
+
+            // Lock seats
+            $seats = collect();
+            foreach ($groupedItems as $category => $item) {
+                if (!empty($item['seatNumbers'])) {
+                    $seats = $seats->merge(
+                        Seat::whereIn('seat_number', $item['seatNumbers'])
+                            ->where('venue_id', $event->venue->venue_id)
+                            ->lockForUpdate()
+                            ->get()
+                    );
+                }
+            }
+            if ($seats->isEmpty()) {
+                DB::rollBack();
+                return response()->json(['message' => 'No seats available'], 400);
+            }
+
+            // Validate ticket availability
+            $seatIds = $seats->pluck('seat_id')->toArray();
+            $tickets = Ticket::whereIn('seat_id', $seatIds)
+                ->where('event_id', $event->event_id)
+                ->where('status', 'available')
+                ->distinct()
+                ->get();
+
+            if ($tickets->count() !== $seats->count()) {
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to lock seats'], 500);
+            }
+
+            // Lock tickets
+            $tickets->each(fn($ticket) => $ticket->update(['status' => 'in_transaction']));
+
+            // Create order
+            $order = Order::create([
+                'order_id' => $orderId,
+                'user_id' => Auth::id(),
+                'team_id' => $team->team_id,
+                'order_date' => now(),
+                'total_price' => $totalWithTax,
+                'status' => 'pending',
+            ]);
+
+            if (!$order) {
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to create order'], 500);
+            }
+
+            // Create ticket orders
+            $ticketOrders = [];
+            foreach ($tickets as $ticket) {
+                $ticketOrders[] = TicketOrder::create([
+                    'ticket_id' => $ticket->ticket_id,
                     'order_id' => $orderId,
-                    'gross_amount' => $totalWithTax, // Use total with tax
-                ],
-                'credit_card' => [
-                    'secure' => true,
-                ],
-                'customer_details' => [
-                    'email' => $request->email,
-                ],
+                    'event_id' => $event->event_id,
+                ]);
+            }
+
+            if (count($ticketOrders) !== $tickets->count()) {
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to create ticket orders'], 500);
+            }
+
+            // Get Midtrans Snap Token
+            $snapToken = Snap::getSnapToken([
+                'transaction_details' => ['order_id' => $orderId, 'gross_amount' => $totalWithTax],
+                'credit_card' => ['secure' => true],
+                'customer_details' => ['email' => $request->email],
                 'item_details' => $itemDetails,
-            ];
-
-            // Log the request to Midtrans
-            Log::info('Sending request to Midtrans', [
-                'params' => $params,
-                'server_key_exists' => !empty(Config::$serverKey),
             ]);
 
-            // Get Snap Token from Midtrans
-            $snapToken = Snap::getSnapToken($params);
-            Log::info('Midtrans response received', ['snap_token' => $snapToken ? 'received' : 'null']);
+            if (!$snapToken) {
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to get Snap token'], 500);
+            }
 
-            // Return the response
-            return response()->json([
-                'snap_token' => $snapToken,
-                'transaction_id' => $orderId,
-                'client_key' => config('services.midtrans.client_key'),
-            ]);
+            DB::commit();
+            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderId]);
         } catch (\Exception $e) {
-            Log::error('Error in payment charge: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'message' => 'Payment processing failed: ' . $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ], 500);
+            DB::rollBack();
+            return response()->json(['message' => 'Error processing payment: ' . $e->getMessage()], 500);
         }
     }
 
@@ -158,8 +206,7 @@ class PaymentController extends Controller
     {
         $data = $request->all();
 
-        Log::info('Midtrans callback received', ['data' => $data]);
-
+        DB::beginTransaction();
         try {
             if (!isset($data['order_id'], $data['gross_amount'], $data['transaction_status'])) {
                 return response()->json(['error' => 'Invalid callback data'], 400);
@@ -170,29 +217,30 @@ class PaymentController extends Controller
                 case 'capture':
                 case 'settlement':
                     // Payment success - update order status
-                    $this->updateOrderStatus($data['order_id'], 'paid', $data);
+                    $this->updateStatus($data['order_id'], 'paid', $data);
                     break;
 
                 case 'pending':
                     // Payment pending
-                    $this->updateOrderStatus($data['order_id'], 'pending', $data);
+                    $this->updateStatus($data['order_id'], 'pending', $data);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
                     // Payment failed or canceled
-                    $this->updateOrderStatus($data['order_id'], 'failed', $data);
+                    $this->updateStatus($data['order_id'], 'failed', $data);
                     break;
             }
 
+            DB::commit();
             return response()->json(['message' => 'Callback processed successfully']);
         } catch (\Exception $e) {
-            Log::error('Error processing payment callback: ' . $e->getMessage(), [
+            DB::rollBack();
+            Log::error('Failed to process callback', [
+                'error' => $e->getMessage(),
                 'data' => $data,
-                'exception' => $e,
             ]);
-
             return response()->json(['error' => 'Failed to process callback'], 500);
         }
     }
@@ -200,27 +248,29 @@ class PaymentController extends Controller
     /**
      * Update order status in the database
      */
-    private function updateOrderStatus($orderId, $status, $transactionData)
+    private function updateStatus($orderId, $status, $transactionData)
     {
-        Log::info('Updating order status', [
-            'order_id' => $orderId,
-            'status' => $status,
-        ]);
-
         // Implement your order update logic here
+        DB::beginTransaction();
         try {
-            // Add code to update your order in the database
-            // Example:
-            // Order::where('transaction_id', $orderId)
-            //     ->update(['status' => $status]);
+            Order::where('order_id', $orderId)->update([
+                'status' => $status
+            ]);
+
+            DB::commit();
         } catch (\Exception $e) {
-            Log::error('Failed to update order: ' . $e->getMessage());
+            DB::rollBack();
+            Log::error('Failed to update order status', [
+                'order_id' => $orderId,
+                'status' => $status,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
     public function callback(Request $request)
     {
-        Log::info('Midtrans Callback Received', $request->all());
+        // Log::info('Midtrans Callback Received', $request->all());
         return response()->json(['message' => 'Callback received']);
     }
-}    
+}

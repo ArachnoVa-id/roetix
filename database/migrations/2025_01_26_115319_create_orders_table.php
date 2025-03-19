@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('order_id', 36)->primary();
             $table->string('user_id', 36);
             $table->string('team_id', 36);
-            $table->string('coupon_id', 36);
+            $table->string('coupon_id', 36)->nullable();
             $table->datetime('order_date');
             $table->decimal('total_price', 9, 2);
             $table->enum('status', ['pending', 'completed', 'cancelled'])->default('pending');

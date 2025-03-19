@@ -21,9 +21,13 @@ class Order extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'order_id',
+        'user_id',
+        'team_id',
+        'coupon_id',
         'order_date',
         'total_price',
-        'status',
+        'status'
     ];
 
     protected static function boot()
@@ -55,5 +59,10 @@ class Order extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
+    }
+
+    public function ticketOrders(): HasMany
+    {
+        return $this->hasMany(TicketOrder::class, 'order_id', 'order_id');
     }
 }

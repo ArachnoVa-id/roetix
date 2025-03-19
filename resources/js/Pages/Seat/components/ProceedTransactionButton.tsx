@@ -50,7 +50,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         return () => {
             document.head.removeChild(snapScript);
         };
-    }, []);
+    }, [showError]);
 
     // Function to safely parse price
     const getSafePrice = (price: string | number | undefined): number => {
