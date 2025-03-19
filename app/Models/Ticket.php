@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 
@@ -57,5 +58,10 @@ class Ticket extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
+    }
+
+    public function ticketOrders(): HasMany
+    {
+        return $this->hasMany(TicketOrder::class, 'ticket_id', 'ticket_id');
     }
 }

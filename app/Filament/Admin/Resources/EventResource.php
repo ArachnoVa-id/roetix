@@ -195,12 +195,16 @@ class EventResource extends Resource
                                                 ->columnSpan(1),
                                             Infolists\Components\RepeatableEntry::make('eventCategoryTimeboundPrices')
                                                 ->label('Timeline')
+                                                ->grid(3)
                                                 ->columnSpan(2)
                                                 ->columns(3)
                                                 ->schema([
                                                     Infolists\Components\TextEntry::make('price'),
-                                                    Infolists\Components\TextEntry::make('is_active'),
+                                                    Infolists\Components\TextEntry::make('is_active')
+                                                        ->label('Status')
+                                                        ->formatStateUsing(fn($state) => $state ? 'Active' : 'Inactive'),
                                                     Infolists\Components\TextEntry::make('timelineSession.name')
+                                                        ->label('Timeline')
                                                 ])
                                         ])
                                 ]),
@@ -382,14 +386,14 @@ class EventResource extends Resource
 
                                         foreach ($copyTimeline as $key => $timeline) {
                                             $carbonifiedTLStart = Carbon::parse($timeline['start_date']);
-                                            $carbonifiedTLEnd = Carbon::parse($timeline['event_date']);
+                                            $carbonifiedTLEnd = Carbon::parse($timeline['end_date']);
 
                                             // nullify all the start_date and event_date that is outside the constraints
                                             if ($carbonifiedTLStart < $carbonifiedStart || $carbonifiedTLStart > $carbonifiedEnd) {
                                                 $copyTimeline[$key]['start_date'] = null;
                                             }
                                             if ($carbonifiedTLEnd < $carbonifiedStart || $carbonifiedTLEnd > $carbonifiedEnd) {
-                                                $copyTimeline[$key]['event_date'] = null;
+                                                $copyTimeline[$key]['end_date'] = null;
                                             }
                                         }
 
@@ -690,7 +694,7 @@ class EventResource extends Resource
                                                         $carbonifiedStart = Carbon::parse($get('start_date'));
                                                         $carbonifiedEnd = Carbon::parse($get('end_date'));
 
-                                                        if ($carbonifiedStart <= $carbonifiedEnd) {
+                                                        if ($carbonifiedStart >= $carbonifiedEnd) {
                                                             $set('end_date', null);
                                                         }
                                                     }
@@ -970,7 +974,7 @@ class EventResource extends Resource
                                     ->label('Expected Finish')
                                     ->minDate(
                                         fn() => $modelExists
-                                            ? min(now(), optional($currentModel->start_date) ? Carbon::parse($currentModel->start_date) : now())
+                                            ? min(now(), optional($currentModel->maintenance_expected_finish) ? Carbon::parse($currentModel->maintenance_expected_finish) : now())
                                             : now()
                                     ),
                                 Forms\Components\TextInput::make('maintenance_message')
@@ -1021,7 +1025,9 @@ class EventResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('category'),
                 Tables\Columns\TextColumn::make('start_date')
-                    ->label('Start'),
+                    ->label('Start')
+                    ->dateTime()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('event_date')
                     ->label('Date')
                     ->dateTime()
