@@ -31,9 +31,15 @@ class TicketCategoryFactory extends Factory
             'ticket_category_id' => (string) Str::uuid(),
             'event_id' => Event::factory(),
             'name' => $this->faker->sentence(2),
-            'color' => $this->faker->sentence(1),
+            'color' => $this->randomColor(),
             'created_at' => now(),
             'updated_at' => now(),
         ];
+    }
+
+    // Random color picker in hex
+    public function randomColor(): string
+    {
+        return '#' . str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
     }
 }
