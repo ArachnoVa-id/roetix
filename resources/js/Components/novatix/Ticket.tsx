@@ -47,11 +47,37 @@ export default function Ticket({
 }: TicketComponentProps): React.ReactElement {
     // Function to handle ticket download
     const handleDownload = (): void => {
-        // Call the ticket download endpoint
-        const downloadUrl = `/api/tickets/download?ticket_id=${ticketCode}&event_id=${eventId}`;
+        try {
+            // Dispatch a custom event for the parent component to show a toaster
+            const ticketActionEvent = new CustomEvent('ticket-action', {
+                detail: {
+                    action: 'download',
+                    ticketId: ticketCode,
+                    ticketType: ticketType,
+                },
+                bubbles: true,
+            });
+            window.dispatchEvent(ticketActionEvent);
 
-        // Open in a new window/tab
-        window.open(downloadUrl, '_blank');
+            // Call the ticket download endpoint
+            const downloadUrl = `/api/tickets/download?ticket_id=${ticketCode}&event_id=${eventId}`;
+
+            // Open in a new window/tab
+            window.open(downloadUrl, '_blank');
+        } catch (error) {
+            console.error('Error downloading ticket:', error);
+
+            // Dispatch error event
+            const errorEvent = new CustomEvent('ticket-action', {
+                detail: {
+                    action: 'error',
+                    ticketId: ticketCode,
+                    error: 'Failed to download ticket',
+                },
+                bubbles: true,
+            });
+            window.dispatchEvent(errorEvent);
+        }
     };
 
     // Determine color scheme based on ticket type

@@ -1,9 +1,21 @@
 import EmptyState from '@/Components/novatix/EmptyState';
 import Ticket from '@/Components/novatix/Ticket';
+import Toaster from '@/Components/novatix/Toaster';
+import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { MyTicketsPageProps, TicketProps } from '@/types/ticket';
 import { Head } from '@inertiajs/react';
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
+
+// Define the type for the custom event
+interface TicketActionEvent extends Event {
+    detail: {
+        action: string;
+        ticketId: string;
+        ticketType?: string;
+        error?: string;
+    };
+}
 
 export default function MyTickets({
     client,
@@ -11,16 +23,66 @@ export default function MyTickets({
     tickets,
     event,
 }: MyTicketsPageProps): React.ReactElement {
+    const { toasterState, showSuccess, showError, hideToaster } = useToaster();
+
     // Handle download all tickets - updated to use query parameters
     const handleDownloadAll = () => {
-        if (!tickets || tickets.length === 0 || !event?.event_id) return;
+        if (!tickets || tickets.length === 0 || !event?.event_id) {
+            showError('No tickets available to download');
+            return;
+        }
 
         const ticketIds = tickets.map((ticket) => ticket.id);
 
         // Update the URL to use query parameters instead of path parameters
         const downloadUrl = `/api/tickets/download-all?event_id=${event.event_id}&ticket_ids=${ticketIds.join(',')}`;
 
-        window.open(downloadUrl, '_blank');
+        try {
+            window.open(downloadUrl, '_blank');
+            showSuccess('Downloading all tickets');
+        } catch (error) {
+            showError('Failed to download tickets');
+        }
+    };
+
+    // Handle individual ticket download with useCallback to prevent dependency warning
+    const handleSingleTicketDownload = useCallback(
+        (ticketId: string) => {
+            showSuccess(`Downloading ticket ${ticketId}`);
+        },
+        [showSuccess],
+    );
+
+    // Pass this handler to each Ticket component
+    useEffect(() => {
+        // Listen for custom event from Ticket component
+        const handleTicketAction = (e: Event) => {
+            const customEvent = e as TicketActionEvent;
+            if (customEvent.detail?.action === 'download') {
+                handleSingleTicketDownload(customEvent.detail.ticketId);
+            } else if (customEvent.detail?.action === 'error') {
+                showError(
+                    customEvent.detail.error ||
+                        'An error occurred with the ticket',
+                );
+            }
+        };
+
+        window.addEventListener('ticket-action', handleTicketAction);
+
+        return () => {
+            window.removeEventListener('ticket-action', handleTicketAction);
+        };
+    }, [handleSingleTicketDownload, showError]);
+
+    // Create stylesheet classes instead of inline styles
+    const containerStyle = {
+        backgroundColor: props.primary_color,
+        color: props.text_primary_color,
+    };
+
+    const titleStyle = {
+        color: props.text_primary_color,
     };
 
     return (
@@ -30,16 +92,13 @@ export default function MyTickets({
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div
                         className="overflow-hidden shadow-sm sm:rounded-lg"
-                        style={{
-                            backgroundColor: props.primary_color,
-                            color: props.text_primary_color,
-                        }}
+                        style={containerStyle}
                     >
                         <div className="p-6">
                             <div className="mb-6 flex items-center justify-between">
                                 <h2
                                     className="text-xl font-semibold"
-                                    style={{ color: props.text_primary_color }}
+                                    style={titleStyle}
                                 >
                                     {event?.name || client} - My Tickets
                                 </h2>
@@ -91,6 +150,14 @@ export default function MyTickets({
                     </div>
                 </div>
             </div>
+
+            {/* Add the Toaster component */}
+            <Toaster
+                message={toasterState.message}
+                type={toasterState.type}
+                isVisible={toasterState.isVisible}
+                onClose={hideToaster}
+            />
         </AuthenticatedLayout>
     );
 }

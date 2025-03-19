@@ -1,11 +1,12 @@
+import Toaster from '@/Components/novatix/Toaster'; // Import the Toaster component
+import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransactionButton';
 import SeatMapDisplay from '@/Pages/Seat/SeatMapDisplay';
 import { Layout, SeatItem } from '@/Pages/Seat/types';
 import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
-
+import { useEffect, useMemo, useState } from 'react';
 interface Venue {
     venue_id: string;
     name: string;
@@ -63,6 +64,14 @@ export default function Landing({
     props,
 }: Props) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
+    const { toasterState, showSuccess, showError, hideToaster } = useToaster();
+
+    // Show error if it exists when component mounts
+    useEffect(() => {
+        if (error) {
+            showError(error);
+        }
+    }, [error]);
 
     // Tentukan apakah booking diperbolehkan berdasarkan status event
     const isBookingAllowed = useMemo(() => {
@@ -150,11 +159,13 @@ export default function Landing({
 
     const handleSeatClick = (seat: SeatItem) => {
         if (!isBookingAllowed) {
+            showError('Booking is not allowed at this time');
             return;
         }
 
         if (seat.status !== 'available') {
-            return; // Only allow selecting available seats
+            showError('This seat is not available');
+            return;
         }
 
         const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
@@ -162,6 +173,7 @@ export default function Landing({
             setSelectedSeats(
                 selectedSeats.filter((s) => s.seat_id !== seat.seat_id),
             );
+            showSuccess(`Seat ${seat.seat_number} removed from selection`);
         } else {
             if (selectedSeats.length < 5) {
                 // Calculate correct price based on category and timeline
@@ -170,6 +182,9 @@ export default function Landing({
                     price: getSeatPrice(seat),
                 };
                 setSelectedSeats([...selectedSeats, updatedSeat]);
+                showSuccess(`Seat ${seat.seat_number} added to selection`);
+            } else {
+                showError('You can only select up to 5 seats');
             }
         }
     };
@@ -558,6 +573,12 @@ export default function Landing({
                     </div>
                 </div>
             </div>
+            <Toaster
+                message={toasterState.message}
+                type={toasterState.type}
+                isVisible={toasterState.isVisible}
+                onClose={hideToaster}
+            />
         </AuthenticatedLayout>
     );
 }

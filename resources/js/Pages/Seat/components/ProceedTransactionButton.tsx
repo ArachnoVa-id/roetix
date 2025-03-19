@@ -1,3 +1,4 @@
+import useToaster from '@/hooks/useToaster';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import {
@@ -14,8 +15,8 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     total,
 }) => {
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [snapInitialized, setSnapInitialized] = useState(false);
+    const { showSuccess, showError } = useToaster();
 
     // Initialize Midtrans Snap on component mount
     useEffect(() => {
@@ -38,7 +39,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         };
         snapScript.onerror = () => {
             console.error('Failed to load Midtrans Snap');
-            setError(
+            showError(
                 'Payment system could not be loaded. Please try again later.',
             );
         };
@@ -116,19 +117,19 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     // Handle payment process
     const handleProceedTransaction = async () => {
         if (selectedSeats.length === 0) {
-            alert('Please select at least one seat to proceed.');
+            showError('Please select at least one seat to proceed.');
             return;
         }
 
         if (!snapInitialized) {
-            setError(
+            showError(
                 'Payment system is still initializing. Please try again in a moment.',
             );
             return;
         }
 
         setIsLoading(true);
-        setError(null);
+        showSuccess('Preparing your payment...');
 
         try {
             // Prepare the payment data
@@ -188,19 +189,19 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     const callbacks: MidtransCallbacks = {
                         onSuccess: (result) => {
                             console.log('Payment success:', result);
-                            alert('Payment successful!');
+                            showSuccess('Payment successful!');
                             window.location.reload();
                         },
                         onPending: (result) => {
                             console.log('Payment pending:', result);
-                            alert(
+                            showSuccess(
                                 'Your payment is pending. Please complete the payment.',
                             );
                             setIsLoading(false);
                         },
                         onError: (result) => {
                             console.error('Payment error:', result);
-                            setError('Payment failed. Please try again.');
+                            showError('Payment failed. Please try again.');
                             setIsLoading(false);
                         },
                         onClose: () => {
@@ -213,7 +214,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     window.snap.pay(response.data.snap_token, callbacks);
                 } else {
                     console.error('Snap.js is not properly initialized');
-                    setError(
+                    showError(
                         'Payment gateway not loaded. Please refresh the page and try again.',
                     );
                     setIsLoading(false);
@@ -228,9 +229,9 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 const errorMsg =
                     err.response?.data?.message ||
                     'Failed to connect to payment server';
-                setError(errorMsg);
+                showError(errorMsg);
             } else {
-                setError('An unexpected error occurred');
+                showError('An unexpected error occurred');
             }
 
             setIsLoading(false);
@@ -239,11 +240,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
     return (
         <div>
-            {error && (
-                <div className="mb-4 mt-2 rounded-md bg-red-50 p-3 text-red-600">
-                    {error}
-                </div>
-            )}
             <button
                 className="mt-4 rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600 disabled:opacity-50"
                 disabled={

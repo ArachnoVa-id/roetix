@@ -1,5 +1,6 @@
+import Toaster from '@/Components/novatix/Toaster'; // Import the Toaster component
+import useToaster from '@/hooks/useToaster';
 import { Head, router } from '@inertiajs/react';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import GridSeatEditor from './GridSeatEditor';
 import { LabelItem, Layout, SeatItem } from './types';
@@ -13,17 +14,16 @@ interface Props {
 }
 
 const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+    const { toasterState, showSuccess, showError, hideToaster } = useToaster();
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
     useEffect(() => {
         if (errors && Object.keys(errors).length > 0) {
-            setError(Object.values(errors).join('\n'));
+            showError(Object.values(errors).join('\n'));
         }
 
         if (flash?.success) {
-            setSuccess(flash.success);
+            showSuccess(flash.success);
         }
     }, [errors, flash]);
 
@@ -74,13 +74,11 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                 preserveScroll: true,
                 preserveState: true,
                 onSuccess: () => {
-                    setSuccess('Layout berhasil disimpan');
-                    setError(null);
+                    showSuccess('Layout saved sucessfully');
                     setIsSubmitting(false);
                 },
                 onError: (errors) => {
-                    setError(Object.values(errors).join('\n'));
-                    setSuccess(null);
+                    showError(Object.values(errors).join('\n'));
                     setIsSubmitting(false);
                 },
                 onFinish: () => {
@@ -89,8 +87,7 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
             });
         } catch (err) {
             console.error('Error in handleSave:', err);
-            setError('Failed to process layout data');
-            setSuccess(null);
+            showError('Failed to process layout data');
             setIsSubmitting(false);
         }
     };
@@ -105,28 +102,6 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                             <h2 className="mb-4 text-2xl font-bold">
                                 Grid Seat Editor
                             </h2>
-
-                            {error && (
-                                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-                                    <div className="flex items-center">
-                                        <AlertCircle className="mr-2 h-4 w-4 text-red-500" />
-                                        <p className="whitespace-pre-wrap text-red-500">
-                                            {error}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {success && (
-                                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
-                                    <div className="flex items-center">
-                                        <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                                        <p className="text-green-500">
-                                            {success}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
 
                             <div className="w-full overflow-x-auto">
                                 <div className="inline-block min-w-full">
@@ -144,6 +119,14 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Render the Toaster component */}
+            <Toaster
+                message={toasterState.message}
+                type={toasterState.type}
+                isVisible={toasterState.isVisible}
+                onClose={hideToaster}
+            />
         </>
     );
 };

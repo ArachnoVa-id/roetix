@@ -1,3 +1,5 @@
+import Toaster from '@/Components/novatix/Toaster';
+import useToaster from '@/hooks/useToaster';
 import { Head } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -58,8 +60,9 @@ const Edit: React.FC<Props> = ({
     ticketCategories = [],
     categoryPrices = [],
 }) => {
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+    const { toasterState, showSuccess, showError, hideToaster } = useToaster();
+    // const [error, setError] = useState<string | null>(null);
+    // const [success, setSuccess] = useState<string | null>(null);
     const [currentLayout, setCurrentLayout] = useState<Layout>(layout);
 
     // Create a mapping of category names to prices
@@ -111,9 +114,6 @@ const Edit: React.FC<Props> = ({
     }, [currentTimeline, ticketCategories, categoryPrices]);
 
     const handleSave = (updatedSeats: UpdatedSeats[]) => {
-        setError(null);
-        setSuccess(null);
-
         // Optimistically update the UI immediately
         const updatedLayout = { ...currentLayout };
         updatedSeats.forEach((update) => {
@@ -126,7 +126,7 @@ const Edit: React.FC<Props> = ({
             if (seatToUpdate) {
                 seatToUpdate.status = update.status;
                 seatToUpdate.ticket_type = update.ticket_type;
-                seatToUpdate.price = update.price; // Update the price in UI based on what's sent
+                seatToUpdate.price = update.price;
             }
         });
 
@@ -163,13 +163,8 @@ const Edit: React.FC<Props> = ({
             })
             .then((data) => {
                 if (data.success) {
-                    setSuccess('Tickets updated successfully');
+                    showSuccess('Tickets updated successfully');
                     // Success already reflected in UI
-
-                    // Hide success message after 2 seconds
-                    setTimeout(() => {
-                        setSuccess(null);
-                    }, 2000);
                 } else {
                     throw new Error(data.message || 'Unknown error occurred');
                 }
@@ -180,14 +175,9 @@ const Edit: React.FC<Props> = ({
 
                 // Revert to original layout on error
                 setCurrentLayout(layout);
-                setError(
+                showError(
                     `Failed to update tickets. Please try again. ${err.message}`,
                 );
-
-                // Hide error message after 5 seconds
-                setTimeout(() => {
-                    setError(null);
-                }, 5000);
             });
     };
 
@@ -269,7 +259,7 @@ const Edit: React.FC<Props> = ({
                                 </div>
                             )}
 
-                            {error && (
+                            {/* {error && (
                                 <div className="mb-4 rounded bg-red-100 p-4 text-red-700">
                                     {error}
                                 </div>
@@ -278,14 +268,14 @@ const Edit: React.FC<Props> = ({
                                 <div className="mb-4 rounded bg-green-100 p-4 text-green-700">
                                     {success}
                                 </div>
-                            )}
+                            )} */}
                             <div className="overflow-x-auto">
                                 <div className="min-w-max">
                                     <SeatMapEditor
                                         layout={currentLayout}
                                         onSave={handleSave}
                                         ticketTypes={ticketTypes}
-                                        categoryColors={categoryColorMap} // Gunakan map warna yang baru dibuat
+                                        categoryColors={categoryColorMap}
                                         currentTimeline={currentTimeline}
                                         categoryPrices={categoryNameToPriceMap}
                                     />
@@ -295,6 +285,14 @@ const Edit: React.FC<Props> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Render the Toaster component */}
+            <Toaster
+                message={toasterState.message}
+                type={toasterState.type}
+                isVisible={toasterState.isVisible}
+                onClose={hideToaster}
+            />
         </>
     );
 };
