@@ -46,10 +46,6 @@ Route::domain(config('app.domain'))
                     ->name('auth.google-authentication');
             });
 
-        // Midtrans Payment Callback
-        Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])
-            ->name('payment.midtranscallback');
-
         // Session Debugging Route
         Route::get('/check-session', function () {
             return response()->json([

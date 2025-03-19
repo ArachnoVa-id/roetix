@@ -154,16 +154,12 @@ class EventResource extends Resource
                     ->label('Status')
                     ->icon('heroicon-m-exclamation-triangle')
                     ->color('primary'),
-                Infolists\Components\TextEntry::make('event_date')
-                    ->label('Event Date')
-                    ->icon('heroicon-m-calendar')
-                    ->dateTime(),
                 Infolists\Components\TextEntry::make('start_date')
-                    ->label('Start')
+                    ->label('Start Serving')
                     ->icon('heroicon-m-calendar-date-range')
                     ->dateTime(),
-                Infolists\Components\TextEntry::make('end_date')
-                    ->label('End')
+                Infolists\Components\TextEntry::make('event_date')
+                    ->label('D-Day')
                     ->icon('heroicon-m-calendar-date-range')
                     ->dateTime(),
                 Infolists\Components\TextEntry::make('location')
@@ -376,24 +372,24 @@ class EventResource extends Resource
                                     ->required()
                                     ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
                                         $carbonifiedStart = Carbon::parse($get('start_date'));
-                                        $carbonifiedEnd = Carbon::parse($get('end_date'));
+                                        $carbonifiedEnd = Carbon::parse($get('event_date'));
 
                                         if ($carbonifiedStart >= $carbonifiedEnd) {
-                                            $set('end_date', null);
+                                            $set('event_date', null);
                                         }
 
                                         $copyTimeline = $get('event_timeline');
 
                                         foreach ($copyTimeline as $key => $timeline) {
                                             $carbonifiedTLStart = Carbon::parse($timeline['start_date']);
-                                            $carbonifiedTLEnd = Carbon::parse($timeline['end_date']);
+                                            $carbonifiedTLEnd = Carbon::parse($timeline['event_date']);
 
-                                            // nullify all the start_date and end_date that is outside the constraints
+                                            // nullify all the start_date and event_date that is outside the constraints
                                             if ($carbonifiedTLStart < $carbonifiedStart || $carbonifiedTLStart > $carbonifiedEnd) {
                                                 $copyTimeline[$key]['start_date'] = null;
                                             }
                                             if ($carbonifiedTLEnd < $carbonifiedStart || $carbonifiedTLEnd > $carbonifiedEnd) {
-                                                $copyTimeline[$key]['end_date'] = null;
+                                                $copyTimeline[$key]['event_date'] = null;
                                             }
                                         }
 
@@ -413,17 +409,17 @@ class EventResource extends Resource
                                         $copyTimeline = $get('event_timeline');
 
                                         $carbonifiedStart = Carbon::parse($get('start_date'));
-                                        $carbonifiedEnd = Carbon::parse($get('end_date'));
+                                        $carbonifiedEnd = Carbon::parse($get('event_date'));
 
                                         foreach ($copyTimeline as $key => $timeline) {
                                             $carbonifiedTLStart = Carbon::parse($timeline['start_date']);
-                                            $carbonifiedTLEnd = Carbon::parse($timeline['end_date']);
-                                            // nullify all the start_date and end_date that is outside the constraints
+                                            $carbonifiedTLEnd = Carbon::parse($timeline['event_date']);
+                                            // nullify all the start_date and event_date that is outside the constraints
                                             if ($carbonifiedTLStart < $carbonifiedStart || $carbonifiedTLStart > $carbonifiedEnd) {
                                                 $copyTimeline[$key]['start_date'] = null;
                                             }
                                             if ($carbonifiedTLEnd < $carbonifiedStart || $carbonifiedTLEnd > $carbonifiedEnd) {
-                                                $copyTimeline[$key]['end_date'] = null;
+                                                $copyTimeline[$key]['event_date'] = null;
                                             }
                                         }
 
@@ -1019,6 +1015,7 @@ class EventResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
+                    ->limit(50)
                     ->label('Event Name')
                     ->sortable()
                     ->searchable(),
@@ -1030,6 +1027,7 @@ class EventResource extends Resource
                     ->dateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('location')
+                    ->limit(50)
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('status')

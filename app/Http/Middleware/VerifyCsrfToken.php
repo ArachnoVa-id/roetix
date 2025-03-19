@@ -13,13 +13,8 @@ class VerifyCsrfToken extends Middleware
      *
      * @var array<int, string>
      */
-    protected $except = [
-        // You can exclude specific routes if needed, but it's better 
-        // to properly handle CSRF tokens
-        // 'payment/webhook', // Example: exclude payment webhooks
-        'payment/charge',
-    ];
-    
+    protected $except = [];
+
     /**
      * Determine if the request has a valid CSRF token.
      *
@@ -34,7 +29,7 @@ class VerifyCsrfToken extends Middleware
             'header' => $request->header('X-CSRF-TOKEN'),
             'xsrf' => $request->header('X-XSRF-TOKEN'),
         ]);
-        
+
         return parent::tokensMatch($request);
     }
 }
