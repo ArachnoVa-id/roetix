@@ -35,7 +35,6 @@ class DatabaseSeeder extends Seeder
             UserContactSeeder::class,
             TicketSeeder::class,
             TicketCategorySeeder::class,
-            CouponSeeder::class,
             TimelineSessionSeeder::class,
             EventCategoryTimeboundPriceSeeder::class,
             // OrderSeeder::class,

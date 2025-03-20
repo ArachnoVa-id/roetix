@@ -23,7 +23,6 @@ return new class extends Migration
             // $table->foreign('event_variables_id')->references('event_variables_id')->on('event_variables')->onDelete('cascade');
             $table->string('name');
             $table->string('slug');
-            $table->enum('category', ['concert', 'sports', 'workshop', 'etc']);
             $table->dateTime('start_date');
             $table->dateTime('event_date');
             $table->string('location');

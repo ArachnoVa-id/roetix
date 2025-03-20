@@ -40,7 +40,6 @@ class EventFactory extends Factory
             'venue_id' => Venue::inRandomOrder()->first()?->venue_id,
             'name' => $name,
             'slug' => $slug,
-            'category' => $this->faker->randomElement(['concert', 'sports', 'workshop', 'etc']),
             'start_date' => $this->faker->dateTimeBetween('now', '+1 month'),
             'event_date' => $endDate,
             'location' => $this->faker->address(),

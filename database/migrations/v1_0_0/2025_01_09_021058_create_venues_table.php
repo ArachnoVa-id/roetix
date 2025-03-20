@@ -18,7 +18,6 @@ return new class extends Migration
 
             $table->string('name');
             $table->string('location');
-            $table->integer('capacity');
             $table->string('contact_info', 36);
             $table->enum('status', ['active', 'inactive', 'under_maintenance'])->default('active');
             $table->timestamps();
