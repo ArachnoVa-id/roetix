@@ -6,6 +6,12 @@ import { createRoot } from 'react-dom/client';
 import SeatMapEditor, { UpdatedSeats } from './SeatMapEditor';
 import { Layout, SeatItem } from './types';
 
+declare global {
+    interface Window {
+        eventTimelines?: Timeline[];
+    }
+}
+
 interface Event {
     event_id: string;
     name: string;
@@ -56,47 +62,172 @@ const Edit: React.FC<Props> = ({
     venue,
     ticketTypes,
     categoryColors = {},
-    currentTimeline,
+    currentTimeline, // This will be overridden by automatic timeline selection
     ticketCategories = [],
     categoryPrices = [],
 }) => {
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
-    // const [error, setError] = useState<string | null>(null);
-    // const [success, setSuccess] = useState<string | null>(null);
     const [currentLayout, setCurrentLayout] = useState<Layout>(layout);
-
-    // Create a mapping of category names to prices
     const [categoryNameToPriceMap, setCategoryNameToPriceMap] = useState<
         Record<string, number>
     >({});
-
     const [categoryColorMap, setCategoryColorMap] = useState<
         Record<string, string>
     >({});
 
-    // Process category prices based on current timeline and categories
+    // Add new state for automatically determined timeline
+    const [activeTimeline, setActiveTimeline] = useState<Timeline | undefined>(
+        currentTimeline,
+    );
+
+    // Function to generate styles for category displays
+    const getCategoryStyle = (category: string) => {
+        return {
+            backgroundColor: categoryColors[category]
+                ? categoryColors[category] + '33'
+                : undefined,
+            borderColor: categoryColors[category],
+        };
+    };
+
+    // Determine the current timeline based on current date
+    useEffect(() => {
+        // Get current date
+        const now = new Date();
+
+        // Function to determine which timeline is active based on current date
+        const determineActiveTimeline = (timelines: Timeline[] = []) => {
+            // Sort timelines by start date to ensure we get the earliest valid one
+            const sortedTimelines = [...timelines].sort(
+                (a, b) =>
+                    new Date(a.start_date).getTime() -
+                    new Date(b.start_date).getTime(),
+            );
+
+            // Find the first timeline that includes the current date
+            const active = sortedTimelines.find((timeline) => {
+                const startDate = new Date(timeline.start_date);
+                const endDate = new Date(timeline.end_date);
+                return now >= startDate && now <= endDate;
+            });
+
+            // If no timeline is currently active, find the next upcoming timeline
+            if (!active && sortedTimelines.length > 0) {
+                const upcoming = sortedTimelines.find(
+                    (timeline) => new Date(timeline.start_date) > now,
+                );
+
+                if (upcoming) {
+                    return upcoming;
+                }
+            }
+
+            return active;
+        };
+
+        // If we have timeline data in props, use that
+        if (
+            ticketCategories.length > 0 &&
+            categoryPrices.length > 0 &&
+            currentTimeline
+        ) {
+            // Get all unique timeline IDs from category prices
+            const timelineIds = Array.from(
+                new Set(categoryPrices.map((price) => price.timeline_id)),
+            );
+
+            // Fetch timeline details for all these IDs
+            const fetchTimelineDetails = async () => {
+                try {
+                    const response = await fetch(
+                        `/api/events/${event.event_id}/timelines`,
+                    );
+                    if (!response.ok) {
+                        throw new Error(
+                            `Failed to fetch timelines: ${response.statusText}`,
+                        );
+                    }
+
+                    const data = await response.json();
+                    const timelines: Timeline[] = data.timelines || [];
+
+                    // Find timelines that match our IDs
+                    const relevantTimelines = timelines.filter((t) =>
+                        timelineIds.includes(t.timeline_id),
+                    );
+
+                    // Determine active timeline
+                    const active = determineActiveTimeline(relevantTimelines);
+
+                    if (active) {
+                        setActiveTimeline(active);
+                        console.log(
+                            `[${new Date().toISOString()}] Active timeline: ${active.name} (${active.start_date} to ${active.end_date})`,
+                        );
+                    } else {
+                        // If no active timeline found, keep using the current one from props
+                        console.log(
+                            `[${new Date().toISOString()}] No active timeline found based on current date, using provided default`,
+                        );
+                    }
+                } catch (error) {
+                    console.error('Error fetching timelines:', error);
+                    // Keep using the current timeline from props
+                }
+            };
+
+            // If timelines are already provided in a global variable, use those instead of fetching
+            if (
+                typeof window !== 'undefined' &&
+                window.eventTimelines &&
+                Array.isArray(window.eventTimelines) &&
+                window.eventTimelines.length > 0
+            ) {
+                const relevantTimelines = window.eventTimelines.filter(
+                    (t: Timeline) => timelineIds.includes(t.timeline_id),
+                );
+
+                const active = determineActiveTimeline(relevantTimelines);
+                if (
+                    active &&
+                    active.timeline_id !== currentTimeline.timeline_id
+                ) {
+                    setActiveTimeline(active);
+                    console.log(
+                        `[${new Date().toISOString()}] Switching to timeline: ${active.name} based on current date`,
+                    );
+                }
+            } else {
+                fetchTimelineDetails();
+            }
+        }
+    }, [event.event_id, currentTimeline, ticketCategories, categoryPrices]);
+
+    // Process category prices based on active timeline and categories
     useEffect(() => {
         if (
-            currentTimeline &&
+            activeTimeline &&
             ticketCategories.length > 0 &&
             categoryPrices.length > 0
         ) {
+            console.log(
+                `[${new Date().toISOString()}] Updating price mappings for timeline: ${activeTimeline.name}`,
+            );
+
             const priceMap: Record<string, number> = {};
-            const colorMap: Record<string, string> = {}; // Tambahkan map untuk warna
+            const colorMap: Record<string, string> = {};
 
             // Create a mapping of category IDs to category names and colors
             const categoryIdToNameMap: Record<string, string> = {};
             ticketCategories.forEach((category) => {
                 categoryIdToNameMap[category.ticket_category_id] =
                     category.name;
-
-                // Map category name to its color (hex value)
                 colorMap[category.name] = category.color;
             });
 
-            // Find prices for the current timeline
+            // Find prices for the active timeline
             const currentTimelinePrices = categoryPrices.filter(
-                (price) => price.timeline_id === currentTimeline.timeline_id,
+                (price) => price.timeline_id === activeTimeline.timeline_id,
             );
 
             // Map category IDs to their prices and then to category names
@@ -108,10 +239,14 @@ const Edit: React.FC<Props> = ({
                 }
             });
 
+            // Update state with the new mappings
             setCategoryNameToPriceMap(priceMap);
-            setCategoryColorMap(colorMap); // Simpan pemetaan warna
+            setCategoryColorMap(colorMap);
+
+            console.log('Updated price map:', priceMap);
+            console.log('Updated color map:', colorMap);
         }
-    }, [currentTimeline, ticketCategories, categoryPrices]);
+    }, [activeTimeline, ticketCategories, categoryPrices]);
 
     const handleSave = (updatedSeats: UpdatedSeats[]) => {
         // Optimistically update the UI immediately
@@ -195,28 +330,38 @@ const Edit: React.FC<Props> = ({
                                 Venue: {venue.name} | Event ID: {event.event_id}
                             </p>
 
-                            {currentTimeline && (
+                            {activeTimeline ? (
                                 <div className="mb-4">
                                     <h3 className="text-lg font-semibold">
                                         Current Timeline Period
                                     </h3>
                                     <div className="mt-2 rounded-lg bg-blue-50 p-3">
                                         <div className="font-medium">
-                                            {currentTimeline.name}
+                                            {activeTimeline.name}
                                         </div>
                                         <div className="text-sm text-gray-600">
                                             {new Date(
-                                                currentTimeline.start_date,
+                                                activeTimeline.start_date,
                                             ).toLocaleDateString()}{' '}
                                             -{' '}
                                             {new Date(
-                                                currentTimeline.end_date,
+                                                activeTimeline.end_date,
                                             ).toLocaleDateString()}
                                         </div>
                                         <div className="mt-2 text-xs text-blue-500">
                                             Prices are managed in the ticket
                                             category settings for this timeline.
                                         </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mb-4 rounded-lg bg-yellow-50 p-3">
+                                    <div className="font-medium text-yellow-700">
+                                        No active timeline found
+                                    </div>
+                                    <div className="text-sm text-yellow-600">
+                                        Please set up a timeline for this event
+                                        to configure pricing.
                                     </div>
                                 </div>
                             )}
@@ -234,18 +379,9 @@ const Edit: React.FC<Props> = ({
                                             <div
                                                 key={category}
                                                 className="rounded-lg border p-3"
-                                                style={{
-                                                    backgroundColor:
-                                                        categoryColors[category]
-                                                            ? categoryColors[
-                                                                  category
-                                                              ] + '33'
-                                                            : undefined, // Add transparency
-                                                    borderColor:
-                                                        categoryColors[
-                                                            category
-                                                        ],
-                                                }}
+                                                style={getCategoryStyle(
+                                                    category,
+                                                )}
                                             >
                                                 <div className="font-medium">
                                                     {category}
@@ -259,16 +395,6 @@ const Edit: React.FC<Props> = ({
                                 </div>
                             )}
 
-                            {/* {error && (
-                                <div className="mb-4 rounded bg-red-100 p-4 text-red-700">
-                                    {error}
-                                </div>
-                            )}
-                            {success && (
-                                <div className="mb-4 rounded bg-green-100 p-4 text-green-700">
-                                    {success}
-                                </div>
-                            )} */}
                             <div className="overflow-x-auto">
                                 <div className="min-w-max">
                                     <SeatMapEditor
@@ -276,7 +402,7 @@ const Edit: React.FC<Props> = ({
                                         onSave={handleSave}
                                         ticketTypes={ticketTypes}
                                         categoryColors={categoryColorMap}
-                                        currentTimeline={currentTimeline}
+                                        currentTimeline={activeTimeline}
                                         categoryPrices={categoryNameToPriceMap}
                                     />
                                 </div>
