@@ -148,8 +148,11 @@ class TicketResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('ticket_id')
-                    ->label('ID'),
-                Tables\Columns\TextColumn::make('event.name'),
+                    ->label('ID')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('event.name')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('ticket_type'),
                 Tables\Columns\TextColumn::make('price'),
                 Tables\Columns\TextColumn::make('status'),
@@ -178,8 +181,6 @@ class TicketResource extends Resource
     {
         return [
             'index' => Pages\ListTickets::route('/'),
-            'create' => Pages\CreateTicket::route('/create'),
-            'edit' => Pages\EditTicket::route('/{record}/edit'),
             'view' => Pages\ViewTicket::route('/{record}'),
         ];
     }

@@ -151,6 +151,7 @@ class PaymentController extends Controller
             // Create order
             $order = Order::create([
                 'order_id' => $orderId,
+                'event_id' => $event->event_id,
                 'user_id' => Auth::id(),
                 'team_id' => $team->team_id,
                 'order_date' => now(),

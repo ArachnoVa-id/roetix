@@ -22,9 +22,9 @@ class Order extends Model
 
     protected $fillable = [
         'order_id',
+        'event_id',
         'user_id',
         'team_id',
-        'coupon_id',
         'order_date',
         'total_price',
         'status'
@@ -41,9 +41,9 @@ class Order extends Model
         });
     }
 
-    public function tickets(): HasMany
+    public function tickets(): BelongsToMany
     {
-        return $this->HasMany(Ticket::class, 'ticket_id', 'ticket_id');
+        return $this->belongsToMany(Ticket::class, 'ticket_order', 'order_id', 'ticket_id');
     }
 
     public function user(): BelongsTo
@@ -59,10 +59,5 @@ class Order extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
-    }
-
-    public function ticketOrders(): HasMany
-    {
-        return $this->hasMany(TicketOrder::class, 'order_id', 'order_id');
     }
 }

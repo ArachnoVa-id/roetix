@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->string('order_id', 36)->primary();
             $table->string('user_id', 36);
+            $table->string('event_id', 36);
             $table->string('team_id', 36);
             $table->datetime('order_date');
             $table->decimal('total_price', 9, 2);
@@ -21,6 +22,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
+            $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
+            $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
         });
 
         Schema::create('ticket_order', function (Blueprint $table) {

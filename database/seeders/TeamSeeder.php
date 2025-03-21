@@ -18,12 +18,10 @@ class TeamSeeder extends Seeder
     {
         $users = User::all();
 
-        foreach($users as $user)
-        {
+        foreach ($users as $user) {
             $randValue = rand(1, 4);
 
-            for($i = 0; $i < $randValue; $i++)
-            {
+            for ($i = 0; $i < $randValue; $i++) {
                 $tms = Team::create([
                     'name' => $user->last_name . strtoupper(Str::random(1)) . "'s Team",
                     'code' => 'TEAM-' . strtoupper(Str::random(6)),

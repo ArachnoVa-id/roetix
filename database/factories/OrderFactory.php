@@ -1,13 +1,11 @@
 <?php
 
 namespace Database\Factories;
+
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 use Illuminate\Support\Str;
-use App\Models\Order;
 use App\Models\User;
-use App\Models\Ticket;
-use App\Models\Coupon;
 use App\Models\Team;
 
 /**
@@ -26,7 +24,6 @@ class OrderFactory extends Factory
             'order_id' => (string) Str::uuid(),
             'user_id' => User::inRandomOrder()->first()->user_id,
             'team_id' => Team::inRandomOrder()->first()->team_id,
-            'coupon_id' => Coupon::inRandomOrder()->first()->user_id ?? Coupon::factory(),
             'order_date' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'total_price' => $this->faker->randomFloat(2, 100000, 1000000),
             'status' => $this->faker->randomElement(['pending', 'completed', 'cancelled']),

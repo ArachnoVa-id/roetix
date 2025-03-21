@@ -15,7 +15,6 @@ class DatabaseSeeder extends Seeder
 
         // Team::truncate();
         // Order::truncate();
-        // Coupon::truncate();
         // TicketCategory::truncate();
         // Ticket::truncate();
         // Seat::truncate();

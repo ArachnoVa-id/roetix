@@ -4,24 +4,17 @@ namespace App\Filament\Admin\Resources;
 
 use Carbon\Carbon;
 use Filament\Forms;
-use App\Models\Seat;
 use Filament\Tables;
 use App\Models\Event;
-use App\Models\Venue;
 use Filament\Actions;
-use App\Models\Ticket;
-use Livewire\Livewire;
 use Filament\Infolists;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
-use Ramsey\Uuid\Rfc4122\UuidV4;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Date;
-use Illuminate\Support\Facades\Cache;
 use App\Filament\Admin\Resources\EventResource\Pages;
-use Filament\Infolists\Infolist;
-use Illuminate\Console\View\Components\Info;
+use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
+use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
 
 class EventResource extends Resource
 {
@@ -206,7 +199,6 @@ class EventResource extends Resource
                                         ])
                                 ]),
                         ]),
-
                     Infolists\Components\Tabs\Tab::make('Event Variables')
                         ->columns(4)
                         ->schema([
@@ -231,13 +223,13 @@ class EventResource extends Resource
                                         ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
 
                                     Infolists\Components\TextEntry::make('maintenance_title')
-                                        ->label('Maintenance Title'),
+                                        ->label('Title'),
 
                                     Infolists\Components\TextEntry::make('maintenance_message')
-                                        ->label('Maintenance Message'),
+                                        ->label('Message'),
 
                                     Infolists\Components\TextEntry::make('maintenance_expected_finish')
-                                        ->label('Maintenance Expected Finish'),
+                                        ->label('Expected Finish'),
                                 ]),
 
                             Infolists\Components\Section::make('Logo')
@@ -271,6 +263,16 @@ class EventResource extends Resource
                                     Infolists\Components\ColorEntry::make('text_secondary_color')
                                         ->label('Text Secondary Color'),
                                 ])
+                        ]),
+                    // Infolists\Components\Tabs\Tab::make('Orders')
+                    //     ->schema([
+                    //         \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                    //             ->manager(OrdersRelationManager::class)
+                    //     ]),
+                    Infolists\Components\Tabs\Tab::make('Tickets')
+                        ->schema([
+                            \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                ->manager(TicketsRelationManager::class)
                         ]),
                     Infolists\Components\Tabs\Tab::make('Scan Tickets')
                         ->schema([
@@ -963,7 +965,7 @@ class EventResource extends Resource
                                     ->label('Expected Finish')
                                     ->minDate(
                                         fn() => $modelExists
-                                            ? min(now(), optional($currentModel->maintenance_expected_finish) ? Carbon::parse($currentModel->maintenance_expected_finish) : now())
+                                            ? min(now(), optional($currentModel->eventVariables->maintenance_expected_finish) ? Carbon::parse($currentModel->eventVariables->maintenance_expected_finish) : now())
                                             : now()
                                     ),
                                 Forms\Components\TextInput::make('maintenance_message')

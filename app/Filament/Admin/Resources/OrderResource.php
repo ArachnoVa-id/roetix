@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers;
+use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
 use App\Models\Order;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -89,27 +90,44 @@ class OrderResource extends Resource
                                 return $parsed[0];
                             }),
                     ]),
+                Infolists\Components\Tabs::make()
+                    ->columnSpanFull()
+                    ->schema([
+                        Infolists\Components\Tabs\Tab::make('Tickets')
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(TicketsRelationManager::class)
+                            ]),
+                    ]),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('order_date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('order_id')
-                    ->label('Order'),
+                    ->label('Order')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('user')
                     ->formatStateUsing(function ($state) {
                         return $state->getUserName();
                     })
-                    ->label('User'),
+                    ->label('User')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('order_date')
-                    ->label('Date'),
+                    ->label('Date')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('total_price')
-                    ->label('Total'),
+                    ->label('Total')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('status'),
                 Tables\Columns\TextColumn::make('events.name')
                     ->label('Event')
+                    ->searchable()
+                    ->sortable()
                     ->formatStateUsing(function ($state) {
                         $parsed = explode(',', $state);
                         return $parsed[0];
@@ -136,8 +154,6 @@ class OrderResource extends Resource
     {
         return [
             'index' => Pages\ListOrders::route('/'),
-            'create' => Pages\CreateOrder::route('/create'),
-            'edit' => Pages\EditOrder::route('/{record}/edit'),
             'view' => Pages\ViewOrder::route('/{record}'),
         ];
     }
