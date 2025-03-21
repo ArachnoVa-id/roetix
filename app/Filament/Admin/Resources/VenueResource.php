@@ -45,7 +45,7 @@ class VenueResource extends Resources\Resource
                     ->schema([
                         Infolists\Components\TextEntry::make('name'),
                         Infolists\Components\TextEntry::make('location'),
-                        Infolists\Components\TextEntry::make('capacity'),
+                        // Infolists\Components\TextEntry::make('capacity'),
                         Infolists\Components\TextEntry::make('status'),
                     ]),
                 Infolists\Components\Section::make('Venue Contact')
@@ -90,10 +90,6 @@ class VenueResource extends Resources\Resource
                             ->required(),
                         Forms\Components\TextInput::make('location')
                             ->label('Location')
-                            ->required(),
-                        Forms\Components\TextInput::make('capacity')
-                            ->label('Capacity')
-                            ->numeric()
                             ->required(),
                         Forms\Components\Select::make('status')
                             ->label('Status')
@@ -143,24 +139,45 @@ class VenueResource extends Resources\Resource
                     ->searchable()
                     ->sortable()
                     ->limit(50),
-                Tables\Columns\TextColumn::make('capacity'),
+                Tables\Columns\TextColumn::make('capacity')
+                    ->label('Capacity')
+                    ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('status'),
             ])
             ->filters(
                 [
                     Tables\Filters\Filter::make('capacity')
                         ->columns(2)
-                        ->form(
-                            [
-                                Forms\Components\TextInput::make('min')->label('Min Capacity')->columnSpan(1),
-                                Forms\Components\TextInput::make('max')->label('Max Capacity')->columnSpan(1),
-                            ]
-                        )
+                        ->form([
+                            Forms\Components\TextInput::make('min')
+                                ->placeholder('Min')
+                                ->numeric()
+                                ->reactive()
+                                ->formatStateUsing(fn($state) => $state ?? null)
+                                ->afterStateUpdated(fn($state) => $state ? ($state < 0 ? 0 : $state) : null)
+                                ->label('Min Capacity')
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('max')
+                                ->placeholder('Max')
+                                ->numeric()
+                                ->reactive()
+                                ->formatStateUsing(fn($state) => $state ?? null)
+                                ->afterStateUpdated(fn($state) => $state ? ($state < 0 ? 0 : $state) : null)
+                                ->label('Max Capacity')
+                                ->columnSpan(1),
+                        ])
                         ->query(function ($query, array $data) {
-                            return $query
-                                ->when($data['min'], fn($q) => $q->where('capacity', '>=', $data['min']))
-                                ->when($data['max'], fn($q) => $q->where('capacity', '<=', $data['max']));
+                            return $query->whereIn('venue_id', function ($subquery) use ($data) {
+                                $subquery->select('venue_id')
+                                    ->from('seats')
+                                    ->groupBy('venue_id')
+                                    ->havingRaw('COUNT(venue_id) >= ?', [(int) (empty($data['min']) ? 0 : $data['min'])])
+                                    ->havingRaw('COUNT(venue_id) <= ?', [(int) (empty($data['max']) ? PHP_INT_MAX : $data['max'])]);
+                            });
                         }),
+
+
                     Tables\Filters\SelectFilter::make('status')
                         ->multiple(),
                 ],

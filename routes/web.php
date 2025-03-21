@@ -63,7 +63,23 @@ Route::domain(config('app.domain'))
         });
 
         // Redirect Home to Tenant Dashboard
-        Route::get('/', function () {})->name('home');
+        Route::get('/', function () {
+            if (!Auth::check()) {
+                return redirect()->route('login');
+            }
+
+            $user = Auth::user();
+            $userInModel = User::find($user->user_id);
+
+            if ($userInModel?->role === 'user') {
+                Auth::logout();
+                return redirect()->route('login');
+            }
+
+            return ($team = $userInModel?->teams()->first())
+                ? redirect()->route('filament.admin.pages.dashboard', ['tenant' => $team->code])
+                : redirect()->route('login');
+        })->name('home');
 
         // Seat Management Routes (Protected)
         Route::middleware('auth')->group(function () {

@@ -43,7 +43,7 @@ const getMessage = (code: number): string => {
         case 417:
             return 'Expectation Failed - The server could not meet the expectations set.';
         case 418:
-            return 'I’m a Teapot ☕ - A fun Easter egg from RFC 2324.';
+            return "I'm a Teapot ☕ - A fun Easter egg from RFC 2324.";
         case 419:
             return 'Authentication Timeout - The session has expired.';
         case 420:

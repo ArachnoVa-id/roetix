@@ -9,6 +9,7 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Infolists;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -43,11 +44,51 @@ class OrderResource extends Resource
         return $user && in_array($user->role, ['admin', 'event-organizer']);
     }
 
-    public static function form(Form $form): Form
+    public static function tableQuery(): Builder
     {
-        return $form
+        return parent::tableQuery()->withoutGlobalScope(SoftDeletingScope::class);
+    }
+
+    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    {
+        return $infolist
             ->schema([
-                //
+                Infolists\Components\Section::make('Order Information')
+                    ->columns(2)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('order_id')
+                            ->label('ID'),
+                        Infolists\Components\TextEntry::make('order_date')
+                            ->label('Date'),
+                        Infolists\Components\TextEntry::make('total_price')
+                            ->label('Total'),
+                        Infolists\Components\TextEntry::make('status'),
+                    ]),
+                Infolists\Components\Section::make('Order User')
+                    ->relationship('user', 'user_id')
+                    ->columns(3)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('first_name')
+                            ->label('First Name'),
+                        Infolists\Components\TextEntry::make('last_name')
+                            ->label('Last Name'),
+                        Infolists\Components\TextEntry::make('email'),
+                    ]),
+                Infolists\Components\Section::make('Order Event')
+                    ->relationship('events', 'event_id')
+                    ->columns(3)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('name')
+                            ->formatStateUsing(function ($state) {
+                                $parsed = explode(',', $state);
+                                return $parsed[0];
+                            }),
+                        Infolists\Components\TextEntry::make('location')
+                            ->formatStateUsing(function ($state) {
+                                $parsed = explode(',', $state);
+                                return $parsed[0];
+                            }),
+                    ]),
             ]);
     }
 
@@ -78,7 +119,9 @@ class OrderResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+            ])
             ->bulkActions([]);
     }
 
@@ -93,8 +136,9 @@ class OrderResource extends Resource
     {
         return [
             'index' => Pages\ListOrders::route('/'),
-            // 'create' => Pages\CreateOrder::route('/create'),
-            // 'edit' => Pages\EditOrder::route('/{record}/edit'),
+            'create' => Pages\CreateOrder::route('/create'),
+            'edit' => Pages\EditOrder::route('/{record}/edit'),
+            'view' => Pages\ViewOrder::route('/{record}'),
         ];
     }
 }

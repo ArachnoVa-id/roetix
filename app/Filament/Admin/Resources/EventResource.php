@@ -147,9 +147,6 @@ class EventResource extends Resource
                 Infolists\Components\TextEntry::make('slug')
                     ->label('Slug')
                     ->icon('heroicon-m-magnifying-glass-plus'),
-                Infolists\Components\TextEntry::make('category')
-                    ->label('Category')
-                    ->icon('heroicon-m-tag'),
                 Infolists\Components\TextEntry::make('status')
                     ->label('Status')
                     ->icon('heroicon-m-exclamation-triangle')
@@ -349,14 +346,6 @@ class EventResource extends Resource
                                         $set('slug', $slug);
                                     })
                                     ->reactive(),
-                                Forms\Components\Select::make('category')
-                                    ->options([
-                                        'concert' => 'concert',
-                                        'sports' => 'sports',
-                                        'workshop' => 'workshop',
-                                        'etc' => 'etc'
-                                    ])
-                                    ->required(),
                                 Forms\Components\Select::make('status')
                                     ->options([
                                         'planned' => 'planned',
@@ -1016,6 +1005,18 @@ class EventResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $user = Auth::user();
+        $role = $user ? $user->role : null;
+
+        $defaultActions = [
+            Tables\Actions\ViewAction::make(),
+            Tables\Actions\EditAction::make(),
+        ];
+
+        if ($role == 'event-organizer') $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));
+
+        $defaultActions[] = Tables\Actions\DeleteAction::make();
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -1023,7 +1024,6 @@ class EventResource extends Resource
                     ->label('Event Name')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('category'),
                 Tables\Columns\TextColumn::make('start_date')
                     ->label('Start')
                     ->dateTime()
@@ -1042,20 +1042,13 @@ class EventResource extends Resource
             ])
             ->filters(
                 [
-                    Tables\Filters\SelectFilter::make('category')
-                        ->multiple(),
                     Tables\Filters\SelectFilter::make('status')
                         ->multiple()
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    self::EditSeatsButton(Tables\Actions\Action::make('editSeats')),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
+                Tables\Actions\ActionGroup::make($defaultActions),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

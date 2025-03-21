@@ -22,7 +22,6 @@ class Event extends Model
         'venue_id',
         'name',
         'slug',
-        'category',
         'start_date',
         'event_date',
         'location',
