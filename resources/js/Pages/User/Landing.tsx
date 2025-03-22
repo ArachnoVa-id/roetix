@@ -467,17 +467,22 @@ export default function Landing({
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <div className="flex min-w-max justify-center">
-                                <SeatMapDisplay
-                                    config={layout}
-                                    props={props}
-                                    onSeatClick={handleSeatClick}
-                                    selectedSeats={selectedSeats}
-                                    ticketTypeColors={ticketTypeColors}
-                                    currentTimeline={currentTimeline}
-                                    eventStatus={event?.status} // Tambahkan ini
-                                />
+                        <div className="flex justify-center">
+                            <div
+                                className="overflow-x-auto"
+                                style={{ maxWidth: '100%' }}
+                            >
+                                <div className="flex min-w-max justify-center">
+                                    <SeatMapDisplay
+                                        config={layout}
+                                        props={props}
+                                        onSeatClick={handleSeatClick}
+                                        selectedSeats={selectedSeats}
+                                        ticketTypeColors={ticketTypeColors}
+                                        currentTimeline={currentTimeline}
+                                        eventStatus={event?.status}
+                                    />
+                                </div>
                             </div>
                         </div>
 

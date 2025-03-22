@@ -180,11 +180,11 @@ const SeatMapDisplay: React.FC<Props> = ({
                 </div>
             )}
 
-            <div className="grid w-full gap-1 overflow-x-auto">
+            <div className="mx-auto grid gap-1">
                 {reversedGrid.map((row, reversedIndex) => (
                     <div
                         key={reversedIndex}
-                        className="flex items-center gap-1"
+                        className="flex items-center justify-center gap-1"
                     >
                         <div className="flex select-none gap-1">
                             {row.map((seat, colIndex) =>
