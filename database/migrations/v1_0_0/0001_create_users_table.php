@@ -19,7 +19,6 @@ return new class extends Migration
             $table->enum('role', UserRole::toArray())->default(UserRole::USER);
             $table->string('first_name');
             $table->string('last_name');
-            $table->string('password');
             $table->string('google_id')->nullable();
             $table->string('contact_info')->nullable();
             $table->timestamp('email_verified_at')->nullable();

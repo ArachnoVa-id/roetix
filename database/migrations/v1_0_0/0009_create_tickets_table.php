@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('ticket_type', 36);
             $table->decimal('price', 10, 2);
             $table->enum('status', TicketStatus::toArray())->default(TicketStatus::AVAILABLE);
-            $table->timestamps();
             
             // foreign key
             $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
