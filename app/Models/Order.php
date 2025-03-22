@@ -21,7 +21,7 @@ class Order extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'order_id',
+        'order_code',
         'event_id',
         'user_id',
         'team_id',

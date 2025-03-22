@@ -20,8 +20,8 @@ return new class extends Migration
             $table->string('location');
             $table->string('contact_info', 36);
             $table->enum('status', ['active', 'inactive', 'under_maintenance'])->default('active');
-            $table->timestamps();
 
+            $table->timestamps();
             $table->foreign('contact_info')->references('contact_id')->on('user_contacts')->onDelete('cascade');
         });
     }

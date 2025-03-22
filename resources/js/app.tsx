@@ -14,9 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (errorDiv) {
         const code = Number(errorDiv.getAttribute('data-code')) || 500; // Convert to number, default to 500
+        const message = errorDiv.getAttribute('data-message') || '';
+        const headers = JSON.parse(
+            errorDiv.getAttribute('data-headers') || '{}',
+        );
+        console.log(errorDiv);
 
         const root = createRoot(errorDiv);
-        root.render(<ErrorPage code={code} />);
+        root.render(
+            <ErrorPage code={code} message={message} headers={headers} />,
+        );
         return;
     }
 

@@ -13,10 +13,11 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->string('order_id', 36)->primary();
+            $table->string('order_code', 36)->unique();
             $table->string('user_id', 36);
             $table->string('event_id', 36);
             $table->string('team_id', 36);
-            $table->datetime('order_date');
+            $table->dateTime('order_date');
             $table->decimal('total_price', 9, 2);
             $table->enum('status', ['pending', 'completed', 'cancelled'])->default('pending');
             $table->timestamps();
@@ -27,7 +28,6 @@ return new class extends Migration
         });
 
         Schema::create('ticket_order', function (Blueprint $table) {
-            $table->id();
             $table->string('ticket_id', 36);
             $table->string('order_id', 36);
             $table->string('event_id', 36);

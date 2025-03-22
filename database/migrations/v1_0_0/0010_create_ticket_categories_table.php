@@ -16,11 +16,10 @@ return new class extends Migration
             $table->string('event_id', 36);
             $table->string('name');
             $table->string('color');
-            $table->timestamps();
 
+            $table->timestamps();
             // foreign key
             $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
-
         });
     }
 

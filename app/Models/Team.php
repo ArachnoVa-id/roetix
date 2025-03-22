@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 class Team extends Model
 {
-    /** @use HasFactory<\Database\Factories\TeamFactory> */
     use HasFactory;
 
     protected $primaryKey = 'team_id';

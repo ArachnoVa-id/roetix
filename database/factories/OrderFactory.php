@@ -2,11 +2,14 @@
 
 namespace Database\Factories;
 
+use App\Models\Order;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\Team;
+use App\Models\Ticket;
+use App\Models\TicketOrder;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Order>
@@ -20,13 +23,63 @@ class OrderFactory extends Factory
      */
     public function definition(): array
     {
+        // Get random user
+        $user = User::inRandomOrder()->first();
+        if (!$user) return [];
+
+        // Get a random available ticket
+        $ticket = Ticket::where('status', 'available')->inRandomOrder()->first();
+
+        // If no available tickets, return an empty array (prevent creating empty orders)
+        if (!$ticket) {
+            return [];
+        }
+
+        $event_id = $ticket->event_id;
+        $event = $ticket->event;
+
         return [
-            'order_id' => (string) Str::uuid(),
-            'user_id' => User::inRandomOrder()->first()->user_id,
-            'team_id' => Team::inRandomOrder()->first()->team_id,
+            'order_code' => 'ORDER-' . strtoupper(Str::random(6)),
+            'event_id' => $event_id,
+            'user_id' => $user->user_id,
+            'team_id' => $event->team_id,
             'order_date' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'total_price' => $this->faker->randomFloat(2, 100000, 1000000),
             'status' => $this->faker->randomElement(['pending', 'completed', 'cancelled']),
         ];
+    }
+
+    // Attach tickets to the order AFTER it is created
+    public function configure()
+    {
+        return $this->afterCreating(function (Order $order) {
+            // Find available tickets for the event
+            $available_tickets = Ticket::where('event_id', $order->event_id)
+                ->where('status', 'available')
+                ->get();
+
+            // If no available tickets, do nothing
+            if ($available_tickets->isEmpty()) {
+                return;
+            }
+
+            // Random number of tickets (1 to remaining tickets, max 5)
+            $num_tickets = rand(1, min($available_tickets->count(), 5));
+
+            // Select random tickets
+            $selected_tickets = $available_tickets->random($num_tickets);
+
+            foreach ($selected_tickets as $ticket) {
+                // Mark ticket as booked
+                $ticket->update(['status' => 'booked']);
+
+                // Create TicketOrder with correct order_id
+                TicketOrder::create([
+                    'order_id' => $order->order_id,
+                    'ticket_id' => $ticket->ticket_id,
+                    'event_id' => $order->event_id,
+                ]);
+            }
+        });
     }
 }

@@ -19,13 +19,11 @@ return new class extends Migration
         });
 
         Schema::create('user_team', function (Blueprint $table) {
-            $table->id();
             $table->string('team_id', 36);
             $table->string('user_id', 36);
-            
+
             $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
-            $table->timestamps();
         });
     }
 

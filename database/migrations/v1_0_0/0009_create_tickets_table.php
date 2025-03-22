@@ -16,17 +16,16 @@ return new class extends Migration
             $table->string('event_id', 36);
             $table->string('seat_id', 50);
             $table->string('team_id', 36);
-            // $table->string('order_id', 36);
             $table->string('ticket_type', 36);
             $table->decimal('price', 10, 2);
             $table->enum('status', ['available', 'booked', 'reserved', 'in_transaction'])->default('available');
-            $table->timestamps();
-            
+
             // foreign key
             $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
             $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
             $table->foreign('seat_id')->references('seat_id')->on('seats')->onDelete('cascade');
-            // $table->foreign('order_id')->references('order_id')->on('orders')->onDelete('cascade');
+
+            $table->timestamps();
         });
     }
 

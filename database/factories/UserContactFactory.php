@@ -19,7 +19,6 @@ class UserContactFactory extends Factory
     public function definition(): array
     {
         return [
-            'contact_id' => (string) Str::uuid(), // ID unik untuk contact, menggunakan UUID
             'phone_number' => $this->faker->phoneNumber, // Menghasilkan nomor telepon acak
             'email' => $this->faker->unique()->safeEmail, // Menghasilkan email unik
             'whatsapp_number' => $this->faker->phoneNumber, // Menghasilkan nomor whatsapp acak (sama dengan phone_number)

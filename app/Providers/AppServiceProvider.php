@@ -24,10 +24,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
-        $migrationPaths = [
-            database_path('migrations/v1_0_0'),
-        ];
-    
+        $migrationPaths = glob(database_path('migrations/*'), GLOB_ONLYDIR);
+        $migrationPaths[] = database_path('migrations');
+
         // Load migrations from subdirectories
         foreach ($migrationPaths as $path) {
             if (File::isDirectory($path)) {

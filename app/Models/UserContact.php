@@ -18,7 +18,6 @@ class UserContact extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'contact_id',
         'phone_number',
         'email',
         'whatsapp_number',

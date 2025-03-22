@@ -20,7 +20,6 @@ class VenueFactory extends Factory
     public function definition(): array
     {
         return [
-            'venue_id' => (string) Str::uuid(),
             'name' => $this->faker->sentence(2),
             'location' => $this->faker->address,
             'team_id' => Team::inRandomOrder()->first()?->team_id,

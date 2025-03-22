@@ -2,6 +2,8 @@ import React from 'react';
 
 interface ErrorProps {
     code: number;
+    message: string;
+    headers: Record<string, string>;
 }
 
 const getMessage = (code: number): string => {
@@ -95,17 +97,37 @@ const getMessage = (code: number): string => {
     }
 };
 
-const ErrorPage: React.FC<ErrorProps> = ({ code }) => {
+const ErrorPage: React.FC<ErrorProps> = ({ code, message, headers }) => {
     return (
-        <div className="flex h-screen flex-col items-center justify-center">
-            <h1 className="text-6xl font-bold">{code}</h1>
-            <p className="text-xl">{getMessage(code)}</p>
-            <a
-                href="/"
-                className="mt-4 rounded bg-blue-600 px-4 py-2 text-white"
-            >
-                Go Home
-            </a>
+        <div className="flex h-screen items-center justify-center gap-4">
+            <img
+                src="images/novatix-logo.jpeg"
+                alt="NovaTix Logo"
+                className="h-48 w-48 rounded-xl"
+            />
+            <div className="flex flex-col gap-3">
+                <h3 className="text-xl font-bold">
+                    NovaTix:{' '}
+                    <span className="text-lg font-normal">
+                        Ticketing Solutions
+                    </span>
+                </h3>
+
+                <div className="-mt-2 flex flex-col">
+                    <h1 className="text-6xl font-bold">Error {code}</h1>
+                    <p className="text-xl">{message || getMessage(code)}</p>
+                </div>
+
+                <a
+                    href="/"
+                    className={
+                        'w-fit rounded bg-blue-600 px-4 py-2 text-white ' +
+                        (headers['isRedirecting'] === 'false' ? 'hidden' : '')
+                    }
+                >
+                    Go Home
+                </a>
+            </div>
         </div>
     );
 };

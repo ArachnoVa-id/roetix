@@ -30,10 +30,10 @@ class ValidateSubdomain
         // get subdomain
         $client = $exploded[0];
 
-        $event = Event::where('slug', $client)->firstOrFail();
+        $event = Event::where('slug', $client)->first();
 
         if (!$event) {
-            abort(404);
+            abort(404, 'Event not found! Please contact admin.', ['isRedirecting' => 'false']);
         }
 
         if (!Auth::check()) {

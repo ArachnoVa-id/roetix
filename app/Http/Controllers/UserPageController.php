@@ -45,7 +45,6 @@ class UserPageController extends Controller
         // Get the event and associated venue
         $event = Event::where('slug', $client)
             ->first();
-
         if (!$event) {
             return Inertia::render('User/Landing', [
                 'client' => $client,

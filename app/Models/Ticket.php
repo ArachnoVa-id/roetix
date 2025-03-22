@@ -21,8 +21,6 @@ class Ticket extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'ticket_type',
-        'price',
         'status',
         'event_id',
         'seat_id'

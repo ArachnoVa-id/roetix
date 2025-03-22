@@ -15,14 +15,6 @@ use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\TicketController;
 
-Route::get('/test-abort-{code}', function ($code) {
-    if (!is_numeric($code) || $code < 100 || $code > 599) {
-        abort(400, 'Invalid status code');
-    }
-
-    abort((int) $code);
-});
-
 // Guest Routes for Authentication
 Route::middleware('guest')->group(function () {
     // Main Domain Login
@@ -128,16 +120,6 @@ Route::domain('{client}.' . config('app.domain'))
                     ->name('api.tickets.download-all');
             });
         });
-
-        // Route::get('/api/tickets/download/{ticketId}', [TicketController::class, 'downloadTicket'])
-        //     ->middleware('auth')
-        //     ->name('api.tickets.download')
-        //     ->where('ticketId', '[0-9a-fA-F\-]+');
-
-        // // Add a debug route to help diagnose the issue
-        // Route::get('/api/tickets/debug/{ticketId}', [TicketController::class, 'debugTicket'])
-        //     ->middleware('auth')
-        //     ->name('api.tickets.debug');
 
         Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])
             ->name('events.tickets.show');

@@ -14,12 +14,19 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->string('user_id', 36)->primary(); // Menggunakan string dengan panjang 36 untuk UUID
             $table->string('email')->unique();
-            $table->string('password');
             $table->enum('role', ['user', 'admin', 'vendor', 'event-organizer'])->default('user');
             $table->string('first_name');
             $table->string('last_name');
+            $table->string('password');
             $table->string('google_id')->nullable();
+            $table->string('contact_info')->nullable();
             $table->timestamp('email_verified_at')->nullable();
+
+            $table->foreign('contact_info')
+                ->references('contact_id')
+                ->on('user_contacts')
+                ->onDelete('set null');
+
             $table->rememberToken();
             $table->timestamps();
         });

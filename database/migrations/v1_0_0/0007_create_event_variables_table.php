@@ -23,7 +23,7 @@ return new class extends Migration
             $table->boolean('is_maintenance')->default(false);
             $table->string('maintenance_title')->default('')->nullable();
             $table->string('maintenance_message')->default('')->nullable();
-            $table->date('maintenance_expected_finish')->default(now())->nullable();
+            $table->dateTime('maintenance_expected_finish')->default(now())->nullable();
 
             $table->string('logo', 2048)->nullable();
             $table->string('logo_alt')->default('')->nullable();
