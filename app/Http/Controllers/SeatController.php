@@ -245,6 +245,7 @@ class SeatController extends Controller
             return redirect()->back()->withErrors(['error' => 'Failed to load seat map: ' . $e->getMessage()]);
         }
     }
+
     public function updateEventSeats(Request $request)
     {
         Log::info('Request headers:', $request->headers->all());

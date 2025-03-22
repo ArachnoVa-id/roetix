@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use App\Models\Seat;
+use App\Models\Ticket;
+use App\Models\Venue;
 
 class EventResource extends Resource
 {
@@ -32,102 +35,101 @@ class EventResource extends Resource
 
     public static function EditSeatsButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
+        $inPage = false;
+
+        if ($inPage)
+            return $action
+                ->label('Seating')
+                ->icon('heroicon-o-adjustments-horizontal')
+                ->color('info')
+                ->modalHeading('Edit Seating Layout')
+                ->modalWidth('7xl')
+                ->modalSubmitAction(false) // Hide default Filament save button
+                ->modalButton('Close')
+                ->modalContent(function ($record) {
+                    $eventId = $record->event_id;
+                    try {
+                        if (!$eventId) return;
+
+                        // Get the event and associated venue
+                        $event = Event::find($eventId);
+                        if (!$event) return;
+
+                        $venue = Venue::find($event->venue_id);
+                        if (!$venue) return;
+
+                        // Get all seats for this venue
+                        $seats = Seat::where('venue_id', $venue->venue_id)
+                            ->orderBy('row')
+                            ->orderBy('column')
+                            ->get();
+
+                        // Get existing tickets for this event
+                        $existingTickets = Ticket::where('event_id', $eventId)
+                            ->get()
+                            ->keyBy('seat_id');
+
+                        // Format data for the frontend, prioritizing ticket data
+                        $layout = [
+                            'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
+                            'totalColumns' => $seats->max('column'),
+                            'items' => $seats->map(function ($seat) use ($existingTickets) {
+                                $ticket = $existingTickets->get($seat->seat_id);
+
+                                // Base seat data
+                                $seatData = [
+                                    'type' => 'seat',
+                                    'seat_id' => $seat->seat_id,
+                                    'seat_number' => $seat->seat_number,
+                                    'row' => $seat->row,
+                                    'column' => $seat->column
+                                ];
+
+                                // Add ticket data if it exists
+                                if ($ticket) {
+                                    $seatData['status'] = $ticket->status;
+                                    $seatData['ticket_type'] = $ticket->ticket_type;
+                                    $seatData['price'] = $ticket->price;
+                                } else {
+                                    // Default values for seats without tickets
+                                    $seatData['status'] = 'reserved';
+                                    $seatData['ticket_type'] = 'standard';
+                                    $seatData['price'] = 0;
+                                }
+
+                                return $seatData;
+                            })->values()
+                        ];
+
+                        // Add stage label
+                        $layout['items'][] = [
+                            'type' => 'label',
+                            'row' => $layout['totalRows'],
+                            'column' => floor($layout['totalColumns'] / 2),
+                            'text' => 'STAGE'
+                        ];
+
+                        // Get available ticket types for dropdown
+                        $ticketTypes = ['standard', 'VIP'];
+
+                        return view('modals.edit-seats-modal', [
+                            'layout' => $layout,
+                            'event' => $event,
+                            'venue' => $venue,
+                            'ticketTypes' => $ticketTypes
+                        ]);
+                    } catch (\Exception $e) {
+                        // return redirect()->back()->withErrors(['error' => 'Failed to load seat map: ' . $e->getMessage()]);
+                        return;
+                    }
+                });
+
         return $action
             ->label('Seating')
             ->icon('heroicon-o-adjustments-horizontal')
             ->color('info')
             ->url(fn($record) => "/seats/edit?event_id={$record->event_id}")
             ->openUrlInNewTab();
-        // ->modalHeading('Edit Seating')
-        // ->modalContent(function ($record) {
-        //     $eventId = $record->event_id;
-        //     try {
-        //         if (!$eventId) {
-        //             // return redirect()->back()->withErrors(['error' => 'Event ID is required']);
-        //             return;
-        //         }
-
-        //         // Get the event and associated venue
-        //         $event = Event::findOrFail($eventId);
-        //         $venue = Venue::findOrFail($event->venue_id);
-
-        //         // Get all seats for this venue
-        //         $seats = Seat::where('venue_id', $venue->venue_id)
-        //             ->orderBy('row')
-        //             ->orderBy('column')
-        //             ->get();
-
-        //         // Get existing tickets for this event
-        //         $existingTickets = Ticket::where('event_id', $eventId)
-        //             ->get()
-        //             ->keyBy('seat_id');
-
-        //         // Format data for the frontend, prioritizing ticket data
-        //         $layout = [
-        //             'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
-        //             'totalColumns' => $seats->max('column'),
-        //             'items' => $seats->map(function ($seat) use ($existingTickets) {
-        //                 $ticket = $existingTickets->get($seat->seat_id);
-
-        //                 // Base seat data
-        //                 $seatData = [
-        //                     'type' => 'seat',
-        //                     'seat_id' => $seat->seat_id,
-        //                     'seat_number' => $seat->seat_number,
-        //                     'row' => $seat->row,
-        //                     'column' => $seat->column
-        //                 ];
-
-        //                 // Add ticket data if it exists
-        //                 if ($ticket) {
-        //                     $seatData['status'] = $ticket->status;
-        //                     $seatData['ticket_type'] = $ticket->ticket_type;
-        //                     $seatData['price'] = $ticket->price;
-        //                 } else {
-        //                     // Default values for seats without tickets
-        //                     $seatData['status'] = 'reserved';
-        //                     $seatData['ticket_type'] = 'standard';
-        //                     $seatData['price'] = 0;
-        //                 }
-
-        //                 return $seatData;
-        //             })->values()
-        //         ];
-
-        //         // Add stage label
-        //         $layout['items'][] = [
-        //             'type' => 'label',
-        //             'row' => $layout['totalRows'],
-        //             'column' => floor($layout['totalColumns'] / 2),
-        //             'text' => 'STAGE'
-        //         ];
-
-        //         // Get available ticket types for dropdown
-        //         $ticketTypes = ['standard', 'VIP'];
-
-        //         return view('modals.edit-seats-modal', [
-        //             'layout' => $layout,
-        //             'event' => $event,
-        //             'venue' => $venue,
-        //             'ticketTypes' => $ticketTypes
-        //         ]);
-        //     } catch (\Exception $e) {
-        //         // return redirect()->back()->withErrors(['error' => 'Failed to load seat map: ' . $e->getMessage()]);
-        //         return;
-        //     }
-        // })
-        // ->modalSubmitAction(false); // Hide default Filament save button
-
-        // ->modalButton('Close')
-        // ->modalHeading('Edit Seating Layout')
-        // ->modalWidth('7xl')
-        // ->form([
-        //     Forms\Components\Placeholder::make('blade_component')
-        //         ->content('')
-        //         ->extraAttributes(fn($record) => [
-        //             'x-html' => '<iframe src="' . route('hello') . '" width="100%" height="500px" style="border: none;"></iframe>',
-        //         ]),
-        // ]);
     }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
@@ -264,11 +266,11 @@ class EventResource extends Resource
                                         ->label('Text Secondary Color'),
                                 ])
                         ]),
-                    // Infolists\Components\Tabs\Tab::make('Orders')
-                    //     ->schema([
-                    //         \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                    //             ->manager(OrdersRelationManager::class)
-                    //     ]),
+                    Infolists\Components\Tabs\Tab::make('Orders')
+                        ->schema([
+                            \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                ->manager(OrdersRelationManager::class)
+                        ]),
                     Infolists\Components\Tabs\Tab::make('Tickets')
                         ->schema([
                             \Njxqlus\Filament\Components\Infolists\RelationManager::make()
