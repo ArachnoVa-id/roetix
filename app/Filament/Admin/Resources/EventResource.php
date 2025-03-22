@@ -4,24 +4,17 @@ namespace App\Filament\Admin\Resources;
 
 use Carbon\Carbon;
 use Filament\Forms;
-use App\Models\Seat;
 use Filament\Tables;
 use App\Models\Event;
-use App\Models\Venue;
 use Filament\Actions;
-use App\Models\Ticket;
-use Livewire\Livewire;
 use Filament\Infolists;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
-use Ramsey\Uuid\Rfc4122\UuidV4;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Date;
-use Illuminate\Support\Facades\Cache;
 use App\Filament\Admin\Resources\EventResource\Pages;
-use Filament\Infolists\Infolist;
-use Illuminate\Console\View\Components\Info;
+use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
+use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
 
 class EventResource extends Resource
 {
@@ -147,9 +140,6 @@ class EventResource extends Resource
                 Infolists\Components\TextEntry::make('slug')
                     ->label('Slug')
                     ->icon('heroicon-m-magnifying-glass-plus'),
-                Infolists\Components\TextEntry::make('category')
-                    ->label('Category')
-                    ->icon('heroicon-m-tag'),
                 Infolists\Components\TextEntry::make('status')
                     ->label('Status')
                     ->icon('heroicon-m-exclamation-triangle')
@@ -209,7 +199,6 @@ class EventResource extends Resource
                                         ])
                                 ]),
                         ]),
-
                     Infolists\Components\Tabs\Tab::make('Event Variables')
                         ->columns(4)
                         ->schema([
@@ -234,13 +223,13 @@ class EventResource extends Resource
                                         ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
 
                                     Infolists\Components\TextEntry::make('maintenance_title')
-                                        ->label('Maintenance Title'),
+                                        ->label('Title'),
 
                                     Infolists\Components\TextEntry::make('maintenance_message')
-                                        ->label('Maintenance Message'),
+                                        ->label('Message'),
 
                                     Infolists\Components\TextEntry::make('maintenance_expected_finish')
-                                        ->label('Maintenance Expected Finish'),
+                                        ->label('Expected Finish'),
                                 ]),
 
                             Infolists\Components\Section::make('Logo')
@@ -274,6 +263,16 @@ class EventResource extends Resource
                                     Infolists\Components\ColorEntry::make('text_secondary_color')
                                         ->label('Text Secondary Color'),
                                 ])
+                        ]),
+                    // Infolists\Components\Tabs\Tab::make('Orders')
+                    //     ->schema([
+                    //         \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                    //             ->manager(OrdersRelationManager::class)
+                    //     ]),
+                    Infolists\Components\Tabs\Tab::make('Tickets')
+                        ->schema([
+                            \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                ->manager(TicketsRelationManager::class)
                         ]),
                     Infolists\Components\Tabs\Tab::make('Scan Tickets')
                         ->schema([
@@ -349,14 +348,6 @@ class EventResource extends Resource
                                         $set('slug', $slug);
                                     })
                                     ->reactive(),
-                                Forms\Components\Select::make('category')
-                                    ->options([
-                                        'concert' => 'concert',
-                                        'sports' => 'sports',
-                                        'workshop' => 'workshop',
-                                        'etc' => 'etc'
-                                    ])
-                                    ->required(),
                                 Forms\Components\Select::make('status')
                                     ->options([
                                         'planned' => 'planned',
@@ -974,7 +965,7 @@ class EventResource extends Resource
                                     ->label('Expected Finish')
                                     ->minDate(
                                         fn() => $modelExists
-                                            ? min(now(), optional($currentModel->maintenance_expected_finish) ? Carbon::parse($currentModel->maintenance_expected_finish) : now())
+                                            ? min(now(), optional($currentModel->eventVariables->maintenance_expected_finish) ? Carbon::parse($currentModel->eventVariables->maintenance_expected_finish) : now())
                                             : now()
                                     ),
                                 Forms\Components\TextInput::make('maintenance_message')
@@ -1016,6 +1007,18 @@ class EventResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $user = Auth::user();
+        $role = $user ? $user->role : null;
+
+        $defaultActions = [
+            Tables\Actions\ViewAction::make(),
+            Tables\Actions\EditAction::make(),
+        ];
+
+        if ($role == 'event-organizer') $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));
+
+        $defaultActions[] = Tables\Actions\DeleteAction::make();
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -1023,7 +1026,6 @@ class EventResource extends Resource
                     ->label('Event Name')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('category'),
                 Tables\Columns\TextColumn::make('start_date')
                     ->label('Start')
                     ->dateTime()
@@ -1042,20 +1044,13 @@ class EventResource extends Resource
             ])
             ->filters(
                 [
-                    Tables\Filters\SelectFilter::make('category')
-                        ->multiple(),
                     Tables\Filters\SelectFilter::make('status')
                         ->multiple()
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    self::EditSeatsButton(Tables\Actions\Action::make('editSeats')),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
+                Tables\Actions\ActionGroup::make($defaultActions),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

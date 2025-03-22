@@ -11,34 +11,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-
-        // Team::truncate();
-        // Order::truncate();
-        // Coupon::truncate();
-        // TicketCategory::truncate();
-        // Ticket::truncate();
-        // Seat::truncate();
-        // Venue::truncate();
-        // UserContact::truncate();
-        // EventVariables::truncate();
-        // Event::truncate();
-        // User::truncate();
-
-        // DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-
         $this->call([
-            UserSeeder::class,
-            TeamSeeder::class,
-            VenueSeeder::class,
-            EventSeeder::class,
-            UserContactSeeder::class,
-            TicketSeeder::class,
-            TicketCategorySeeder::class,
-            CouponSeeder::class,
-            TimelineSessionSeeder::class,
-            EventCategoryTimeboundPriceSeeder::class,
-            // OrderSeeder::class,
+            UserSeeder::class, // Initial users
+            TeamSeeder::class, // Pick random user assignment
+            VenueSeeder::class, // With seat generation
+            EventSeeder::class, // With all event timelineing and ticket generation
+            OrderSeeder::class, // Pick random ticket assignment
         ]);
     }
 }

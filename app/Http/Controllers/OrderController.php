@@ -51,6 +51,7 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,user_id',
+            'evemt_id' => 'required|exists:events,event_id',
             'ticket_id' => 'required|exists:tickets,ticket_id',
             'order_date' => 'required|date',
             'total_price' => 'required|numeric|min:0',

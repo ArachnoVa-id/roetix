@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +10,7 @@ use Illuminate\Notifications\Notifiable;
 
 class TicketCategory extends Model
 {
-    use HasFactory, Notifiable;
+    use Notifiable;
 
     protected $primaryKey = 'ticket_category_id';
     public $incrementing = false;

@@ -17,7 +17,6 @@ class Seat extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'seat_id',
         'venue_id',
         'seat_number',
         'position',

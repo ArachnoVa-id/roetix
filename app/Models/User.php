@@ -4,7 +4,6 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Panel;
@@ -18,7 +17,7 @@ use Illuminate\Support\Collection;
 
 class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 {
-    use HasFactory, Notifiable;
+    use Notifiable;
 
     /**
      * Get the user's name for Filament.
@@ -55,7 +54,8 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         'first_name',
         'last_name',
         'role',
-        'google_id'
+        'google_id',
+        'contact_info'
     ];
 
     /**

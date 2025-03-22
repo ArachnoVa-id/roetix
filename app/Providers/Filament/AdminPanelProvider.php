@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Tenancy\RegisterTeam;
 use App\Models\Team;
 use Filament\Pages;
 use Filament\Panel;

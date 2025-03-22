@@ -74,6 +74,12 @@ class AuthenticatedSessionController extends Controller
 
         if ($userModel->role === 'admin') {
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
+        } else if ($userModel->role === 'user') {
+            Auth::logout();
+            abort(403, 'User role not allowed.');
+        } else if (!$firstTeam) {
+            Auth::logout();
+            abort(404, 'No team found for user. Please contact admin.');
         }
 
         return Inertia::location(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]));

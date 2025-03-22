@@ -55,7 +55,23 @@ Route::domain(config('app.domain'))
         });
 
         // Redirect Home to Tenant Dashboard
-        Route::get('/', function () {})->name('home');
+        Route::get('/', function () {
+            if (!Auth::check()) {
+                return redirect()->route('login');
+            }
+
+            $user = Auth::user();
+            $userInModel = User::find($user->user_id);
+
+            if ($userInModel?->role === 'user') {
+                Auth::logout();
+                return redirect()->route('login');
+            }
+
+            return ($team = $userInModel?->teams()->first())
+                ? redirect()->route('filament.admin.pages.dashboard', ['tenant' => $team->code])
+                : redirect()->route('login');
+        })->name('home');
 
         // Seat Management Routes (Protected)
         Route::middleware('auth')->group(function () {
@@ -104,16 +120,6 @@ Route::domain('{client}.' . config('app.domain'))
                     ->name('api.tickets.download-all');
             });
         });
-
-        // Route::get('/api/tickets/download/{ticketId}', [TicketController::class, 'downloadTicket'])
-        //     ->middleware('auth')
-        //     ->name('api.tickets.download')
-        //     ->where('ticketId', '[0-9a-fA-F\-]+');
-
-        // // Add a debug route to help diagnose the issue
-        // Route::get('/api/tickets/debug/{ticketId}', [TicketController::class, 'debugTicket'])
-        //     ->middleware('auth')
-        //     ->name('api.tickets.debug');
 
         Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])
             ->name('events.tickets.show');

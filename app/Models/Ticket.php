@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
@@ -20,8 +21,6 @@ class Ticket extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'ticket_type',
-        'price',
         'status',
         'event_id',
         'seat_id'
@@ -63,5 +62,10 @@ class Ticket extends Model
     public function ticketOrders(): HasMany
     {
         return $this->hasMany(TicketOrder::class, 'ticket_id', 'ticket_id');
+    }
+
+    public function orders(): BelongsToMany
+    {
+        return $this->belongsToMany(Order::class, 'ticket_order', 'ticket_id', 'order_id');
     }
 }

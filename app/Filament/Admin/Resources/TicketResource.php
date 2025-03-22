@@ -6,15 +6,13 @@ use App\Filament\Admin\Resources\TicketResource\Pages;
 use App\Filament\Admin\Resources\TicketResource\RelationManagers;
 use App\Models\Ticket;
 use Filament\Forms;
-use Filament\Forms\Components\Tabs;
 use Filament\Forms\Form;
+use Filament\Infolists;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 
 class TicketResource extends Resource
@@ -43,6 +41,62 @@ class TicketResource extends Resource
         $user = Auth::user();
 
         return $user && in_array($user->role, ['admin', 'event-organizer']);
+    }
+
+    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make('Ticket Information')
+                    ->columns(5)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('ticket_id')
+                            ->columnSpan(2)
+                            ->label('ID'),
+                        Infolists\Components\TextEntry::make('ticket_type')
+                            ->label('Type'),
+                        Infolists\Components\TextEntry::make('price'),
+                        Infolists\Components\TextEntry::make('status'),
+                    ]),
+                Infolists\Components\Section::make('Buyer')
+                    ->relationship('ticketOrders', 'ticket_id')
+                    ->columns(4)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('order_id')
+                            ->columnSpan(1)
+                            ->label('Order ID'),
+                        Infolists\Components\Group::make([
+                            Infolists\Components\Group::make([
+                                Infolists\Components\TextEntry::make('first_name')
+                                    ->label('First Name'),
+                                Infolists\Components\TextEntry::make('last_name')
+                                    ->label('Last Name'),
+                                Infolists\Components\TextEntry::make('email'),
+                            ])
+                                ->columns(3)
+                                ->relationship('user', 'user_id')
+                        ])
+                            ->columnSpan(3)
+                            ->relationship('order', 'order_id'),
+                    ]),
+                Infolists\Components\Section::make("Event")
+                    ->relationship('event', 'event_id')
+                    ->columns(3)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('name'),
+                        Infolists\Components\TextEntry::make('location')->columnSpan(2),
+                    ]),
+                Infolists\Components\Section::make("Seat")
+                    ->relationship('seat', 'seat_id')
+                    ->columns(4)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('seat_number')
+                            ->label('Number'),
+                        Infolists\Components\TextEntry::make('position'),
+                        Infolists\Components\TextEntry::make('row'),
+                        Infolists\Components\TextEntry::make('column'),
+                    ]),
+            ]);
     }
 
     public static function form(Form $form): Form
@@ -94,8 +148,11 @@ class TicketResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('ticket_id')
-                    ->label('ID'),
-                Tables\Columns\TextColumn::make('event.name'),
+                    ->label('ID')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('event.name')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('ticket_type'),
                 Tables\Columns\TextColumn::make('price'),
                 Tables\Columns\TextColumn::make('status'),
@@ -107,7 +164,9 @@ class TicketResource extends Resource
                     ->searchable()
                     ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
             ])
-            ->actions([])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+            ])
             ->bulkActions([]);
     }
 
@@ -122,8 +181,7 @@ class TicketResource extends Resource
     {
         return [
             'index' => Pages\ListTickets::route('/'),
-            'create' => Pages\CreateTicket::route('/create'),
-            'edit' => Pages\EditTicket::route('/{record}/edit'),
+            'view' => Pages\ViewTicket::route('/{record}'),
         ];
     }
 }

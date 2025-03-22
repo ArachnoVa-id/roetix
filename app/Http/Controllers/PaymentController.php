@@ -65,7 +65,7 @@ class PaymentController extends Controller
             }
 
             // Generate order ID
-            $orderId = 'ORDER-' . time() . '-' . rand(1000, 9999);
+            $orderCode = 'ORDER-' . time() . '-' . rand(1000, 9999);
 
             // Prepare transaction parameters
             $itemDetails = [];
@@ -150,7 +150,8 @@ class PaymentController extends Controller
 
             // Create order
             $order = Order::create([
-                'order_id' => $orderId,
+                'order_code' => $orderCode,
+                'event_id' => $event->event_id,
                 'user_id' => Auth::id(),
                 'team_id' => $team->team_id,
                 'order_date' => now(),
@@ -168,7 +169,7 @@ class PaymentController extends Controller
             foreach ($tickets as $ticket) {
                 $ticketOrders[] = TicketOrder::create([
                     'ticket_id' => $ticket->ticket_id,
-                    'order_id' => $orderId,
+                    'order_id' => $order->order_id,
                     'event_id' => $event->event_id,
                 ]);
             }
@@ -180,7 +181,7 @@ class PaymentController extends Controller
 
             // Get Midtrans Snap Token
             $snapToken = Snap::getSnapToken([
-                'transaction_details' => ['order_id' => $orderId, 'gross_amount' => $totalWithTax],
+                'transaction_details' => ['order_id' => $orderCode, 'gross_amount' => $totalWithTax],
                 'credit_card' => ['secure' => true],
                 'customer_details' => ['email' => $request->email],
                 'item_details' => $itemDetails,
@@ -192,7 +193,7 @@ class PaymentController extends Controller
             }
 
             DB::commit();
-            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderId]);
+            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Error processing payment: ' . $e->getMessage()], 500);
@@ -208,7 +209,8 @@ class PaymentController extends Controller
 
         DB::beginTransaction();
         try {
-            if (!isset($data['order_id'], $data['gross_amount'], $data['transaction_status'])) {
+            $identifier = $data['order_id'] ?? null;
+            if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
                 return response()->json(['error' => 'Invalid callback data'], 400);
             }
 
@@ -216,17 +218,17 @@ class PaymentController extends Controller
             switch ($data['transaction_status']) {
                 case 'capture':
                 case 'settlement':
-                    $this->updateStatus($data['order_id'], 'completed', $data);
+                    $this->updateStatus($identifier, 'completed', $data);
                     break;
 
                 case 'pending':
-                    $this->updateStatus($data['order_id'], 'pending', $data);
+                    $this->updateStatus($identifier, 'pending', $data);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
-                    $this->updateStatus($data['order_id'], 'cancelled', $data);
+                    $this->updateStatus($identifier, 'cancelled', $data);
                     break;
             }
 
@@ -245,16 +247,16 @@ class PaymentController extends Controller
     /**
      * Update order status in the database
      */
-    private function updateStatus($orderId, $status, $transactionData)
+    private function updateStatus($orderCode, $status, $transactionData)
     {
         try {
             // Update order status
-            Order::where('order_id', $orderId)->update([
+            $order = Order::where('order_code', $orderCode)->update([
                 'status' => $status
             ]);
 
             // Update ticket statuses
-            $ticketOrders = TicketOrder::where('order_id', $orderId)->get();
+            $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
             foreach ($ticketOrders as $ticketOrder) {
                 $ticket = Ticket::find($ticketOrder->ticket_id);
                 if ($ticket) { // Ensure the ticket exists before updating
@@ -266,7 +268,7 @@ class PaymentController extends Controller
             }
         } catch (\Exception $e) {
             Log::error('Failed to update order status', [
-                'order_id' => $orderId,
+                'order_code' => $orderCode,
                 'status' => $status,
                 'error' => $e->getMessage(),
             ]);

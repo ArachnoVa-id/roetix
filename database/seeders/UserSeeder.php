@@ -4,17 +4,16 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\UserContact;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
-    {
+    private array $defaultUsers;
 
-        $data = [
+    public function __construct()
+    {
+        $this->defaultUsers = [
             // user
             [
                 'email' => 'user@example.com',
@@ -22,6 +21,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'user',
                 'role' => 'user',
+                'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
             // admin novatix
@@ -31,6 +31,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'admin',
                 'role' => 'admin',
+                'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
             // vendor 1
@@ -40,6 +41,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'vendor1',
                 'role' => 'vendor',
+                'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
             // vendor 2
@@ -49,6 +51,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'vendor2',
                 'role' => 'vendor',
+                'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
             // eo 1
@@ -58,6 +61,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'eo1',
                 'role' => 'event-organizer',
+                'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
             // eo2
@@ -67,20 +71,18 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'eo2',
                 'role' => 'event-organizer',
+                'contact_info' => UserContact::factory()->create()->contact_id,
             ],
         ];
+    }
 
-        foreach ($data as $user) {
-            $created_user = User::create([
-                'email' => $user['email'],
-                'password' => $user['password'],
-                'first_name' => $user['first_name'],
-                'last_name' => $user['last_name'],
-                'role' => $user['role'],
-            ]);
-
-            // assign rolenya disini lex
-            // $created_user->syncRoles([$user['role']]);
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        foreach ($this->defaultUsers as $user) {
+            User::create($user);
         }
     }
 }

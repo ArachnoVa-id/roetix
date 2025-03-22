@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
@@ -19,11 +19,9 @@ class Venue extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'venue_id',
         'team_id',
         'name',
         'location',
-        'capacity',
         'contact_info',
         'status'
     ];
@@ -39,6 +37,16 @@ class Venue extends Model
         });
     }
 
+    public function capacity(): int
+    {
+        return $this->seats()->count();
+    }
+
+    public function seats(): HasMany
+    {
+        return $this->hasMany(Seat::class, 'venue_id', 'venue_id');
+    }
+
     public function contactInfo(): BelongsTo
     {
         return $this->belongsTo(UserContact::class, 'contact_info', 'contact_id');
@@ -49,8 +57,8 @@ class Venue extends Model
         return $this->belongsTo(Team::class, 'team_id', 'team_id');
     }
 
-    public function events(): BelongsToMany
+    public function events(): HasMany
     {
-        return $this->belongsToMany(Event::class, 'venues', 'venue_id', 'venue_id');
+        return $this->hasMany(Event::class, 'venue_id', 'venue_id');
     }
 }

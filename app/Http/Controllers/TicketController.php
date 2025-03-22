@@ -79,7 +79,6 @@ class TicketController extends Controller
             }
 
             // Get event details
-            // Get event details
             $event = $ticket->event;
             if (!$event && $eventId) {
                 $event = Event::find($eventId);

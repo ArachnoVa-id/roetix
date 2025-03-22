@@ -71,7 +71,7 @@ export default function Landing({
         if (error) {
             showError(error);
         }
-    }, [error]);
+    }, [error, showError]);
 
     // Tentukan apakah booking diperbolehkan berdasarkan status event
     const isBookingAllowed = useMemo(() => {

@@ -18,12 +18,21 @@ class SeatFactory extends Factory
      */
     public function definition(): array
     {
+        // Define row labels (A-Z) and max columns per row
+        $rows = range('A', 'Z');
+        $maxColumns = 15; // Adjust based on your seating arrangement
+
+        // Generate a random row and column
+        $row = $this->faker->randomElement($rows);
+        $column = $this->faker->numberBetween(1, $maxColumns);
+
         return [
-            'seat_id' => (string) Str::uuid(),
-            'venue_id' => Venue::factory(),
-            'seat_number' => $this->faker->unique()->numberBetween(1, 10000),
-            'position' => $this->faker->word(),
-            'status' => $this->faker->randomElement(['available', 'booked', 'reserved', 'in_transaction']),
+            'seat_number' => $row . $column, // Example: A1, B3, G10
+            'position' => $row . $column, // Matches the pattern from the image
+            'row' => $row,
+            'column' => $column,
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
     }
 }
