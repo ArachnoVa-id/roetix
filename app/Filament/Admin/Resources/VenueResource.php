@@ -42,9 +42,13 @@ class VenueResource extends Resources\Resource
                 Infolists\Components\Section::make('Venue Information')
                     ->columnSpan(1)
                     ->schema([
+                        Infolists\Components\TextEntry::make('venue_id')
+                            ->label('Venue ID'),
                         Infolists\Components\TextEntry::make('name'),
                         Infolists\Components\TextEntry::make('location'),
-                        // Infolists\Components\TextEntry::make('capacity'),
+                        Infolists\Components\TextEntry::make('capacity_qty')
+                            ->label('Capacity')
+                            ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
                         Infolists\Components\TextEntry::make('status'),
                     ]),
                 Infolists\Components\Section::make('Venue Contact')
@@ -168,15 +172,14 @@ class VenueResource extends Resources\Resource
                         ])
                         ->query(function ($query, array $data) {
                             return $query->whereIn('venue_id', function ($subquery) use ($data) {
-                                $subquery->select('venue_id')
-                                    ->from('seats')
-                                    ->groupBy('venue_id')
-                                    ->havingRaw('COUNT(venue_id) >= ?', [(int) (empty($data['min']) ? 0 : $data['min'])])
-                                    ->havingRaw('COUNT(venue_id) <= ?', [(int) (empty($data['max']) ? PHP_INT_MAX : $data['max'])]);
+                                $subquery->select('venues.venue_id')
+                                    ->from('venues')
+                                    ->leftJoin('seats', 'venues.venue_id', '=', 'seats.venue_id')
+                                    ->groupBy('venues.venue_id')
+                                    ->havingRaw('COUNT(seats.venue_id) >= ?', [(int) (empty($data['min']) ? 0 : $data['min'])])
+                                    ->havingRaw('COUNT(seats.venue_id) <= ?', [(int) (empty($data['max']) ? PHP_INT_MAX : $data['max'])]);
                             });
                         }),
-
-
                     Tables\Filters\SelectFilter::make('status')
                         ->multiple(),
                 ],
