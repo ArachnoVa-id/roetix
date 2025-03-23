@@ -13,7 +13,9 @@ class ListTeams extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->label('Create Team'),
+            Actions\CreateAction::make()
+                ->label('Create Team')
+                ->icon('heroicon-o-plus'),
         ];
     }
 }

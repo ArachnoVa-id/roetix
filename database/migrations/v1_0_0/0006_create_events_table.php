@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\EventStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -26,7 +27,7 @@ return new class extends Migration
             $table->dateTime('start_date');
             $table->dateTime('event_date');
             $table->string('location');
-            $table->enum('status', ['planned', 'active', 'completed', 'cancelled']);
+            $table->enum('status', EventStatus::toArray())->default(EventStatus::ACTIVE);
             $table->timestamps();
         });
     }

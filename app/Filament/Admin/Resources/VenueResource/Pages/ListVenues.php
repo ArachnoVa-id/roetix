@@ -13,7 +13,9 @@ class ListVenues extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->label('Create Venue'),
+            Actions\CreateAction::make()
+                ->label('Create Venue')
+                ->icon('heroicon-o-plus'),
         ];
     }
 }

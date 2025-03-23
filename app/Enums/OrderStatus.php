@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Enums;
+
+use Filament\Support\Colors\Color;
+use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasLabel;
+
+enum OrderStatus: string implements HasLabel
+{
+    case PENDING = 'pending';
+    case COMPLETED = 'completed';
+    case CANCELLED = 'cancelled';
+
+    public function getLabel(): string
+    {
+        return match ($this) {
+            self::PENDING => 'pending',
+            self::COMPLETED => 'completed',
+            self::CANCELLED => 'cancelled'
+        };
+    }
+
+    public function getColor(): string|array|null
+    {
+        return match ($this) {
+            self::PENDING => Color::Green,
+            self::COMPLETED => Color::Red,
+            self::CANCELLED => Color::Gray
+        };
+    }
+
+    public static function fromLabel(string $label): self
+    {
+        foreach (self::cases() as $case) {
+            if ($case->getLabel() === $label) {
+                return $case;
+            }
+        }
+
+        throw new \ValueError("\"$label\" is not a valid label for enum " . self::class);
+    }
+
+    public static function toArray(): array
+    {
+        return array_map(fn($case) => $case->getLabel(), self::cases());
+    }
+
+    public static function values(): array
+    {
+        return array_map(fn($case) => $case->value, self::cases());
+    }
+
+    public static function editableOptions()
+    {
+        return [
+            self::PENDING->value => self::PENDING->getLabel(),
+            self::COMPLETED->value => self::COMPLETED->getLabel(),
+            self::CANCELLED->value => self::CANCELLED->getLabel()
+        ];
+    }
+
+    public static function getEditableOptionsValues()
+    {
+        return array_keys(self::editableOptions());
+    }
+}

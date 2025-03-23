@@ -84,6 +84,7 @@ Route::domain(config('app.domain'))
             Route::get('/seats/edit', [SeatController::class, 'edit'])
                 ->middleware('event.access')
                 ->name('seats.edit');
+            // Post handlers
             Route::post('/seats/update-layout', [SeatController::class, 'updateLayout'])
                 ->name('seats.update-layout');
             Route::post('/seats/update', [SeatController::class, 'update'])

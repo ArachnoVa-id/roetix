@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\VenueStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -19,9 +20,9 @@ return new class extends Migration
             $table->string('name');
             $table->string('location');
             $table->string('contact_info', 36);
-            $table->enum('status', ['active', 'inactive', 'under_maintenance'])->default('active');
-
+            $table->enum('status', VenueStatus::toArray())->default(VenueStatus::ACTIVE);
             $table->timestamps();
+
             $table->foreign('contact_info')->references('contact_id')->on('user_contacts')->onDelete('cascade');
         });
     }
