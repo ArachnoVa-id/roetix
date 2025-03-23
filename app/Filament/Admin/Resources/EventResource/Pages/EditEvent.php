@@ -203,7 +203,8 @@ class EditEvent extends EditRecord
             EventResource::EditSeatsButton(
                 Actions\Action::make('Edit Seats')
             )->button(),
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make('Delete Event')
+                ->icon('heroicon-o-trash'),
         ];
     }
 }

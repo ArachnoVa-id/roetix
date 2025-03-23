@@ -13,7 +13,8 @@ class EditTeam extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make('Delete Event')
+                ->icon('heroicon-o-trash'),
         ];
     }
 }
