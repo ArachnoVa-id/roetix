@@ -99,10 +99,6 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                 <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-white shadow-xl sm:rounded-lg">
                         <div className="p-6">
-                            <h2 className="mb-4 text-2xl font-bold">
-                                Grid Seat Editor
-                            </h2>
-
                             <div className="w-full overflow-x-auto">
                                 <div className="inline-block min-w-full">
                                     <div className="flex justify-center">

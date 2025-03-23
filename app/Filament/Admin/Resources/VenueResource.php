@@ -31,8 +31,7 @@ class VenueResource extends Resources\Resource
             ->label('Edit Venue')
             ->icon('heroicon-m-map')
             ->color('success')
-            ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}")
-            ->openUrlInNewTab();
+            ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}");
     }
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist

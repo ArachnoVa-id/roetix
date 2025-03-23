@@ -705,7 +705,26 @@ const GridSeatEditor: React.FC<Props> = ({
             {/* Panel Kontrol - Posisi absolut dengan lebar tetap di atas */}
             <div className="fixed left-0 top-0 z-20 flex h-full w-72 flex-col border-r border-gray-200 bg-white shadow-lg">
                 {/* Header */}
-                <div className="border-b border-gray-200 bg-blue-600 p-4 text-white">
+                <div className="flex w-full gap-2 border-b border-gray-200 bg-blue-600 p-4 text-white">
+                    <button
+                        className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
+                        onClick={() => window.history.back()}
+                    >
+                        {/* back icon */}
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
                     <h2 className="flex items-center gap-2 text-xl font-bold">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1049,7 +1068,7 @@ const GridSeatEditor: React.FC<Props> = ({
                                 )}
                             </div>
                         </div>
-                    </div>  
+                    </div>
 
                     {/* Block Area Actions - Conditional */}
                     {mode === 'block' && blockedArea && (

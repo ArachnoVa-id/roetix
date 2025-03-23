@@ -2,7 +2,6 @@ import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
 import { Head } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
 import SeatMapEditor, { UpdatedSeats } from './SeatMapEditor';
 import { Layout, SeatItem } from './types';
 
@@ -53,8 +52,6 @@ interface Props {
     ticketCategories?: TicketCategory[];
     categoryPrices?: CategoryPrice[];
 }
-
-const mountElement = document.getElementById('seat-map-editor');
 
 const Edit: React.FC<Props> = ({
     layout,
@@ -323,12 +320,23 @@ const Edit: React.FC<Props> = ({
                 <div className="w-full px-4">
                     <div className="overflow-hidden bg-white shadow-xl sm:rounded-lg">
                         <div className="p-6">
-                            <h2 className="mb-4 text-2xl font-bold">
-                                Configure Seats for "{event.name}"
-                            </h2>
-                            <p className="mb-4 text-gray-600">
-                                Venue: {venue.name} | Event ID: {event.event_id}
-                            </p>
+                            <div className="flex w-full flex-wrap">
+                                <div className="flex flex-col">
+                                    <h2 className="mb-4 text-2xl font-bold">
+                                        Configure Seats for "{event.name}"
+                                    </h2>
+                                    <p className="mb-4 text-gray-600">
+                                        Venue: {venue.name} | Event ID:{' '}
+                                        {event.event_id}
+                                    </p>
+                                </div>
+                                <button
+                                    className="ml-auto h-fit w-fit rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700"
+                                    onClick={() => window.history.back()}
+                                >
+                                    Back to Dashboard
+                                </button>
+                            </div>
 
                             {activeTimeline ? (
                                 <div className="mb-4">
@@ -422,22 +430,4 @@ const Edit: React.FC<Props> = ({
         </>
     );
 };
-
-if (mountElement) {
-    const layout = JSON.parse(mountElement.dataset.layout || '{}');
-    const event = JSON.parse(mountElement.dataset.event || '{}');
-    const venue = JSON.parse(mountElement.dataset.venue || '{}');
-    const ticketTypes = JSON.parse(mountElement.dataset.tickettypes || '[]');
-
-    const root = createRoot(mountElement);
-    root.render(
-        <Edit
-            layout={layout}
-            event={event}
-            venue={venue}
-            ticketTypes={ticketTypes}
-        />,
-    );
-}
-
 export default Edit;
