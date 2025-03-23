@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class ImportSeatMap extends Command
 {
-    protected $signature = 'seats:import {file : Path to JSON config file}';
+    protected $signature = 'seats:import {file : Path to JSON config file} {venue_id : Venue ID}';
     protected $description = 'Import seat configuration from JSON';
 
     private $seatNumberCounters = [];
@@ -16,6 +16,7 @@ class ImportSeatMap extends Command
     public function handle()
     {
         $jsonPath = $this->argument('file');
+        $venueId = $this->argument('venue_id');
         $jsonContent = file_get_contents($jsonPath);
         $config = json_decode($jsonContent, true);
 
@@ -44,10 +45,10 @@ class ImportSeatMap extends Command
                     $seatNumber = $this->generateSeatNumber($row);
 
                     // Generate unique seat_id
-                    $seatId = $this->generateSeatId($config['venue_id'], $seatNumber);
-                    $seat = Seat::create([
+                    $seatId = $this->generateSeatId($venueId, $seatNumber);
+                    Seat::create([
                         'seat_id'     => $seatId,
-                        'venue_id'    => $config['venue_id'],
+                        'venue_id'    => $venueId,
                         'seat_number' => $seatNumber,
                         'position'    => $position,
                         'row'         => $row,
