@@ -45,8 +45,8 @@ class TicketResource extends Resource
 
     public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
     {
-        return $infolist
-            ->schema([
+        return $infolist->schema(
+            [
                 Infolists\Components\Section::make('Ticket Information')
                     ->columns(5)
                     ->schema([
@@ -96,7 +96,8 @@ class TicketResource extends Resource
                         Infolists\Components\TextEntry::make('row'),
                         Infolists\Components\TextEntry::make('column'),
                     ]),
-            ]);
+            ]
+        );
     }
 
     public static function form(Form $form): Form
@@ -106,7 +107,6 @@ class TicketResource extends Resource
                 Forms\Components\TextInput::make('ticket_id')
                     ->label('Ticket ID')
                     ->disabled(),
-                // ->required(),
                 Forms\Components\Select::make('event_id')
                     ->label('Event')
                     ->relationship('event', 'name')
@@ -139,7 +139,6 @@ class TicketResource extends Resource
                     ->label('Team')
                     ->relationship('team', 'name')
                     ->required(),
-                // ->disabled(),
             ]);
     }
 

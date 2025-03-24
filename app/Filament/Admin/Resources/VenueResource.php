@@ -34,50 +34,53 @@ class VenueResource extends Resources\Resource
             ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}");
     }
 
-    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    public static function infolist(Infolists\Infolist $infolist, bool $showEvents = true): Infolists\Infolist
     {
         return $infolist
             ->columns(2)
-            ->schema([
-                Infolists\Components\Section::make('Venue Information')
-                    ->columnSpan(1)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('venue_id')
-                            ->label('Venue ID'),
-                        Infolists\Components\TextEntry::make('name'),
-                        Infolists\Components\TextEntry::make('location'),
-                        Infolists\Components\TextEntry::make('capacity_qty')
-                            ->label('Capacity')
-                            ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
-                        Infolists\Components\TextEntry::make('status'),
-                    ]),
-                Infolists\Components\Section::make('Venue Contact')
-                    ->relationship('contactInfo', 'venue_id')
-                    ->columnSpan(1)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('phone_number'),
-                        Infolists\Components\TextEntry::make('email'),
-                        Infolists\Components\TextEntry::make('whatsapp_number'),
-                        Infolists\Components\TextEntry::make('instagram'),
-                    ]),
-                Infolists\Components\Section::make('Venue Owner')
-                    ->columnSpanFull()
-                    ->relationship('team', 'team_id')
-                    ->columns(2)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('name'),
-                        Infolists\Components\TextEntry::make('code'),
-                    ]),
-                Infolists\Components\Tabs::make()
-                    ->columnSpanFull()
-                    ->schema([
-                        Infolists\Components\Tabs\Tab::make('Events')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(EventsRelationManager::class)
-                            ])
-                    ])
-            ]);
+            ->schema(
+                [
+                    Infolists\Components\Section::make('Venue Information')
+                        ->columnSpan(1)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('venue_id')
+                                ->label('Venue ID'),
+                            Infolists\Components\TextEntry::make('name'),
+                            Infolists\Components\TextEntry::make('location'),
+                            Infolists\Components\TextEntry::make('capacity_qty')
+                                ->label('Capacity')
+                                ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
+                            Infolists\Components\TextEntry::make('status'),
+                        ]),
+                    Infolists\Components\Section::make('Venue Contact')
+                        ->relationship('contactInfo', 'venue_id')
+                        ->columnSpan(1)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('phone_number'),
+                            Infolists\Components\TextEntry::make('email'),
+                            Infolists\Components\TextEntry::make('whatsapp_number'),
+                            Infolists\Components\TextEntry::make('instagram'),
+                        ]),
+                    Infolists\Components\Section::make('Venue Owner')
+                        ->columnSpanFull()
+                        ->relationship('team', 'team_id')
+                        ->columns(2)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('name'),
+                            Infolists\Components\TextEntry::make('code'),
+                        ]),
+                    Infolists\Components\Tabs::make()
+                        ->columnSpanFull()
+                        ->schema([
+                            Infolists\Components\Tabs\Tab::make('Events')
+                                ->hidden(!$showEvents)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(EventsRelationManager::class)
+                                ])
+                        ])
+                ]
+            );
     }
 
     public static function form(Forms\Form $form): Forms\Form

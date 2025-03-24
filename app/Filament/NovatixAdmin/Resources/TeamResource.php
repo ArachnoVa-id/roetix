@@ -26,38 +26,42 @@ class TeamResource extends Resource
         return $user && in_array($user->role, ['admin']);
     }
 
-    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    public static function infolist(Infolists\Infolist $infolist, bool $showMembers = true, bool $showEvents = true, bool $showVenues = true): Infolists\Infolist
     {
         return $infolist
-            ->schema([
-                Infolists\Components\Section::make('Team Information')
-                    ->columns(2)
-                    ->columnSpanFull()
-                    ->schema([
-                        Infolists\Components\TextEntry::make('name'),
-                        Infolists\Components\TextEntry::make('code'),
-                    ]),
-                Infolists\Components\Tabs::make('')
-                    ->columnSpanFull()
-                    ->schema([
-                        Infolists\Components\Tabs\Tab::make('Members')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(UsersRelationManager::class)
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Events')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(EventsRelationManager::class)
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Venues')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(VenuesRelationManager::class)
-                            ]),
-                    ]),
-
-            ]);
+            ->schema(
+                [
+                    Infolists\Components\Section::make('Team Information')
+                        ->columns(2)
+                        ->columnSpanFull()
+                        ->schema([
+                            Infolists\Components\TextEntry::make('name'),
+                            Infolists\Components\TextEntry::make('code'),
+                        ]),
+                    Infolists\Components\Tabs::make('')
+                        ->columnSpanFull()
+                        ->schema([
+                            Infolists\Components\Tabs\Tab::make('Members')
+                                ->hidden(!$showMembers)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(UsersRelationManager::class)
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Events')
+                                ->hidden(!$showEvents)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(EventsRelationManager::class)
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Venues')
+                                ->hidden(!$showVenues)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(VenuesRelationManager::class)
+                                ]),
+                        ]),
+                ]
+            );
     }
 
     public static function form(Forms\Form $form): Forms\Form

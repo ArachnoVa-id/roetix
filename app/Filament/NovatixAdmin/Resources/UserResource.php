@@ -25,31 +25,31 @@ class UserResource extends Resources\Resource
         return $user && in_array($user->role, ['admin']);
     }
 
-    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    public static function infolist(Infolists\Infolist $infolist, bool $showTeams = true): Infolists\Infolist
     {
-        return $infolist
-            ->schema([
-                Infolists\Components\Section::make('User Information')
-                    ->columnSpanFull()
-                    ->columns(2)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('first_name')
-                            ->label('First Name'),
-                        Infolists\Components\TextEntry::make('last_name')
-                            ->label('Last Name'),
-                        Infolists\Components\TextEntry::make('email'),
-                        Infolists\Components\TextEntry::make('role'),
-                    ]),
-                Infolists\Components\Tabs::make('')
-                    ->columnSpanFull()
-                    ->schema([
-                        Infolists\Components\Tabs\Tab::make('Teams')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(TeamsRelationManager::class),
-                            ]),
-                    ]),
-            ]);
+        return $infolist->schema([
+            Infolists\Components\Section::make('User Information')
+                ->columnSpanFull()
+                ->columns(2)
+                ->schema([
+                    Infolists\Components\TextEntry::make('first_name')
+                        ->label('First Name'),
+                    Infolists\Components\TextEntry::make('last_name')
+                        ->label('Last Name'),
+                    Infolists\Components\TextEntry::make('email'),
+                    Infolists\Components\TextEntry::make('role'),
+                ]),
+            Infolists\Components\Tabs::make('')
+                ->columnSpanFull()
+                ->hidden(!$showTeams)
+                ->schema([
+                    Infolists\Components\Tabs\Tab::make('Teams')
+                        ->schema([
+                            \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                ->manager(TeamsRelationManager::class),
+                        ]),
+                ]),
+        ]);
     }
 
     public static function form(Forms\Form $form): Forms\Form
@@ -73,12 +73,19 @@ class UserResource extends Resources\Resource
                                 ->email()
                                 ->unique('users', 'email', ignoreRecord: true)
                                 ->maxLength(255),
+                            Forms\Components\Toggle::make('change_password')
+                                ->label('Change Password')
+                                ->reactive()
+                                ->hidden(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord)
+                                ->default(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord),
                             Forms\Components\TextInput::make('password')
-                                ->required()
+                                ->disabled(fn(Forms\Get $get) => !$get('change_password'))
+                                ->required(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord)
                                 ->password()
                                 ->maxLength(255),
                             Forms\Components\Select::make('role')
                                 ->options([
+                                    'user' => 'user',
                                     'vendor' => 'vendor',
                                     'event-organizer' => 'event-organizer',
                                 ])
@@ -88,17 +95,26 @@ class UserResource extends Resources\Resource
                             ->columnSpan(1)
                             ->schema([
                                 Forms\Components\Repeater::make('teams')
-                                    ->relationship('teams')
                                     ->label('')
                                     ->schema([
                                         Forms\Components\Select::make('team_id')
                                             ->label('Assign to Team')
-                                            ->options(Team::pluck('name', 'team_id'))
+                                            ->options(function (callable $get) {
+                                                // Get already selected team IDs
+                                                $selectedTeams = collect($get('../../teams'))
+                                                    ->pluck('team_id')
+                                                    ->filter() // Remove null values
+                                                    ->toArray();
+
+                                                // Exclude already selected teams
+                                                return Team::whereNotIn('team_id', $selectedTeams)
+                                                    ->pluck('name', 'team_id');
+                                            })
                                             ->searchable()
                                             ->optionsLimit(5)
-                                            ->required(),
+                                            ->required()
                                     ])
-                            ]),
+                            ])
                     ])
             ]);
     }

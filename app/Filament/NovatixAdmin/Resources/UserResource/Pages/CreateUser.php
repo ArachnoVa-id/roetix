@@ -17,14 +17,13 @@ class CreateUser extends CreateRecord
 
         $user = $this->record;
 
-        // dd($user);
-
         $userdata = $data ?? [];
 
         if (!empty($userdata)) {
-            $team = Team::find($userdata['team_id']);
-            if ($team) {
-                $user->teams()->attach($team->team_id);
+            $teams = $userdata['teams'] ?? [];
+            foreach ($teams as $team) {
+                $team = Team::find($team);
+                $user->teams()->attach($team);
             }
         }
     }

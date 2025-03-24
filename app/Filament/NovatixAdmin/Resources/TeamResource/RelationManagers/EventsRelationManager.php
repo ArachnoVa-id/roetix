@@ -14,7 +14,7 @@ class EventsRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return EventResource::infolist($infolist);
+        return EventResource::infolist($infolist, showOrders: false, showTickets: false);
     }
 
     public function form(Form $form): Form

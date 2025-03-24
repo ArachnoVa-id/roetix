@@ -14,7 +14,7 @@ class TeamsRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return TeamResource::infolist($infolist);
+        return TeamResource::infolist($infolist, showEvents: false, showVenues: false, showMembers: false);
     }
 
     public function form(Form $form): Form
