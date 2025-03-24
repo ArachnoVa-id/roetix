@@ -519,7 +519,7 @@ export default function Landing({
                 </div>
             )} */}
 
-            <div className="py-6">
+            <div className="py-4">
                 <div className="mx-auto w-full sm:px-6 lg:px-8">
                     <div
                         className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
@@ -528,131 +528,339 @@ export default function Landing({
                             color: props.text_primary_color,
                         }}
                     >
-                        {/* Event Info and Timeline in a fixed section */}
-                        <div className="mb-6">
-                            {/* Event Title and Info */}
-                            <div className="mb-4">
-                                {event && venue ? (
-                                    <>
-                                        <h1 className="text-2xl font-bold">
-                                            {event.name}
-                                        </h1>
-                                        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between">
-                                            <p
-                                                className="text-lg"
+                        {/* Three-column grid for A, B, C sections */}
+                        <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
+                            {/* Column A: Event Info */}
+                            <div
+                                className="flex flex-col justify-start overflow-hidden rounded-xl bg-gradient-to-br p-0 shadow-lg"
+                                style={{
+                                    backgroundColor: props.secondary_color,
+                                    borderLeft: `4px solid ${props.primary_color}`,
+                                }}
+                            >
+                                <div className="p-4">
+                                    {event && venue ? (
+                                        <>
+                                            <h2
+                                                className="text-2xl font-bold"
                                                 style={{
-                                                    color: props.text_secondary_color,
+                                                    color: props.text_primary_color,
                                                 }}
                                             >
-                                                Venue: {venue.name}
-                                            </p>
-                                            <p
-                                                className=""
-                                                style={{
-                                                    color: props.text_secondary_color,
-                                                }}
-                                            >
-                                                Date:{' '}
-                                                {new Date(
-                                                    event.event_date,
-                                                ).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <h1 className="text-2xl font-bold">
-                                        {(client ? client + ' : ' : '') +
-                                            'Buy Tickets Here'}
-                                    </h1>
-                                )}
+                                                {event.name}
+                                            </h2>
+                                            <div className="mt-3 space-y-2">
+                                                <div className="flex items-center">
+                                                    <svg
+                                                        className="mr-2 h-5 w-5"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                                        />
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                                        />
+                                                    </svg>
+                                                    <p
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <span className="font-medium">
+                                                            Venue:
+                                                        </span>{' '}
+                                                        {venue.name}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <svg
+                                                        className="mr-2 h-5 w-5"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+                                                    <p
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <span className="font-medium">
+                                                            D-Day:
+                                                        </span>{' '}
+                                                        {new Date(
+                                                            event.event_date,
+                                                        ).toLocaleDateString(
+                                                            'en-US',
+                                                            {
+                                                                weekday:
+                                                                    'short',
+                                                                year: 'numeric',
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                            },
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Additional content for section A */}
+                                            <div className="mt-4 border-t border-gray-200 pt-3">
+                                                <div className="flex items-center">
+                                                    <svg
+                                                        className="mr-2 h-5 w-5"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                                                        />
+                                                    </svg>
+                                                    <div>
+                                                        <p
+                                                            className="font-medium"
+                                                            style={{
+                                                                color: props.text_primary_color,
+                                                            }}
+                                                        >
+                                                            Booking Status
+                                                        </p>
+                                                        <p
+                                                            className="mt-1 text-sm"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            {isBookingAllowed
+                                                                ? 'Tickets are available for booking'
+                                                                : 'Booking is currently unavailable'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-3 flex items-center">
+                                                    <svg
+                                                        className="mr-2 h-5 w-5"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+                                                    <div>
+                                                        <p
+                                                            className="font-medium"
+                                                            style={{
+                                                                color: props.text_primary_color,
+                                                            }}
+                                                        >
+                                                            Seat Selection
+                                                        </p>
+                                                        <p
+                                                            className="mt-1 text-sm"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            You can select up to
+                                                            5 seats
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <h2 className="text-xl font-bold">
+                                            {(client ? client + ' : ' : '') +
+                                                'Buy Tickets Here'}
+                                        </h2>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Timeline Information */}
-                            {currentTimeline && (
-                                <div className="mt-4">
-                                    <h3 className="mb-3 text-xl font-semibold">
-                                        Current Ticket Period
-                                    </h3>
-                                    <div className="rounded-lg bg-blue-50 p-4 text-blue-800">
-                                        <div className="text-lg font-medium">
-                                            {currentTimeline.name}
-                                        </div>
-                                        <div className="text-blue-600">
-                                            {new Date(
-                                                currentTimeline.start_date,
-                                            ).toLocaleDateString()}{' '}
-                                            -{' '}
-                                            {new Date(
-                                                currentTimeline.end_date,
-                                            ).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Legend Section */}
-                            <div className="mt-6">
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                    {/* Ticket Type Legend */}
-                                    <div
-                                        className="rounded-lg p-4 shadow"
-                                        style={{
-                                            backgroundColor:
-                                                props.secondary_color,
-                                            color: props.text_secondary_color,
-                                        }}
-                                    >
-                                        <h4 className="mb-2 text-center text-lg font-semibold">
-                                            Ticket Types
-                                        </h4>
-                                        <div className="flex flex-wrap items-center justify-center gap-4">
-                                            {ticketTypes.map((type) => (
-                                                <div
-                                                    key={type}
-                                                    className="flex flex-col items-center"
-                                                >
-                                                    <div
-                                                        className="h-8 w-8 rounded-full shadow-lg"
-                                                        style={{
-                                                            backgroundColor:
-                                                                ticketTypeColors[
-                                                                    type
-                                                                ],
-                                                        }}
-                                                    ></div>
-                                                    <span className="mt-2 text-sm font-medium">
-                                                        {type
-                                                            .charAt(0)
-                                                            .toUpperCase() +
-                                                            type.slice(1)}
-                                                    </span>
+                            {/* Column B: Timeline and Status */}
+                            <div
+                                className="flex flex-col overflow-hidden rounded-xl bg-gradient-to-br p-0 shadow-lg"
+                                style={{
+                                    backgroundColor: props.secondary_color,
+                                    borderTop: `4px solid ${props.primary_color}`,
+                                }}
+                            >
+                                <div className="w-full p-4">
+                                    {/* Timeline section */}
+                                    {currentTimeline && (
+                                        <div className="mb-4">
+                                            <h3
+                                                className="mb-2 text-center text-xl font-semibold"
+                                                style={{
+                                                    color: props.text_primary_color,
+                                                }}
+                                            >
+                                                Event Period
+                                            </h3>
+                                            <div
+                                                className="rounded-lg p-2.5"
+                                                style={{
+                                                    backgroundColor:
+                                                        'rgba(59, 130, 246, 0.1)',
+                                                }}
+                                            >
+                                                <div className="text-center font-semibold text-blue-600">
+                                                    {currentTimeline.name}
                                                 </div>
-                                            ))}
+                                                <div className="mt-1 flex items-center justify-center text-sm text-blue-500">
+                                                    <svg
+                                                        className="mr-1 h-4 w-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+                                                    {new Date(
+                                                        currentTimeline.start_date,
+                                                    ).toLocaleDateString()}{' '}
+                                                    -{' '}
+                                                    {new Date(
+                                                        currentTimeline.end_date,
+                                                    ).toLocaleDateString()}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* Status Legend */}
-                                    <div
-                                        className="rounded-lg p-4 shadow"
-                                        style={{
-                                            backgroundColor:
-                                                props.secondary_color,
-                                            color: props.text_secondary_color,
-                                        }}
-                                    >
-                                        <h4 className="mb-2 text-center text-lg font-semibold">
-                                            Status
-                                        </h4>
-                                        <div className="flex flex-wrap items-center justify-center gap-4">
+                                    {/* Status section */}
+                                    <div className="mt-2">
+                                        <h3
+                                            className="mb-3 text-center text-xl font-semibold"
+                                            style={{
+                                                color: props.text_primary_color,
+                                            }}
+                                        >
+                                            Event Status
+                                        </h3>
+                                        {event && (
+                                            <div
+                                                className="mb-4 flex w-full items-center justify-center rounded-lg bg-opacity-50 p-3"
+                                                style={{
+                                                    backgroundColor:
+                                                        event.status ===
+                                                        'active'
+                                                            ? 'rgba(34, 197, 94, 0.1)'
+                                                            : event.status ===
+                                                                'planned'
+                                                              ? 'rgba(59, 130, 246, 0.1)'
+                                                              : event.status ===
+                                                                  'completed'
+                                                                ? 'rgba(107, 114, 128, 0.1)'
+                                                                : 'rgba(239, 68, 68, 0.1)',
+                                                }}
+                                            >
+                                                <div
+                                                    className={`h-5 w-5 rounded-full ${
+                                                        event.status ===
+                                                        'active'
+                                                            ? 'bg-green-500'
+                                                            : event.status ===
+                                                                'planned'
+                                                              ? 'bg-blue-500'
+                                                              : event.status ===
+                                                                  'completed'
+                                                                ? 'bg-gray-500'
+                                                                : 'bg-red-500'
+                                                    } mr-2 animate-pulse`}
+                                                ></div>
+                                                <span
+                                                    className="font-medium"
+                                                    style={{
+                                                        color:
+                                                            event.status ===
+                                                            'active'
+                                                                ? '#16a34a'
+                                                                : event.status ===
+                                                                    'planned'
+                                                                  ? '#2563eb'
+                                                                  : event.status ===
+                                                                      'completed'
+                                                                    ? '#4b5563'
+                                                                    : '#dc2626',
+                                                    }}
+                                                >
+                                                    {event.status === 'active'
+                                                        ? 'Active'
+                                                        : event.status ===
+                                                            'planned'
+                                                          ? 'Planned'
+                                                          : event.status ===
+                                                              'completed'
+                                                            ? 'Completed'
+                                                            : 'Cancelled'}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Add the status legends */}
+                                        <div className="mt-1 flex w-full justify-around p-2">
                                             {statusLegends.map((legend, i) => (
                                                 <div
                                                     key={i}
-                                                    className="flex flex-col items-center"
+                                                    className="flex items-center"
                                                 >
                                                     <div
-                                                        className={`h-8 w-8 ${legend.color} rounded-full shadow-lg`}
+                                                        className={`h-6 w-6 ${legend.color} mr-1.5 rounded-full`}
                                                     ></div>
-                                                    <span className="mt-2 text-sm font-medium">
+                                                    <span
+                                                        className="text-sm"
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
                                                         {legend.label}
                                                     </span>
                                                 </div>
@@ -661,27 +869,144 @@ export default function Landing({
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Column C: Ticket Categories */}
+                            <div
+                                className="flex flex-col justify-start overflow-hidden rounded-xl bg-gradient-to-br p-0 shadow-lg"
+                                style={{
+                                    backgroundColor: props.secondary_color,
+                                    borderRight: `4px solid ${props.primary_color}`,
+                                }}
+                            >
+                                <div className="p-4">
+                                    {/* Ticket Categories with Prices */}
+                                    <h3
+                                        className="mb-3 text-center text-xl font-semibold"
+                                        style={{
+                                            color: props.text_primary_color,
+                                        }}
+                                    >
+                                        Category & Price
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {ticketTypes.map((type) => {
+                                            // Find the category and price information
+                                            const category =
+                                                ticketCategories.find(
+                                                    (cat) => cat.name === type,
+                                                );
+                                            let price = 0;
+
+                                            if (category && currentTimeline) {
+                                                const priceEntry =
+                                                    categoryPrices.find(
+                                                        (p) =>
+                                                            p.ticket_category_id ===
+                                                                category.ticket_category_id &&
+                                                            p.timeline_id ===
+                                                                currentTimeline.timeline_id,
+                                                    );
+                                                if (priceEntry) {
+                                                    price = priceEntry.price;
+                                                }
+                                            }
+
+                                            return (
+                                                <div
+                                                    key={type}
+                                                    className="flex flex-col rounded-lg p-2 shadow-sm"
+                                                    style={{
+                                                        backgroundColor: `${ticketTypeColors[type]}20`,
+                                                        borderLeft: `3px solid ${ticketTypeColors[type]}`,
+                                                    }}
+                                                >
+                                                    <div className="flex items-center">
+                                                        <div
+                                                            className="mr-2 h-4 w-4 rounded-full"
+                                                            style={{
+                                                                backgroundColor:
+                                                                    ticketTypeColors[
+                                                                        type
+                                                                    ],
+                                                            }}
+                                                        ></div>
+                                                        <span
+                                                            className="text-sm font-medium"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            {type
+                                                                .charAt(0)
+                                                                .toUpperCase() +
+                                                                type.slice(1)}
+                                                        </span>
+                                                    </div>
+                                                    <div
+                                                        className="ml-6 text-sm font-bold"
+                                                        style={{
+                                                            color: props.text_primary_color,
+                                                        }}
+                                                    >
+                                                        {formatRupiah(price)}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Extra description about ticket types */}
+                                    {/* <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+                                        <div className="mb-1 font-medium">
+                                            Important Information
+                                        </div>
+                                        <ul className="list-disc space-y-1 pl-5">
+                                            <li>
+                                                Prices may vary based on current
+                                                sales period
+                                            </li>
+                                            <li>
+                                                One person can purchase up to 5
+                                                tickets
+                                            </li>
+                                            <li>
+                                                All ticket sales are final - no
+                                                refunds
+                                            </li>
+                                        </ul>
+                                    </div> */}
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Scrollable Seat Map Section */}
-                        <div className="mt-6">
-                            <h3 className="mb-4 text-center text-2xl font-bold">
+                        {/* Show event status message if not active */}
+                        {/* {!isBookingAllowed && event && (
+                            <div className="mb-4 overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
+                                <p className="text-center font-medium text-yellow-800">
+                                    {eventStatusMessage}
+                                </p>
+                            </div>
+                        )} */}
+
+                        {/* Seat Map Section - takes up more vertical space */}
+                        <div className="mt-2">
+                            <h3 className="mb-2 text-center text-xl font-bold">
                                 Seat Map
                             </h3>
                             <div
-                                className="rounded-lg border p-4"
+                                className="rounded-lg border p-2"
                                 style={{
                                     backgroundColor: props.secondary_color,
+                                    height: '60vh', // Set a fixed height to take up ~60% of viewport height
                                 }}
                             >
-                                <div className="flex justify-center overflow-x-auto overflow-y-hidden">
+                                <div className="flex h-full justify-center overflow-auto">
                                     <SeatMapDisplay
                                         config={layout}
                                         props={props}
                                         onSeatClick={handleSeatClick}
                                         selectedSeats={selectedSeats}
                                         ticketTypeColors={ticketTypeColors}
-                                        // currentTimeline={currentTimeline}
                                         eventStatus={event?.status}
                                     />
                                 </div>
@@ -690,8 +1015,9 @@ export default function Landing({
                     </div>
                 </div>
             </div>
-            {/* Selected Seats Section - Separate Section */}
-            <div className="py-6">
+
+            {/* Keep the selected seats section below */}
+            <div className="py-4">
                 <div className="mx-auto w-full sm:px-6 lg:px-8">
                     <div
                         className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
@@ -824,7 +1150,6 @@ export default function Landing({
                                                     parsed.transactionInfo
                                                         .transaction_id
                                                 ) {
-                                                    // Call the API to resume payment
                                                     resumeTransaction(
                                                         parsed.transactionInfo
                                                             .transaction_id,
