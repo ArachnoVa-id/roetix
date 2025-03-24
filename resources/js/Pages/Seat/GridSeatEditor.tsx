@@ -701,7 +701,7 @@ const GridSeatEditor: React.FC<Props> = ({
     // };
 
     return (
-        <div className="flex h-screen flex-col">
+        <div className="flex h-screen overflow-hidden">
             {/* Panel Kontrol - Posisi absolut dengan lebar tetap di atas */}
             <div className="fixed left-0 top-0 z-20 flex h-full w-72 flex-col border-r border-gray-200 bg-white shadow-lg">
                 {/* Header */}
@@ -1151,34 +1151,32 @@ const GridSeatEditor: React.FC<Props> = ({
                     </button>
                 </div>
             </div>
-
-            {/* Container untuk Grid - Ini adalah bagian yang akan bergeser */}
+            {/* Main content area */}
             <div
-                className="flex-1 overflow-auto bg-gray-50"
-                style={{
-                    marginLeft: '16rem',
-                    padding: '2rem',
-                }}
+                className="flex-1 overflow-hidden bg-gray-50"
+                style={{ marginLeft: '18rem' }}
             >
-                <div
-                    className="flex min-h-[500px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white p-6 shadow-md"
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={() => {
-                        if (isMouseDown) {
-                            handleMouseUp();
-                        }
-                    }}
-                >
-                    {/* Grid container dengan border jelas & background */}
-                    <div className="relative h-full w-full overflow-auto rounded-lg border border-gray-300 bg-gray-100 p-4">
-                        {/* Tambahkan centang div untuk seat map */}
-                        <div className="flex min-h-[300px] items-center justify-center">
-                            <div className="inline-block min-w-max">
-                                <div className="grid gap-1">
-                                    {[...grid]
-                                        .reverse()
-                                        .map((row, reversedIndex) => {
-                                            return (
+                {/* Use a flex container to properly center and expand the content */}
+                <div className="flex h-full items-center justify-center">
+                    <div className="h-full w-full p-4">
+                        {/* The key container with dotted border that should expand */}
+                        <div
+                            className="relative h-full w-full rounded-3xl border-2 border-dashed border-gray-300 bg-white p-4"
+                            style={{ minHeight: '80vh' }}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={() => {
+                                if (isMouseDown) {
+                                    handleMouseUp();
+                                }
+                            }}
+                        >
+                            {/* Remove the overflow-auto from this container and put it on an inner element */}
+                            <div className="h-full w-full overflow-auto rounded-lg">
+                                <div className="min-w-max p-2">
+                                    <div className="grid grid-flow-row gap-1">
+                                        {[...grid]
+                                            .reverse()
+                                            .map((row, reversedIndex) => (
                                                 <div
                                                     key={reversedIndex}
                                                     className="flex gap-1"
@@ -1266,49 +1264,37 @@ const GridSeatEditor: React.FC<Props> = ({
                                                         },
                                                     )}
                                                 </div>
-                                            );
-                                        })}
-                                </div>
+                                            ))}
+                                    </div>
 
-                                <div className="mx-auto mt-6 flex h-12 w-64 items-center justify-center rounded-lg border border-gray-400 bg-gray-200 font-medium text-gray-700">
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            width="18"
-                                            height="18"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        >
-                                            <rect
-                                                x="4"
-                                                y="5"
-                                                width="16"
-                                                height="14"
-                                                rx="2"
-                                            />
-                                        </svg>
-                                        Panggung
-                                    </span>
+                                    <div className="mx-auto mt-8 flex h-12 w-64 items-center justify-center rounded-lg border border-gray-400 bg-gray-200 font-medium text-gray-700">
+                                        <span className="flex items-center justify-center gap-2">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="18"
+                                                height="18"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <rect
+                                                    x="4"
+                                                    y="5"
+                                                    width="16"
+                                                    height="14"
+                                                    rx="2"
+                                                />
+                                            </svg>
+                                            Stage
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                {/* Debug info untuk membantu troubleshooting */}
-                <div className="mt-4 rounded border border-gray-300 bg-white p-3 text-sm">
-                    <p className="font-medium">Layout Info:</p>
-                    <p>
-                        Total Rows: {totalRows}, Total Columns: {totalColumns}
-                    </p>
-                    <p>
-                        Grid Size: {grid.length} x {grid[0]?.length || 0}
-                    </p>
-                    <p>Current Mode: {mode}</p>
                 </div>
             </div>
         </div>
@@ -1345,7 +1331,7 @@ const GridSeatEditor: React.FC<Props> = ({
                 </div>
             </div> */
     }
-    // </div>
+    //{' '}
 };
 
 export default GridSeatEditor;

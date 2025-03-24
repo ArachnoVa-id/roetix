@@ -1,4 +1,5 @@
-import Toaster from '@/Components/novatix/Toaster'; // Import the Toaster component
+// GridEdit.tsx
+import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
 import { Head, router } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
@@ -95,28 +96,18 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
     return (
         <>
             <Head title="Grid Seat Editor" />
-            <div className="py-12">
-                <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-xl sm:rounded-lg">
-                        <div className="p-6">
-                            <div className="w-full overflow-x-auto">
-                                <div className="inline-block min-w-full">
-                                    <div className="flex justify-center">
-                                        <GridSeatEditor
-                                            initialLayout={layout}
-                                            onSave={handleSave}
-                                            venueId={venue_id}
-                                            isDisabled={isSubmitting}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            {/* Take up full viewport without scrolling */}
+            <div className="fixed inset-0 overflow-hidden">
+                <div className="h-full w-full">
+                    <GridSeatEditor
+                        initialLayout={layout}
+                        onSave={handleSave}
+                        venueId={venue_id}
+                        isDisabled={isSubmitting}
+                    />
                 </div>
             </div>
-
-            {/* Render the Toaster component */}
+    
             <Toaster
                 message={toasterState.message}
                 type={toasterState.type}
