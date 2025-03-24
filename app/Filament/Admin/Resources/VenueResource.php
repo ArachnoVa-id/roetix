@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\VenueStatus;
 use Filament\Forms;
 use Filament\Tables;
 use App\Models\Venue;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
 use Filament\Actions;
+use Filament\Facades\Filament;
 
 class VenueResource extends Resources\Resource
 {
@@ -25,68 +27,113 @@ class VenueResource extends Resources\Resource
         return $user && in_array($user->role, ['admin', 'vendor']);
     }
 
+    public static function canCreate(): bool
+    {
+        $user = Auth::user();
+        $tenant_id = Filament::getTenant()->team_id;
+    
+        $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
+    
+        if (!$team) {
+            return false;
+        }
+    
+        return $team->vendor_quota > 0;
+    }
+
+    public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Change Status')
+            ->color('success')
+            ->icon('heroicon-o-cog')
+            ->modalHeading('Change Status')
+            ->modalDescription('Select a new status for this venue.')
+            ->form([
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options(VenueStatus::editableOptions())
+                    ->default(fn($record) => $record->status) // Set the current value as default
+                    ->required(),
+            ])
+            ->action(function ($record, array $data) {
+                $record->update(['status' => $data['status']]);
+            })
+            ->modal(true);
+    }
+
     public static function EditVenueButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
         return $action
             ->label('Edit Venue')
             ->icon('heroicon-m-map')
-            ->color('success')
+            ->color('info')
             ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}");
     }
 
-    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    public static function infolist(Infolists\Infolist $infolist, bool $showEvents = true): Infolists\Infolist
     {
         return $infolist
             ->columns(2)
-            ->schema([
-                Infolists\Components\Section::make('Venue Information')
-                    ->columnSpan(1)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('venue_id')
-                            ->label('Venue ID'),
-                        Infolists\Components\TextEntry::make('name'),
-                        Infolists\Components\TextEntry::make('location'),
-                        Infolists\Components\TextEntry::make('capacity_qty')
-                            ->label('Capacity')
-                            ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
-                        Infolists\Components\TextEntry::make('status'),
-                    ]),
-                Infolists\Components\Section::make('Venue Contact')
-                    ->relationship('contactInfo', 'venue_id')
-                    ->columnSpan(1)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('phone_number'),
-                        Infolists\Components\TextEntry::make('email'),
-                        Infolists\Components\TextEntry::make('whatsapp_number'),
-                        Infolists\Components\TextEntry::make('instagram'),
-                    ]),
-                Infolists\Components\Section::make('Venue Owner')
-                    ->columnSpanFull()
-                    ->relationship('team', 'team_id')
-                    ->columns(2)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('name'),
-                        Infolists\Components\TextEntry::make('code'),
-                    ]),
-                Infolists\Components\Tabs::make()
-                    ->columnSpanFull()
-                    ->schema([
-                        Infolists\Components\Tabs\Tab::make('Events')
+            ->schema(
+                [
+                    Infolists\Components\Section::make('Venue Information')
+                        ->columnSpan(1)
+                        ->columns(2)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('venue_id')
+                                ->label('Venue ID')
+                                ->columnSpan(2),
+                            Infolists\Components\TextEntry::make('name'),
+                            Infolists\Components\TextEntry::make('location'),
+                            Infolists\Components\TextEntry::make('capacity_qty')
+                                ->label('Capacity')
+                                ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
+                            Infolists\Components\TextEntry::make('status')
+                                ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
+                                ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
+                                ->badge(),
+                        ]),
+                    Infolists\Components\Group::make([
+                        Infolists\Components\Section::make('Venue Contact')
+                            ->relationship('contactInfo', 'venue_id')
+                            ->columnSpan(1)
+                            ->columns(2)
                             ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(EventsRelationManager::class)
-                            ])
-                    ])
-            ]);
+                                Infolists\Components\TextEntry::make('phone_number'),
+                                Infolists\Components\TextEntry::make('email'),
+                                Infolists\Components\TextEntry::make('whatsapp_number'),
+                                Infolists\Components\TextEntry::make('instagram'),
+                            ]),
+                        Infolists\Components\Section::make('Venue Owner')
+                            ->columnSpan(1)
+                            ->relationship('team', 'team_id')
+                            ->columns(2)
+                            ->schema([
+                                Infolists\Components\TextEntry::make('name'),
+                                Infolists\Components\TextEntry::make('code'),
+                            ]),
+                    ]),
+                    Infolists\Components\Tabs::make()
+                        ->columnSpanFull()
+                        ->schema([
+                            Infolists\Components\Tabs\Tab::make('Events')
+                                ->hidden(!$showEvents)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(EventsRelationManager::class)
+                                ])
+                        ])
+                ]
+            );
     }
 
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
-            ->columns(2)
             ->schema([
                 Forms\Components\Section::make('Venue Information')
-                    ->columnSpan(1)
+                    ->columns(2)
                     ->schema([
                         Forms\Components\TextInput::make('name')
                             ->label('Name')
@@ -94,17 +141,10 @@ class VenueResource extends Resources\Resource
                         Forms\Components\TextInput::make('location')
                             ->label('Location')
                             ->required(),
-                        Forms\Components\Select::make('status')
-                            ->label('Status')
-                            ->options([
-                                'active' => 'Active',
-                                'inactive' => 'Inactive',
-                            ])
-                            ->required(),
                     ]),
                 Forms\Components\Section::make('Venue Contact')
                     ->relationship('contactInfo', 'venue_id')
-                    ->columnSpan(1)
+                    ->columns(2)
                     ->schema([
                         Forms\Components\TextInput::make('phone_number')
                             ->label('Phone Number')
@@ -146,7 +186,10 @@ class VenueResource extends Resources\Resource
                     ->label('Capacity')
                     ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
+                    ->badge(),
             ])
             ->filters(
                 [
@@ -181,6 +224,7 @@ class VenueResource extends Resources\Resource
                             });
                         }),
                     Tables\Filters\SelectFilter::make('status')
+                        ->options(VenueStatus::editableOptions())
                         ->multiple(),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
@@ -189,8 +233,11 @@ class VenueResource extends Resources\Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
+                    self::ChangeStatusButton(
+                        Tables\Actions\Action::make('changeStatus')
+                    ),
                     self::EditVenueButton(
-                        Tables\Actions\Action::make('Edit Venue')
+                        Tables\Actions\Action::make('editVenue')
                     ),
                     Tables\Actions\DeleteAction::make(),
                 ]),

@@ -13,7 +13,7 @@ class OrdersRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return OrderResource::infolist($infolist);
+        return OrderResource::infolist($infolist, showTickets: false);
     }
 
     public function table(Table $table): Table

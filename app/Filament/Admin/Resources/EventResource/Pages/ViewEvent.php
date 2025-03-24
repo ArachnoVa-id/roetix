@@ -13,11 +13,18 @@ class ViewEvent extends ViewRecord
     public function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('Back')
+                ->url(fn() => EventResource::getUrl())
+                ->icon('heroicon-o-arrow-left')
+                ->color('info'),
             Actions\EditAction::make('Edit Event')
                 ->icon('heroicon-o-pencil'),
             EventResource::EditSeatsButton(
                 Actions\Action::make('editSeats')
-            )->button(),
+            ),
+            EventResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
         ];

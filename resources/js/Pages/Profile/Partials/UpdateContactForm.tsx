@@ -2,45 +2,33 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
-import { EventColorProps, EventProps } from '@/types/front-end';
+import { EventProps } from '@/types/front-end';
 import { Transition } from '@headlessui/react';
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
-import styled from 'styled-components';
 
-const StyledLink = styled(Link)<{ $props: EventColorProps }>`
-    color: ${({ $props }) => $props.text_primary_color};
-    &:hover {
-        color: ${({ $props }) => $props.primary_color};
-    }
-`;
-
-export default function UpdateProfileInformation({
-    mustVerifyEmail,
-    status,
+export default function UpdateContactForm({
     className = '',
     client,
     props,
 }: {
-    mustVerifyEmail: boolean;
-    status?: string;
     className?: string;
     client: string;
     props: EventProps;
 }) {
     const user = usePage().props.auth.user;
 
-    const { data, setData, patch, errors, processing, recentlySuccessful } =
+    const { data, setData, errors, put, processing, recentlySuccessful } =
         useForm({
-            first_name: user.first_name,
-            last_name: user.last_name,
-            email: user.email,
+            phone_number: user.contact_info.phone_number,
+            whatsapp_number: user.contact_info.whatsapp_number,
+            instagram: user.contact_info.instagram,
         });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        patch(route('profile.update', { client }), {
+        put(route('profile.contact_update', { client }), {
             preserveScroll: true,
         });
     };
@@ -54,125 +42,104 @@ export default function UpdateProfileInformation({
                         color: props.text_primary_color,
                     }}
                 >
-                    Profile Information
+                    Contact Information
                 </h2>
 
                 <p
                     className="mt-1 text-sm"
                     style={{ color: props.text_secondary_color }}
                 >
-                    Update your account's profile information and email address.
+                    Update your account's contact information.
                 </p>
             </header>
 
             <form onSubmit={submit} className="mt-6 space-y-6">
                 <div>
                     <InputLabel
-                        htmlFor="first_name"
-                        value="First Name"
+                        htmlFor="phone_number"
+                        value="Phone Number"
                         style={{
                             color: props.text_primary_color,
                         }}
                     />
 
                     <TextInput
-                        id="first_name"
+                        id="phone_number"
                         className="mt-1 block w-full"
-                        value={data.first_name}
+                        value={data.phone_number}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setData('first_name', e.target.value)
+                            setData('phone_number', e.target.value)
                         }
                         required
                         isFocused
-                        autoComplete="first_name"
+                        autoComplete="phone_number"
                         style={{
-                            color: props.text_primary_color,
+                            color: props.text_secondary_color,
                         }}
                     />
 
-                    <InputError className="mt-2" message={errors.first_name} />
+                    <InputError
+                        className="mt-2"
+                        message={errors.phone_number}
+                    />
                 </div>
 
                 <div>
                     <InputLabel
-                        htmlFor="last_name"
-                        value="Last Name"
+                        htmlFor="whatsapp_number"
+                        value="WhatsApp Number"
                         style={{
                             color: props.text_primary_color,
                         }}
                     />
 
                     <TextInput
-                        id="last_name"
+                        id="whatsapp_number"
                         className="mt-1 block w-full"
-                        value={data.last_name}
+                        value={data.whatsapp_number}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setData('last_name', e.target.value)
+                            setData('whatsapp_number', e.target.value)
                         }
                         required
                         isFocused
-                        autoComplete="last_name"
+                        autoComplete="whatsapp_number"
                         style={{
-                            color: props.text_primary_color,
+                            color: props.text_secondary_color,
                         }}
                     />
 
-                    <InputError className="mt-2" message={errors.last_name} />
+                    <InputError
+                        className="mt-2"
+                        message={errors.whatsapp_number}
+                    />
                 </div>
 
                 <div>
                     <InputLabel
-                        htmlFor="email"
-                        value="Email"
+                        htmlFor="instagram"
+                        value="Instagram"
                         style={{
                             color: props.text_primary_color,
                         }}
                     />
 
                     <TextInput
-                        id="email"
-                        type="email"
+                        id="instagram"
                         className="mt-1 block w-full"
-                        value={data.email}
+                        value={data.instagram}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setData('email', e.target.value)
+                            setData('instagram', e.target.value)
                         }
                         required
-                        autoComplete="username"
+                        isFocused
+                        autoComplete="instagram"
                         style={{
-                            color: props.text_primary_color,
+                            color: props.text_secondary_color,
                         }}
                     />
 
-                    <InputError className="mt-2" message={errors.email} />
+                    <InputError className="mt-2" message={errors.instagram} />
                 </div>
-
-                {mustVerifyEmail && user.email_verified_at === null && (
-                    <div>
-                        <p
-                            className="mt-2 text-sm"
-                            style={{ color: props.text_primary_color }}
-                        >
-                            Your email address is unverified.
-                            <StyledLink
-                                $props={props}
-                                href={route('verification.send')}
-                                method="post"
-                                as="button"
-                                className="rounded-md text-sm underline focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                                Click here to re-send the verification email.
-                            </StyledLink>
-                        </p>
-
-                        {status === 'verification-link-sent' && (
-                            <div className="mt-2 text-sm font-medium text-green-600">
-                                A new verification link has been sent to your
-                                email address.
-                            </div>
-                        )}
-                    </div>
-                )}
 
                 <div className="flex items-center gap-4">
                     <PrimaryButton disabled={processing}>Save</PrimaryButton>

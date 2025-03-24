@@ -214,6 +214,26 @@ class PaymentController extends Controller
                 return response()->json(['error' => 'Invalid callback data'], 400);
             }
 
+            // Check if this is a resumed transaction (order ID starting with 'RESUME-')
+            $originalOrderId = null;
+            if (strpos($identifier, 'RESUME-') === 0) {
+                // Extract the original order ID from custom_field1 if available
+                $originalOrderId = $data['custom_field1'] ?? null;
+
+                // If not available from custom field, extract from the order ID itself
+                if (!$originalOrderId) {
+                    $parts = explode('-', $identifier, 3);
+                    if (count($parts) == 3) {
+                        $originalOrderId = $parts[2];
+                    }
+                }
+
+                // If we found an original order ID, use that instead
+                if ($originalOrderId) {
+                    $identifier = $originalOrderId;
+                }
+            }
+
             // Process the callback based on transaction status
             switch ($data['transaction_status']) {
                 case 'capture':
@@ -273,6 +293,173 @@ class PaymentController extends Controller
                 'error' => $e->getMessage(),
             ]);
             throw $e; // Re-throw the exception to ensure the outer transaction rolls back
+        }
+    }
+
+    public function getPendingTransactions(Request $request)
+    {
+        try {
+            $userId = Auth::id();
+
+            // Get the client's event
+            $hostParts = explode('.', $request->getHost());
+            $client = $hostParts[0];
+            $event = Event::where('slug', $client)->first();
+
+            if (!$event) {
+                return response()->json(['error' => 'Event not found'], 404);
+            }
+
+            // Get pending orders for this user and event
+            $pendingOrders = Order::where('user_id', $userId)
+                ->where('event_id', $event->event_id)
+                ->where('status', 'pending')
+                ->get();
+
+            $pendingTransactions = [];
+
+            foreach ($pendingOrders as $order) {
+                // Get tickets for this order
+                $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
+                $ticketIds = $ticketOrders->pluck('ticket_id');
+
+                $tickets = Ticket::whereIn('ticket_id', $ticketIds)->get();
+                $seatIds = $tickets->pluck('seat_id');
+
+                // Get seats
+                $seats = Seat::whereIn('seat_id', $seatIds)->get();
+
+                $seatsData = $seats->map(function ($seat) use ($tickets) {
+                    $ticket = $tickets->where('seat_id', $seat->seat_id)->first();
+
+                    return [
+                        'seat_id' => $seat->seat_id,
+                        'seat_number' => $seat->seat_number,
+                        'row' => $seat->row,
+                        'column' => $seat->column,
+                        'ticket_type' => $ticket->ticket_type,
+                        'status' => $ticket->status,
+                        'price' => $ticket->price,
+                        'type' => 'seat',
+                    ];
+                });
+
+                $pendingTransactions[] = [
+                    'order_id' => $order->order_id,
+                    'order_code' => $order->order_code,
+                    'total_price' => $order->total_price,
+                    'seats' => $seatsData,
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'pendingTransactions' => $pendingTransactions
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch pending transactions: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function resumePayment(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'transaction_id' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Find the order
+            $orderCode = $request->transaction_id;
+            $order = Order::where('order_code', $orderCode)
+                ->where('status', 'pending')
+                ->first();
+
+            if (!$order) {
+                return response()->json(['message' => 'Transaction not found or already completed'], 404);
+            }
+
+            // Verify this order belongs to the current user
+            if ($order->user_id !== Auth::id()) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            // Get ticket orders for this order
+            $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
+            $ticketIds = $ticketOrders->pluck('ticket_id');
+            $tickets = Ticket::whereIn('ticket_id', $ticketIds)->get();
+
+            // Prepare item details for Midtrans
+            $itemDetails = [];
+            $ticketsByType = $tickets->groupBy('ticket_type');
+
+            foreach ($ticketsByType as $type => $typeTickets) {
+                $seatNumbers = $typeTickets->map(function ($ticket) {
+                    $seat = Seat::where('seat_id', $ticket->seat_id)->first();
+                    return $seat ? $seat->seat_number : '';
+                })->filter()->toArray();
+
+                $seatLabel = !empty($seatNumbers) ? ' (' . implode(', ', $seatNumbers) . ')' : '';
+
+                $itemDetails[] = [
+                    'id' => 'TICKET-' . strtoupper($type),
+                    'price' => (int)$typeTickets->first()->price,
+                    'quantity' => $typeTickets->count(),
+                    'name' => ucfirst($type) . ' Ticket' . $seatLabel,
+                ];
+            }
+
+            // Add tax item if applicable
+            $taxAmount = $order->total_price * 0.01; // Assuming 1% tax
+            if ($taxAmount > 0) {
+                $itemDetails[] = [
+                    'id' => 'TAX-1PCT',
+                    'price' => (int)$taxAmount,
+                    'quantity' => 1,
+                    'name' => 'Tax (1%)',
+                ];
+            }
+
+            // Get user email
+            $userEmail = Auth::user()->email ?? 'customer@example.com';
+
+            // Generate new order ID with reference to original
+            $newOrderCode = 'RESUME-' . time() . '-' . $orderCode;
+
+            // Generate new snap token with new order ID
+            $snapToken = Snap::getSnapToken([
+                'transaction_details' => [
+                    'order_id' => $newOrderCode,
+                    'gross_amount' => (int)$order->total_price
+                ],
+                'credit_card' => ['secure' => true],
+                'customer_details' => ['email' => $userEmail],
+                'item_details' => $itemDetails,
+                'custom_field1' => $orderCode, // Store original order ID for reference
+            ]);
+
+            if (!$snapToken) {
+                return response()->json(['message' => 'Failed to get Snap token'], 500);
+            }
+
+            return response()->json([
+                'snap_token' => $snapToken,
+                'transaction_id' => $orderCode, // Still return original ID for client reference
+                'new_order_id' => $newOrderCode,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error resuming payment: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

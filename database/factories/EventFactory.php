@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\EventStatus;
+use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use App\Models\Event;
@@ -43,7 +45,7 @@ class EventFactory extends Factory
             'start_date' => $this->faker->dateTimeBetween('now', '+1 month'),
             'event_date' => $endDate,
             'location' => $this->faker->address(),
-            'status' => $this->faker->randomElement(['planned', 'active', 'completed', 'cancelled']),
+            'status' => $this->faker->randomElement(EventStatus::values()),
         ];
     }
 
@@ -224,17 +226,52 @@ class EventFactory extends Factory
         // Randomly select seats
         $selectedSeatIds = collect($seatIds)->random($numTickets);
 
+        // Get ticket categories for this event
+        $ticketCategories = $event->ticketCategories;
+
+        // If no categories exist, return early
+        if ($ticketCategories->isEmpty()) return;
+
+        // Get current active timeline
+        $currentDate = Carbon::now();
+        $activeTimeline = TimelineSession::where('event_id', $event->event_id)
+            ->where('start_date', '<=', $currentDate)
+            ->where('end_date', '>=', $currentDate)
+            ->first();
+
+        // If no active timeline, get the earliest one
+        if (!$activeTimeline) {
+            $activeTimeline = $event->timelineSessions()->orderBy('start_date')->first();
+        }
+
         foreach ($selectedSeatIds as $seatId) {
+            // Select a random category
+            $category = $ticketCategories->random();
+
+            // Get appropriate price based on category and timeline
+            $price = 0;
+            if ($activeTimeline) {
+                $priceData = $activeTimeline->eventCategoryTimeboundPrices()
+                    ->where('ticket_category_id', $category->ticket_category_id)
+                    ->first();
+
+                if ($priceData) {
+                    $price = $priceData->price;
+                }
+            }
+
+            // If no price found, use a random value
+            if ($price == 0) {
+                $price = $this->faker->randomFloat(2, 10, 100);
+            }
+
             $event->tickets()->create([
                 'seat_id' => $seatId,
                 'team_id' => $event->team_id,
-                // 'ticket_category_id' => $event
-                //     ->ticketCategories
-                //     ->random()
-                //     ->ticket_category_id,
-                'ticket_type' => $this->faker->randomElement(['standard', 'VIP']),
-                'price' => $this->faker->randomFloat(2, 10, 100),
-                'status' => 'available',
+                'ticket_category_id' => $category->ticket_category_id,
+                'ticket_type' => $category->name,
+                'price' => $price,
+                'status' => TicketStatus::AVAILABLE,
             ]);
         }
     }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\OrderStatus;
 use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
@@ -50,56 +51,59 @@ class OrderResource extends Resource
         return parent::tableQuery()->withoutGlobalScope(SoftDeletingScope::class);
     }
 
-    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    public static function infolist(Infolists\Infolist $infolist, bool $showTickets = true): Infolists\Infolist
     {
-        return $infolist
-            ->schema([
-                Infolists\Components\Section::make('Order Information')
-                    ->columns(2)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('order_id')
-                            ->label('ID'),
-                        Infolists\Components\TextEntry::make('order_date')
-                            ->label('Date'),
-                        Infolists\Components\TextEntry::make('total_price')
-                            ->label('Total'),
-                        Infolists\Components\TextEntry::make('status'),
-                    ]),
-                Infolists\Components\Section::make('Order User')
-                    ->relationship('user', 'user_id')
-                    ->columns(3)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('first_name')
-                            ->label('First Name'),
-                        Infolists\Components\TextEntry::make('last_name')
-                            ->label('Last Name'),
-                        Infolists\Components\TextEntry::make('email'),
-                    ]),
-                Infolists\Components\Section::make('Order Event')
-                    ->relationship('events', 'event_id')
-                    ->columns(3)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('name')
-                            ->formatStateUsing(function ($state) {
-                                $parsed = explode(',', $state);
-                                return $parsed[0];
-                            }),
-                        Infolists\Components\TextEntry::make('location')
-                            ->formatStateUsing(function ($state) {
-                                $parsed = explode(',', $state);
-                                return $parsed[0];
-                            }),
-                    ]),
-                Infolists\Components\Tabs::make()
-                    ->columnSpanFull()
-                    ->schema([
-                        Infolists\Components\Tabs\Tab::make('Tickets')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(TicketsRelationManager::class)
-                            ]),
-                    ]),
-            ]);
+        return $infolist->schema([
+            Infolists\Components\Section::make('Order Information')
+                ->columns(2)
+                ->schema([
+                    Infolists\Components\TextEntry::make('order_id')
+                        ->label('ID'),
+                    Infolists\Components\TextEntry::make('order_date')
+                        ->label('Date'),
+                    Infolists\Components\TextEntry::make('total_price')
+                        ->label('Total'),
+                    Infolists\Components\TextEntry::make('status')
+                        ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
+                        ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
+                        ->badge(),
+                ]),
+            Infolists\Components\Section::make('Order User')
+                ->relationship('user', 'user_id')
+                ->columns(3)
+                ->schema([
+                    Infolists\Components\TextEntry::make('first_name')
+                        ->label('First Name'),
+                    Infolists\Components\TextEntry::make('last_name')
+                        ->label('Last Name'),
+                    Infolists\Components\TextEntry::make('email'),
+                ]),
+            Infolists\Components\Section::make('Order Event')
+                ->relationship('events', 'event_id')
+                ->columns(3)
+                ->schema([
+                    Infolists\Components\TextEntry::make('name')
+                        ->formatStateUsing(function ($state) {
+                            $parsed = explode(',', $state);
+                            return $parsed[0];
+                        }),
+                    Infolists\Components\TextEntry::make('location')
+                        ->formatStateUsing(function ($state) {
+                            $parsed = explode(',', $state);
+                            return $parsed[0];
+                        }),
+                ]),
+            Infolists\Components\Tabs::make()
+                ->columnSpanFull()
+                ->schema([
+                    Infolists\Components\Tabs\Tab::make('Tickets')
+                        ->hidden(!$showTickets)
+                        ->schema([
+                            \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                ->manager(TicketsRelationManager::class)
+                        ]),
+                ]),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -123,7 +127,10 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('total_price')
                     ->label('Total')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
+                    ->badge(),
                 Tables\Columns\TextColumn::make('events.name')
                     ->label('Event')
                     ->searchable()
@@ -134,9 +141,14 @@ class OrderResource extends Resource
                     }),
 
             ])
-            ->filters([
-                //
-            ])
+            ->filters(
+                [
+                    Tables\Filters\SelectFilter::make('status')
+                        ->options(OrderStatus::editableOptions())
+                        ->multiple()
+                ],
+                layout: Tables\Enums\FiltersLayout::Modal
+            )
             ->actions([
                 Tables\Actions\ViewAction::make(),
             ])

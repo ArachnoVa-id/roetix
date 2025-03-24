@@ -19,7 +19,9 @@ class Team extends Model
 
     protected $fillable = [
         'name',
-        'code'
+        'code',
+        'vendor_quota',
+        'event_quota',
     ];
 
     protected static function boot()

@@ -23,7 +23,11 @@ class Ticket extends Model
     protected $fillable = [
         'status',
         'event_id',
-        'seat_id'
+        'seat_id',
+        'ticket_type',
+        'ticket_category_id', // Add this if it's missing
+        'price',
+        'team_id'
     ];
 
     protected static function boot()
@@ -67,5 +71,10 @@ class Ticket extends Model
     public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'ticket_order', 'ticket_id', 'order_id');
+    }
+
+    public function ticketCategory(): BelongsTo
+    {
+        return $this->belongsTo(TicketCategory::class, 'ticket_category_id', 'ticket_category_id');
     }
 }

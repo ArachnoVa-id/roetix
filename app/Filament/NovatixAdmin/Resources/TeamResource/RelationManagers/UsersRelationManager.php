@@ -14,7 +14,7 @@ class UsersRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return UserResource::infolist($infolist);
+        return UserResource::infolist($infolist, showTeams: false);
     }
 
     public function form(Form $form): Form

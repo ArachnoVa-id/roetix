@@ -13,11 +13,18 @@ class ViewVenue extends ViewRecord
     public function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('Back')
+                ->url(fn() => VenueResource::getUrl())
+                ->icon('heroicon-o-arrow-left')
+                ->color('info'),
             Actions\EditAction::make('Edit Event')
                 ->icon('heroicon-o-pencil'),
             VenueResource::EditVenueButton(
                 Actions\Action::make('Edit Venue')
-            )->button(),
+            ),
+            VenueResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
         ];

@@ -26,38 +26,50 @@ class TeamResource extends Resource
         return $user && in_array($user->role, ['admin']);
     }
 
-    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    public static function infolist(Infolists\Infolist $infolist, bool $showMembers = true, bool $showEvents = true, bool $showVenues = true): Infolists\Infolist
     {
         return $infolist
-            ->schema([
-                Infolists\Components\Section::make('Team Information')
-                    ->columns(2)
-                    ->columnSpanFull()
-                    ->schema([
-                        Infolists\Components\TextEntry::make('name'),
-                        Infolists\Components\TextEntry::make('code'),
-                    ]),
-                Infolists\Components\Tabs::make('')
-                    ->columnSpanFull()
-                    ->schema([
-                        Infolists\Components\Tabs\Tab::make('Members')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(UsersRelationManager::class)
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Events')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(EventsRelationManager::class)
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Venues')
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(VenuesRelationManager::class)
-                            ]),
-                    ]),
+            ->schema(
+                [
+                    Infolists\Components\Section::make('Team Information')
+                        ->columns(2)
+                        ->columnSpanFull()
+                        ->schema([
+                            Infolists\Components\TextEntry::make('name'),
+                            Infolists\Components\TextEntry::make('code'),
 
-            ]);
+                            Infolists\Components\TextEntry::make('vendor_quota')
+                                ->label('Vendor Quota')
+                                ->formatStateUsing(fn($state) => max(0, $state)),
+
+                            Infolists\Components\TextEntry::make('event_quota')
+                                ->label('Event Quota')
+                                ->formatStateUsing(fn($state) => max(0, $state)),
+                        ]),
+                    Infolists\Components\Tabs::make('')
+                        ->columnSpanFull()
+                        ->schema([
+                            Infolists\Components\Tabs\Tab::make('Members')
+                                ->hidden(!$showMembers)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(UsersRelationManager::class)
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Events')
+                                ->hidden(!$showEvents)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(EventsRelationManager::class)
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Venues')
+                                ->hidden(!$showVenues)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(VenuesRelationManager::class)
+                                ]),
+                        ]),
+                ]
+            );
     }
 
     public static function form(Forms\Form $form): Forms\Form
@@ -87,6 +99,16 @@ class TeamResource extends Resource
                                     $set('code', strtoupper($state));
                                 }
                             }),
+                        Forms\Components\TextInput::make('vendor_quota')
+                            ->label('vendor quota')
+                            ->minValue(0)
+                            ->numeric()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('event_quota')
+                            ->label('event quota')
+                            ->minValue(0)
+                            ->numeric()
+                            ->maxLength(255),
                     ])
             ]);
     }
@@ -102,7 +124,17 @@ class TeamResource extends Resource
                 Tables\Columns\TextColumn::make('code')
                     ->searchable()
                     ->sortable()
-                    ->limit(50)
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('vendor_quota')
+                    ->label('Vendor Quota')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('event_quota')
+                    ->label('Event Quota')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
             ])
             ->filters([
                 //

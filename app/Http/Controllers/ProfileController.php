@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ContactUpdateRequest;
+use App\Http\Requests\PasswordUpdateRequest;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Event;
-use App\Models\EventVariables;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,18 +25,25 @@ class ProfileController extends Controller
         $event = Event::where('slug', $client)
             ->first();
 
-        $props = EventVariables::findOrFail($event->event_variables_id);
+        $props = $event->eventVariables;
+
+        $user = $request->user()->load('contactInfo');
 
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'client' => $client,
+            'props' => $props,
+            'auth' => [
+                'user' => $user,
+            ],
         ]);
     }
 
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(ProfileUpdateRequest $request, string $client = ''): RedirectResponse
     {
         $request->user()->fill($request->validated());
 
@@ -45,13 +53,29 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return Redirect::route('profile.edit');
+        return Redirect::route('profile.edit', ['client' => $client]);
+    }
+
+    public function updatePassword(PasswordUpdateRequest $request, string $client = ''): RedirectResponse
+    {
+        $request->user()->update([
+            'password' => bcrypt($request->password),
+        ]);
+
+        return Redirect::route('profile.edit', ['client' => $client]);
+    }
+
+    public function updateContact(ContactUpdateRequest $request, string $client = ''): RedirectResponse
+    {
+        $request->user()->contactInfo()->update($request->validated());
+
+        return Redirect::route('profile.edit', ['client' => $client]);
     }
 
     /**
      * Delete the user's account.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, string $client): RedirectResponse
     {
         $request->validate([
             'password' => ['required', 'current_password'],
@@ -66,6 +90,6 @@ class ProfileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return Redirect::to('/');
+        return Redirect::route('login', ['client' => $client]);
     }
 }

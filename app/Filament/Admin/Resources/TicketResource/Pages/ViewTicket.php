@@ -12,6 +12,11 @@ class ViewTicket extends ViewRecord
 
     public function getHeaderActions(): array
     {
-        return [];
+        return [
+            Actions\Action::make('Back')
+                ->url(fn() => TicketResource::getUrl())
+                ->icon('heroicon-o-arrow-left')
+                ->color('info'),
+        ];
     }
 }

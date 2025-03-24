@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\EventResource;
 use Filament\Resources\Pages\CreateRecord;
 
 use App\Models\TicketCategory;
+use App\Models\Team;
 use App\Models\EventCategoryTimeboundPrice;
 use App\Models\EventVariables;
 use App\Models\TimelineSession;
@@ -20,6 +21,14 @@ class CreateEvent extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $tenant_id = Filament::getTenant()->team_id;
+        $team = Team::where('team_id', $tenant_id)->first();
+
+        if (!$team || $team->vendor_quota <= 0) {
+            throw new \Exception('Vendor quota tidak mencukupi untuk membuat venue baru.');
+        };
+
+        $team->decrement('event_quota');
         $tenant = Filament::getTenant();
         $data['team_id'] = $tenant->team_id;
         $data['team_code'] = $tenant->code;

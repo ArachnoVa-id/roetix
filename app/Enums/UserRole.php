@@ -6,7 +6,7 @@ use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum UserRole: string implements HasLabel
+enum UserRole: string implements HasLabel, HasColor
 {
     case USER = 'user';
     case ADMIN = 'admin';
@@ -16,10 +16,10 @@ enum UserRole: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::USER => 'user',
-            self::ADMIN => 'admin',
-            self::VENDOR => 'vendor',
-            self::EVENT_ORGANIZER => 'event-organizer'
+            self::USER => 'User',
+            self::ADMIN => 'Admin',
+            self::VENDOR => 'Vendor',
+            self::EVENT_ORGANIZER => 'EO'
         };
     }
 
@@ -46,7 +46,7 @@ enum UserRole: string implements HasLabel
 
     public static function toArray(): array
     {
-        return array_map(fn($case) => $case->getLabel(), self::cases());
+        return array_map(fn($case) => $case->value, self::cases());
     }
 
     public static function values(): array

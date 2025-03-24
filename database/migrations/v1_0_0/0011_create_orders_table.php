@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('team_id', 36);
             $table->dateTime('order_date');
             $table->decimal('total_price', 9, 2);
-            $table->enum('status', OrderStatus::toArray())->default(OrderStatus::PENDING);
+            $table->enum('status', OrderStatus::values())->default(OrderStatus::PENDING);
             $table->timestamps();
 
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');

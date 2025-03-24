@@ -13,6 +13,10 @@ class EditTeam extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('Back')
+                ->url(fn() => url()->previous())
+                ->icon('heroicon-o-arrow-left')
+                ->color('info'),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
         ];

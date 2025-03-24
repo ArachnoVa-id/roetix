@@ -25,7 +25,7 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
         if (flash?.success) {
             showSuccess(flash.success);
         }
-    }, [errors, flash]);
+    }, [errors, flash, showError, showSuccess]);
 
     const handleSave = async (updatedLayout: Layout) => {
         setIsSubmitting(true);

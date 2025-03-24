@@ -6,20 +6,25 @@ use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum TicketStatus: string implements HasLabel
+enum TicketStatus: string implements HasLabel, HasColor
 {
     case AVAILABLE = 'available';
     case BOOKED = 'booked';
     case RESERVED = 'reserved';
     case IN_TRANSACTION = 'in_transaction';
 
+    public static function values(): array
+    {
+        return array_map(fn($case) => $case->value, self::cases());
+    }
+
     public function getLabel(): string
     {
         return match ($this) {
-            self::AVAILABLE => 'available',
-            self::BOOKED => 'booked',
-            self::RESERVED => 'reserved',
-            self::IN_TRANSACTION => 'in_transaction'
+            self::AVAILABLE => 'Available',
+            self::BOOKED => 'Booked',
+            self::RESERVED => 'Reserved',
+            self::IN_TRANSACTION => 'In Transaction'
         };
     }
 
@@ -48,7 +53,7 @@ enum TicketStatus: string implements HasLabel
     {
         return array_map(fn($case) => $case->getLabel(), self::cases());
     }
-    
+
 
     public static function editableOptions()
     {
