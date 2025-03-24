@@ -31,6 +31,27 @@ class EventResource extends Resource
         return $user && in_array($user->role, ['admin', 'event-organizer']);
     }
 
+    public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Change Status')
+            ->color('success')
+            ->icon('heroicon-o-cog')
+            ->modalHeading('Change Status')
+            ->modalDescription('Select a new status for this event.')
+            ->form([
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options(EventStatus::editableOptions())
+                    ->default(fn($record) => $record->status) // Set the current value as default
+                    ->required(),
+            ])
+            ->action(function ($record, array $data) {
+                $record->update(['status' => $data['status']]);
+            })
+            ->modal(true);
+    }
+
     public static function EditSeatsButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
         return $action
@@ -264,9 +285,6 @@ class EventResource extends Resource
                                         $set('slug', $slug);
                                     })
                                     ->reactive(),
-                                Forms\Components\Select::make('status')
-                                    ->options(EventStatus::editableOptions())
-                                    ->required(),
                                 Forms\Components\DateTimePicker::make('start_date')
                                     ->label('Start Date')
                                     ->minDate(
@@ -924,6 +942,7 @@ class EventResource extends Resource
         $defaultActions = [
             Tables\Actions\ViewAction::make(),
             Tables\Actions\EditAction::make(),
+            self::ChangeStatusButton(Tables\Actions\Action::make('changeStatus')),
         ];
 
         if ($role == 'event-organizer') $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));

@@ -200,6 +200,10 @@ class EditEvent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('Back')
+                ->url(fn() => url()->previous())
+                ->icon('heroicon-o-arrow-left')
+                ->color('info'),
             EventResource::EditSeatsButton(
                 Actions\Action::make('Edit Seats')
             )->button(),
