@@ -36,11 +36,11 @@ class Venue extends Model
             if (empty($model->venue_id)) {
                 $model->venue_id = (string) Str::uuid();
             }
-            
+
             // protect from model
-            if ($team && $team->venues()->count() >= $team->vendor_quota) {
-                throw new \Exception("This team has reached its venue limit.");
-            }
+            // if ($team && $team->venues()->count() >= $team->vendor_quota) {
+            //     throw new \Exception("This team has reached its venue limit.");
+            // }
         });
     }
 
