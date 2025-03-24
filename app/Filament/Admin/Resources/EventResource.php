@@ -39,12 +39,12 @@ class EventResource extends Resource
         $tenant_id = Filament::getTenant()->team_id;
     
         $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
-    
+
         if (!$team) {
             return false;
         }
-    
-        return $team->events_quota > 0;
+        
+        return $team->event_quota > 0;
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
