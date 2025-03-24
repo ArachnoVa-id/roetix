@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use Filament\Facades\Filament;
+
 
 class EventResource extends Resource
 {
@@ -29,6 +31,20 @@ class EventResource extends Resource
         $user = Auth::user();
 
         return $user && in_array($user->role, ['admin', 'event-organizer']);
+    }
+
+    public static function canCreate(): bool
+    {
+        $user = Auth::user();
+        $tenant_id = Filament::getTenant()->team_id;
+    
+        $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
+    
+        if (!$team) {
+            return false;
+        }
+    
+        return $team->events_quota > 0;
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action

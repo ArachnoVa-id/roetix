@@ -129,7 +129,7 @@ class TeamResource extends Resource
                     ->sortable()
                     ->limit(50),
                 Tables\Columns\TextColumn::make('event_quota')
-                    ->label('vendor')
+                    ->label('event')
                     ->searchable()
                     ->sortable()
                     ->limit(50),

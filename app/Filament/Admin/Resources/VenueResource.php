@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
 use Filament\Actions;
+use Filament\Facades\Filament;
 
 class VenueResource extends Resources\Resource
 {
@@ -24,6 +25,20 @@ class VenueResource extends Resources\Resource
         $user = Auth::user();
 
         return $user && in_array($user->role, ['admin', 'vendor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        $user = Auth::user();
+        $tenant_id = Filament::getTenant()->team_id;
+    
+        $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
+    
+        if (!$team) {
+            return false;
+        }
+    
+        return $team->vendor_quota > 0;
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
