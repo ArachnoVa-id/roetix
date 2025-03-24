@@ -93,6 +93,10 @@ Route::domain(config('app.domain'))
                 ->name('seats.update-event-seats');
             Route::post('/seats/save-grid-layout', [SeatController::class, 'saveGridLayout'])
                 ->name('seats.save-grid-layout');
+            // Route::prefix('api')->group(function () {
+            //     Route::get('/events/{eventId}/timelines', [SeatController::class, 'getEventTimelines'])
+            //         ->name('api.events.timelines');
+            // });
         });
 
         // Any unregistered route will be redirected to the main domain
@@ -120,6 +124,11 @@ Route::domain('{client}.' . config('app.domain'))
                 Route::get('tickets/download-all', [TicketController::class, 'downloadAllTickets'])
                     ->name('api.tickets.download-all');
             });
+            Route::get('/api/pending-transactions', [PaymentController::class, 'getPendingTransactions'])
+                ->name('api.pending-transactions');
+
+            Route::post('/payment/resume', [PaymentController::class, 'resumePayment'])
+                ->name('payment.resume');
         });
 
         Route::get('/events/{eventId}/tickets', [EoTiketController::class, 'show'])
@@ -138,6 +147,7 @@ Route::domain('{client}.' . config('app.domain'))
         // Ticket
         Route::post('/payment/charge', [PaymentController::class, 'charge'])
             ->name('payment.charge');
+
 
         // Any unregistered route will be redirected to the client's home page
         Route::fallback(function () {

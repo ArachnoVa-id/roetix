@@ -12,6 +12,15 @@ interface Venue {
     name: string;
 }
 
+declare global {
+    interface Window {
+        snap?: {
+            pay: (token: string, options: any) => void;
+        };
+        eventTimelines?: Timeline[];
+    }
+}
+
 interface Event {
     event_id: string;
     name: string;
@@ -65,6 +74,10 @@ export default function Landing({
 }: Props) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
+    const [pendingTransactionSeats, setPendingTransactionSeats] = useState<
+        SeatItem[]
+    >([]);
+    const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
     // Show error if it exists when component mounts
     useEffect(() => {
@@ -72,6 +85,65 @@ export default function Landing({
             showError(error);
         }
     }, [error, showError]);
+
+    useEffect(() => {
+        // First check localStorage as before
+        const savedTransaction = localStorage.getItem('pendingTransaction');
+        if (savedTransaction) {
+            try {
+                const parsed = JSON.parse(savedTransaction);
+                if (parsed.seats && Array.isArray(parsed.seats)) {
+                    setPendingTransactionSeats(parsed.seats);
+                }
+            } catch (e) {
+                console.error('Failed to parse saved transaction', e);
+                localStorage.removeItem('pendingTransaction');
+            }
+        }
+
+        // Then fetch actual pending transactions from the server
+        fetchPendingTransactions();
+    }, []);
+
+    const fetchPendingTransactions = async () => {
+        setIsLoadingTransactions(true);
+        try {
+            const response = await fetch('/api/pending-transactions');
+            if (!response.ok) {
+                throw new Error('Failed to fetch pending transactions');
+            }
+            const data = await response.json();
+
+            if (data.success && data.pendingTransactions.length > 0) {
+                // Get the first pending transaction's seats
+                const pendingSeats = data.pendingTransactions[0].seats;
+                setPendingTransactionSeats(pendingSeats);
+
+                // Store the transaction ID for resuming payment
+                if (pendingSeats.length > 0) {
+                    localStorage.setItem(
+                        'pendingTransaction',
+                        JSON.stringify({
+                            transactionInfo: {
+                                transaction_id:
+                                    data.pendingTransactions[0].order_code,
+                                // We'll need to request a new snap token when resuming
+                            },
+                            seats: pendingSeats,
+                        }),
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching pending transactions:', error);
+        } finally {
+            setIsLoadingTransactions(false);
+        }
+    };
+
+    const markSeatsAsPendingTransaction = (seats: SeatItem[]) => {
+        setPendingTransactionSeats(seats);
+    };
 
     // Tentukan apakah booking diperbolehkan berdasarkan status event
     const isBookingAllowed = useMemo(() => {
@@ -234,6 +306,68 @@ export default function Landing({
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         }).format(value);
+    };
+
+    const resumeTransaction = async (transactionId: string) => {
+        try {
+            const response = await fetch('/payment/resume', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ transaction_id: transactionId }),
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    `Status: ${response.status}, Status Text: ${response.statusText}`,
+                );
+            }
+
+            const data = await response.json();
+            if (data.snap_token) {
+                // Open Midtrans payment window
+                if (window.snap) {
+                    const callbacks = {
+                        onSuccess: () => {
+                            showSuccess('Payment successful!');
+                            localStorage.removeItem('pendingTransaction');
+                            setPendingTransactionSeats([]);
+                            window.location.reload();
+                        },
+                        onPending: () => {
+                            showSuccess(
+                                'Your payment is pending. Please complete the payment.',
+                            );
+                        },
+                        onError: () => {
+                            showError('Payment failed. Please try again.');
+                        },
+                        onClose: () => {
+                            showError(
+                                'Payment window closed. You can resume your payment later.',
+                            );
+                        },
+                    };
+
+                    window.snap.pay(data.snap_token, callbacks);
+                } else {
+                    showError(
+                        'Payment system not loaded. Please refresh the page and try again.',
+                    );
+                }
+            } else {
+                throw new Error('Invalid response from payment server');
+            }
+        } catch (error) {
+            console.error('Error resuming transaction:', error);
+            showError('Failed to resume payment. Please try again.');
+        }
     };
 
     // Calculate prices using useMemo to avoid recalculating on every render
@@ -572,7 +706,76 @@ export default function Landing({
                                     taxAmount={taxAmount}
                                     subtotal={subtotal}
                                     total={total}
+                                    onTransactionStarted={
+                                        markSeatsAsPendingTransaction
+                                    }
                                 />
+                            )}
+
+                            {pendingTransactionSeats.length > 0 && (
+                                <div className="mt-4 rounded-lg bg-yellow-50 p-3">
+                                    <h4 className="font-medium text-yellow-800">
+                                        Pending Transaction
+                                    </h4>
+                                    <p className="text-sm text-yellow-600">
+                                        You have a payment in progress for the
+                                        following seats:
+                                    </p>
+                                    <div className="mt-2">
+                                        {pendingTransactionSeats.map((seat) => (
+                                            <span
+                                                key={seat.seat_id}
+                                                className="mr-2 rounded bg-yellow-200 px-2 py-1 text-xs"
+                                            >
+                                                {seat.seat_number}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <p className="mt-2 text-sm text-yellow-700">
+                                        Please complete your payment to secure
+                                        these seats.
+                                    </p>
+                                    {/* Add Resume Payment Button Here */}
+                                    <button
+                                        className="mt-3 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                        onClick={() => {
+                                            const savedTransaction =
+                                                localStorage.getItem(
+                                                    'pendingTransaction',
+                                                );
+                                            if (savedTransaction) {
+                                                try {
+                                                    const parsed =
+                                                        JSON.parse(
+                                                            savedTransaction,
+                                                        );
+                                                    if (
+                                                        parsed.transactionInfo &&
+                                                        parsed.transactionInfo
+                                                            .transaction_id
+                                                    ) {
+                                                        // Call the API to resume payment
+                                                        resumeTransaction(
+                                                            parsed
+                                                                .transactionInfo
+                                                                .transaction_id,
+                                                        );
+                                                    }
+                                                } catch (e) {
+                                                    console.error(
+                                                        'Failed to parse transaction info',
+                                                        e,
+                                                    );
+                                                    showError(
+                                                        'Failed to resume payment. Please try again.',
+                                                    );
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        Resume Payment
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>

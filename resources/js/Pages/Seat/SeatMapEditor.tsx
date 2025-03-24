@@ -410,7 +410,7 @@ const SeatMapEditor: React.FC<Props> = ({
 
     const handleUpdateSelectedSeats = () => {
         if (selectedSeats.size === 0) return;
-
+    
         // Find all the selected seats in the layout
         const updatedSeats = layout.items
             .filter(
@@ -424,17 +424,16 @@ const SeatMapEditor: React.FC<Props> = ({
                     seat_id: (item as SeatItem).seat_id,
                     status: selectedStatus,
                     ticket_type: selectedTicketType,
-                    // Use the calculated price from the selected ticket type
-                    price: currentPrice,
+                    price: 0, // Add a placeholder price that will be overridden on the server
                 };
             });
-
+    
         if (updatedSeats.length > 0) {
             console.log('Sending updated seats:', updatedSeats);
             onSave(updatedSeats);
         }
     };
-
+    
     const handleModeChange = (mode: SelectionMode) => {
         setSelectionMode(mode);
         setSelectedSeats(new Set());

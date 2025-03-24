@@ -248,16 +248,12 @@ class SeatController extends Controller
 
     public function updateEventSeats(Request $request)
     {
-        Log::info('Request headers:', $request->headers->all());
-        Log::info('Request body:', $request->all());
-
         $validated = $request->validate([
             'event_id' => 'required|string',
             'seats' => 'required|array',
             'seats.*.seat_id' => 'required|string',
             'seats.*.status' => 'required|string|in:available,booked,in_transaction,not_available,reserved',
             'seats.*.ticket_type' => 'required|string',
-            'seats.*.price' => 'required|numeric|max:10000000'
         ]);
 
         try {
@@ -267,103 +263,62 @@ class SeatController extends Controller
             $event = Event::findOrFail($eventId);
 
             // Get ticket categories for this event
-            $ticketCategories = TicketCategory::where('event_id', $eventId)->get()->keyBy('name');
+            $ticketCategories = TicketCategory::where('event_id', $eventId)
+                ->get()
+                ->keyBy('name');
 
-            // Get all seats for this venue
-            $venueId = $event->venue_id;
-            $allSeats = Seat::where('venue_id', $venueId)->get();
-
-            // Get existing tickets for this event
-            $existingTickets = Ticket::where('event_id', $eventId)->get()->keyBy('seat_id');
-
-            // Find current timeline for this event
+            // Find current active timeline
             $currentDate = Carbon::now();
-            $currentTimeline = TimelineSession::where('event_id', $eventId)
+            $activeTimeline = TimelineSession::where('event_id', $eventId)
                 ->where('start_date', '<=', $currentDate)
                 ->where('end_date', '>=', $currentDate)
                 ->first();
 
-            if (!$currentTimeline) {
-                // Find the next upcoming timeline
-                $currentTimeline = TimelineSession::where('event_id', $eventId)
+            if (!$activeTimeline) {
+                $activeTimeline = TimelineSession::where('event_id', $eventId)
                     ->where('start_date', '>', $currentDate)
                     ->orderBy('start_date')
                     ->first();
-
-                // If no upcoming timeline exists, then fall back to the most recent one
-                if (!$currentTimeline) {
-                    $currentTimeline = TimelineSession::where('event_id', $eventId)
-                        ->where('end_date', '<', $currentDate)
-                        ->orderBy('end_date', 'desc')
-                        ->first();
-                }
             }
 
-            // Get prices for the current timeline and categories
+            // Get category prices based on active timeline
             $categoryPrices = [];
-            if ($currentTimeline) {
-                $prices = EventCategoryTimeboundPrice::where('timeline_id', $currentTimeline->timeline_id)->get();
-                foreach ($prices as $price) {
+            if ($activeTimeline) {
+                $priceData = EventCategoryTimeboundPrice::where('timeline_id', $activeTimeline->timeline_id)
+                    ->get();
+                foreach ($priceData as $price) {
                     $categoryPrices[$price->ticket_category_id] = $price->price;
                 }
             }
 
-            // Get the selected seats from the request
-            $selectedSeatIds = collect($validated['seats'])->pluck('seat_id')->toArray();
-            $selectedSeatsData = collect($validated['seats'])->keyBy('seat_id');
-
-            // Process only the selected seats
-            foreach ($selectedSeatIds as $seatId) {
-                $seatData = $selectedSeatsData[$seatId];
-
-                // Find the ticket category ID based on the ticket type name
+            foreach ($validated['seats'] as $seatData) {
                 $ticketCategoryId = null;
-                $price = $seatData['price']; // Use the price sent from the frontend
+                $price = 0;
 
+                // Find category ID and price based on ticket type
                 if (isset($ticketCategories[$seatData['ticket_type']])) {
                     $category = $ticketCategories[$seatData['ticket_type']];
                     $ticketCategoryId = $category->ticket_category_id;
+
+                    // Get price from timebound prices if available
+                    if (isset($categoryPrices[$ticketCategoryId])) {
+                        $price = $categoryPrices[$ticketCategoryId];
+                    }
                 }
 
                 Ticket::updateOrCreate(
                     [
                         'event_id' => $eventId,
-                        'seat_id' => $seatId
+                        'seat_id' => $seatData['seat_id']
                     ],
                     [
                         'status' => $seatData['status'],
-                        'ticket_type' => $seatData['ticket_type'], // Keep for backward compatibility
-                        'ticket_category_id' => $ticketCategoryId, // Store the category ID
-                        'price' => $price, // Use the price from the frontend
+                        'ticket_type' => $seatData['ticket_type'],
+                        'ticket_category_id' => $ticketCategoryId,
+                        'price' => $price,
                         'team_id' => $event->team_id
                     ]
                 );
-            }
-
-            // For any seats that don't have tickets yet, create them with default values
-            foreach ($allSeats as $seat) {
-                if (!isset($existingTickets[$seat->seat_id]) && !in_array($seat->seat_id, $selectedSeatIds)) {
-                    // Get default category if available
-                    $defaultCategory = $ticketCategories->first();
-                    $defaultCategoryId = $defaultCategory ? $defaultCategory->ticket_category_id : null;
-                    $defaultType = $defaultCategory ? $defaultCategory->name : 'standard';
-
-                    // Get default price if available
-                    $defaultPrice = 0;
-                    if ($defaultCategoryId && isset($categoryPrices[$defaultCategoryId])) {
-                        $defaultPrice = $categoryPrices[$defaultCategoryId];
-                    }
-
-                    Ticket::create([
-                        'event_id' => $eventId,
-                        'seat_id' => $seat->seat_id,
-                        'status' => 'reserved',
-                        'ticket_type' => $defaultType, // For backward compatibility
-                        'ticket_category_id' => $defaultCategoryId,
-                        'price' => $defaultPrice,
-                        'team_id' => $event->team_id
-                    ]);
-                }
             }
 
             DB::commit();
@@ -375,7 +330,6 @@ class SeatController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating event seats: ' . $e->getMessage());
-            Log::error('Error trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to update tickets: ' . $e->getMessage()
@@ -751,4 +705,51 @@ class SeatController extends Controller
 
         return $seatId;
     }
+
+    // public function getEventTimelines(Request $request, $eventId)
+    // {
+    //     try {
+    //         // Validate event access
+    //         $event = Event::findOrFail($eventId);
+
+    //         // Get all timelines for this event
+    //         $timelines = TimelineSession::where('event_id', $eventId)
+    //             ->orderBy('start_date')
+    //             ->get();
+
+    //         // Determine current timeline based on current date
+    //         $currentDate = Carbon::now();
+    //         $currentTimeline = TimelineSession::where('event_id', $eventId)
+    //             ->where('start_date', '<=', $currentDate)
+    //             ->where('end_date', '>=', $currentDate)
+    //             ->first();
+
+    //         // If no current timeline, get the upcoming one or the most recent one
+    //         if (!$currentTimeline && $timelines->isNotEmpty()) {
+    //             $currentTimeline = TimelineSession::where('event_id', $eventId)
+    //                 ->where('start_date', '>', $currentDate)
+    //                 ->orderBy('start_date')
+    //                 ->first();
+
+    //             if (!$currentTimeline) {
+    //                 $currentTimeline = TimelineSession::where('event_id', $eventId)
+    //                     ->where('end_date', '<', $currentDate)
+    //                     ->orderBy('end_date', 'desc')
+    //                     ->first();
+    //             }
+    //         }
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'timelines' => $timelines,
+    //             'currentTimeline' => $currentTimeline
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         Log::error('Error fetching event timelines: ' . $e->getMessage());
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Failed to fetch timelines: ' . $e->getMessage()
+    //         ], 422);
+    //     }
+    // }
 }

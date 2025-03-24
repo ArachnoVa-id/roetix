@@ -13,10 +13,15 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     taxAmount,
     subtotal,
     total,
+    onTransactionStarted,
 }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [snapInitialized, setSnapInitialized] = useState(false);
     const { showSuccess, showError } = useToaster();
+    const [transactionInfo, setTransactionInfo] = useState<{
+        snap_token: string;
+        transaction_id: string;
+    } | null>(null);
 
     // Initialize Midtrans Snap on component mount
     useEffect(() => {
@@ -51,6 +56,47 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             document.head.removeChild(snapScript);
         };
     }, [showError]);
+
+    useEffect(() => {
+        // Load saved transaction on component mount
+        const savedTransaction = localStorage.getItem('pendingTransaction');
+        if (savedTransaction) {
+            try {
+                const parsed = JSON.parse(savedTransaction);
+                setTransactionInfo(parsed.transactionInfo);
+
+                // Notify parent component about pending transaction if needed
+                if (onTransactionStarted && parsed.seats) {
+                    onTransactionStarted(parsed.seats);
+                }
+            } catch (e) {
+                console.error('Failed to parse saved transaction', e);
+                localStorage.removeItem('pendingTransaction');
+            }
+        }
+    }, [onTransactionStarted]);
+
+    useEffect(() => {
+        if (transactionInfo) {
+            localStorage.setItem(
+                'pendingTransaction',
+                JSON.stringify({
+                    transactionInfo,
+                    seats: selectedSeats,
+                }),
+            );
+        } else {
+            localStorage.removeItem('pendingTransaction');
+        }
+    }, [transactionInfo, selectedSeats]);
+
+    const clearTransaction = () => {
+        setTransactionInfo(null);
+        localStorage.removeItem('pendingTransaction');
+        if (onTransactionStarted) {
+            onTransactionStarted([]);
+        }
+    };
 
     // Function to safely parse price
     const getSafePrice = (price: string | number | undefined): number => {
@@ -112,6 +158,41 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             (total, item) => total + item.price * item.quantity,
             0,
         );
+    };
+
+    const createCallbacks = (token: string): MidtransCallbacks => {
+        return {
+            onSuccess: (result) => {
+                console.log('Payment success:', result);
+                showSuccess('Payment successful!');
+                clearTransaction(); // Clear the transaction data
+                window.location.reload();
+              },
+            onPending: (result) => {
+                console.log('Payment pending:', result);
+                showSuccess(
+                    'Your payment is pending. Please complete the payment.',
+                );
+                setIsLoading(false);
+            },
+            onError: (result) => {
+                console.error('Payment error:', result);
+                showError('Payment failed. Please try again.');
+                setIsLoading(false);
+            },
+            onClose: () => {
+                console.log('Snap payment closed');
+                setIsLoading(false);
+                // Save transaction information for later resumption
+                setTransactionInfo({
+                    snap_token: token,
+                    transaction_id: transactionInfo?.transaction_id || '',
+                });
+                showError(
+                    'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
+                );
+            },
+        };
     };
 
     // Handle payment process
@@ -186,32 +267,15 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             if (response.data && response.data.snap_token) {
                 // If Midtrans snap.js is loaded
                 if (window.snap) {
-                    const callbacks: MidtransCallbacks = {
-                        onSuccess: (result) => {
-                            console.log('Payment success:', result);
-                            showSuccess('Payment successful!');
-                            window.location.reload();
-                        },
-                        onPending: (result) => {
-                            console.log('Payment pending:', result);
-                            showSuccess(
-                                'Your payment is pending. Please complete the payment.',
-                            );
-                            setIsLoading(false);
-                        },
-                        onError: (result) => {
-                            console.error('Payment error:', result);
-                            showError('Payment failed. Please try again.');
-                            setIsLoading(false);
-                        },
-                        onClose: () => {
-                            console.log('Snap payment closed');
-                            setIsLoading(false);
-                        },
-                    };
+                    const token = response.data.snap_token;
+                    const callbacks = createCallbacks(token);
 
                     // Open the Midtrans Snap payment page
-                    window.snap.pay(response.data.snap_token, callbacks);
+                    window.snap.pay(token, callbacks);
+
+                    if (onTransactionStarted) {
+                        onTransactionStarted(selectedSeats);
+                    }
                 } else {
                     console.error('Snap.js is not properly initialized');
                     showError(
@@ -238,6 +302,58 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         }
     };
 
+    const resumePayment = async () => {
+        if (!transactionInfo || !window.snap) return;
+        
+        setIsLoading(true);
+        showSuccess('Preparing your payment...');
+        
+        try {
+            // If we already have a snap_token, use it
+            if (transactionInfo.snap_token) {
+                const callbacks = createCallbacks(transactionInfo.snap_token);
+                window.snap.pay(transactionInfo.snap_token, callbacks);
+                return;
+            }
+            
+            // Otherwise, request a new snap token for the existing transaction
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            };
+            
+            const response = await axios.post(
+                '/payment/resume',
+                { transaction_id: transactionInfo.transaction_id },
+                config
+            );
+            
+            if (response.data && response.data.snap_token) {
+                const token = response.data.snap_token;
+                const callbacks = createCallbacks(token);
+                
+                // Update transaction info with new snap token
+                setTransactionInfo({
+                    ...transactionInfo,
+                    snap_token: token
+                });
+                
+                // Open the Midtrans Snap payment page
+                window.snap.pay(token, callbacks);
+            } else {
+                throw new Error('Invalid response from payment server');
+            }
+        } catch (err) {
+            console.error('Failed to resume payment:', err);
+            showError('Failed to resume payment. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div>
             <button
@@ -249,6 +365,16 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             >
                 {isLoading ? 'Processing...' : 'Proceed Transaction'}
             </button>
+
+            {transactionInfo && (
+                <button
+                    className="ml-2 mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                    onClick={resumePayment}
+                >
+                    Resume Payment
+                </button>
+            )}
+
             {!snapInitialized && (
                 <div className="mt-2 text-sm text-gray-600">
                     Initializing payment system...
