@@ -24,7 +24,7 @@ declare global {
 interface Event {
     event_id: string;
     name: string;
-    date: string;
+    event_date: string;
     venue_id: string;
     status: string; // Tambahkan ini
 }
@@ -436,7 +436,7 @@ export default function Landing({
                     </div>
                 </div>
             )}
-            <div className="py-8">
+            {/* <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div
                         className="overflow-hidden shadow-sm sm:rounded-lg"
@@ -471,7 +471,7 @@ export default function Landing({
                                     >
                                         Date:{' '}
                                         {new Date(
-                                            event.date,
+                                            event.event_date,
                                         ).toLocaleDateString()}
                                     </p>
                                 </>
@@ -484,10 +484,10 @@ export default function Landing({
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {/* Timeline Information */}
-            {currentTimeline && (
+            {/* {currentTimeline && (
                 <div className="py-2">
                     <div className="mx-auto w-full sm:px-6 lg:px-8">
                         <div
@@ -517,7 +517,7 @@ export default function Landing({
                         </div>
                     </div>
                 </div>
-            )}
+            )} */}
 
             <div className="py-6">
                 <div className="mx-auto w-full sm:px-6 lg:px-8">
@@ -528,256 +528,324 @@ export default function Landing({
                             color: props.text_primary_color,
                         }}
                     >
-                        {/* Legend Section */}
-                        <div className="mb-8">
-                            <h3 className="mb-4 text-center text-2xl font-bold">
-                                Seat Map
-                            </h3>
-                            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                                {/* Ticket Type Legend */}
-                                <div
-                                    className="rounded-lg p-4 shadow"
-                                    style={{
-                                        backgroundColor: props.secondary_color,
-                                        color: props.text_secondary_color,
-                                    }}
-                                >
-                                    <h4 className="mb-2 text-center text-lg font-semibold">
-                                        Ticket Types
-                                    </h4>
-                                    <div className="flex flex-wrap items-center justify-center gap-4">
-                                        {ticketTypes.map((type) => (
-                                            <div
-                                                key={type}
-                                                className="flex flex-col items-center"
+                        {/* Event Info and Timeline in a fixed section */}
+                        <div className="mb-6">
+                            {/* Event Title and Info */}
+                            <div className="mb-4">
+                                {event && venue ? (
+                                    <>
+                                        <h1 className="text-2xl font-bold">
+                                            {event.name}
+                                        </h1>
+                                        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between">
+                                            <p
+                                                className="text-lg"
+                                                style={{
+                                                    color: props.text_secondary_color,
+                                                }}
                                             >
-                                                <div
-                                                    className="h-8 w-8 rounded-full shadow-lg"
-                                                    style={{
-                                                        backgroundColor:
-                                                            ticketTypeColors[
-                                                                type
-                                                            ],
-                                                    }}
-                                                ></div>
-                                                <span className="mt-2 text-sm font-medium">
-                                                    {type
-                                                        .charAt(0)
-                                                        .toUpperCase() +
-                                                        type.slice(1)}
-                                                </span>
-                                            </div>
-                                        ))}
+                                                Venue: {venue.name}
+                                            </p>
+                                            <p
+                                                className=""
+                                                style={{
+                                                    color: props.text_secondary_color,
+                                                }}
+                                            >
+                                                Date:{' '}
+                                                {new Date(
+                                                    event.event_date,
+                                                ).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <h1 className="text-2xl font-bold">
+                                        {(client ? client + ' : ' : '') +
+                                            'Buy Tickets Here'}
+                                    </h1>
+                                )}
+                            </div>
+
+                            {/* Timeline Information */}
+                            {currentTimeline && (
+                                <div className="mt-4">
+                                    <h3 className="mb-3 text-xl font-semibold">
+                                        Current Ticket Period
+                                    </h3>
+                                    <div className="rounded-lg bg-blue-50 p-4 text-blue-800">
+                                        <div className="text-lg font-medium">
+                                            {currentTimeline.name}
+                                        </div>
+                                        <div className="text-blue-600">
+                                            {new Date(
+                                                currentTimeline.start_date,
+                                            ).toLocaleDateString()}{' '}
+                                            -{' '}
+                                            {new Date(
+                                                currentTimeline.end_date,
+                                            ).toLocaleDateString()}
+                                        </div>
                                     </div>
                                 </div>
+                            )}
 
-                                {/* Status Legend */}
-                                <div
-                                    className="rounded-lg p-4 shadow"
-                                    style={{
-                                        backgroundColor: props.secondary_color,
-                                        color: props.text_secondary_color,
-                                    }}
-                                >
-                                    <h4 className="mb-2 text-center text-lg font-semibold">
-                                        Status
-                                    </h4>
-                                    <div className="flex flex-wrap items-center justify-center gap-4">
-                                        {statusLegends.map((legend, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex flex-col items-center"
-                                            >
+                            {/* Legend Section */}
+                            <div className="mt-6">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    {/* Ticket Type Legend */}
+                                    <div
+                                        className="rounded-lg p-4 shadow"
+                                        style={{
+                                            backgroundColor:
+                                                props.secondary_color,
+                                            color: props.text_secondary_color,
+                                        }}
+                                    >
+                                        <h4 className="mb-2 text-center text-lg font-semibold">
+                                            Ticket Types
+                                        </h4>
+                                        <div className="flex flex-wrap items-center justify-center gap-4">
+                                            {ticketTypes.map((type) => (
                                                 <div
-                                                    className={`h-8 w-8 ${legend.color} rounded-full shadow-lg`}
-                                                ></div>
-                                                <span className="mt-2 text-sm font-medium">
-                                                    {legend.label}
-                                                </span>
-                                            </div>
-                                        ))}
+                                                    key={type}
+                                                    className="flex flex-col items-center"
+                                                >
+                                                    <div
+                                                        className="h-8 w-8 rounded-full shadow-lg"
+                                                        style={{
+                                                            backgroundColor:
+                                                                ticketTypeColors[
+                                                                    type
+                                                                ],
+                                                        }}
+                                                    ></div>
+                                                    <span className="mt-2 text-sm font-medium">
+                                                        {type
+                                                            .charAt(0)
+                                                            .toUpperCase() +
+                                                            type.slice(1)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Status Legend */}
+                                    <div
+                                        className="rounded-lg p-4 shadow"
+                                        style={{
+                                            backgroundColor:
+                                                props.secondary_color,
+                                            color: props.text_secondary_color,
+                                        }}
+                                    >
+                                        <h4 className="mb-2 text-center text-lg font-semibold">
+                                            Status
+                                        </h4>
+                                        <div className="flex flex-wrap items-center justify-center gap-4">
+                                            {statusLegends.map((legend, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="flex flex-col items-center"
+                                                >
+                                                    <div
+                                                        className={`h-8 w-8 ${legend.color} rounded-full shadow-lg`}
+                                                    ></div>
+                                                    <span className="mt-2 text-sm font-medium">
+                                                        {legend.label}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex justify-center">
+                        {/* Scrollable Seat Map Section */}
+                        <div className="mt-6">
+                            <h3 className="mb-4 text-center text-2xl font-bold">
+                                Seat Map
+                            </h3>
                             <div
-                                className="overflow-x-auto"
-                                style={{ maxWidth: '100%' }}
+                                className="rounded-lg border p-4"
+                                style={{
+                                    backgroundColor: props.secondary_color,
+                                }}
                             >
-                                <div className="flex min-w-max justify-center">
+                                <div className="flex justify-center overflow-x-auto overflow-y-hidden">
                                     <SeatMapDisplay
                                         config={layout}
                                         props={props}
                                         onSeatClick={handleSeatClick}
                                         selectedSeats={selectedSeats}
                                         ticketTypeColors={ticketTypeColors}
-                                        currentTimeline={currentTimeline}
+                                        // currentTimeline={currentTimeline}
                                         eventStatus={event?.status}
                                     />
                                 </div>
                             </div>
                         </div>
-
-                        {/* Selected Seats Section */}
-                        <div
-                            className="mt-8 rounded border p-4"
-                            style={{
-                                backgroundColor: props.secondary_color,
-                                color: props.text_secondary_color,
-                            }}
-                        >
-                            <h3 className="mb-4 text-xl font-semibold">
-                                Selected Seats
-                            </h3>
-                            {selectedSeats.length === 0 ? (
-                                <p>No seats selected.</p>
-                            ) : (
-                                <div className="space-y-4">
-                                    {selectedSeats.map((seat) => (
-                                        <div
-                                            key={seat.seat_id}
-                                            className="flex items-center justify-between rounded-lg p-3"
-                                            style={{
-                                                backgroundColor:
-                                                    props.primary_color,
-                                                color: props.text_primary_color,
-                                            }}
-                                        >
-                                            <div>
-                                                <p className="font-semibold">
-                                                    Ticket Type:{' '}
-                                                    {seat.ticket_type ||
-                                                        seat.category ||
-                                                        'Standard'}
-                                                </p>
-                                                <p className="text-sm">
-                                                    Seat: {seat.seat_number}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold">
-                                                    Price:{' '}
-                                                    {formatRupiah(
-                                                        getSafePrice(
-                                                            seat.price,
-                                                        ),
-                                                    )}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Subtotal, Tax, and Total */}
-                            {selectedSeats.length > 0 && (
-                                <div
-                                    className="mt-6 space-y-2 rounded-lg p-4"
-                                    style={{
-                                        backgroundColor: props.primary_color,
-                                        color: props.text_primary_color,
-                                    }}
-                                >
-                                    <div className="flex justify-between">
-                                        <span className="font-medium">
-                                            Subtotal:
-                                        </span>
-                                        <span>{formatRupiah(subtotal)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="font-medium">
-                                            Tax (1%):
-                                        </span>
-                                        <span>{formatRupiah(taxAmount)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-lg font-semibold">
-                                        <span>Total:</span>
-                                        <span>{formatRupiah(total)}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Proceed Button */}
-                            {selectedSeats.length > 0 && isBookingAllowed && (
-                                <ProceedTransactionButton
-                                    selectedSeats={selectedSeats}
-                                    taxAmount={taxAmount}
-                                    subtotal={subtotal}
-                                    total={total}
-                                    onTransactionStarted={
-                                        markSeatsAsPendingTransaction
-                                    }
-                                />
-                            )}
-
-                            {pendingTransactionSeats.length > 0 && (
-                                <div className="mt-4 rounded-lg bg-yellow-50 p-3">
-                                    <h4 className="font-medium text-yellow-800">
-                                        Pending Transaction
-                                    </h4>
-                                    <p className="text-sm text-yellow-600">
-                                        You have a payment in progress for the
-                                        following seats:
-                                    </p>
-                                    <div className="mt-2">
-                                        {pendingTransactionSeats.map((seat) => (
-                                            <span
-                                                key={seat.seat_id}
-                                                className="mr-2 rounded bg-yellow-200 px-2 py-1 text-xs"
-                                            >
-                                                {seat.seat_number}
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <p className="mt-2 text-sm text-yellow-700">
-                                        Please complete your payment to secure
-                                        these seats.
-                                    </p>
-                                    {/* Add Resume Payment Button Here */}
-                                    <button
-                                        className="mt-3 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-                                        onClick={() => {
-                                            const savedTransaction =
-                                                localStorage.getItem(
-                                                    'pendingTransaction',
-                                                );
-                                            if (savedTransaction) {
-                                                try {
-                                                    const parsed =
-                                                        JSON.parse(
-                                                            savedTransaction,
-                                                        );
-                                                    if (
-                                                        parsed.transactionInfo &&
-                                                        parsed.transactionInfo
-                                                            .transaction_id
-                                                    ) {
-                                                        // Call the API to resume payment
-                                                        resumeTransaction(
-                                                            parsed
-                                                                .transactionInfo
-                                                                .transaction_id,
-                                                        );
-                                                    }
-                                                } catch (e) {
-                                                    console.error(
-                                                        'Failed to parse transaction info',
-                                                        e,
-                                                    );
-                                                    showError(
-                                                        'Failed to resume payment. Please try again.',
-                                                    );
-                                                }
-                                            }
+                    </div>
+                </div>
+            </div>
+            {/* Selected Seats Section - Separate Section */}
+            <div className="py-6">
+                <div className="mx-auto w-full sm:px-6 lg:px-8">
+                    <div
+                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        style={{
+                            backgroundColor: props.primary_color,
+                            color: props.text_primary_color,
+                        }}
+                    >
+                        <h3 className="mb-4 text-xl font-semibold">
+                            Selected Seats
+                        </h3>
+                        {selectedSeats.length === 0 ? (
+                            <p>No seats selected.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {selectedSeats.map((seat) => (
+                                    <div
+                                        key={seat.seat_id}
+                                        className="flex items-center justify-between rounded-lg p-3"
+                                        style={{
+                                            backgroundColor:
+                                                props.secondary_color,
+                                            color: props.text_secondary_color,
                                         }}
                                     >
-                                        Resume Payment
-                                    </button>
+                                        <div>
+                                            <p className="font-semibold">
+                                                Ticket Type:{' '}
+                                                {seat.ticket_type ||
+                                                    seat.category ||
+                                                    'Standard'}
+                                            </p>
+                                            <p className="text-sm">
+                                                Seat: {seat.seat_number}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold">
+                                                Price:{' '}
+                                                {formatRupiah(
+                                                    getSafePrice(seat.price),
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Subtotal, Tax, and Total */}
+                        {selectedSeats.length > 0 && (
+                            <div
+                                className="mt-6 space-y-2 rounded-lg p-4"
+                                style={{
+                                    backgroundColor: props.secondary_color,
+                                    color: props.text_secondary_color,
+                                }}
+                            >
+                                <div className="flex justify-between">
+                                    <span className="font-medium">
+                                        Subtotal:
+                                    </span>
+                                    <span>{formatRupiah(subtotal)}</span>
                                 </div>
-                            )}
-                        </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">
+                                        Tax (1%):
+                                    </span>
+                                    <span>{formatRupiah(taxAmount)}</span>
+                                </div>
+                                <div className="flex justify-between text-lg font-semibold">
+                                    <span>Total:</span>
+                                    <span>{formatRupiah(total)}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Proceed Button */}
+                        {selectedSeats.length > 0 && isBookingAllowed && (
+                            <ProceedTransactionButton
+                                selectedSeats={selectedSeats}
+                                taxAmount={taxAmount}
+                                subtotal={subtotal}
+                                total={total}
+                                onTransactionStarted={
+                                    markSeatsAsPendingTransaction
+                                }
+                            />
+                        )}
+
+                        {pendingTransactionSeats.length > 0 && (
+                            <div className="mt-4 rounded-lg bg-yellow-50 p-3">
+                                <h4 className="font-medium text-yellow-800">
+                                    Pending Transaction
+                                </h4>
+                                <p className="text-sm text-yellow-600">
+                                    You have a payment in progress for the
+                                    following seats:
+                                </p>
+                                <div className="mt-2">
+                                    {pendingTransactionSeats.map((seat) => (
+                                        <span
+                                            key={seat.seat_id}
+                                            className="mr-2 rounded bg-yellow-200 px-2 py-1 text-xs"
+                                        >
+                                            {seat.seat_number}
+                                        </span>
+                                    ))}
+                                </div>
+                                <p className="mt-2 text-sm text-yellow-700">
+                                    Please complete your payment to secure these
+                                    seats.
+                                </p>
+                                {/* Resume Payment Button */}
+                                <button
+                                    className="mt-3 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                    onClick={() => {
+                                        const savedTransaction =
+                                            localStorage.getItem(
+                                                'pendingTransaction',
+                                            );
+                                        if (savedTransaction) {
+                                            try {
+                                                const parsed =
+                                                    JSON.parse(
+                                                        savedTransaction,
+                                                    );
+                                                if (
+                                                    parsed.transactionInfo &&
+                                                    parsed.transactionInfo
+                                                        .transaction_id
+                                                ) {
+                                                    // Call the API to resume payment
+                                                    resumeTransaction(
+                                                        parsed.transactionInfo
+                                                            .transaction_id,
+                                                    );
+                                                }
+                                            } catch (e) {
+                                                console.error(
+                                                    'Failed to parse transaction info',
+                                                    e,
+                                                );
+                                                showError(
+                                                    'Failed to resume payment. Please try again.',
+                                                );
+                                            }
+                                        }
+                                    }}
+                                >
+                                    Resume Payment
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
