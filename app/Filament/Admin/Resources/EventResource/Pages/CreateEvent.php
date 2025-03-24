@@ -28,7 +28,7 @@ class CreateEvent extends CreateRecord
             throw new \Exception('Vendor quota tidak mencukupi untuk membuat venue baru.');
         };
 
-        $team->decrement('vendor_quota');
+        $team->decrement('event_quota');
         $tenant = Filament::getTenant();
         $data['team_id'] = $tenant->team_id;
         $data['team_code'] = $tenant->code;
