@@ -15,9 +15,9 @@ enum VenueStatus: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::ACTIVE => 'active',
-            self::INACTIVE => 'inactive',
-            self::UNDER_MAINTENANCE => 'under_maintenance'
+            self::ACTIVE => 'Active',
+            self::INACTIVE => 'Inactive',
+            self::UNDER_MAINTENANCE => 'Maintenance'
         };
     }
 
@@ -45,7 +45,7 @@ enum VenueStatus: string implements HasLabel
     {
         return array_map(fn($case) => $case->getLabel(), self::cases());
     }
-    
+
 
     public static function editableOptions()
     {

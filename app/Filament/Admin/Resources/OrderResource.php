@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\OrderStatus;
 use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
@@ -62,7 +63,10 @@ class OrderResource extends Resource
                         ->label('Date'),
                     Infolists\Components\TextEntry::make('total_price')
                         ->label('Total'),
-                    Infolists\Components\TextEntry::make('status'),
+                    Infolists\Components\TextEntry::make('status')
+                        ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
+                        ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
+                        ->badge(),
                 ]),
             Infolists\Components\Section::make('Order User')
                 ->relationship('user', 'user_id')
@@ -123,7 +127,10 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('total_price')
                     ->label('Total')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
+                    ->badge(),
                 Tables\Columns\TextColumn::make('events.name')
                     ->label('Event')
                     ->searchable()
@@ -134,9 +141,14 @@ class OrderResource extends Resource
                     }),
 
             ])
-            ->filters([
-                //
-            ])
+            ->filters(
+                [
+                    Tables\Filters\SelectFilter::make('status')
+                        ->options(OrderStatus::editableOptions())
+                        ->multiple()
+                ],
+                layout: Tables\Enums\FiltersLayout::Modal
+            )
             ->actions([
                 Tables\Actions\ViewAction::make(),
             ])

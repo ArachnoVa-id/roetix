@@ -2,6 +2,7 @@
 
 namespace App\Filament\NovatixAdmin\Resources;
 
+use App\Enums\UserRole;
 use App\Filament\NovatixAdmin\Resources\UserResource\Pages;
 use App\Filament\NovatixAdmin\Resources\UserResource\RelationManagers\TeamsRelationManager;
 use App\Models\User;
@@ -37,7 +38,10 @@ class UserResource extends Resources\Resource
                     Infolists\Components\TextEntry::make('last_name')
                         ->label('Last Name'),
                     Infolists\Components\TextEntry::make('email'),
-                    Infolists\Components\TextEntry::make('role'),
+                    Infolists\Components\TextEntry::make('role')
+                        ->formatStateUsing(fn($state) => UserRole::tryFrom($state)->getLabel())
+                        ->color(fn($state) => UserRole::tryFrom($state)->getColor())
+                        ->badge(),
                 ]),
             Infolists\Components\Tabs::make('')
                 ->columnSpanFull()
@@ -84,11 +88,7 @@ class UserResource extends Resources\Resource
                                 ->password()
                                 ->maxLength(255),
                             Forms\Components\Select::make('role')
-                                ->options([
-                                    'user' => 'user',
-                                    'vendor' => 'vendor',
-                                    'event-organizer' => 'event-organizer',
-                                ])
+                                ->options(UserRole::editableOptions())
                                 ->required(),
                         ]),
                         Forms\Components\Section::make('Teams')
@@ -137,7 +137,10 @@ class UserResource extends Resources\Resource
                     ->searchable()
                     ->sortable()
                     ->limit(50),
-                Tables\Columns\TextColumn::make('role'),
+                Tables\Columns\TextColumn::make('role')
+                    ->formatStateUsing(fn($state) => UserRole::tryFrom($state)->getLabel())
+                    ->color(fn($state) => UserRole::tryFrom($state)->getColor())
+                    ->badge(),
                 Tables\Columns\TextColumn::make('teams.name')
                     ->label('Teams')
                     ->searchable()
@@ -152,10 +155,7 @@ class UserResource extends Resources\Resource
             ->filters(
                 [
                     Tables\Filters\SelectFilter::make('role')
-                        ->options([
-                            'vendor' => 'vendor',
-                            'event-organizer' => 'event-organizer',
-                        ])
+                        ->options(UserRole::editableOptions())
                         ->multiple()
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal

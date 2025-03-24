@@ -16,10 +16,10 @@ enum UserRole: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::USER => 'user',
-            self::ADMIN => 'admin',
-            self::VENDOR => 'vendor',
-            self::EVENT_ORGANIZER => 'event-organizer'
+            self::USER => 'User',
+            self::ADMIN => 'Admin',
+            self::VENDOR => 'Vendor',
+            self::EVENT_ORGANIZER => 'EO'
         };
     }
 

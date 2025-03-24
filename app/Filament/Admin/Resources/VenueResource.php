@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\VenueStatus;
 use Filament\Forms;
 use Filament\Tables;
 use App\Models\Venue;
@@ -50,7 +51,10 @@ class VenueResource extends Resources\Resource
                             Infolists\Components\TextEntry::make('capacity_qty')
                                 ->label('Capacity')
                                 ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
-                            Infolists\Components\TextEntry::make('status'),
+                            Infolists\Components\TextEntry::make('status')
+                                ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
+                                ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
+                                ->badge(),
                         ]),
                     Infolists\Components\Section::make('Venue Contact')
                         ->relationship('contactInfo', 'venue_id')
@@ -99,10 +103,7 @@ class VenueResource extends Resources\Resource
                             ->required(),
                         Forms\Components\Select::make('status')
                             ->label('Status')
-                            ->options([
-                                'active' => 'Active',
-                                'inactive' => 'Inactive',
-                            ])
+                            ->options(VenueStatus::editableOptions())
                             ->required(),
                     ]),
                 Forms\Components\Section::make('Venue Contact')
@@ -149,7 +150,10 @@ class VenueResource extends Resources\Resource
                     ->label('Capacity')
                     ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
+                    ->badge(),
             ])
             ->filters(
                 [
@@ -184,6 +188,7 @@ class VenueResource extends Resources\Resource
                             });
                         }),
                     Tables\Filters\SelectFilter::make('status')
+                        ->options(VenueStatus::editableOptions())
                         ->multiple(),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal

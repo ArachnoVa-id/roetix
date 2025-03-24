@@ -16,10 +16,10 @@ enum EventStatus: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::PLANNED => 'planned',
-            self::ACTIVE => 'active',
-            self::COMPLETED => 'completed',
-            self::CANCELLED => 'cancelled'
+            self::PLANNED => 'Planned',
+            self::ACTIVE => 'Active',
+            self::COMPLETED => 'Completed',
+            self::CANCELLED => 'Cancelled'
         };
     }
 
@@ -49,7 +49,7 @@ enum EventStatus: string implements HasLabel
         return array_map(fn($case) => $case->getLabel(), self::cases());
     }
 
-    
+
 
     public static function editableOptions()
     {

@@ -15,9 +15,9 @@ enum OrderStatus: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::PENDING => 'pending',
-            self::COMPLETED => 'completed',
-            self::CANCELLED => 'cancelled'
+            self::PENDING => 'Pending',
+            self::COMPLETED => 'Completed',
+            self::CANCELLED => 'Cancelled'
         };
     }
 

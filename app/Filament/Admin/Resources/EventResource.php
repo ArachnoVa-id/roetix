@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\EventStatus;
 use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Tables;
@@ -53,7 +54,9 @@ class EventResource extends Resource
                     Infolists\Components\TextEntry::make('status')
                         ->label('Status')
                         ->icon('heroicon-m-exclamation-triangle')
-                        ->color('primary'),
+                        ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
+                        ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
+                        ->badge(),
                     Infolists\Components\TextEntry::make('start_date')
                         ->label('Start Serving')
                         ->icon('heroicon-m-calendar-date-range')
@@ -186,10 +189,10 @@ class EventResource extends Resource
                                 \Njxqlus\Filament\Components\Infolists\RelationManager::make()
                                     ->manager(TicketsRelationManager::class)
                             ]),
-                    Infolists\Components\Tabs\Tab::make('Scan Tickets')
-                        ->schema([
-                            Infolists\Components\Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
-                        ])
+                        Infolists\Components\Tabs\Tab::make('Scan Tickets')
+                            ->schema([
+                                Infolists\Components\Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
+                            ])
                     ])
                     ->columnSpan('full'),
             ]
@@ -262,12 +265,7 @@ class EventResource extends Resource
                                     })
                                     ->reactive(),
                                 Forms\Components\Select::make('status')
-                                    ->options([
-                                        'planned' => 'planned',
-                                        'active' => 'active',
-                                        'completed' => 'completed',
-                                        'cancelled' => 'cancelled'
-                                    ])
+                                    ->options(EventStatus::editableOptions())
                                     ->required(),
                                 Forms\Components\DateTimePicker::make('start_date')
                                     ->label('Start Date')
@@ -952,12 +950,16 @@ class EventResource extends Resource
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('status')
+                    ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
+                    ->badge()
                     ->sortable()
                     ->searchable(),
             ])
             ->filters(
                 [
                     Tables\Filters\SelectFilter::make('status')
+                        ->options(EventStatus::editableOptions())
                         ->multiple()
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal

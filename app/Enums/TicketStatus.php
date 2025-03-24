@@ -16,10 +16,10 @@ enum TicketStatus: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::AVAILABLE => 'available',
-            self::BOOKED => 'booked',
-            self::RESERVED => 'reserved',
-            self::IN_TRANSACTION => 'in_transaction'
+            self::AVAILABLE => 'Available',
+            self::BOOKED => 'Booked',
+            self::RESERVED => 'Reserved',
+            self::IN_TRANSACTION => 'In Transaction'
         };
     }
 
@@ -48,7 +48,7 @@ enum TicketStatus: string implements HasLabel
     {
         return array_map(fn($case) => $case->getLabel(), self::cases());
     }
-    
+
 
     public static function editableOptions()
     {

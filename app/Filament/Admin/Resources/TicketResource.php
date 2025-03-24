@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\TicketStatus;
 use App\Filament\Admin\Resources\TicketResource\Pages;
 use App\Filament\Admin\Resources\TicketResource\RelationManagers;
 use App\Models\Ticket;
@@ -56,7 +57,10 @@ class TicketResource extends Resource
                         Infolists\Components\TextEntry::make('ticket_type')
                             ->label('Type'),
                         Infolists\Components\TextEntry::make('price'),
-                        Infolists\Components\TextEntry::make('status'),
+                        Infolists\Components\TextEntry::make('status')
+                            ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
+                            ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                            ->badge(),
                     ]),
                 Infolists\Components\Section::make('Buyer')
                     ->relationship('ticketOrders', 'ticket_id')
@@ -100,48 +104,6 @@ class TicketResource extends Resource
         );
     }
 
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('ticket_id')
-                    ->label('Ticket ID')
-                    ->disabled(),
-                Forms\Components\Select::make('event_id')
-                    ->label('Event')
-                    ->relationship('event', 'name')
-                    ->required(),
-                Forms\Components\Select::make('seat_id')
-                    ->label('Seat')
-                    ->relationship('seat', 'seat_number')
-                    ->required(),
-                Forms\Components\Select::make('ticket_type')
-                    ->label('Ticket Type')
-                    ->options([
-                        'standard' => 'Standard',
-                        'VIP' => 'VIP',
-                    ])
-                    ->required(),
-                Forms\Components\TextInput::make('price')
-                    ->label('Price')
-                    ->numeric()
-                    ->minValue(0)
-                    ->required(),
-                Forms\Components\Select::make('status')
-                    ->label('Status')
-                    ->options([
-                        'available' => 'Available',
-                        'sold' => 'Sold',
-                        'reserved' => 'Reserved',
-                    ])
-                    ->required(),
-                Forms\Components\Select::make('team_id')
-                    ->label('Team')
-                    ->relationship('team', 'name')
-                    ->required(),
-            ]);
-    }
-
     public static function table(Table $table): Table
     {
         return $table
@@ -152,9 +114,13 @@ class TicketResource extends Resource
                 Tables\Columns\TextColumn::make('event.name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('ticket_type'),
+                Tables\Columns\TextColumn::make('ticket_type')
+                    ->label('Type'),
                 Tables\Columns\TextColumn::make('price'),
-                Tables\Columns\TextColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                    ->badge(),
             ])
             ->filters([
                 SelectFilter::make('event_id')
