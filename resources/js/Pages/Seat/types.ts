@@ -100,6 +100,7 @@ export interface ProceedTransactionButtonProps {
     taxAmount?: number; // Optional tax amount
     subtotal?: number; // Optional subtotal
     total?: number; // Optional total with tax
+    onTransactionStarted?: (seats: SeatItem[]) => void;
 }
 
 export interface GroupedItem {
