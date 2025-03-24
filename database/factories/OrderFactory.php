@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\OrderStatus;
+use App\Enums\TicketStatus;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -28,7 +30,7 @@ class OrderFactory extends Factory
         if (!$user) return [];
 
         // Get a random available ticket
-        $ticket = Ticket::where('status', 'available')->inRandomOrder()->first();
+        $ticket = Ticket::where('status', TicketStatus::AVAILABLE)->inRandomOrder()->first();
 
         // If no available tickets, return an empty array (prevent creating empty orders)
         if (!$ticket) {
@@ -45,7 +47,7 @@ class OrderFactory extends Factory
             'team_id' => $event->team_id,
             'order_date' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'total_price' => $this->faker->randomFloat(2, 100000, 1000000),
-            'status' => $this->faker->randomElement(['pending', 'completed', 'cancelled']),
+            'status' => $this->faker->randomElement(OrderStatus::values()),
         ];
     }
 
@@ -55,7 +57,7 @@ class OrderFactory extends Factory
         return $this->afterCreating(function (Order $order) {
             // Find available tickets for the event
             $available_tickets = Ticket::where('event_id', $order->event_id)
-                ->where('status', 'available')
+                ->where('status', TicketStatus::AVAILABLE)
                 ->get();
 
             // If no available tickets, do nothing
@@ -71,7 +73,7 @@ class OrderFactory extends Factory
 
             foreach ($selected_tickets as $ticket) {
                 // Mark ticket as booked
-                $ticket->update(['status' => 'booked']);
+                $ticket->update(['status' => TicketStatus::BOOKED]);
 
                 // Create TicketOrder with correct order_id
                 TicketOrder::create([

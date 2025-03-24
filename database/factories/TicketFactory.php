@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use App\Models\Ticket;
@@ -30,7 +31,7 @@ class TicketFactory extends Factory
         return [
             'ticket_type' => $this->faker->randomElement(['standard', 'VIP']),
             'price' => $this->faker->randomFloat(2, 10, 100),
-            'status' => 'available',
+            'status' => TicketStatus::AVAILABLE,
         ];
     }
 }
