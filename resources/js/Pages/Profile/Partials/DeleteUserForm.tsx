@@ -4,13 +4,18 @@ import InputLabel from '@/Components/InputLabel';
 import Modal from '@/Components/Modal';
 import SecondaryButton from '@/Components/SecondaryButton';
 import TextInput from '@/Components/TextInput';
+import { EventProps } from '@/types/front-end';
 import { useForm } from '@inertiajs/react';
 import { FormEventHandler, useRef, useState } from 'react';
 
 export default function DeleteUserForm({
     className = '',
+    client,
+    props,
 }: {
     className?: string;
+    client: string;
+    props: EventProps;
 }) {
     const [confirmingUserDeletion, setConfirmingUserDeletion] = useState(false);
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -34,7 +39,7 @@ export default function DeleteUserForm({
     const deleteUser: FormEventHandler = (e) => {
         e.preventDefault();
 
-        destroy(route('profile.destroy'), {
+        destroy(route('profile.destroy', { client }), {
             preserveScroll: true,
             onSuccess: () => closeModal(),
             onError: () => passwordInput.current?.focus(),
@@ -52,11 +57,17 @@ export default function DeleteUserForm({
     return (
         <section className={`space-y-6 ${className}`}>
             <header>
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2
+                    className="text-lg font-medium"
+                    style={{ color: props.text_primary_color }}
+                >
                     Delete Account
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-600">
+                <p
+                    className="mt-1 text-sm"
+                    style={{ color: props.text_secondary_color }}
+                >
                     Once your account is deleted, all of its resources and data
                     will be permanently deleted. Before deleting your account,
                     please download any data or information that you wish to
@@ -70,11 +81,21 @@ export default function DeleteUserForm({
 
             <Modal show={confirmingUserDeletion} onClose={closeModal}>
                 <form onSubmit={deleteUser} className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900">
+                    <h2
+                        className="text-lg font-medium"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
+                    >
                         Are you sure you want to delete your account?
                     </h2>
 
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p
+                        className="mt-1 text-sm"
+                        style={{
+                            color: props.text_secondary_color,
+                        }}
+                    >
                         Once your account is deleted, all of its resources and
                         data will be permanently deleted. Please enter your
                         password to confirm you would like to permanently delete

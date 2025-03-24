@@ -141,13 +141,16 @@ Route::domain('{client}.' . config('app.domain'))
             ->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])
             ->name('profile.update');
+        Route::put('/profile', [ProfileController::class, 'updatePassword'])
+            ->name('profile.password_update');
+        Route::put('/profile', [ProfileController::class, 'updateContact'])
+            ->name('profile.contact_update');
         Route::delete('/profile', [ProfileController::class, 'destroy'])
             ->name('profile.destroy');
 
         // Ticket
         Route::post('/payment/charge', [PaymentController::class, 'charge'])
             ->name('payment.charge');
-
 
         // Any unregistered route will be redirected to the client's home page
         Route::fallback(function () {

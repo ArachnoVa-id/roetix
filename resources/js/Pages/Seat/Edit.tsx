@@ -58,7 +58,7 @@ const Edit: React.FC<Props> = ({
     event,
     venue,
     ticketTypes,
-    categoryColors = {},
+    // categoryColors = {},
     currentTimeline, // This will be overridden by automatic timeline selection
     ticketCategories = [],
     categoryPrices = [],
@@ -78,14 +78,14 @@ const Edit: React.FC<Props> = ({
     );
 
     // Function to generate styles for category displays
-    const getCategoryStyle = (category: string) => {
-        return {
-            backgroundColor: categoryColors[category]
-                ? categoryColors[category] + '33'
-                : undefined,
-            borderColor: categoryColors[category],
-        };
-    };
+    // const getCategoryStyle = (category: string) => {
+    //     return {
+    //         backgroundColor: categoryColors[category]
+    //             ? categoryColors[category] + '33'
+    //             : undefined,
+    //         borderColor: categoryColors[category],
+    //     };
+    // };
 
     // Process timeline data directly from props rather than from API
     useEffect(() => {
@@ -130,9 +130,9 @@ const Edit: React.FC<Props> = ({
             currentTimeline
         ) {
             // Get all unique timeline IDs from category prices
-            const timelineIds = Array.from(
-                new Set(categoryPrices.map((price) => price.timeline_id)),
-            );
+            // const timelineIds = Array.from(
+            //     new Set(categoryPrices.map((price) => price.timeline_id)),
+            // );
 
             // Extract all timelines from the current timeline and categoryPrices
             const allTimelines: Timeline[] = [];

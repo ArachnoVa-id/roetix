@@ -219,7 +219,7 @@ export default function Authenticated({
                                     color: props?.text_primary_color,
                                 }}
                             >
-                                {user.name}
+                                {user.first_name + ' ' + user.last_name}
                             </div>
                             <div
                                 className="text-sm font-medium"
