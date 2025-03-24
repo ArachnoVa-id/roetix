@@ -88,85 +88,77 @@ const Edit: React.FC<Props> = ({
     };
 
     // Process timeline data directly from props rather than from API
-useEffect(() => {
-    // Get current date with Jakarta timezone
-    const formatJakartaTime = (date = new Date()) => {
-        return new Date(date).toLocaleString('en-US', {
-            timeZone: 'Asia/Jakarta',
-            hour12: false,
-        });
-    };
+    useEffect(() => {
+        // Get current date with Jakarta timezone
+        const formatJakartaTime = (date = new Date()) => {
+            return new Date(date).toLocaleString('en-US', {
+                timeZone: 'Asia/Jakarta',
+                hour12: false,
+            });
+        };
 
-    // Function to determine which timeline is active based on current date
-    const determineActiveTimeline = (timelines: Timeline[] = []): Timeline | undefined => {
-        // Get current date in Jakarta time
-        const jakartaTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
-        const now = new Date(jakartaTime);
-        
-        console.log('Current Jakarta time:', jakartaTime);
-        console.log('Timelines to check:', timelines.map(t => ({
-            name: t.name,
-            start: t.start_date,
-            end: t.end_date
-        })));
-        
-        // Find the timeline that includes current Jakarta time
-        const active = timelines.find((timeline) => {
-            const startDate = new Date(timeline.start_date);
-            const endDate = new Date(timeline.end_date);
-            return now >= startDate && now <= endDate;
-        });
-    
-        // If no timeline is active, find the next upcoming one
-        if (!active && timelines.length > 0) {
-            const upcoming = timelines
-                .filter(t => new Date(t.start_date) > now)
-                .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())[0];
-                
-            if (upcoming) {
-                return upcoming;
+        // Function to determine which timeline is active based on current date
+        const determineActiveTimeline = (
+            timelines: Timeline[] = [],
+        ): Timeline | undefined => {
+            const now = new Date(
+                new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Jakarta',
+                }),
+            );
+
+            return (
+                timelines.find(
+                    (t) =>
+                        now >= new Date(t.start_date) &&
+                        now <= new Date(t.end_date),
+                ) ||
+                timelines
+                    .filter((t) => new Date(t.start_date) > now)
+                    .sort(
+                        (a, b) =>
+                            new Date(a.start_date).getTime() -
+                            new Date(b.start_date).getTime(),
+                    )[0]
+            );
+        };
+
+        // If we have timeline data in props, use that
+        if (
+            ticketCategories.length > 0 &&
+            categoryPrices.length > 0 &&
+            currentTimeline
+        ) {
+            // Get all unique timeline IDs from category prices
+            const timelineIds = Array.from(
+                new Set(categoryPrices.map((price) => price.timeline_id)),
+            );
+
+            // Extract all timelines from the current timeline and categoryPrices
+            const allTimelines: Timeline[] = [];
+
+            // Add current timeline to the list
+            allTimelines.push(currentTimeline);
+
+            // Add any additional timelines that might be referenced in categoryPrices
+            // You may need to add these directly if they're available in props
+
+            // Determine active timeline from available data
+            const active = determineActiveTimeline(allTimelines);
+
+            if (active) {
+                setActiveTimeline(active);
+                console.log(
+                    `[${formatJakartaTime()}] Active timeline: ${active.name} (${active.start_date} to ${active.end_date})`,
+                );
+            } else {
+                // If no active timeline found, keep using the current one from props
+                console.log(
+                    `[${formatJakartaTime()}] No active timeline found based on current date, using provided default`,
+                );
             }
         }
-    
-        return active;
-    };
-
-    // If we have timeline data in props, use that
-    if (
-        ticketCategories.length > 0 &&
-        categoryPrices.length > 0 &&
-        currentTimeline
-    ) {
-        // Get all unique timeline IDs from category prices
-        const timelineIds = Array.from(
-            new Set(categoryPrices.map((price) => price.timeline_id)),
-        );
-
-        // Extract all timelines from the current timeline and categoryPrices
-        const allTimelines: Timeline[] = [];
-        
-        // Add current timeline to the list
-        allTimelines.push(currentTimeline);
-        
-        // Add any additional timelines that might be referenced in categoryPrices
-        // You may need to add these directly if they're available in props
-        
-        // Determine active timeline from available data
-        const active = determineActiveTimeline(allTimelines);
-
-        if (active) {
-            setActiveTimeline(active);
-            console.log(
-                `[${formatJakartaTime()}] Active timeline: ${active.name} (${active.start_date} to ${active.end_date})`,
-            );
-        } else {
-            // If no active timeline found, keep using the current one from props
-            console.log(
-                `[${formatJakartaTime()}] No active timeline found based on current date, using provided default`,
-            );
-        }
-    }
-}, [currentTimeline, ticketCategories, categoryPrices]);
+    }, [currentTimeline, ticketCategories, categoryPrices]);
 
     // Process category prices based on active timeline and categories
     useEffect(() => {
@@ -292,110 +284,202 @@ useEffect(() => {
         <>
             <Head title="Configure Event Seats" />
             <div className="py-12">
-                <div className="w-full px-4">
-                    <div className="overflow-hidden bg-white shadow-xl sm:rounded-lg">
+                <div className="mx-auto px-4">
+                    <div className="overflow-hidden rounded-lg bg-white shadow-md">
                         <div className="p-6">
-                            <div className="flex w-full flex-wrap">
-                                <div className="flex flex-col">
-                                    <h2 className="mb-4 text-2xl font-bold">
-                                        Configure Seats for "{event.name}"
+                            <div className="mb-6 flex flex-wrap items-center">
+                                <div>
+                                    <h2 className="text-2xl font-semibold text-gray-900">
+                                        {event.name}
                                     </h2>
-                                    <p className="mb-4 text-gray-600">
+                                    <p className="text-gray-600">
                                         Venue: {venue.name} | Event ID:{' '}
                                         {event.event_id}
                                     </p>
                                 </div>
                                 <button
-                                    className="ml-auto h-fit w-fit rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700"
+                                    className="ml-auto rounded-lg bg-blue-600 px-4 py-2 font-bold text-white transition hover:bg-blue-700"
                                     onClick={() => window.history.back()}
                                 >
                                     Back to Dashboard
                                 </button>
                             </div>
 
-                            {activeTimeline ? (
-                                <div className="mb-4">
-                                    <h3 className="text-lg font-semibold">
-                                        Current Timeline Period
-                                    </h3>
-                                    <div className="mt-2 rounded-lg bg-blue-50 p-3">
-                                        <div className="font-medium">
-                                            {activeTimeline.name}
-                                        </div>
-                                        <div className="text-sm text-gray-600">
+                            {currentTimeline ? (
+                                <div className="mb-6 overflow-hidden rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
+                                    <div className="border-b border-blue-100 bg-blue-100/30 p-4">
+                                        <h3 className="flex items-center gap-2 font-semibold text-blue-800">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="18"
+                                                height="18"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <rect
+                                                    x="3"
+                                                    y="4"
+                                                    width="18"
+                                                    height="18"
+                                                    rx="2"
+                                                    ry="2"
+                                                ></rect>
+                                                <line
+                                                    x1="16"
+                                                    y1="2"
+                                                    x2="16"
+                                                    y2="6"
+                                                ></line>
+                                                <line
+                                                    x1="8"
+                                                    y1="2"
+                                                    x2="8"
+                                                    y2="6"
+                                                ></line>
+                                                <line
+                                                    x1="3"
+                                                    y1="10"
+                                                    x2="21"
+                                                    y2="10"
+                                                ></line>
+                                            </svg>
+                                            Current Timeline:{' '}
+                                            {currentTimeline.name}
+                                        </h3>
+                                        <p className="mt-1 flex items-center gap-1 text-sm text-blue-600">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="14"
+                                                height="14"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <circle
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                ></circle>
+                                                <polyline points="12 6 12 12 16 14"></polyline>
+                                            </svg>
                                             {new Date(
-                                                activeTimeline.start_date,
+                                                currentTimeline.start_date,
                                             ).toLocaleDateString()}{' '}
                                             -{' '}
                                             {new Date(
-                                                activeTimeline.end_date,
+                                                currentTimeline.end_date,
                                             ).toLocaleDateString()}
-                                        </div>
-                                        <div className="mt-2 text-xs text-blue-500">
+                                        </p>
+                                    </div>
+                                    <div className="p-4">
+                                        <p className="flex items-center gap-2 text-sm text-blue-500">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="14"
+                                                height="14"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <circle
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                ></circle>
+                                                <line
+                                                    x1="12"
+                                                    y1="8"
+                                                    x2="12"
+                                                    y2="12"
+                                                ></line>
+                                                <line
+                                                    x1="12"
+                                                    y1="16"
+                                                    x2="12.01"
+                                                    y2="16"
+                                                ></line>
+                                            </svg>
                                             Prices are managed in the ticket
-                                            category settings for this timeline.
-                                        </div>
+                                            category settings and are applied
+                                            automatically.
+                                        </p>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="mb-4 rounded-lg bg-yellow-50 p-3">
-                                    <div className="font-medium text-yellow-700">
-                                        No active timeline found
-                                    </div>
-                                    <div className="text-sm text-yellow-600">
+                                <div className="mb-6 rounded-lg border-l-4 border-yellow-400 bg-yellow-50 p-4">
+                                    <h3 className="text-lg font-semibold text-yellow-900">
+                                        No Active Timeline
+                                    </h3>
+                                    <p className="text-yellow-700">
                                         Please set up a timeline for this event
                                         to configure pricing.
-                                    </div>
+                                    </p>
                                 </div>
                             )}
 
-                            {/* Display prices for reference */}
                             {Object.keys(categoryNameToPriceMap).length > 0 && (
-                                <div className="mb-4">
-                                    <h3 className="text-lg font-semibold">
+                                <div className="mb-6">
+                                    <h3 className="mb-2 text-lg font-semibold text-gray-900">
                                         Current Ticket Prices
                                     </h3>
-                                    <div className="mt-2 grid grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                                         {Object.entries(
                                             categoryNameToPriceMap,
                                         ).map(([category, price]) => (
                                             <div
                                                 key={category}
-                                                className="rounded-lg border p-3"
-                                                style={getCategoryStyle(
-                                                    category,
-                                                )}
+                                                className="rounded-lg border p-4 text-center shadow-sm"
+                                                style={{
+                                                    backgroundColor:
+                                                        categoryColorMap[
+                                                            category
+                                                        ] + '33',
+                                                    borderColor:
+                                                        categoryColorMap[
+                                                            category
+                                                        ],
+                                                }}
                                             >
-                                                <div className="font-medium">
+                                                <p className="font-semibold">
                                                     {category}
-                                                </div>
-                                                <div className="text-lg font-bold">
+                                                </p>
+                                                <p className="text-xl font-bold text-gray-800">
                                                     Rp {price.toLocaleString()}
-                                                </div>
+                                                </p>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
 
-                            <div className="overflow-x-auto">
-                                <div className="min-w-max">
-                                    <SeatMapEditor
-                                        layout={currentLayout}
-                                        onSave={handleSave}
-                                        ticketTypes={ticketTypes}
-                                        categoryColors={categoryColorMap}
-                                        currentTimeline={activeTimeline}
-                                        categoryPrices={categoryNameToPriceMap}
-                                    />
-                                </div>
+                            <div className="rounded-lg border bg-white p-4 shadow-sm">
+                                <h3 className="mb-4 text-lg font-semibold text-gray-900">
+                                    Seat Map Editor
+                                </h3>
+                                <SeatMapEditor
+                                    layout={currentLayout}
+                                    onSave={handleSave}
+                                    ticketTypes={ticketTypes}
+                                    categoryColors={categoryColorMap}
+                                    currentTimeline={activeTimeline}
+                                    categoryPrices={categoryNameToPriceMap}
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Render the Toaster component */}
             <Toaster
                 message={toasterState.message}
                 type={toasterState.type}
@@ -405,4 +489,5 @@ useEffect(() => {
         </>
     );
 };
+
 export default Edit;
