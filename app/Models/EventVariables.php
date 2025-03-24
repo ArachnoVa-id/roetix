@@ -7,16 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 
-
 class EventVariables extends Model
 {
     /** @use HasFactory<\Database\Factories\EventVariablesFactory> */
     use Notifiable;
-
     protected $primaryKey = 'event_variables_id';
     protected $keyType = 'string';
     public $incrementing = false;
-
     /**
      * The attributes that are mass assignable.
      *
@@ -24,15 +21,12 @@ class EventVariables extends Model
      */
     protected $fillable = [
         'event_id',
-
         'is_locked',
         'locked_password',
-
         'is_maintenance',
         'maintenance_title',
         'maintenance_message',
         'maintenance_expected_finish',
-
         'logo',
         'logo_alt',
         'favicon',
@@ -40,8 +34,8 @@ class EventVariables extends Model
         'secondary_color',
         'text_primary_color',
         'text_secondary_color',
+        'ticket_limit',
     ];
-
     public static function getDefaultValue()
     {
         $defaultValues = [
@@ -58,22 +52,19 @@ class EventVariables extends Model
             'logo' => '/images/novatix-logo/favicon-32x32.png',
             'logo_alt' => 'Novatix Logo',
             'favicon' => '/images/novatix-logo/favicon.ico',
+            'ticket_limit' => 5,
         ];
-
         return $defaultValues;
     }
-
     protected static function boot()
     {
         parent::boot();
-
         static::creating(function ($model) {
             if (empty($model->event_variables_id)) {
                 $model->event_variables_id = (string) Str::uuid();
             }
         });
     }
-
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id', 'event_id');

@@ -37,13 +37,13 @@ class EventResource extends Resource
     {
         $user = Auth::user();
         $tenant_id = Filament::getTenant()->team_id;
-    
+
         $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
 
         if (!$team) {
             return false;
         }
-        
+
         return $team->event_quota > 0;
     }
 
@@ -163,7 +163,8 @@ class EventResource extends Resource
                                         Infolists\Components\TextEntry::make('locked_password')
                                             ->label('Locked Password'),
                                     ]),
-
+                                Infolists\Components\TextEntry::make('ticket_limit')
+                                    ->label('Ticket Purchase Limit'),
                                 Infolists\Components\Section::make('Maintenance')
                                     ->relationship('eventVariables')
                                     ->columnSpan(1)
@@ -894,6 +895,19 @@ class EventResource extends Resource
                                 Forms\Components\TextInput::make('locked_password')
                                     ->columnSpan(1)
                                     ->label('Password'),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Limits')
+                            ->columns(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('ticket_limit')
+                                    ->numeric()
+                                    ->default(5)
+                                    ->minValue(1)
+                                    ->maxValue(20)
+                                    ->required()
+                                    ->label('Ticket Purchase Limit')
+                                    ->helperText('Maximum number of tickets a customer can purchase at once'),
+                                // Add other limit-related fields here in the future
                             ]),
                         Forms\Components\Tabs\Tab::make('Maintenance')
                             ->columns(2)

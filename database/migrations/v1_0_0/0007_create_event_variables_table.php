@@ -20,6 +20,8 @@ return new class extends Migration
             $table->boolean('is_locked')->default(false);
             $table->string('locked_password')->default('')->nullable();
 
+            $table->integer('ticket_limit')->default(5);
+
             $table->boolean('is_maintenance')->default(false);
             $table->string('maintenance_title')->default('')->nullable();
             $table->string('maintenance_message')->default('')->nullable();

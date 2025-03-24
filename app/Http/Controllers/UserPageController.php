@@ -27,6 +27,7 @@ class UserPageController extends Controller
             'secondary_color' => '#9FF',
             'text_primary_color' => '#000000',
             'text_secondary_color' => '#000000',
+            'ticket_limit' => 5,
             'is_maintenance' => false,
             'maintenance_title' => '',
             'maintenance_message' => '',
