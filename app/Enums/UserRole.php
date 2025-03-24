@@ -44,9 +44,15 @@ enum UserRole: string implements HasLabel
         throw new \ValueError("\"$label\" is not a valid label for enum " . self::class);
     }
 
+    // public static function toArray(): array
+    // {
+    //     return array_map(fn($case) => $case->getLabel(), self::cases());
+    // }
+
+    // dari gpt
     public static function toArray(): array
     {
-        return array_map(fn($case) => $case->getLabel(), self::cases());
+        return array_map(fn($case) => $case->value, self::cases());
     }
 
     public static function values(): array

@@ -37,6 +37,12 @@ class TeamResource extends Resource
                         ->schema([
                             Infolists\Components\TextEntry::make('name'),
                             Infolists\Components\TextEntry::make('code'),
+                            
+                            Infolists\Components\TextEntry::make('vendor_quota')
+                                ->formatStateUsing(fn ($state) => max(0, $state)),
+
+                            Infolists\Components\TextEntry::make('event_quota')
+                                ->formatStateUsing(fn ($state) => max(0, $state)),
                         ]),
                     Infolists\Components\Tabs::make('')
                         ->columnSpanFull()
@@ -91,6 +97,16 @@ class TeamResource extends Resource
                                     $set('code', strtoupper($state));
                                 }
                             }),
+                        Forms\Components\TextInput::make('vendor_quota')
+                            ->label('vendor quota')
+                            ->minValue(0)
+                            ->numeric()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('event_quota')
+                            ->label('event quota')
+                            ->minValue(0)
+                            ->numeric()
+                            ->maxLength(255),
                     ])
             ]);
     }
@@ -106,7 +122,17 @@ class TeamResource extends Resource
                 Tables\Columns\TextColumn::make('code')
                     ->searchable()
                     ->sortable()
-                    ->limit(50)
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('vendor_quota')
+                    ->label('vendor')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('event_quota')
+                    ->label('vendor')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(50),
             ])
             ->filters([
                 //
