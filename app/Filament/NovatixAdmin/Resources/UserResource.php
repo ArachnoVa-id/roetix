@@ -28,40 +28,57 @@ class UserResource extends Resources\Resource
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTeams = true): Infolists\Infolist
     {
-        return $infolist->schema([
-            Infolists\Components\Section::make('User Information')
-                ->columnSpanFull()
-                ->columns(2)
-                ->schema([
-                    Infolists\Components\TextEntry::make('first_name')
-                        ->label('First Name'),
-                    Infolists\Components\TextEntry::make('last_name')
-                        ->label('Last Name'),
-                    Infolists\Components\TextEntry::make('email'),
-                    Infolists\Components\TextEntry::make('role')
-                        ->formatStateUsing(fn($state) => UserRole::tryFrom($state)->getLabel())
-                        ->color(fn($state) => UserRole::tryFrom($state)->getColor())
-                        ->badge(),
-                ]),
-            Infolists\Components\Tabs::make('')
-                ->columnSpanFull()
-                ->hidden(!$showTeams)
-                ->schema([
-                    Infolists\Components\Tabs\Tab::make('Teams')
-                        ->schema([
-                            \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                ->manager(TeamsRelationManager::class),
-                        ]),
-                ]),
-        ]);
+        return $infolist
+            ->columns(4)
+            ->schema([
+                Infolists\Components\Section::make('User Information')
+                    ->columnSpan(2)
+                    ->columns(2)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('first_name')
+                            ->label('First Name'),
+                        Infolists\Components\TextEntry::make('last_name')
+                            ->label('Last Name'),
+                        Infolists\Components\TextEntry::make('email'),
+                        Infolists\Components\TextEntry::make('role')
+                            ->formatStateUsing(fn($state) => UserRole::tryFrom($state)->getLabel())
+                            ->color(fn($state) => UserRole::tryFrom($state)->getColor())
+                            ->badge(),
+                    ]),
+                Infolists\Components\Section::make('User Contact')
+                    ->columnSpan(2)
+                    ->columns(2)
+                    ->relationship('contactInfo')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('phone_number')
+                            ->label('Phone Number'),
+                        Infolists\Components\TextEntry::make('email'),
+                        Infolists\Components\TextEntry::make('whatsapp_number')
+                            ->label('WhatsApp Number'),
+                        Infolists\Components\TextEntry::make('instagram')
+                            ->label('Instagram Handle')
+                            ->prefix('@'),
+                    ]),
+                Infolists\Components\Tabs::make('')
+                    ->columnSpanFull()
+                    ->hidden(!$showTeams)
+                    ->schema([
+                        Infolists\Components\Tabs\Tab::make('Teams')
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(TeamsRelationManager::class),
+                            ]),
+                    ]),
+            ]);
     }
 
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
+            ->columns(2)
             ->schema([
                 Forms\Components\Section::make('User Information')
-                    ->columns(2)
+                    ->columnSpan(1)
                     ->schema([
                         Forms\Components\Group::make([
                             Forms\Components\TextInput::make('first_name')
@@ -72,6 +89,9 @@ class UserResource extends Resources\Resource
                                 ->label('Last Name')
                                 ->required()
                                 ->maxLength(255),
+                            Forms\Components\Select::make('role')
+                                ->options(UserRole::editableOptions())
+                                ->required(),
                             Forms\Components\TextInput::make('email')
                                 ->required()
                                 ->email()
@@ -84,38 +104,104 @@ class UserResource extends Resources\Resource
                                 ->default(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord),
                             Forms\Components\TextInput::make('password')
                                 ->disabled(fn(Forms\Get $get) => !$get('change_password'))
+                                ->hidden(fn(Forms\Get $get) => !$get('change_password'))
                                 ->required(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord)
                                 ->password()
                                 ->maxLength(255),
-                            Forms\Components\Select::make('role')
-                                ->options(UserRole::editableOptions())
-                                ->required(),
                         ]),
-                        Forms\Components\Section::make('Teams')
-                            ->columnSpan(1)
-                            ->schema([
-                                Forms\Components\Repeater::make('teams')
-                                    ->label('')
-                                    ->schema([
-                                        Forms\Components\Select::make('team_id')
-                                            ->label('Assign to Team')
-                                            ->options(function (callable $get) {
-                                                // Get already selected team IDs
-                                                $selectedTeams = collect($get('../../teams'))
-                                                    ->pluck('team_id')
-                                                    ->filter() // Remove null values
-                                                    ->toArray();
+                    ]),
+                Forms\Components\Section::make('User Contact')
+                    ->columnSpan(1)
+                    ->relationship('contactInfo', 'venue_id')
+                    ->schema([
+                        Forms\Components\TextInput::make('phone_number')
+                            ->label('Phone Number')
+                            ->tel(),
 
-                                                // Exclude already selected teams
-                                                return Team::whereNotIn('team_id', $selectedTeams)
-                                                    ->pluck('name', 'team_id');
-                                            })
-                                            ->searchable()
-                                            ->optionsLimit(5)
-                                            ->required()
-                                    ])
+                        Forms\Components\TextInput::make('email')
+                            ->label('Email')
+                            ->email(),
+
+                        Forms\Components\TextInput::make('whatsapp_number')
+                            ->label('WhatsApp Number')
+                            ->tel(),
+
+                        Forms\Components\TextInput::make('instagram')
+                            ->label('Instagram Handle')
+                            ->prefix('@'),
+                    ]),
+                Forms\Components\Section::make('Teams')
+                    ->columnSpan(2)
+                    ->schema([
+                        Forms\Components\Repeater::make('teams')
+                            ->grid(4)
+                            ->live()
+                            ->addable(function ($get) {
+                                // overall team size
+                                $teamSize = Team::count();
+
+                                // count how many teams slots are already created
+                                $currentSlots = collect($get('teams'))->count();
+                                if ($currentSlots >= $teamSize) {
+                                    return false;
+                                }
+
+                                // if there exist null values, then disable (location is inside the first array of the array)
+                                $existsNull = collect($get('teams'))
+                                    ->pluck('name')
+                                    ->contains(null);
+                                if ($existsNull) {
+                                    return false;
+                                }
+
+                                // check if there is any remaining team to add
+                                $selectedTeams = collect($get('teams'))
+                                    ->pluck('name')
+                                    ->filter() // Remove null values
+                                    ->toArray();
+
+                                $remainingTeams = Team::whereNotIn('team_id', $selectedTeams)
+                                    ->count();
+
+                                return $remainingTeams > 0;
+                            })
+                            ->label('')
+                            ->schema([
+                                Forms\Components\Select::make('name')
+                                    ->label('Assign to Team')
+                                    ->options(function (callable $get) {
+                                        // Get already selected team IDs
+                                        $selectedTeams = collect($get('../../teams'))
+                                            ->pluck('name')
+                                            ->filter()
+                                            ->toArray();
+
+                                        // Exclude already selected teams
+                                        $return = Team::whereNotIn('team_id', $selectedTeams)->pluck('name', 'team_id');
+
+                                        return $return;
+                                    })
+                                    ->preload()
+                                    ->searchable()
+                                    ->optionsLimit(5)
+                                    ->required()
                             ])
-                    ])
+                            ->afterStateHydrated(function ($set, $record) {
+                                if ($record) {
+                                    $return = [];
+
+                                    foreach ($record->teams as $team) {
+                                        $uuid = \Illuminate\Support\Str::uuid()->toString();
+                                        $return[$uuid] = [
+                                            'team_id' => $team->team_id,
+                                            'name' => $team->name,
+                                        ];
+                                    }
+
+                                    $set('teams', $return);
+                                }
+                            }),
+                    ]),
             ]);
     }
 

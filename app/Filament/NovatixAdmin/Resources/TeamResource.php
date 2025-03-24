@@ -37,12 +37,14 @@ class TeamResource extends Resource
                         ->schema([
                             Infolists\Components\TextEntry::make('name'),
                             Infolists\Components\TextEntry::make('code'),
-                            
+
                             Infolists\Components\TextEntry::make('vendor_quota')
-                                ->formatStateUsing(fn ($state) => max(0, $state)),
+                                ->label('Vendor Quota')
+                                ->formatStateUsing(fn($state) => max(0, $state)),
 
                             Infolists\Components\TextEntry::make('event_quota')
-                                ->formatStateUsing(fn ($state) => max(0, $state)),
+                                ->label('Event Quota')
+                                ->formatStateUsing(fn($state) => max(0, $state)),
                         ]),
                     Infolists\Components\Tabs::make('')
                         ->columnSpanFull()
@@ -124,12 +126,12 @@ class TeamResource extends Resource
                     ->sortable()
                     ->limit(50),
                 Tables\Columns\TextColumn::make('vendor_quota')
-                    ->label('vendor')
+                    ->label('Vendor Quota')
                     ->searchable()
                     ->sortable()
                     ->limit(50),
                 Tables\Columns\TextColumn::make('event_quota')
-                    ->label('event')
+                    ->label('Event Quota')
                     ->searchable()
                     ->sortable()
                     ->limit(50),
