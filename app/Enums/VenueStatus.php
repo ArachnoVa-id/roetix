@@ -6,11 +6,16 @@ use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum VenueStatus: string implements HasLabel
+enum VenueStatus: string implements HasLabel, HasColor
 {
     case ACTIVE = 'active';
     case INACTIVE = 'inactive';
     case UNDER_MAINTENANCE = 'under_maintenance';
+
+    public static function values(): array
+    {
+        return array_map(fn($case) => $case->value, self::cases());
+    }
 
     public function getLabel(): string
     {

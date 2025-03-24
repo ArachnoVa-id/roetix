@@ -6,7 +6,7 @@ use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum UserRole: string implements HasLabel
+enum UserRole: string implements HasLabel, HasColor
 {
     case USER = 'user';
     case ADMIN = 'admin';
@@ -44,12 +44,6 @@ enum UserRole: string implements HasLabel
         throw new \ValueError("\"$label\" is not a valid label for enum " . self::class);
     }
 
-    // public static function toArray(): array
-    // {
-    //     return array_map(fn($case) => $case->getLabel(), self::cases());
-    // }
-
-    // dari gpt
     public static function toArray(): array
     {
         return array_map(fn($case) => $case->value, self::cases());

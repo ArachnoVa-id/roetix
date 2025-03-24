@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('user_id', 36)->primary(); // Menggunakan string dengan panjang 36 untuk UUID
             $table->string('email')->unique();
             $table->string('password');
-            $table->enum('role', UserRole::toArray())->default(UserRole::USER);
+            $table->enum('role', UserRole::values())->default(UserRole::USER);
             $table->string('first_name');
             $table->string('last_name');
             $table->string('google_id')->nullable();

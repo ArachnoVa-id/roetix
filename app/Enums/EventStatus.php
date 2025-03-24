@@ -6,12 +6,17 @@ use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum EventStatus: string implements HasLabel
+enum EventStatus: string implements HasLabel, HasColor
 {
     case PLANNED = 'planned';
     case ACTIVE = 'active';
     case COMPLETED = 'completed';
     case CANCELLED = 'cancelled';
+
+    public static function values(): array
+    {
+        return array_map(fn($case) => $case->value, self::cases());
+    }
 
     public function getLabel(): string
     {
@@ -48,8 +53,6 @@ enum EventStatus: string implements HasLabel
     {
         return array_map(fn($case) => $case->getLabel(), self::cases());
     }
-
-
 
     public static function editableOptions()
     {
