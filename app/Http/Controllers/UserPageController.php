@@ -301,4 +301,82 @@ class UserPageController extends Controller
                 ->with('error', 'Failed to load ticket data: ' . $e->getMessage());
         }
     }
+
+    public function privacyPolicy(string $client = '')
+    {
+        try {
+            // Get the event by slug
+            $event = Event::where('slug', $client)->first();
+
+            if (!$event) {
+                Log::error('Event not found for slug: ' . $client);
+                return redirect()->route('login');
+            }
+
+            // Try to get EventVariables or use default values
+            try {
+                $props = EventVariables::findOrFail($event->event_variables_id);
+            } catch (\Exception $e) {
+                // If event_variables not found, use default values
+                Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
+                $props = new EventVariables($this->getDefaultValue());
+            }
+
+            return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
+                'client' => $client,
+                'props' => $props,
+                'event' => [
+                    'event_id' => $event->event_id,
+                    'name' => $event->name,
+                    'slug' => $event->slug,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            Log::error('Failed to load privacy policy: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            return redirect()->route('client.home', ['client' => $client])
+                ->with('error', 'Failed to load privacy policy: ' . $e->getMessage());
+        }
+    }
+
+    public function termCondition(string $client = '')
+    {
+        try {
+            // Get the event by slug
+            $event = Event::where('slug', $client)->first();
+
+            if (!$event) {
+                Log::error('Event not found for slug: ' . $client);
+                return redirect()->route('login');
+            }
+
+            // Try to get EventVariables or use default values
+            try {
+                $props = EventVariables::findOrFail($event->event_variables_id);
+            } catch (\Exception $e) {
+                // If event_variables not found, use default values
+                Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
+                $props = new EventVariables($this->getDefaultValue());
+            }
+
+            return Inertia::render('Legality/termcondition/TermCondition', [
+                'client' => $client,
+                'props' => $props,
+                'event' => [
+                    'event_id' => $event->event_id,
+                    'name' => $event->name,
+                    'slug' => $event->slug,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            Log::error('Failed to load terms and conditions: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            return redirect()->route('client.home', ['client' => $client])
+                ->with('error', 'Failed to load terms and conditions: ' . $e->getMessage());
+        }
+    }
 }
