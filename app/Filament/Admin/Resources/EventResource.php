@@ -16,8 +16,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use App\Models\User;
 use Filament\Facades\Filament;
-
+use Livewire\Livewire;
 
 class EventResource extends Resource
 {
@@ -36,7 +37,14 @@ class EventResource extends Resource
     public static function canCreate(): bool
     {
         $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        $user = User::find($user->user_id);
+
         $tenant_id = Filament::getTenant()->team_id;
+
 
         $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
 
@@ -247,6 +255,7 @@ class EventResource extends Resource
             ->schema([
                 Forms\Components\Tabs::make('Event Variables')
                     ->columnSpan('full')
+
                     ->schema([
                         Forms\Components\Tabs\Tab::make('General')
                             ->columns(2)
@@ -896,6 +905,10 @@ class EventResource extends Resource
                                     ->columnSpan(1)
                                     ->label('Password'),
                             ]),
+                        Forms\Components\Tabs\Tab::make('Colors')
+                            ->schema(fn($record) => [
+                                Forms\Components\Livewire::make('color-preview', ['record' => $record])
+                            ]),
                         Forms\Components\Tabs\Tab::make('Limits')
                             ->columns(2)
                             ->schema([
@@ -930,26 +943,7 @@ class EventResource extends Resource
                                 Forms\Components\TextInput::make('maintenance_message')
                                     ->label('Message'),
                             ]),
-                        Forms\Components\Tabs\Tab::make('Colors')
-                            ->columns(4)
-                            ->schema([
-                                Forms\Components\ColorPicker::make('primary_color')
-                                    ->hex()
-                                    ->required()
-                                    ->label('Primary Color'),
-                                Forms\Components\ColorPicker::make('secondary_color')
-                                    ->hex()
-                                    ->required()
-                                    ->label('Secondary Color'),
-                                Forms\Components\ColorPicker::make('text_primary_color')
-                                    ->hex()
-                                    ->required()
-                                    ->label('Text Primary Color'),
-                                Forms\Components\ColorPicker::make('text_secondary_color')
-                                    ->hex()
-                                    ->required()
-                                    ->label('Text Secondary Color'),
-                            ]),
+
                         Forms\Components\Tabs\Tab::make('Identity')
                             ->columns(3)
                             ->schema([

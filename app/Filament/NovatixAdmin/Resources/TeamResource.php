@@ -100,12 +100,12 @@ class TeamResource extends Resource
                                 }
                             }),
                         Forms\Components\TextInput::make('vendor_quota')
-                            ->label('vendor quota')
+                            ->label('Vendor Quota')
                             ->minValue(0)
                             ->numeric()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('event_quota')
-                            ->label('event quota')
+                            ->label('Event Quota')
                             ->minValue(0)
                             ->numeric()
                             ->maxLength(255),

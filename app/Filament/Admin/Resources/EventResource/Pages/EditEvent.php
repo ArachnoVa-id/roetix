@@ -10,6 +10,8 @@ use App\Models\TimelineSession;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Mockery\Matcher\Not;
@@ -41,6 +43,11 @@ class EditEvent extends EditRecord
 
     protected function beforeSave()
     {
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
+
         DB::beginTransaction();
         try {
             $ticketCategories = $this->data['ticket_categories'];
@@ -159,8 +166,15 @@ class EditEvent extends EditRecord
 
             // Update all the event variables
             $eventVariables = EventVariables::where('event_id', $eventId)->first();
+
             $eventVariables->fill($this->data);
+            $colors = Cache::get('color_preview_' . $user->user_id);
+            $eventVariables->fill($colors);
+
             $eventVariables->save();
+
+            // Clear cache for colors
+            Cache::forget('color_preview_' . Auth::user()->user_id);
 
             // Sync the form state
             $this->form->fill($this->data);
