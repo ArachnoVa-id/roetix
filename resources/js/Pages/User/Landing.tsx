@@ -14,9 +14,6 @@ interface Venue {
 
 declare global {
     interface Window {
-        snap?: {
-            pay: (token: string, options: any) => void;
-        };
         eventTimelines?: Timeline[];
     }
 }
@@ -77,7 +74,7 @@ export default function Landing({
     const [pendingTransactionSeats, setPendingTransactionSeats] = useState<
         SeatItem[]
     >([]);
-    const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+    const [, setIsLoadingTransactions] = useState(false);
 
     // Show error if it exists when component mounts
     useEffect(() => {

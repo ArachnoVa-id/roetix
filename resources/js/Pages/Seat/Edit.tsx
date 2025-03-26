@@ -56,7 +56,6 @@ interface Props {
 const Edit: React.FC<Props> = ({
     layout,
     event,
-    venue,
     ticketTypes,
     // categoryColors = {},
     currentTimeline, // This will be overridden by automatic timeline selection
