@@ -893,6 +893,7 @@ class EventResource extends Resource
                                     ->label('')
                             ]),
                         Forms\Components\Tabs\Tab::make('Locking')
+                            ->hidden(!$modelExists)
                             ->columns(2)
                             ->schema([
                                 Forms\Components\Section::make('')
@@ -905,24 +906,8 @@ class EventResource extends Resource
                                     ->columnSpan(1)
                                     ->label('Password'),
                             ]),
-                        Forms\Components\Tabs\Tab::make('Colors')
-                            ->schema(fn($record) => [
-                                Forms\Components\Livewire::make('color-preview', ['record' => $record])
-                            ]),
-                        Forms\Components\Tabs\Tab::make('Limits')
-                            ->columns(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('ticket_limit')
-                                    ->numeric()
-                                    ->default(5)
-                                    ->minValue(1)
-                                    ->maxValue(20)
-                                    ->required()
-                                    ->label('Ticket Purchase Limit')
-                                    ->helperText('Maximum number of tickets a customer can purchase at once'),
-                                // Add other limit-related fields here in the future
-                            ]),
                         Forms\Components\Tabs\Tab::make('Maintenance')
+                            ->hidden(!$modelExists)
                             ->columns(2)
                             ->schema([
                                 Forms\Components\Section::make('')
@@ -943,7 +928,22 @@ class EventResource extends Resource
                                 Forms\Components\TextInput::make('maintenance_message')
                                     ->label('Message'),
                             ]),
-
+                        Forms\Components\Tabs\Tab::make('Limits')
+                            ->columns(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('ticket_limit')
+                                    ->numeric()
+                                    ->default(5)
+                                    ->minValue(1)
+                                    ->maxValue(20)
+                                    ->required()
+                                    ->label('Ticket Purchase Limit')
+                                    ->helperText('Maximum number of tickets a customer can purchase at once'),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Colors')
+                            ->schema(fn($record) => [
+                                Forms\Components\Livewire::make('color-preview', ['record' => $record])
+                            ]),
                         Forms\Components\Tabs\Tab::make('Identity')
                             ->columns(3)
                             ->schema([

@@ -49,7 +49,7 @@ class EventVariables extends Model
             'maintenance_expected_finish' => now(),
             'is_locked' => false,
             'locked_password' => '',
-            'logo' => '/images/novatix-logo/favicon-32x32.png',
+            'logo' => '/images/novatix-logo/android-chrome-192x192.png',
             'logo_alt' => 'Novatix Logo',
             'favicon' => '/images/novatix-logo/favicon.ico',
             'ticket_limit' => 5,

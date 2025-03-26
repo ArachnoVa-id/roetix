@@ -122,13 +122,22 @@ class TicketResource extends Resource
                     ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
                     ->badge(),
             ])
-            ->filters([
-                SelectFilter::make('event_id')
-                    ->label('Filter by Event')
-                    ->relationship('event', 'name')
-                    ->searchable()
-                    ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
-            ])
+            ->filters(
+                [
+                    // SelectFilter::make('event_id')
+                    //     ->label('Filter by Event')
+                    //     ->relationship('event', 'name')
+                    //     ->searchable()
+                    //     ->multiple()
+                    //     ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
+                    SelectFilter::make('status')
+                        ->label('Filter by Status')
+                        ->options(TicketStatus::editableOptions())
+                        ->multiple()
+                        ->default(request()->query('tableFilters')['status']['value'] ?? null),
+                ],
+                layout: Tables\Enums\FiltersLayout::Modal
+            )
             ->actions([
                 Tables\Actions\ViewAction::make(),
             ])
