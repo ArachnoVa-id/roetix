@@ -108,6 +108,15 @@ Route::domain(config('app.domain'))
 Route::domain('{client}.' . config('app.domain'))
     ->middleware('verify.subdomain')
     ->group(function () {
+        // Socialite Authentication
+        Route::controller(SocialiteController::class)
+            ->group(function () {
+                Route::get('/auth/google', 'googleLogin')
+                    ->name('auth.google');
+                Route::get('/auth/google-callback', 'googleAuthentication')
+                    ->name('auth.google-authentication');
+            });
+
         // User Page
         Route::get('/', [UserPageController::class, 'landing'])
             ->name('client.home');

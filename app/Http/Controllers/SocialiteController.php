@@ -15,6 +15,7 @@ class SocialiteController extends Controller
 {
     public function googleLogin()
     {
+        // dd(request()->fullUrl());
         return Socialite::driver('google')->redirect();
     }
 
@@ -44,7 +45,7 @@ class SocialiteController extends Controller
                 }
             }
         } catch (Exception $e) {
-            // dd($e);
+            dd($e);
         }
         // dd($google_user);
     }
