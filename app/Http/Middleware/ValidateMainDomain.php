@@ -17,6 +17,11 @@ class ValidateMainDomain
         $mainDomain = config('app.domain');
         $currentDomain = $request->getHost();
 
+        // Pastikan auth.google dan auth.google-authentication bisa diakses
+        if (in_array($request->route()->getName(), ['auth.google', 'auth.google-authentication'])) {
+            return $next($request);
+        }
+
         // Ensure subdomains are blocked from the main domain
         if ($currentDomain !== $mainDomain) {
             return redirect()->route('client.home');
