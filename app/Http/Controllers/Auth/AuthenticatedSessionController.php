@@ -69,7 +69,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route($redirectProps['route'], $redirectProps['client']);
         }
 
-        $userModel = User::find($user->user_id);
+        $userModel = User::find($user->id);
         $firstTeam = $userModel->teams()->first();
 
         if ($userModel->role === 'admin') {

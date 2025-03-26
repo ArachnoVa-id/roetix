@@ -61,7 +61,7 @@ Route::domain(config('app.domain'))
             }
 
             $user = Auth::user();
-            $userInModel = User::find($user->user_id);
+            $userInModel = User::find($user->id);
 
             if ($userInModel?->role === 'user') {
                 Auth::logout();

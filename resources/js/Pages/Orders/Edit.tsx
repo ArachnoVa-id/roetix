@@ -7,7 +7,7 @@ import { Select } from '@/Components/ui/select';
 
 interface Order {
     order_id: string;
-    user_id: string;
+    id: string;
     ticket_id: string;
     order_date: string;
     total_price: string;
@@ -43,11 +43,11 @@ const Edit: React.FC<Props> = ({ order }) => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <Label htmlFor="user_id">User ID</Label>
+                    <Label htmlFor="id">User ID</Label>
                     <Input
-                        id="user_id"
-                        name="user_id"
-                        value={formData.user_id}
+                        id="id"
+                        name="id"
+                        value={formData.id}
                         onChange={handleChange}
                         required
                     />

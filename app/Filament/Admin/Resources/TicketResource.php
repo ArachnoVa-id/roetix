@@ -78,7 +78,7 @@ class TicketResource extends Resource
                                 Infolists\Components\TextEntry::make('email'),
                             ])
                                 ->columns(3)
-                                ->relationship('user', 'user_id')
+                                ->relationship('user', 'id')
                         ])
                             ->columnSpan(3)
                             ->relationship('order', 'order_id'),

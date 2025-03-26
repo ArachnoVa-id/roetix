@@ -168,13 +168,13 @@ class EditEvent extends EditRecord
             $eventVariables = EventVariables::where('event_id', $eventId)->first();
 
             $eventVariables->fill($this->data);
-            $colors = Cache::get('color_preview_' . $user->user_id);
+            $colors = Cache::get('color_preview_' . $user->id);
             $eventVariables->fill($colors);
 
             $eventVariables->save();
 
             // Clear cache for colors
-            Cache::forget('color_preview_' . Auth::user()->user_id);
+            Cache::forget('color_preview_' . Auth::user()->id);
 
             // Sync the form state
             $this->form->fill($this->data);

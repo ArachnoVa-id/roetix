@@ -69,7 +69,7 @@ class OrderResource extends Resource
                         ->badge(),
                 ]),
             Infolists\Components\Section::make('Order User')
-                ->relationship('user', 'user_id')
+                ->relationship('user', 'id')
                 ->columns(3)
                 ->schema([
                     Infolists\Components\TextEntry::make('first_name')

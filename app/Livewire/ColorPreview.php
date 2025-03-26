@@ -42,7 +42,7 @@ class ColorPreview extends Component implements HasForms
             'text_secondary_color' => $this->text_secondary_color,
         ]);
 
-        Cache::put('color_preview_' . Auth::user()->user_id, [
+        Cache::put('color_preview_' . Auth::user()->id, [
             'primary_color' => $this->primary_color,
             'secondary_color' => $this->secondary_color,
             'text_primary_color' => $this->text_primary_color,
@@ -57,7 +57,7 @@ class ColorPreview extends Component implements HasForms
 
         $this->$property = $value;
 
-        Cache::put('color_preview_' . $user->user_id, [
+        Cache::put('color_preview_' . $user->id, [
             'primary_color' => $this->primary_color,
             'secondary_color' => $this->secondary_color,
             'text_primary_color' => $this->text_primary_color,

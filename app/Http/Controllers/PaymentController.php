@@ -152,7 +152,7 @@ class PaymentController extends Controller
             $order = Order::create([
                 'order_code' => $orderCode,
                 'event_id' => $event->event_id,
-                'user_id' => Auth::id(),
+                'id' => Auth::id(),
                 'team_id' => $team->team_id,
                 'order_date' => now(),
                 'total_price' => $totalWithTax,
@@ -311,7 +311,7 @@ class PaymentController extends Controller
             }
 
             // Get pending orders for this user and event
-            $pendingOrders = Order::where('user_id', $userId)
+            $pendingOrders = Order::where('id', $userId)
                 ->where('event_id', $event->event_id)
                 ->where('status', 'pending')
                 ->get();
@@ -389,7 +389,7 @@ class PaymentController extends Controller
             }
 
             // Verify this order belongs to the current user
-            if ($order->user_id !== Auth::id()) {
+            if ($order->id !== Auth::id()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 

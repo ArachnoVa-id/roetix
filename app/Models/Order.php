@@ -23,7 +23,7 @@ class Order extends Model
     protected $fillable = [
         'order_code',
         'event_id',
-        'user_id',
+        'id',
         'team_id',
         'order_date',
         'total_price',
@@ -48,7 +48,7 @@ class Order extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id', 'user_id');
+        return $this->belongsTo(User::class, 'id', 'id');
     }
 
     public function events(): BelongsToMany

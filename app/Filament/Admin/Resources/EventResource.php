@@ -41,7 +41,7 @@ class EventResource extends Resource
             return false;
         }
 
-        $user = User::find($user->user_id);
+        $user = User::find($user->id);
 
         $tenant_id = Filament::getTenant()->team_id;
 

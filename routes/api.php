@@ -14,7 +14,7 @@ Route::middleware('auth:sanctum')->get('/user', function () {
 
     // Get all teams the user belongs to
     $userTeams = DB::table('user_team')
-        ->where('user_id', $userId)
+        ->where('id', $userId)
         ->pluck('team_id')
         ->toArray();
 
@@ -22,7 +22,7 @@ Route::middleware('auth:sanctum')->get('/user', function () {
     $teamIds = !empty($userTeams) ? $userTeams : [];
 
     return response()->json([
-        'user_id' => $userId,
+        'id' => $userId,
         'team_ids' => $teamIds,
     ]);
 });
