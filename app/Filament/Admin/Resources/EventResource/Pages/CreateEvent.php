@@ -46,6 +46,11 @@ class CreateEvent extends CreateRecord
 
     public function afterCreate()
     {
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
+
         $data = $this->data;
         $event_id = $this->record->event_id;
 
@@ -93,6 +98,8 @@ class CreateEvent extends CreateRecord
         }
 
         // Create Event Variables
+        $colors = Cache::get('color_preview_' . $user->user_id);
+
         $eventVariables = [
             'event_id' => $event_id,
 
@@ -109,15 +116,13 @@ class CreateEvent extends CreateRecord
             'logo' => $data['logo'] ?? '',
             'logo_alt' => $data['logo_alt'] ?? '',
             'favicon' => $data['favicon'] ?? '',
-            'primary_color' => $data['primary_color'] ?? '#000000',
-            'secondary_color' => $data['secondary_color'] ?? '#000000',
-            'text_primary_color' => $data['text_primary_color'] ?? '#000000',
-            'text_secondary_color' => $data['text_secondary_color'] ?? '#000000',
         ];
+
+        $eventVariables = array_merge($eventVariables, $colors);
 
         EventVariables::create($eventVariables);
 
-        // Clear cache for event timeline
-        Cache::forget('event_timeline_' . Auth::user()->user_id);
+        // Clear cache for colors
+        Cache::forget('color_preview_' . Auth::user()->user_id);
     }
 }

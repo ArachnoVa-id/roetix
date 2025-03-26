@@ -289,20 +289,51 @@ export default function Authenticated({
                     }}
                 >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        <div className="flex justify-between">
-                            <img
-                                src={props?.logo}
-                                alt={props?.logo_alt}
-                                className="h-8"
-                            />
-                            <p
-                                className="text-sm"
-                                style={{
-                                    color: props?.text_primary_color,
-                                }}
-                            >
-                                &copy; 2025 ArachnoVa. All rights reserved.
-                            </p>
+                        <div className="flex flex-col space-y-4">
+                            <div className="flex justify-between">
+                                <img
+                                    src={props?.logo}
+                                    alt={props?.logo_alt}
+                                    className="h-8"
+                                />
+                                <p
+                                    className="text-sm"
+                                    style={{
+                                        color: props?.text_primary_color,
+                                    }}
+                                >
+                                    &copy; 2025 ArachnoVa. All rights reserved.
+                                </p>
+                            </div>
+
+                            <div className="mt-2 flex justify-center">
+                                <Link
+                                    href={route(
+                                        'client.privacy_policy',
+                                        client,
+                                    )}
+                                    className="text-sm hover:underline"
+                                    style={{ color: props?.text_primary_color }}
+                                >
+                                    Privacy Policy
+                                </Link>
+                                <span
+                                    className="mx-2"
+                                    style={{ color: props?.text_primary_color }}
+                                >
+                                    •
+                                </span>
+                                <Link
+                                    href={route(
+                                        'client.terms_conditions',
+                                        client,
+                                    )}
+                                    className="text-sm hover:underline"
+                                    style={{ color: props?.text_primary_color }}
+                                >
+                                    Terms & Conditions
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </footer>

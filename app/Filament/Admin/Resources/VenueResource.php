@@ -11,6 +11,7 @@ use Filament\Resources;
 use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Facades\Filament;
 
@@ -30,14 +31,20 @@ class VenueResource extends Resources\Resource
     public static function canCreate(): bool
     {
         $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        $user = User::find($user->id);
+
         $tenant_id = Filament::getTenant()->team_id;
-    
+
         $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
-    
+
         if (!$team) {
             return false;
         }
-    
+
         return $team->vendor_quota > 0;
     }
 

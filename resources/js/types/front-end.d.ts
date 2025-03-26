@@ -1,3 +1,7 @@
+export interface EventTicketLimitProps {
+    ticket_limit: number;
+}
+
 export interface EventColorProps {
     primary_color: string;
     secondary_color: string;
@@ -24,7 +28,8 @@ export interface EventLogoProps {
 }
 
 export interface EventProps
-    extends EventColorProps,
+    extends EventTicketLimitProps,
+        EventColorProps,
         EventMaintenanceProps,
         EventPasswordProps,
         EventLogoProps {}

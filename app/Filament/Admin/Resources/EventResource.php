@@ -16,8 +16,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use App\Models\User;
 use Filament\Facades\Filament;
-
+use Livewire\Livewire;
 
 class EventResource extends Resource
 {
@@ -36,14 +37,21 @@ class EventResource extends Resource
     public static function canCreate(): bool
     {
         $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        $user = User::find($user->user_id);
+
         $tenant_id = Filament::getTenant()->team_id;
-    
+
+
         $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
 
         if (!$team) {
             return false;
         }
-        
+
         return $team->event_quota > 0;
     }
 
@@ -163,7 +171,8 @@ class EventResource extends Resource
                                         Infolists\Components\TextEntry::make('locked_password')
                                             ->label('Locked Password'),
                                     ]),
-
+                                Infolists\Components\TextEntry::make('ticket_limit')
+                                    ->label('Ticket Purchase Limit'),
                                 Infolists\Components\Section::make('Maintenance')
                                     ->relationship('eventVariables')
                                     ->columnSpan(1)
@@ -246,6 +255,7 @@ class EventResource extends Resource
             ->schema([
                 Forms\Components\Tabs::make('Event Variables')
                     ->columnSpan('full')
+
                     ->schema([
                         Forms\Components\Tabs\Tab::make('General')
                             ->columns(2)
@@ -883,6 +893,7 @@ class EventResource extends Resource
                                     ->label('')
                             ]),
                         Forms\Components\Tabs\Tab::make('Locking')
+                            ->hidden(!$modelExists)
                             ->columns(2)
                             ->schema([
                                 Forms\Components\Section::make('')
@@ -896,6 +907,7 @@ class EventResource extends Resource
                                     ->label('Password'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Maintenance')
+                            ->hidden(!$modelExists)
                             ->columns(2)
                             ->schema([
                                 Forms\Components\Section::make('')
@@ -916,25 +928,21 @@ class EventResource extends Resource
                                 Forms\Components\TextInput::make('maintenance_message')
                                     ->label('Message'),
                             ]),
-                        Forms\Components\Tabs\Tab::make('Colors')
-                            ->columns(4)
+                        Forms\Components\Tabs\Tab::make('Limits')
+                            ->columns(2)
                             ->schema([
-                                Forms\Components\ColorPicker::make('primary_color')
-                                    ->hex()
+                                Forms\Components\TextInput::make('ticket_limit')
+                                    ->numeric()
+                                    ->default(5)
+                                    ->minValue(1)
+                                    ->maxValue(20)
                                     ->required()
-                                    ->label('Primary Color'),
-                                Forms\Components\ColorPicker::make('secondary_color')
-                                    ->hex()
-                                    ->required()
-                                    ->label('Secondary Color'),
-                                Forms\Components\ColorPicker::make('text_primary_color')
-                                    ->hex()
-                                    ->required()
-                                    ->label('Text Primary Color'),
-                                Forms\Components\ColorPicker::make('text_secondary_color')
-                                    ->hex()
-                                    ->required()
-                                    ->label('Text Secondary Color'),
+                                    ->label('Ticket Purchase Limit')
+                                    ->helperText('Maximum number of tickets a customer can purchase at once'),
+                            ]),
+                        Forms\Components\Tabs\Tab::make('Colors')
+                            ->schema(fn($record) => [
+                                Forms\Components\Livewire::make('color-preview', ['record' => $record])
                             ]),
                         Forms\Components\Tabs\Tab::make('Identity')
                             ->columns(3)

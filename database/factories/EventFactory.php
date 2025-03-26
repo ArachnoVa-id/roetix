@@ -78,7 +78,7 @@ class EventFactory extends Factory
             'maintenance_title' => '',
             'maintenance_message' => '',
             'maintenance_expected_finish' => now(),
-            'logo' => '/images/novatix-logo/favicon-32x32.png',
+            'logo' => '/images/novatix-logo/android-chrome-192x192.png',
             'favicon' => '/images/novatix-logo/favicon.ico',
             'primary_color' => $this->randomColor(),
             'secondary_color' => $this->randomColor(),

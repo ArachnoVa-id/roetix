@@ -111,6 +111,12 @@ Route::domain('{client}.' . config('app.domain'))
         // User Page
         Route::get('/', [UserPageController::class, 'landing'])
             ->name('client.home');
+        // Privacy Policy and Terms & Conditions pages
+        Route::get('/privacy-policy', [UserPageController::class, 'privacyPolicy'])
+            ->name('client.privacy_policy');
+
+        Route::get('/terms-conditions', [UserPageController::class, 'termCondition'])
+            ->name('client.terms_conditions');
 
         // Fix: Add auth middleware to my_tickets route to ensure user authentication
         Route::middleware('auth')->group(function () {

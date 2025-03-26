@@ -150,7 +150,7 @@ const SeatMapDisplay: React.FC<Props> = ({
     return (
         <div className="flex w-full flex-col items-center">
             {/* Tampilkan pesan status event jika tidak active */}
-            {eventStatus !== 'active' && (
+            {/* {eventStatus !== 'active' && (
                 <div className="mb-4 w-full rounded-lg bg-yellow-50 p-3 text-center">
                     <p className="text-yellow-800">
                         {eventStatus === 'planned' &&
@@ -161,7 +161,7 @@ const SeatMapDisplay: React.FC<Props> = ({
                             'This event has been cancelled'}
                     </p>
                 </div>
-            )}
+            )} */}
             {/* Timeline Information */}
             {currentTimeline && (
                 <div className="mb-4 w-full rounded-lg bg-blue-50 p-3 text-center">
