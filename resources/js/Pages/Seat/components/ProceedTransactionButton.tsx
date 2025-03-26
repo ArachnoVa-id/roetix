@@ -167,7 +167,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 showSuccess('Payment successful!');
                 clearTransaction(); // Clear the transaction data
                 window.location.reload();
-              },
+            },
             onPending: (result) => {
                 console.log('Payment pending:', result);
                 showSuccess(
@@ -304,10 +304,10 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
     const resumePayment = async () => {
         if (!transactionInfo || !window.snap) return;
-        
+
         setIsLoading(true);
         showSuccess('Preparing your payment...');
-        
+
         try {
             // If we already have a snap_token, use it
             if (transactionInfo.snap_token) {
@@ -315,7 +315,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 window.snap.pay(transactionInfo.snap_token, callbacks);
                 return;
             }
-            
+
             // Otherwise, request a new snap token for the existing transaction
             const config = {
                 headers: {
@@ -324,23 +324,23 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             };
-            
+
             const response = await axios.post(
                 '/payment/resume',
                 { transaction_id: transactionInfo.transaction_id },
-                config
+                config,
             );
-            
+
             if (response.data && response.data.snap_token) {
                 const token = response.data.snap_token;
                 const callbacks = createCallbacks(token);
-                
+
                 // Update transaction info with new snap token
                 setTransactionInfo({
                     ...transactionInfo,
-                    snap_token: token
+                    snap_token: token,
                 });
-                
+
                 // Open the Midtrans Snap payment page
                 window.snap.pay(token, callbacks);
             } else {
