@@ -5,7 +5,9 @@ namespace App\Filament\Admin\Resources;
 use App\Enums\TicketStatus;
 use App\Filament\Admin\Resources\TicketResource\Pages;
 use App\Filament\Admin\Resources\TicketResource\RelationManagers;
+use App\Models\Event;
 use App\Models\Ticket;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -44,92 +46,97 @@ class TicketResource extends Resource
         return $user && in_array($user->role, ['admin', 'event-organizer']);
     }
 
-    public static function infolist(Infolists\Infolist $infolist): Infolists\Infolist
+    public static function infolist(Infolists\Infolist $infolist, bool $showBuyer = true): Infolists\Infolist
     {
-        return $infolist->schema(
-            [
-                Infolists\Components\Section::make('Ticket Information')
-                    ->columns(5)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('ticket_id')
-                            ->columnSpan(2)
-                            ->label('ID'),
-                        Infolists\Components\TextEntry::make('ticket_type')
-                            ->label('Type'),
-                        Infolists\Components\TextEntry::make('price'),
-                        Infolists\Components\TextEntry::make('status')
-                            ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
-                            ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
-                            ->badge(),
-                    ]),
-                Infolists\Components\Section::make('Buyer')
-                    ->relationship('ticketOrders', 'ticket_id')
-                    ->columns(4)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('order_id')
-                            ->columnSpan(1)
-                            ->label('Order ID'),
-                        Infolists\Components\Group::make([
-                            Infolists\Components\Group::make([
-                                Infolists\Components\TextEntry::make('first_name')
-                                    ->label('First Name'),
-                                Infolists\Components\TextEntry::make('last_name')
-                                    ->label('Last Name'),
-                                Infolists\Components\TextEntry::make('email'),
-                            ])
-                                ->columns(3)
-                                ->relationship('user', 'id')
-                        ])
-                            ->columnSpan(3)
-                            ->relationship('order', 'order_id'),
-                    ]),
-                Infolists\Components\Section::make("Event")
-                    ->relationship('event', 'event_id')
-                    ->columns(3)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('name'),
-                        Infolists\Components\TextEntry::make('location')->columnSpan(2),
-                    ]),
-                Infolists\Components\Section::make("Seat")
-                    ->relationship('seat', 'seat_id')
-                    ->columns(4)
-                    ->schema([
-                        Infolists\Components\TextEntry::make('seat_number')
-                            ->label('Number'),
-                        Infolists\Components\TextEntry::make('position'),
-                        Infolists\Components\TextEntry::make('row'),
-                        Infolists\Components\TextEntry::make('column'),
-                    ]),
-            ]
-        );
+        return $infolist
+            ->columns(3)
+            ->schema(
+                [
+                    Infolists\Components\Section::make('Ticket Information')
+                        ->columnSpan(3)
+                        ->columns(5)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('ticket_id')
+                                ->columnSpan(2)
+                                ->label('ID'),
+                            Infolists\Components\TextEntry::make('ticket_type')
+                                ->label('Type'),
+                            Infolists\Components\TextEntry::make('price')
+                                ->money('IDR'),
+                            Infolists\Components\TextEntry::make('status')
+                                ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
+                                ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                                ->badge(),
+                        ]),
+                    Infolists\Components\Section::make('Buyer')
+                        ->hidden(!$showBuyer)
+                        ->relationship('ticketOrders', 'ticket_id')
+                        ->columnSpan(1)
+                        ->columns(1)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('order_id')
+                                ->label('Order ID'),
+                            Infolists\Components\TextEntry::make('first_name')
+                                ->label('First Name'),
+                            Infolists\Components\TextEntry::make('last_name')
+                                ->label('Last Name'),
+                            Infolists\Components\TextEntry::make('email'),
+                        ]),
+                    Infolists\Components\Section::make("Event")
+                        ->relationship('event', 'event_id')
+                        ->columnSpan(fn() => $showBuyer ? 1 : 2)
+                        ->columns(1)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('name'),
+                            Infolists\Components\TextEntry::make('location')->columnSpan(2),
+                        ]),
+                    Infolists\Components\Section::make("Seat")
+                        ->relationship('seat', 'seat_id')
+                        ->columnSpan(1)
+                        ->columns(2)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('seat_number')
+                                ->label('Number'),
+                            Infolists\Components\TextEntry::make('position'),
+                            Infolists\Components\TextEntry::make('row'),
+                            Infolists\Components\TextEntry::make('column'),
+                        ]),
+                ]
+            );
     }
 
     public static function table(Table $table): Table
     {
+        $tenant_id = Filament::getTenant()->team_id;
+
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('ticket_id')
-                    ->label('ID')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('seat.seat_number')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('event.name')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('ticket_type')
                     ->label('Type'),
-                Tables\Columns\TextColumn::make('price'),
+                Tables\Columns\TextColumn::make('price')
+                    ->money('IDR'),
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
                     ->badge(),
             ])
+            ->defaultSort('seat.seat_number', 'asc')
             ->filters(
                 [
-                    // SelectFilter::make('event_id')
-                    //     ->label('Filter by Event')
-                    //     ->relationship('event', 'name')
-                    //     ->searchable()
-                    //     ->multiple()
-                    //     ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
+                    SelectFilter::make('event_id')
+                        ->label('Filter by Event')
+                        ->options(fn() => Event::where('team_id', $tenant_id)->pluck('name', 'event_id'))
+                        ->searchable()
+                        ->multiple()
+                        ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
+
+
                     SelectFilter::make('status')
                         ->label('Filter by Status')
                         ->options(TicketStatus::editableOptions())

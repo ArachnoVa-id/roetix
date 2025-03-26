@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use BladeUI\Icons\Factory;
+use Filament\Infolists\Infolist;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Number;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,5 +36,11 @@ class AppServiceProvider extends ServiceProvider
                 $this->loadMigrationsFrom($path);
             }
         }
+
+        Number::useLocale('id');
+        Infolist::$defaultCurrency = 'IDR';
+        Infolist::$defaultNumberLocale = 'id';
+        Table::$defaultCurrency = 'IDR';
+        Table::$defaultNumberLocale = 'id';
     }
 }

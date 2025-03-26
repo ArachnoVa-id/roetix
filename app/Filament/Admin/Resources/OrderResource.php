@@ -53,57 +53,61 @@ class OrderResource extends Resource
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTickets = true): Infolists\Infolist
     {
-        return $infolist->schema([
-            Infolists\Components\Section::make('Order Information')
-                ->columns(2)
-                ->schema([
-                    Infolists\Components\TextEntry::make('order_id')
-                        ->label('ID'),
-                    Infolists\Components\TextEntry::make('order_date')
-                        ->label('Date'),
-                    Infolists\Components\TextEntry::make('total_price')
-                        ->label('Total'),
-                    Infolists\Components\TextEntry::make('status')
-                        ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
-                        ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
-                        ->badge(),
-                ]),
-            Infolists\Components\Section::make('Order User')
-                ->relationship('user', 'id')
-                ->columns(3)
-                ->schema([
-                    Infolists\Components\TextEntry::make('first_name')
-                        ->label('First Name'),
-                    Infolists\Components\TextEntry::make('last_name')
-                        ->label('Last Name'),
-                    Infolists\Components\TextEntry::make('email'),
-                ]),
-            Infolists\Components\Section::make('Order Event')
-                ->relationship('events', 'event_id')
-                ->columns(3)
-                ->schema([
-                    Infolists\Components\TextEntry::make('name')
-                        ->formatStateUsing(function ($state) {
-                            $parsed = explode(',', $state);
-                            return $parsed[0];
-                        }),
-                    Infolists\Components\TextEntry::make('location')
-                        ->formatStateUsing(function ($state) {
-                            $parsed = explode(',', $state);
-                            return $parsed[0];
-                        }),
-                ]),
-            Infolists\Components\Tabs::make()
-                ->columnSpanFull()
-                ->schema([
-                    Infolists\Components\Tabs\Tab::make('Tickets')
-                        ->hidden(!$showTickets)
-                        ->schema([
-                            \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                ->manager(TicketsRelationManager::class)
-                        ]),
-                ]),
-        ]);
+        return $infolist
+            ->columns(2)
+            ->schema([
+                Infolists\Components\Section::make('Order Information')
+                    ->columnSpan(2)
+                    ->columns(2)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('order_id')
+                            ->label('ID'),
+                        Infolists\Components\TextEntry::make('order_date')
+                            ->label('Date'),
+                        Infolists\Components\TextEntry::make('total_price')
+                            ->label('Total')
+                            ->money('IDR'),
+                        Infolists\Components\TextEntry::make('status')
+                            ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
+                            ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
+                            ->badge(),
+                    ]),
+                Infolists\Components\Section::make('Buyer')
+                    ->columnSpan(1)
+                    ->relationship('user', 'id')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('first_name')
+                            ->label('First Name'),
+                        Infolists\Components\TextEntry::make('last_name')
+                            ->label('Last Name'),
+                        Infolists\Components\TextEntry::make('email'),
+                    ]),
+                Infolists\Components\Section::make('Event')
+                    ->columnSpan(1)
+                    ->relationship('events', 'event_id')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('name')
+                            ->formatStateUsing(function ($state) {
+                                $parsed = explode(',', $state);
+                                return $parsed[0];
+                            }),
+                        Infolists\Components\TextEntry::make('location')
+                            ->formatStateUsing(function ($state) {
+                                $parsed = explode(',', $state);
+                                return $parsed[0];
+                            }),
+                    ]),
+                Infolists\Components\Tabs::make()
+                    ->columnSpanFull()
+                    ->schema([
+                        Infolists\Components\Tabs\Tab::make('Tickets')
+                            ->hidden(!$showTickets)
+                            ->schema([
+                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                    ->manager(TicketsRelationManager::class)
+                            ]),
+                    ]),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -126,6 +130,7 @@ class OrderResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('total_price')
                     ->label('Total')
+                    ->money('IDR')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
