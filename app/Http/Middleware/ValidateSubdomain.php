@@ -23,7 +23,7 @@ class ValidateSubdomain
         if (in_array($request->route()->getName(), ['auth.google', 'auth.google-authentication'])) {
             return $next($request);
         }
-        
+
         // get host
         $host = $request->getHost();
 

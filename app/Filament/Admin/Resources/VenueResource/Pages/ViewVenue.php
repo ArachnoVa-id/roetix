@@ -14,7 +14,11 @@ class ViewVenue extends ViewRecord
     {
         return [
             Actions\Action::make('Back')
-                ->url(fn() => VenueResource::getUrl())
+                ->url(
+                    fn() => request()->headers->get('referer') !== url()->current()
+                        ? url()->previous()
+                        : $this->getResource()::getUrl()
+                )
                 ->icon('heroicon-o-arrow-left')
                 ->color('info'),
             Actions\EditAction::make('Edit Event')

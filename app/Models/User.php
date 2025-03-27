@@ -93,6 +93,11 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         });
     }
 
+    public function getFullNameAttribute(): string
+    {
+        return trim($this->first_name . ' ' . $this->last_name);
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->role == 'admin' || $this->role == 'vendor' || $this->role == 'event-organizer';

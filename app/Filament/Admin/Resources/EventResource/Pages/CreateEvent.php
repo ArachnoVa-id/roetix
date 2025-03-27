@@ -11,6 +11,7 @@ use App\Models\EventCategoryTimeboundPrice;
 use App\Models\EventVariables;
 use App\Models\TimelineSession;
 use Filament\Facades\Filament;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
@@ -124,5 +125,14 @@ class CreateEvent extends CreateRecord
 
         // Clear cache for colors
         Cache::forget('color_preview_' . Auth::user()->id);
+
+        // Get the redirect URL (like getRedirectUrl)
+        $redirectUrl = $this->getResource()::getUrl('view', ['record' => $event_id]);
+
+        // Determine whether to use navigate (SPA mode)
+        $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);
+
+        // Perform the redirect
+        $this->redirect($redirectUrl, navigate: $navigate);
     }
 }

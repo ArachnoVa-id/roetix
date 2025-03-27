@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Seat extends Model
 {
@@ -39,17 +40,13 @@ class Seat extends Model
         'column' => 'integer'
     ];
 
-
-    /**
-     * Get the section that owns the seat.
-     */
-    // public function section(): BelongsTo
-    // {
-    //     return $this->belongsTo(Section::class, 'section_id', 'id');
-    // }
-
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class, 'venue_id', 'venue_id');
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'seat_id', 'seat_id');
     }
 }

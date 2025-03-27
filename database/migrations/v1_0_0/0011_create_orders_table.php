@@ -30,6 +30,7 @@ return new class extends Migration
         });
 
         Schema::create('ticket_order', function (Blueprint $table) {
+            $table->string('id', 36)->primary();
             $table->string('ticket_id', 36);
             $table->string('order_id', 36);
             $table->string('event_id', 36);
@@ -38,8 +39,6 @@ return new class extends Migration
 
             $table->foreign('ticket_id')->references('ticket_id')->on('tickets')->onDelete('cascade');
             $table->foreign('order_id')->references('order_id')->on('orders')->onDelete('cascade');
-
-            $table->primary(['ticket_id', 'order_id']);
         });
     }
 

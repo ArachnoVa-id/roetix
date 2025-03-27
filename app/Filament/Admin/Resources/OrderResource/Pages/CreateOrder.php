@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\OrderResource\Pages;
 
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Filament\Admin\Resources\OrderResource;
@@ -12,6 +13,7 @@ use App\Models\TicketOrder;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\DB;
 
 class CreateOrder extends CreateRecord
@@ -29,7 +31,7 @@ class CreateOrder extends CreateRecord
 
             // Lock all tickets
             foreach ($data['tickets'] as $ticket) {
-                $ticket_id = $ticket['name']; // Yes this makes no sense, but I'm tired refactoring this
+                $ticket_id = $ticket['ticket_id'];
                 $ticketModel = Ticket::where('event_id', $event_id)->where('ticket_id', $ticket_id)
                     ->where('status', TicketStatus::AVAILABLE)
                     ->lockForUpdate()
@@ -40,7 +42,7 @@ class CreateOrder extends CreateRecord
             }
 
             // Create Order
-            $orderCode = 'M-ORDER-' . time() . '-' . rand(1000, 9999);
+            $orderCode = Order::keyGen(OrderType::MANUAL);
             $order = Order::create([
                 'order_code' => $orderCode,
                 'user_id' => $user_id,
@@ -56,13 +58,12 @@ class CreateOrder extends CreateRecord
             $totalPrice = 0;
 
             foreach ($tickets as $ticket) {
-                $ticket_id = $ticket['name']; // Yes this makes no sense, but I'm tired refactoring this
-                $ticketModel = Ticket::find($ticket_id);
+                $ticket_id = $ticket['ticket_id'];
                 $totalPrice += $ticketModel->price;
 
                 // Create Ticket Order
                 $ticketOrder = TicketOrder::create([
-                    'ticket_id' => $ticketModel->ticket_id,
+                    'ticket_id' => $ticket_id,
                     'order_id' => $order->order_id,
                     'event_id' => $event_id,
                     'status' => TicketOrderStatus::ENABLED,
@@ -79,15 +80,24 @@ class CreateOrder extends CreateRecord
                 'total_price' => $totalPrice,
             ]);
 
-            Notification::make('saved')
+            Notification::make()
                 ->success()
                 ->title('Saved')
                 ->send();
 
             DB::commit();
+
+            // Get the redirect URL (like getRedirectUrl)
+            $redirectUrl = $this->getResource()::getUrl('view', ['record' => $order->order_id]);
+
+            // Determine whether to use navigate (SPA mode)
+            $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);
+
+            // Perform the redirect
+            $this->redirect($redirectUrl, navigate: $navigate);
         } catch (\Exception $e) {
-            Notification::make('error')
-                ->title('Failed to save')
+            Notification::make()
+                ->title('Failed to Save')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();

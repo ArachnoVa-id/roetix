@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\EventStatus;
 use Filament\Forms;
 use App\Models\User;
 use Filament\Tables;
@@ -26,7 +27,7 @@ use Filament\Facades\Filament;
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
-
+    protected static ?string $tenantRelationshipName = 'orders';
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
 
     public static function canDelete(Model $record): bool
@@ -105,7 +106,6 @@ class OrderResource extends Resource
 
                                         $return[$uuid] = [
                                             'ticket_id' => $ticket->ticket_id,
-                                            'name' => $ticket->seat->seat_number,
                                             'status' => $ticketOrder ? $ticketOrder->status : TicketOrderStatus::ENABLED,
                                         ];
                                     }
@@ -114,8 +114,7 @@ class OrderResource extends Resource
                                 }
                             })
                             ->schema([
-                                Forms\Components\Hidden::make('ticket_id'),
-                                Forms\Components\Select::make('name')
+                                Forms\Components\Select::make('ticket_id')
                                     ->label('Ticket')
                                     ->searchable()
                                     ->optionsLimit(5)
@@ -125,7 +124,7 @@ class OrderResource extends Resource
                                         function (Forms\Get $get) {
                                             // Get all currently selected ticket IDs in the repeater
                                             $selectedTickets = $get('../../tickets')
-                                                ? collect($get('../../tickets'))->pluck('name')->filter()->toArray() // Filter out null values
+                                                ? collect($get('../../tickets'))->pluck('ticket_id')->filter()->toArray() // Filter out null values
                                                 : [];
 
                                             return Ticket::where('event_id', $get('../../event_id'))
@@ -141,6 +140,7 @@ class OrderResource extends Resource
                                                 ->toArray();
                                         }
                                     )
+                                    ->getOptionLabelUsing(fn($value) => Ticket::find($value)?->seat->seat_number ?? '')
                                     ->preload()
                                     ->placeholder('Choose') // This will be shown when there are no options
                                     ->required(),
@@ -160,11 +160,13 @@ class OrderResource extends Resource
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTickets = true): Infolists\Infolist
     {
+        $order = Order::find($infolist->record->order_id);
+        $firstEvent = $order->getSingleEvent();
         return $infolist
-            ->columns(2)
+            ->columns(3)
             ->schema([
                 Infolists\Components\Section::make('Order Information')
-                    ->columnSpan(2)
+                    ->columnSpanFull()
                     ->columns(2)
                     ->schema([
                         Infolists\Components\TextEntry::make('order_id')
@@ -181,28 +183,33 @@ class OrderResource extends Resource
                     ]),
                 Infolists\Components\Section::make('Buyer')
                     ->columnSpan(1)
+                    ->columns(2)
                     ->relationship('user', 'id')
                     ->schema([
                         Infolists\Components\TextEntry::make('first_name')
+                            ->columnSpan(1)
                             ->label('First Name'),
                         Infolists\Components\TextEntry::make('last_name')
+                            ->columnSpan(1)
                             ->label('Last Name'),
-                        Infolists\Components\TextEntry::make('email'),
+                        Infolists\Components\TextEntry::make('email')
+                            ->columnSpan(2),
                     ]),
                 Infolists\Components\Section::make('Event')
-                    ->columnSpan(1)
-                    ->relationship('events', 'event_id')
+                    ->columnSpan(2)
+                    ->columns(2)
                     ->schema([
                         Infolists\Components\TextEntry::make('name')
-                            ->formatStateUsing(function ($state) {
-                                $parsed = explode(',', $state);
-                                return $parsed[0];
-                            }),
+                            ->default(fn() => $firstEvent->name),
                         Infolists\Components\TextEntry::make('location')
-                            ->formatStateUsing(function ($state) {
-                                $parsed = explode(',', $state);
-                                return $parsed[0];
-                            }),
+                            ->default(fn() => $firstEvent->location),
+                        Infolists\Components\TextEntry::make('event_date')
+                            ->label('D-Day')
+                            ->default(fn() => $firstEvent->event_date),
+                        Infolists\Components\TextEntry::make('status')
+                            ->formatStateUsing(fn() => EventStatus::tryFrom($firstEvent->status)->getLabel())
+                            ->color(fn() => EventStatus::tryFrom($firstEvent->status)->getColor())
+                            ->badge(),
                     ]),
                 Infolists\Components\Tabs::make()
                     ->columnSpanFull()
@@ -263,7 +270,7 @@ class OrderResource extends Resource
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\ViewAction::make()->modalHeading('View Order'),
                     Tables\Actions\EditAction::make(),
                 ])
             ])
