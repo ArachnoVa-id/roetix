@@ -17,6 +17,9 @@ class ViewTicket extends ViewRecord
                 ->url(fn() => TicketResource::getUrl())
                 ->icon('heroicon-o-arrow-left')
                 ->color('info'),
+            TicketResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            )
         ];
     }
 }

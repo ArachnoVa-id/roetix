@@ -61,7 +61,6 @@ enum TicketStatus: string implements HasLabel, HasColor
             self::AVAILABLE->value => self::AVAILABLE->getLabel(),
             self::BOOKED->value => self::BOOKED->getLabel(),
             self::RESERVED->value => self::RESERVED->getLabel(),
-            self::IN_TRANSACTION->value => self::IN_TRANSACTION->getLabel(),
         ];
     }
 

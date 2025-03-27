@@ -2,20 +2,22 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\TicketOrderStatus;
-use App\Enums\TicketStatus;
-use App\Filament\Admin\Resources\TicketResource\Pages;
+use Filament\Forms;
+use Filament\Tables;
 use App\Models\Event;
 use App\Models\Ticket;
+use Filament\Infolists;
+use Filament\Tables\Table;
+use App\Enums\TicketStatus;
 use App\Models\TicketOrder;
 use Filament\Facades\Filament;
-use Filament\Infolists;
+use App\Enums\TicketOrderStatus;
 use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Actions;
+use Illuminate\Database\Eloquent\Model;
+use Filament\Tables\Filters\SelectFilter;
+use App\Filament\Admin\Resources\TicketResource\Pages;
 
 class TicketResource extends Resource
 {
@@ -43,6 +45,27 @@ class TicketResource extends Resource
         $user = Auth::user();
 
         return $user && in_array($user->role, ['admin', 'event-organizer']);
+    }
+
+    public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Change Status')
+            ->color('success')
+            ->icon('heroicon-o-cog')
+            ->modalHeading('Change Status')
+            ->modalDescription('Select a new status for this ticket.')
+            ->form([
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options(TicketStatus::editableOptions())
+                    ->default(fn($record) => $record->status) // Set the current value as default
+                    ->required(),
+            ])
+            ->action(function ($record, array $data) {
+                $record->update(['status' => $data['status']]);
+            })
+            ->modal(true);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showBuyer = true): Infolists\Infolist
@@ -193,7 +216,12 @@ class TicketResource extends Resource
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\ViewAction::make(),
+                    self::ChangeStatusButton(
+                        Tables\Actions\Action::make('changeStatus')
+                    )
+                ])
             ])
             ->bulkActions([]);
     }
