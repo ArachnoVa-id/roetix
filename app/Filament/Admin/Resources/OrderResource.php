@@ -12,6 +12,7 @@ use Filament\Infolists;
 use App\Enums\OrderStatus;
 use Filament\Tables\Table;
 use App\Enums\TicketOrderStatus;
+use App\Enums\TicketStatus;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
@@ -128,16 +129,19 @@ class OrderResource extends Resource
                                                 : [];
 
                                             return Ticket::where('event_id', $get('../../event_id'))
+                                                ->where('status', TicketStatus::AVAILABLE)
                                                 ->whereHas('seat') // Ensure the ticket has a related seat
                                                 ->with('seat') // Load the seat relationship
                                                 ->when(!empty($selectedTickets), function ($query) use ($selectedTickets) {
                                                     return $query->whereNotIn('ticket_id', $selectedTickets); // Use 'id' if it's the primary key
                                                 })
                                                 ->get()
+                                                ->sortBy('seat.seat_number')
                                                 ->pluck('seat.seat_number', 'ticket_id') // Pluck seat_number as label, ticket_id as value
                                                 ->toArray();
                                         }
                                     )
+                                    ->preload()
                                     ->placeholder('Choose') // This will be shown when there are no options
                                     ->required(),
 
@@ -150,14 +154,6 @@ class OrderResource extends Resource
                                     ->hidden(!$modelExists)
                                     ->required(),
                             ]),
-
-                        // Forms\Components\TextInput::make('total_price')
-                        //     ->disabled()
-                        //     ->hidden(),
-                        // Forms\Components\Select::make('status')
-                        //     ->options(OrderStatus::editableOptions())
-                        //     ->required()
-                        //     ->disabled(fn($record) => $record->status === OrderStatus::Cancelled),
                     ])
             ]);
     }
@@ -226,8 +222,8 @@ class OrderResource extends Resource
         return $table
             ->defaultSort('order_date', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('order_id')
-                    ->label('Order')
+                Tables\Columns\TextColumn::make('order_code')
+                    ->label('Code')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('user')
                     ->formatStateUsing(function ($state) {

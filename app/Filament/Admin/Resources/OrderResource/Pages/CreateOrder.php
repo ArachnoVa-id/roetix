@@ -23,14 +23,14 @@ class CreateOrder extends CreateRecord
         DB::beginTransaction();
         try {
             $data = $this->data;
-            dd($data);
             $tenant_id = Filament::getTenant()->team_id;
             $event_id = $data['event_id'];
             $user_id = $data['user_id'];
 
             // Lock all tickets
             foreach ($data['tickets'] as $ticket) {
-                $ticketModel = Ticket::where('event_id', $event_id)->where('ticket_id', $ticket['ticket_id'])
+                $ticket_id = $ticket['name']; // Yes this makes no sense, but I'm tired refactoring this
+                $ticketModel = Ticket::where('event_id', $event_id)->where('ticket_id', $ticket_id)
                     ->where('status', TicketStatus::AVAILABLE)
                     ->lockForUpdate()
                     ->first();
@@ -47,6 +47,7 @@ class CreateOrder extends CreateRecord
                 'event_id' => $event_id,
                 'team_id' => $tenant_id,
                 'order_date' => now(),
+                'total_price' => 0,
                 'status' => OrderStatus::COMPLETED,
             ]);
 
@@ -55,11 +56,13 @@ class CreateOrder extends CreateRecord
             $totalPrice = 0;
 
             foreach ($tickets as $ticket) {
-                $totalPrice += $ticket['price'];
+                $ticket_id = $ticket['name']; // Yes this makes no sense, but I'm tired refactoring this
+                $ticketModel = Ticket::find($ticket_id);
+                $totalPrice += $ticketModel->price;
 
                 // Create Ticket Order
                 $ticketOrder = TicketOrder::create([
-                    'ticket_id' => $ticket['ticket_id'],
+                    'ticket_id' => $ticketModel->ticket_id,
                     'order_id' => $order->order_id,
                     'event_id' => $event_id,
                     'status' => TicketOrderStatus::ENABLED,

@@ -29,7 +29,7 @@ class CheckVenueAccess
 
         // Ambil semua team_id milik user yang login
         $userTeamIds = DB::table('user_team')
-            ->where('id', $userId)
+            ->where('user_id', $userId)
             ->pluck('team_id')
             ->toArray();
 

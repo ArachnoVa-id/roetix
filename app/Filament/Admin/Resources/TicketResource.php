@@ -5,13 +5,10 @@ namespace App\Filament\Admin\Resources;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Filament\Admin\Resources\TicketResource\Pages;
-use App\Filament\Admin\Resources\TicketResource\RelationManagers;
 use App\Models\Event;
 use App\Models\Ticket;
 use App\Models\TicketOrder;
 use Filament\Facades\Filament;
-use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Infolists;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -172,12 +169,26 @@ class TicketResource extends Resource
                         ->multiple()
                         ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
 
-
                     SelectFilter::make('status')
                         ->label('Filter by Status')
                         ->options(TicketStatus::editableOptions())
                         ->multiple()
                         ->default(request()->query('tableFilters')['status']['value'] ?? null),
+
+                    SelectFilter::make('ticket_order_status')
+                        ->label('Filter by Ownership')
+                        ->options(TicketOrderStatus::editableOptions())
+                        ->multiple()
+                        ->query(function ($query, array $data) {
+                            if (!empty($data['values'])) {
+                                $query->whereHas('ticketOrders', function ($subQuery) use ($data) {
+                                    $subQuery->whereIn('status', $data['values'])
+                                        ->orderByDesc('created_at'); // Ensure the latest status is considered
+                                });
+                            }
+                        })
+                        ->default(request()->query('tableFilters')['ticket_order_status']['value'] ?? null),
+
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
