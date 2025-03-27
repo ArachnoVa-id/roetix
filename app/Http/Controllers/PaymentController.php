@@ -307,8 +307,16 @@ class PaymentController extends Controller
             $userId = Auth::id();
 
             // Get the client's event
-            $hostParts = explode('.', $request->getHost());
-            $client = $hostParts[0];
+            $client = $request->route('client');
+            if (!$client) {
+                // Try to extract from host as fallback
+                $hostParts = explode('.', $request->getHost());
+                $client = $hostParts[0] !== 'api' ? $hostParts[0] : null;
+
+                if (!$client) {
+                    return response()->json(['success' => false, 'error' => 'Client identifier not found'], 400);
+                }
+            }
             $event = Event::where('slug', $client)->first();
 
             if (!$event) {
@@ -316,7 +324,7 @@ class PaymentController extends Controller
             }
 
             // Get pending orders for this user and event
-            $pendingOrders = Order::where('id', $userId)
+            $pendingOrders = Order::where('order_id', $userId)
                 ->where('event_id', $event->event_id)
                 ->where('status', OrderStatus::PENDING)
                 ->get();
