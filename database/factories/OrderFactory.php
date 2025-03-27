@@ -75,23 +75,22 @@ class OrderFactory extends Factory
             $selected_tickets = $available_tickets->random($num_tickets);
 
             foreach ($selected_tickets as $ticket) {
+                // Mark ticket as booked
                 // Check what is the current order status
                 switch ($order->status) {
-                    case OrderStatus::COMPLETED:
+                    case OrderStatus::COMPLETED->value:
                         // If order is paid, mark ticket as booked
-                        $ticket->status = TicketStatus::BOOKED;
+                        $ticket->update(['status' => TicketStatus::BOOKED]);
                         break;
-                    case OrderStatus::PENDING:
+                    case OrderStatus::PENDING->value:
                         // If order is pending, mark ticket as reserved
-                        $ticket->status = TicketStatus::IN_TRANSACTION;
+                        $ticket->update(['status' => TicketStatus::IN_TRANSACTION]);
                         break;
                     default:
                         // If order is anything else, mark ticket as available
-                        $ticket->status = TicketStatus::AVAILABLE;
+                        $ticket->update(['status' => TicketStatus::AVAILABLE]);
                         break;
                 }
-
-                $ticket->save();
 
                 // Create TicketOrder with correct order_id
                 TicketOrder::create([
