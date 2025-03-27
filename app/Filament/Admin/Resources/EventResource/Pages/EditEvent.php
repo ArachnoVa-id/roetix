@@ -183,15 +183,15 @@ class EditEvent extends EditRecord
                 $this->record->fill($this->form->getState());
                 $this->record->save();
 
-                Notification::make('saved')
+                Notification::make()
                     ->success()
                     ->title('Saved')
                     ->send();
 
                 DB::commit();
             } else {
-                Notification::make('error')
-                    ->title('Failed to save')
+                Notification::make()
+                    ->title('Failed to Save')
                     ->body('Unknown error occurred')
                     ->danger()
                     ->send();
@@ -199,8 +199,8 @@ class EditEvent extends EditRecord
                 DB::rollBack();
             }
         } catch (\Exception $e) {
-            Notification::make('error')
-                ->title('Failed to save')
+            Notification::make()
+                ->title('Failed to Save')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();

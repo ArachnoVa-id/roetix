@@ -17,6 +17,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
 
 class UserPageController extends Controller
 {
@@ -62,6 +63,65 @@ class UserPageController extends Controller
                 'error' => 'Event variables not found for ' . $event->name . '.',
                 'props' => EventVariables::getDefaultValue()
             ]);
+        }
+
+        // Check if the event is in maintenance mode
+        if ($props->is_maintenance) {
+            return Inertia::render('User/Maintenance', [
+                'client' => $client,
+                'event' => [
+                    'name' => $event->name,
+                    'slug' => $event->slug
+                ],
+                'maintenance' => [
+                    'title' => $props->maintenance_title ?: 'Site Under Maintenance',
+                    'message' => $props->maintenance_message ?: 'We are currently performing maintenance on our system. Please check back later.',
+                    'expected_finish' => $props->maintenance_expected_finish ? Carbon::parse($props->maintenance_expected_finish)->format('F j, Y, g:i a') : null,
+                ],
+                'props' => $props
+            ]);
+        }
+
+        // Check if the event is locked
+        $isAuthenticated = false;
+        $hasAttemptedLogin = false;
+        $loginError = null;
+
+        if ($props->is_locked) {
+            // Check if the user has provided a password
+            if ($request->has('event_password')) {
+                $hasAttemptedLogin = true;
+
+                // Verify the password
+                if (
+                    Hash::check($request->event_password, $props->locked_password) ||
+                    $request->event_password === $props->locked_password
+                ) { // Allow plaintext comparison as fallback
+                    // Password is correct, store in session
+                    $request->session()->put("event_auth_{$event->event_id}", true);
+                    $isAuthenticated = true;
+                } else {
+                    // Password is incorrect
+                    $loginError = 'The password you entered is incorrect.';
+                }
+            } else {
+                // Check if user is already authenticated for this event
+                $isAuthenticated = $request->session()->get("event_auth_{$event->event_id}", false);
+            }
+
+            // If not authenticated, show the lock screen
+            if (!$isAuthenticated) {
+                return Inertia::render('User/LockedEvent', [
+                    'client' => $client,
+                    'event' => [
+                        'name' => $event->name,
+                        'slug' => $event->slug
+                    ],
+                    'hasAttemptedLogin' => $hasAttemptedLogin,
+                    'loginError' => $loginError,
+                    'props' => $props
+                ]);
+            }
         }
 
         try {
@@ -378,5 +438,54 @@ class UserPageController extends Controller
             return redirect()->route('client.home', ['client' => $client])
                 ->with('error', 'Failed to load terms and conditions: ' . $e->getMessage());
         }
+    }
+
+    public function verifyEventPassword(Request $request, string $client = '')
+    {
+        // Get the event
+        $event = Event::where('slug', $client)->first();
+        if (!$event || !$event->eventVariables) {
+            return redirect()->route('client.home', ['client' => $client])
+                ->with('error', 'Event not found or configuration missing.');
+        }
+
+        $props = $event->eventVariables;
+
+        // Verify the password
+        if ($props->is_locked) {
+            if ($request->has('event_password')) {
+                // First, try direct comparison (for plaintext passwords)
+                if ($request->event_password === $props->locked_password) {
+                    // Password is correct, store in session
+                    $request->session()->put("event_auth_{$event->event_id}", true);
+                    return redirect()->route('client.home', ['client' => $client]);
+                }
+
+                // Only try bcrypt check if the password looks like a bcrypt hash
+                // Bcrypt hashes start with $2y$ or $2a$
+                if (
+                    str_starts_with($props->locked_password, '$2y$') ||
+                    str_starts_with($props->locked_password, '$2a$')
+                ) {
+                    try {
+                        if (Hash::check($request->event_password, $props->locked_password)) {
+                            // Password is correct, store in session
+                            $request->session()->put("event_auth_{$event->event_id}", true);
+                            return redirect()->route('client.home', ['client' => $client]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Hash comparison failed: ' . $e->getMessage());
+                        // Continue to error message below
+                    }
+                }
+
+                // If we get here, password is incorrect
+                return redirect()->route('client.home', ['client' => $client])
+                    ->with('error', 'The password you entered is incorrect.');
+            }
+        }
+
+        // If we get here, something went wrong
+        return redirect()->route('client.home', ['client' => $client]);
     }
 }

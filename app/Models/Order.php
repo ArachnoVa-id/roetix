@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrderType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,20 @@ class Order extends Model
         });
     }
 
+    public static function keyGen(OrderType $type): string
+    {
+        switch ($type) {
+            case OrderType::AUTO:
+                return 'ORD-' . time() . '-' . rand(1000, 9999);
+            case OrderType::MANUAL:
+                return 'MAN-' . time() . '-' . rand(1000, 9999);
+            case OrderType::TRANSFER:
+                return 'TRF-' . time() . '-' . rand(1000, 9999);
+            default:
+                return 'UNK-' . time() . '-' . rand(1000, 9999);
+        }
+    }
+
     public function tickets(): BelongsToMany
     {
         return $this->belongsToMany(Ticket::class, 'ticket_order', 'order_id', 'ticket_id');
@@ -54,6 +69,11 @@ class Order extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    public function getSingleEvent()
+    {
+        return $this->events()->first();
     }
 
     public function events(): BelongsToMany

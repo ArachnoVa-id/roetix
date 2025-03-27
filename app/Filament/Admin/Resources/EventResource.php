@@ -18,6 +18,7 @@ use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationMa
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Model;
 use Livewire\Livewire;
 
 class EventResource extends Resource
@@ -55,6 +56,11 @@ class EventResource extends Resource
         return $team->event_quota > 0;
     }
 
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
         return $action
@@ -67,7 +73,7 @@ class EventResource extends Resource
                 Forms\Components\Select::make('status')
                     ->label('Status')
                     ->options(EventStatus::editableOptions())
-                    ->default(fn($record) => $record->status) // Set the current value as default
+                    ->default(fn($record) => $record->status)
                     ->required(),
             ])
             ->action(function ($record, array $data) {
@@ -971,14 +977,12 @@ class EventResource extends Resource
         $role = $user ? $user->role : null;
 
         $defaultActions = [
-            Tables\Actions\ViewAction::make(),
+            Tables\Actions\ViewAction::make()->modalHeading('View Event'),
             Tables\Actions\EditAction::make(),
             self::ChangeStatusButton(Tables\Actions\Action::make('changeStatus')),
         ];
 
         if ($role == 'event-organizer') $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));
-
-        $defaultActions[] = Tables\Actions\DeleteAction::make();
 
         return $table
             ->columns([
@@ -1019,7 +1023,7 @@ class EventResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    // Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

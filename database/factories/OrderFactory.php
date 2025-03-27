@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Models\Order;
@@ -40,7 +41,7 @@ class OrderFactory extends Factory
 
         $event_id = $ticket->event_id;
         $event = $ticket->event;
-        $orderCode = 'ORDER-' . time() . '-' . rand(1000, 9999);
+        $orderCode = Order::keyGen(OrderType::UNKNOWN);
 
         return [
             'order_code' => $orderCode,
@@ -75,7 +76,21 @@ class OrderFactory extends Factory
 
             foreach ($selected_tickets as $ticket) {
                 // Mark ticket as booked
-                $ticket->update(['status' => TicketStatus::BOOKED]);
+                // Check what is the current order status
+                switch ($order->status) {
+                    case OrderStatus::COMPLETED->value:
+                        // If order is paid, mark ticket as booked
+                        $ticket->update(['status' => TicketStatus::BOOKED]);
+                        break;
+                    case OrderStatus::PENDING->value:
+                        // If order is pending, mark ticket as reserved
+                        $ticket->update(['status' => TicketStatus::IN_TRANSACTION]);
+                        break;
+                    default:
+                        // If order is anything else, mark ticket as available
+                        $ticket->update(['status' => TicketStatus::AVAILABLE]);
+                        break;
+                }
 
                 // Create TicketOrder with correct order_id
                 TicketOrder::create([

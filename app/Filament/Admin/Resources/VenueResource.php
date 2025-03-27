@@ -239,7 +239,7 @@ class VenueResource extends Resources\Resource
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\ViewAction::make()->modalHeading('View Venue'),
                     Tables\Actions\EditAction::make(),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')

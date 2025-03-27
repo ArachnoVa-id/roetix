@@ -23,13 +23,25 @@ class AdminPanelProvider extends PanelProvider
                     ->colors([
                         'primary' => Color::Amber,
                     ])
-                    ->tenant(Team::class, slugAttribute: 'code')
-                    ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
-                    ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
+                    ->tenant(
+                        Team::class,
+                        slugAttribute: 'code'
+                    )
+                    ->discoverResources(
+                        in: app_path('Filament/Admin/Resources'),
+                        for: 'App\\Filament\\Admin\\Resources'
+                    )
+                    ->discoverPages(
+                        in: app_path('Filament/Admin/Pages'),
+                        for: 'App\\Filament\\Admin\\Pages'
+                    )
                     ->pages([
                         Pages\Dashboard::class,
                     ])
-                    ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
+                    ->discoverWidgets(
+                        in: app_path('Filament/Admin/Widgets'),
+                        for: 'App\\Filament\\Admin\\Widgets'
+                    )
                     ->widgets([
                         Widgets\AccountWidget::class,
                     ])

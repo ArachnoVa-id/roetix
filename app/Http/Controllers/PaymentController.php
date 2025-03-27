@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Models\Event;
@@ -106,7 +107,7 @@ class PaymentController extends Controller
                 ->get();
 
             // Generate order ID
-            $orderCode = 'ORDER-' . time() . '-' . rand(1000, 9999);
+            $orderCode = Order::keyGen(OrderType::AUTO);
 
             // Prepare transaction parameters
             $itemDetails = [];

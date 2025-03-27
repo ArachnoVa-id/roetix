@@ -14,7 +14,11 @@ class ViewEvent extends ViewRecord
     {
         return [
             Actions\Action::make('Back')
-                ->url(fn() => EventResource::getUrl())
+                ->url(
+                    fn() => request()->headers->get('referer') !== url()->current()
+                        ? url()->previous()
+                        : $this->getResource()::getUrl()
+                )
                 ->icon('heroicon-o-arrow-left')
                 ->color('info'),
             Actions\EditAction::make('Edit Event')
@@ -25,8 +29,6 @@ class ViewEvent extends ViewRecord
             EventResource::ChangeStatusButton(
                 Actions\Action::make('changeStatus')
             ),
-            Actions\DeleteAction::make('Delete Event')
-                ->icon('heroicon-o-trash'),
         ];
     }
 }

@@ -8,8 +8,10 @@ use App\Filament\Admin\Resources\OrderResource;
 use App\Models\Ticket;
 use App\Models\TicketOrder;
 use Filament\Actions;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -83,7 +85,7 @@ class EditOrder extends EditRecord
                         ]);
                 } else if ($status === TicketOrderStatus::ENABLED->value) {
                     // check if the ticket is already booked
-                    if ($ticketModel->status === TicketStatus::BOOKED) {
+                    if ($ticketModel->status === TicketStatus::BOOKED->value) {
                         throw new \Exception('Ticket is already booked');
                     }
 
@@ -94,21 +96,30 @@ class EditOrder extends EditRecord
                 }
             }
 
-            Notification::make('saved')
+            Notification::make()
                 ->success()
                 ->title('Saved')
                 ->send();
 
             DB::commit();
         } catch (\Exception $e) {
-            Notification::make('error')
-                ->title('Failed to save')
+            Notification::make()
+                ->title('Failed to Save')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();
 
             DB::rollBack();
         }
+
+        // Get the redirect URL (like getRedirectUrl)
+        $redirectUrl = $this->getResource()::getUrl('edit', ['record' => $order_id]);
+
+        // Determine whether to use navigate (SPA mode)
+        $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);
+
+        // Perform the redirect
+        $this->redirect($redirectUrl, navigate: $navigate);
 
         $this->halt();
     }
