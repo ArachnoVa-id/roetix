@@ -12,6 +12,10 @@ class ListOrders extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            Actions\CreateAction::make()
+                ->label('Create Order')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

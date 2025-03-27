@@ -2,21 +2,25 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\OrderStatus;
-use App\Filament\Admin\Resources\OrderResource\Pages;
-use App\Filament\Admin\Resources\OrderResource\RelationManagers;
-use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
-use App\Models\Order;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Models\User;
 use Filament\Tables;
+use App\Models\Event;
+use App\Models\Order;
+use App\Models\Ticket;
 use Filament\Infolists;
+use App\Enums\OrderStatus;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Enums\TicketOrderStatus;
+use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Admin\Resources\OrderResource\Pages;
+use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
+use App\Models\TicketOrder;
+use Filament\Facades\Filament;
 
 class OrderResource extends Resource
 {
@@ -24,17 +28,7 @@ class OrderResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
 
-    public static function canCreate(): bool
-    {
-        return false;
-    }
-
     public static function canDelete(Model $record): bool
-    {
-        return false;
-    }
-
-    public static function canEdit(Model $record): bool
     {
         return false;
     }
@@ -49,6 +43,123 @@ class OrderResource extends Resource
     public static function tableQuery(): Builder
     {
         return parent::tableQuery()->withoutGlobalScope(SoftDeletingScope::class);
+    }
+
+    public static function form(Forms\Form $form): Forms\Form
+    {
+        $tenant_id = Filament::getTenant()->team_id;
+        // get current form values
+        $currentModel = $form->model;
+        $modelExists = !is_string($currentModel);
+
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Buyer')
+                    ->columns(2)
+                    ->schema([
+                        // define the user
+                        Forms\Components\Select::make('user_id')
+                            ->label('User')
+                            ->searchable()
+                            ->options(fn() => User::pluck('email', 'id'))
+                            ->optionsLimit(5)
+                            ->required()
+                            ->disabled($modelExists),
+                        // define the event
+                        Forms\Components\Select::make('event_id')
+                            ->label('Event')
+                            ->searchable()
+                            ->reactive()
+                            ->optionsLimit(5)
+                            ->options(fn() => Event::where('team_id', $tenant_id)->pluck('name', 'event_id'))
+                            ->required()
+                            ->disabled($modelExists),
+                    ]),
+                Forms\Components\Section::make('Tickets')
+                    ->columnSpanFull()
+                    ->schema([
+                        Forms\Components\Placeholder::make('info')
+                            ->label('')
+                            ->content('Please choose an event first')
+                            ->hidden(fn(Forms\Get $get) => $get('event_id') != null),
+                        // define the repeater of tickets on that event
+                        Forms\Components\Repeater::make('tickets')
+                            ->hidden(fn(Forms\Get $get) => $get('event_id') == null)
+                            ->minItems(1)
+                            ->grid(3)
+                            ->columns(5)
+                            ->label('')
+                            ->deletable(!$modelExists)
+                            ->addable(!$modelExists)
+                            ->afterStateHydrated(function ($set, $record) {
+                                if ($record) {
+                                    $return = [];
+
+                                    foreach ($record->tickets as $ticket) {
+                                        $uuid = \Illuminate\Support\Str::uuid()->toString();
+                                        $ticketOrder = TicketOrder::where('order_id', $record->order_id)
+                                            ->where('ticket_id', $ticket->ticket_id)
+                                            ->latest()
+                                            ->first();
+
+                                        $return[$uuid] = [
+                                            'ticket_id' => $ticket->ticket_id,
+                                            'name' => $ticket->seat->seat_number,
+                                            'status' => $ticketOrder ? $ticketOrder->status : TicketOrderStatus::ENABLED,
+                                        ];
+                                    }
+
+                                    $set('tickets', $return);
+                                }
+                            })
+                            ->schema([
+                                Forms\Components\Hidden::make('ticket_id'),
+                                Forms\Components\Select::make('name')
+                                    ->label('Ticket')
+                                    ->searchable()
+                                    ->optionsLimit(5)
+                                    ->disabled($modelExists)
+                                    ->columnSpan(fn() => !$modelExists ? 5 : 2)
+                                    ->options(
+                                        function (Forms\Get $get) {
+                                            // Get all currently selected ticket IDs in the repeater
+                                            $selectedTickets = $get('../../tickets')
+                                                ? collect($get('../../tickets'))->pluck('name')->filter()->toArray() // Filter out null values
+                                                : [];
+
+                                            return Ticket::where('event_id', $get('../../event_id'))
+                                                ->whereHas('seat') // Ensure the ticket has a related seat
+                                                ->with('seat') // Load the seat relationship
+                                                ->when(!empty($selectedTickets), function ($query) use ($selectedTickets) {
+                                                    return $query->whereNotIn('ticket_id', $selectedTickets); // Use 'id' if it's the primary key
+                                                })
+                                                ->get()
+                                                ->pluck('seat.seat_number', 'ticket_id') // Pluck seat_number as label, ticket_id as value
+                                                ->toArray();
+                                        }
+                                    )
+                                    ->placeholder('Choose') // This will be shown when there are no options
+                                    ->required(),
+
+                                Forms\Components\Select::make('status')
+                                    ->options(TicketOrderStatus::editableOptions())
+                                    ->searchable()
+                                    ->columnSpan(3)
+                                    ->default(TicketOrderStatus::ENABLED)
+                                    ->placeholder('Choose')
+                                    ->hidden(!$modelExists)
+                                    ->required(),
+                            ]),
+
+                        // Forms\Components\TextInput::make('total_price')
+                        //     ->disabled()
+                        //     ->hidden(),
+                        // Forms\Components\Select::make('status')
+                        //     ->options(OrderStatus::editableOptions())
+                        //     ->required()
+                        //     ->disabled(fn($record) => $record->status === OrderStatus::Cancelled),
+                    ])
+            ]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTickets = true): Infolists\Infolist
@@ -155,7 +266,10 @@ class OrderResource extends Resource
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\EditAction::make(),
+                ])
             ])
             ->bulkActions([]);
     }
@@ -171,6 +285,8 @@ class OrderResource extends Resource
     {
         return [
             'index' => Pages\ListOrders::route('/'),
+            'create' => Pages\CreateOrder::route('/create'),
+            'edit' => Pages\EditOrder::route('/{record}/edit'),
             'view' => Pages\ViewOrder::route('/{record}'),
         ];
     }

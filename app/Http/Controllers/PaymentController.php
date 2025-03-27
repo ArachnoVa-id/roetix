@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrderStatus;
+use App\Enums\TicketOrderStatus;
+use App\Enums\TicketStatus;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Seat;
@@ -57,12 +60,50 @@ class PaymentController extends Controller
                 return response()->json(['message' => 'Unauthorized'], 401);
             }
 
+            // Validate host
+            $hostParts = explode('.', $request->getHost());
+            if (count($hostParts) < 2) {
+                DB::rollBack();
+                return response()->json(['message' => 'Invalid host'], 400);
+            }
+
+            $client = $hostParts[0];
+            $event = Event::where('slug', $client)->first();
+            if (!$event) {
+                DB::rollBack();
+                return response()->json(['message' => 'Event not found'], 404);
+            }
+
             // Check Array
             $groupedItems = $request->grouped_items;
             if (!is_array($groupedItems)) {
                 DB::rollBack();
                 return response()->json(['message' => 'Invalid grouped_items format'], 422);
             }
+
+            // Get seats
+            $seats = collect();
+            foreach ($groupedItems as $category => $item) {
+                if (!empty($item['seatNumbers'])) {
+                    $seats = $seats->merge(
+                        Seat::whereIn('seat_number', $item['seatNumbers'])
+                            ->where('venue_id', $event->venue->venue_id)
+                            ->get()
+                    );
+                }
+            }
+            if ($seats->isEmpty()) {
+                DB::rollBack();
+                return response()->json(['message' => 'No seats available'], 400);
+            }
+
+            $seatIds = $seats->pluck('seat_id')->toArray();
+            $tickets = Ticket::whereIn('seat_id', $seatIds)
+                ->where('event_id', $event->event_id)
+                ->where('status', 'available')
+                ->distinct()
+                ->lockForUpdate()
+                ->get();
 
             // Generate order ID
             $orderCode = 'ORDER-' . time() . '-' . rand(1000, 9999);
@@ -95,58 +136,20 @@ class PaymentController extends Controller
                 ];
             }
 
-            // Validate host
-            $hostParts = explode('.', $request->getHost());
-            if (count($hostParts) < 2) {
-                DB::rollBack();
-                return response()->json(['message' => 'Invalid host'], 400);
-            }
-
-            $client = $hostParts[0];
-            $event = Event::where('slug', $client)->first();
-            if (!$event) {
-                DB::rollBack();
-                return response()->json(['message' => 'Event not found'], 404);
-            }
-
             $team = Team::where('team_id', $event->team_id)->first();
             if (!$team) {
                 DB::rollBack();
                 return response()->json(['message' => 'Team not found'], 404);
             }
 
-            // Lock seats
-            $seats = collect();
-            foreach ($groupedItems as $category => $item) {
-                if (!empty($item['seatNumbers'])) {
-                    $seats = $seats->merge(
-                        Seat::whereIn('seat_number', $item['seatNumbers'])
-                            ->where('venue_id', $event->venue->venue_id)
-                            ->lockForUpdate()
-                            ->get()
-                    );
-                }
-            }
-            if ($seats->isEmpty()) {
-                DB::rollBack();
-                return response()->json(['message' => 'No seats available'], 400);
-            }
-
             // Validate ticket availability
-            $seatIds = $seats->pluck('seat_id')->toArray();
-            $tickets = Ticket::whereIn('seat_id', $seatIds)
-                ->where('event_id', $event->event_id)
-                ->where('status', 'available')
-                ->distinct()
-                ->get();
-
             if ($tickets->count() !== $seats->count()) {
                 DB::rollBack();
                 return response()->json(['message' => 'Failed to lock seats'], 500);
             }
 
             // Lock tickets
-            $tickets->each(fn($ticket) => $ticket->update(['status' => 'in_transaction']));
+            $tickets->each(fn($ticket) => $ticket->update(['status' => TicketStatus::IN_TRANSACTION]));
 
             // Create order
             $order = Order::create([
@@ -156,7 +159,7 @@ class PaymentController extends Controller
                 'team_id' => $team->team_id,
                 'order_date' => now(),
                 'total_price' => $totalWithTax,
-                'status' => 'pending',
+                'status' => OrderStatus::PENDING,
             ]);
 
             if (!$order) {
@@ -171,6 +174,7 @@ class PaymentController extends Controller
                     'ticket_id' => $ticket->ticket_id,
                     'order_id' => $order->order_id,
                     'event_id' => $event->event_id,
+                    'status' => TicketOrderStatus::ENABLED,
                 ]);
             }
 
@@ -313,7 +317,7 @@ class PaymentController extends Controller
             // Get pending orders for this user and event
             $pendingOrders = Order::where('id', $userId)
                 ->where('event_id', $event->event_id)
-                ->where('status', 'pending')
+                ->where('status', OrderStatus::PENDING)
                 ->get();
 
             $pendingTransactions = [];
@@ -381,7 +385,7 @@ class PaymentController extends Controller
             // Find the order
             $orderCode = $request->transaction_id;
             $order = Order::where('order_code', $orderCode)
-                ->where('status', 'pending')
+                ->where('status', OrderStatus::PENDING)
                 ->first();
 
             if (!$order) {

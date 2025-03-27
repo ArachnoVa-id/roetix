@@ -102,7 +102,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 
     public function teams(): BelongsToMany
     {
-        return $this->belongsToMany(Team::class, 'user_team', 'id', 'team_id');
+        return $this->belongsToMany(Team::class, 'user_team', 'user_id', 'team_id');
     }
 
     public function contactInfo(): BelongsTo

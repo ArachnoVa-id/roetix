@@ -2,11 +2,13 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Filament\Admin\Resources\TicketResource\Pages;
 use App\Filament\Admin\Resources\TicketResource\RelationManagers;
 use App\Models\Event;
 use App\Models\Ticket;
+use App\Models\TicketOrder;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -54,7 +56,7 @@ class TicketResource extends Resource
                 [
                     Infolists\Components\Section::make('Ticket Information')
                         ->columnSpan(3)
-                        ->columns(5)
+                        ->columns(6)
                         ->schema([
                             Infolists\Components\TextEntry::make('ticket_id')
                                 ->columnSpan(2)
@@ -66,6 +68,23 @@ class TicketResource extends Resource
                             Infolists\Components\TextEntry::make('status')
                                 ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                                ->badge(),
+                            Infolists\Components\TextEntry::make('ticket_order_status')
+                                ->label('Ownership')
+                                ->default(function ($record) {
+                                    $ticket_id = $record->ticket_id;
+                                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
+                                        ->latest()
+                                        ->first();
+
+                                    if (!$ticketOrder) {
+                                        return TicketOrderStatus::ENABLED->value;
+                                    }
+
+                                    return $ticketOrder->status;
+                                })
+                                ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
+                                ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
                                 ->badge(),
                         ]),
                     Infolists\Components\Section::make('Buyer')
@@ -124,6 +143,23 @@ class TicketResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                    ->badge(),
+                Tables\Columns\TextColumn::make('ticket_order_status')
+                    ->label('Ownership')
+                    ->default(function ($record) {
+                        $ticket_id = $record->ticket_id;
+                        $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
+                            ->latest()
+                            ->first();
+
+                        if (!$ticketOrder) {
+                            return TicketOrderStatus::ENABLED->value;
+                        }
+
+                        return $ticketOrder->status;
+                    })
+                    ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
                     ->badge(),
             ])
             ->defaultSort('seat.seat_number', 'asc')

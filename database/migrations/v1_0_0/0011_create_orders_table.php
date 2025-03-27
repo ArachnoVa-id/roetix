@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\OrderStatus;
+use App\Enums\TicketOrderStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -23,7 +24,7 @@ return new class extends Migration
             $table->enum('status', OrderStatus::values())->default(OrderStatus::PENDING);
             $table->timestamps();
 
-            $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
             $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
         });
@@ -32,9 +33,13 @@ return new class extends Migration
             $table->string('ticket_id', 36);
             $table->string('order_id', 36);
             $table->string('event_id', 36);
+            $table->enum('status', TicketOrderStatus::values())->default(TicketOrderStatus::ENABLED);
+            $table->timestamps();
 
             $table->foreign('ticket_id')->references('ticket_id')->on('tickets')->onDelete('cascade');
             $table->foreign('order_id')->references('order_id')->on('orders')->onDelete('cascade');
+
+            $table->primary(['ticket_id', 'order_id']);
         });
     }
 

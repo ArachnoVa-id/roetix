@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TicketOrder extends Model
 {
-    public $timestamps = false;
+    public $timestamps = true;
+    protected $primaryKey = null;
+    public $incrementing = false;
 
     protected $table = 'ticket_order';
 
@@ -16,6 +18,7 @@ class TicketOrder extends Model
         'order_id',
         'ticket_id',
         'event_id',
+        'status'
     ];
 
     public function order(): BelongsTo

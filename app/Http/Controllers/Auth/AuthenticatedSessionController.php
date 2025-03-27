@@ -35,7 +35,7 @@ class AuthenticatedSessionController extends Controller
                 'name' => 'Admin NovaTix'
             ];
             $props = [
-                'logo' => '/images/novatix-logo/android-chrome-512x512.png',
+                'logo' => '/images/novatix-logo-white/android-chrome-512x512.png',
                 'alt' => 'Novatix Logo'
             ];
         }
