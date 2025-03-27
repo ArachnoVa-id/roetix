@@ -28,7 +28,8 @@ class SocialiteController extends Controller
 
             if ($user) {
                 Auth::login($user);
-                return redirect('/');
+
+                return redirect()->route('client.home');
             } else {
                 $userdata = User::create([
                     'user_id' => (string) Str::uuid(),
@@ -41,11 +42,11 @@ class SocialiteController extends Controller
 
                 if ($userdata) {
                     Auth::login($userdata);
-                    return redirect('/');
+                    return redirect()->route('client.home');
                 }
             }
         } catch (Exception $e) {
-            dd($e);
+            // dd($e);
         }
         // dd($google_user);
     }

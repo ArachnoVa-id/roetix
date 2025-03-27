@@ -35,10 +35,11 @@ class VenueResource extends Resources\Resource
             return false;
         }
 
-        $user = User::find($user->id);
-
+        $user = User::find($user->user_id);
+        
         $tenant_id = Filament::getTenant()->team_id;
-
+        
+        
         $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
 
         if (!$team) {
