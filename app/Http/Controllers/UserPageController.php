@@ -290,7 +290,8 @@ class UserPageController extends Controller
                 ->where('tickets.event_id', $event->event_id)
                 ->where('tickets.status', 'booked')
                 ->whereIn('orders.order_id', $userOrderIds)
-                ->select('tickets.*', 'orders.order_date')
+                ->whereIn('ticket_order.status', ['enabled', 'scanned']) // Only get enabled or scanned tickets (exclude deactivated)
+                ->select('tickets.*', 'orders.order_date', 'ticket_order.status as ticket_order_status')
                 ->get();
 
             // Untuk debug
@@ -302,8 +303,9 @@ class UserPageController extends Controller
                 $ticket = Ticket::with('seat')->find($ticketData->ticket_id);
                 if ($ticket) {
                     $tickets[] = $ticket;
-                    // Attach order_date to ticket object
+                    // Attach order_date and ticket_order_status to ticket object
                     $ticket->order_date = $ticketData->order_date;
+                    $ticket->ticket_order_status = $ticketData->ticket_order_status; // Add this line
                 }
             }
 
@@ -320,6 +322,9 @@ class UserPageController extends Controller
                 // Determine ticket type
                 $typeName = $ticket->ticket_type ? ucfirst($ticket->ticket_type) : 'Standard';
 
+                // Add the ticket status from ticket_order
+                $ticketStatus = $ticket->ticket_order_status ?? 'enabled';
+
                 // // Special handling for VIP tickets
                 // if (strtolower($typeName) === 'vip') {
                 //     $typeName = 'VIP+';
@@ -330,6 +335,7 @@ class UserPageController extends Controller
                     'ticketType' => $typeName,
                     'ticketCode' => $ticket->ticket_id,
                     'ticketURL' => $ticketUrl,
+                    'status' => $ticketStatus, // Include the status
                     'ticketData' => [
                         'date' => $ticketDate->format('d F Y, H:i'),
                         'type' => $typeName,

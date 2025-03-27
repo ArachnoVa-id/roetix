@@ -45,7 +45,7 @@ class TicketController extends Controller
             }
 
             // Authorization logic
-            $userOrderIds = Order::where('id', Auth::id())->pluck('order_id')->toArray();
+            $userOrderIds = Order::where('user_id', Auth::id())->pluck('order_id')->toArray();
 
             $hasAccess = false;
 
@@ -149,7 +149,7 @@ class TicketController extends Controller
             $ticketIds = explode(',', $ticketIdsStr);
 
             // Get user's orders
-            $userOrderIds = Order::where('id', Auth::id())->pluck('order_id')->toArray();
+            $userOrderIds = Order::where('user_id', Auth::id())->pluck('order_id')->toArray();
 
             // Find tickets
             $tickets = Ticket::with(['seat', 'event'])

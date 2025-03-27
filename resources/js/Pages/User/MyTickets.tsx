@@ -135,6 +135,7 @@ export default function MyTickets({
                                             ticketURL={ticket.ticketURL}
                                             ticketData={ticket.ticketData}
                                             eventId={event.event_id}
+                                            status={ticket.status} // Pass the status
                                         />
                                     ))}
                                 </div>

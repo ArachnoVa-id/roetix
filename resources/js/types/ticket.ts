@@ -11,6 +11,7 @@ export interface TicketProps {
     ticketType: string;
     ticketCode: string;
     ticketURL: string;
+    status: string;
     ticketData: TicketData;
 }
 
