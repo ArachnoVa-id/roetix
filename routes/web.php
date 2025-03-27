@@ -120,6 +120,8 @@ Route::domain('{client}.' . config('app.domain'))
         // User Page
         Route::get('/', [UserPageController::class, 'landing'])
             ->name('client.home');
+        Route::post('/verify-event-password', [UserPageController::class, 'verifyEventPassword'])
+            ->name('client.verify-event-password');
         // Privacy Policy and Terms & Conditions pages
         Route::get('/privacy-policy', [UserPageController::class, 'privacyPolicy'])
             ->name('client.privacy_policy');
