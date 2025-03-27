@@ -35,7 +35,7 @@ class AuthenticatedSessionController extends Controller
                 'name' => 'Admin NovaTix'
             ];
             $props = [
-                'logo' => '/images/novatix-logo/android-chrome-512x512.png',
+                'logo' => '/images/novatix-logo-white/android-chrome-512x512.png',
                 'alt' => 'Novatix Logo'
             ];
         }
@@ -69,7 +69,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route($redirectProps['route'], $redirectProps['client']);
         }
 
-        $userModel = User::find($user->user_id);
+        $userModel = User::find($user->id);
         $firstTeam = $userModel->teams()->first();
 
         if ($userModel->role === 'admin') {

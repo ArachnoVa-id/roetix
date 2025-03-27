@@ -39,7 +39,7 @@ class CheckEventAccess
         if (!$eventTeamId || !in_array($eventTeamId, $userTeamIds)) {
             // Add logging to help debug
             Log::error('Event access denied', [
-                'user_id' => $userId,
+                'id' => $userId,
                 'event_id' => $eventId,
                 'user_team_ids' => $userTeamIds,
                 'event_team_id' => $eventTeamId

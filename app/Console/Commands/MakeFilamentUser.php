@@ -34,7 +34,7 @@ class MakeFilamentUser extends Command
         $role = $this->ask('Role');
 
         $user = User::create([
-            'user_id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) \Illuminate\Support\Str::uuid(),
             'first_name' => $firstName,
             'last_name' => $lastName,
             'email' => $email,

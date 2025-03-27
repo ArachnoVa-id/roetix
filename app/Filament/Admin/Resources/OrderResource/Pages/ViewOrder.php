@@ -17,6 +17,8 @@ class ViewOrder extends ViewRecord
                 ->url(fn() => OrderResource::getUrl())
                 ->icon('heroicon-o-arrow-left')
                 ->color('info'),
+            Actions\EditAction::make('Edit Order')
+                ->icon('heroicon-o-pencil'),
         ];
     }
 }

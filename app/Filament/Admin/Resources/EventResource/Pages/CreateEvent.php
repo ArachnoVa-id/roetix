@@ -98,7 +98,7 @@ class CreateEvent extends CreateRecord
         }
 
         // Create Event Variables
-        $colors = Cache::get('color_preview_' . $user->user_id);
+        $colors = Cache::get('color_preview_' . $user->id);
 
         $eventVariables = [
             'event_id' => $event_id,
@@ -123,6 +123,6 @@ class CreateEvent extends CreateRecord
         EventVariables::create($eventVariables);
 
         // Clear cache for colors
-        Cache::forget('color_preview_' . Auth::user()->user_id);
+        Cache::forget('color_preview_' . Auth::user()->id);
     }
 }

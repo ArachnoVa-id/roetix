@@ -41,7 +41,7 @@ class EventResource extends Resource
             return false;
         }
 
-        $user = User::find($user->user_id);
+        $user = User::find($user->id);
 
         $tenant_id = Filament::getTenant()->team_id;
 
@@ -98,7 +98,6 @@ class EventResource extends Resource
                         ->icon('heroicon-m-magnifying-glass-plus'),
                     Infolists\Components\TextEntry::make('status')
                         ->label('Status')
-                        ->icon('heroicon-m-exclamation-triangle')
                         ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
                         ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
                         ->badge(),
@@ -160,19 +159,25 @@ class EventResource extends Resource
                         Infolists\Components\Tabs\Tab::make('Event Variables')
                             ->columns(4)
                             ->schema([
-                                Infolists\Components\Section::make('Lock')
-                                    ->relationship('eventVariables')
-                                    ->columnSpan(1)
-                                    ->schema([
-                                        Infolists\Components\TextEntry::make('is_locked')
-                                            ->label('Is Locked')
-                                            ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+                                Infolists\Components\Group::make([
+                                    Infolists\Components\Section::make('Lock')
+                                        ->relationship('eventVariables')
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('is_locked')
+                                                ->label('Is Locked')
+                                                ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
 
-                                        Infolists\Components\TextEntry::make('locked_password')
-                                            ->label('Locked Password'),
-                                    ]),
-                                Infolists\Components\TextEntry::make('ticket_limit')
-                                    ->label('Ticket Purchase Limit'),
+                                            Infolists\Components\TextEntry::make('locked_password')
+                                                ->label('Locked Password'),
+                                        ]),
+                                    Infolists\Components\Section::make('Etc')
+                                        ->relationship('eventVariables')
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('ticket_limit')
+                                                ->label('Purchase Limit'),
+                                        ]),
+                                ])
+                                    ->columnSpan(1),
                                 Infolists\Components\Section::make('Maintenance')
                                     ->relationship('eventVariables')
                                     ->columnSpan(1)
@@ -182,10 +187,12 @@ class EventResource extends Resource
                                             ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
 
                                         Infolists\Components\TextEntry::make('maintenance_title')
-                                            ->label('Title'),
+                                            ->label('Title')
+                                            ->formatStateUsing(fn($state) => $state ?? 'Not Set'),
 
                                         Infolists\Components\TextEntry::make('maintenance_message')
-                                            ->label('Message'),
+                                            ->label('Message')
+                                            ->formatStateUsing(fn($state) => $state ?? 'Not Set'),
 
                                         Infolists\Components\TextEntry::make('maintenance_expected_finish')
                                             ->label('Expected Finish'),

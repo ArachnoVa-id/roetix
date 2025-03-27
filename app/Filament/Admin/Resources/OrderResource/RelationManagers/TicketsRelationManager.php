@@ -13,7 +13,7 @@ class TicketsRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return TicketResource::infolist($infolist);
+        return TicketResource::infolist($infolist, showBuyer: false);
     }
 
     public function table(Table $table): Table

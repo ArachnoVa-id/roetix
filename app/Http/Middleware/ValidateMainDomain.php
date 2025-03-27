@@ -37,7 +37,7 @@ class ValidateMainDomain
             return $next($request);
         }
 
-        $user = User::find($user->user_id);
+        $user = User::find($user->id);
 
         if ($user->role === 'user') {
             Auth::logout();

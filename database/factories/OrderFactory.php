@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\OrderStatus;
+use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -39,11 +40,12 @@ class OrderFactory extends Factory
 
         $event_id = $ticket->event_id;
         $event = $ticket->event;
+        $orderCode = 'ORDER-' . time() . '-' . rand(1000, 9999);
 
         return [
-            'order_code' => 'ORDER-' . strtoupper(Str::random(6)),
+            'order_code' => $orderCode,
             'event_id' => $event_id,
-            'user_id' => $user->user_id,
+            'user_id' => $user->id,
             'team_id' => $event->team_id,
             'order_date' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'total_price' => $this->faker->randomFloat(2, 100000, 1000000),
@@ -80,6 +82,7 @@ class OrderFactory extends Factory
                     'order_id' => $order->order_id,
                     'ticket_id' => $ticket->ticket_id,
                     'event_id' => $order->event_id,
+                    'status' => TicketOrderStatus::ENABLED,
                 ]);
             }
         });

@@ -35,7 +35,7 @@ class TicketOrderCheckerController extends Controller
 
             // Get user's orders
             $userId = Auth::id();
-            $userOrders = Order::where('user_id', $userId)->get();
+            $userOrders = Order::where('id', $userId)->get();
             $userOrderIds = $userOrders->pluck('order_id')->toArray();
 
             // Check direct order relationship

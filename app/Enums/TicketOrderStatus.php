@@ -6,35 +6,27 @@ use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
-enum TicketStatus: string implements HasLabel, HasColor
+enum TicketOrderStatus: string implements HasLabel, HasColor
 {
-    case AVAILABLE = 'available';
-    case BOOKED = 'booked';
-    case RESERVED = 'reserved';
-    case IN_TRANSACTION = 'in_transaction';
-
-    public static function values(): array
-    {
-        return array_map(fn($case) => $case->value, self::cases());
-    }
+    case ENABLED = 'enabled';
+    case SCANNED = 'scanned';
+    case DEACTIVATED = 'deactivated';
 
     public function getLabel(): string
     {
         return match ($this) {
-            self::AVAILABLE => 'Available',
-            self::BOOKED => 'Booked',
-            self::RESERVED => 'Reserved',
-            self::IN_TRANSACTION => 'In Transaction'
+            self::ENABLED => 'Enabled',
+            self::SCANNED => 'Scanned',
+            self::DEACTIVATED => 'Deactivated',
         };
     }
 
     public function getColor(): string|array|null
     {
         return match ($this) {
-            self::AVAILABLE => Color::Green,
-            self::BOOKED => Color::Red,
-            self::RESERVED => Color::Gray,
-            self::IN_TRANSACTION => Color::Yellow
+            self::ENABLED => Color::Green,
+            self::SCANNED => Color::Yellow,
+            self::DEACTIVATED => Color::Red,
         };
     }
 
@@ -54,13 +46,16 @@ enum TicketStatus: string implements HasLabel, HasColor
         return array_map(fn($case) => $case->getLabel(), self::cases());
     }
 
+    public static function values(): array
+    {
+        return array_map(fn($case) => $case->value, self::cases());
+    }
 
     public static function editableOptions()
     {
         return [
-            self::AVAILABLE->value => self::AVAILABLE->getLabel(),
-            self::BOOKED->value => self::BOOKED->getLabel(),
-            self::RESERVED->value => self::RESERVED->getLabel(),
+            self::ENABLED->value => self::ENABLED->getLabel(),
+            self::DEACTIVATED->value => self::DEACTIVATED->getLabel(),
         ];
     }
 

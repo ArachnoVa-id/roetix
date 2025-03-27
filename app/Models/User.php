@@ -40,7 +40,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';
     }
 
-    protected $primaryKey = 'user_id';
+    protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
 
@@ -87,8 +87,8 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->user_id)) {
-                $model->user_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }

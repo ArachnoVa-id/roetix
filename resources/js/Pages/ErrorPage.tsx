@@ -99,7 +99,7 @@ const getMessage = (code: number): string => {
 
 const ErrorPage: React.FC<ErrorProps> = ({ code, message, headers }) => {
     return (
-        <div className="flex h-screen items-center justify-center gap-4">
+        <div className="flex h-screen items-center justify-center gap-5">
             <img
                 src="images/novatix-logo.jpeg"
                 alt="NovaTix Logo"

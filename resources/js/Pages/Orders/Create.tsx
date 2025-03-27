@@ -7,7 +7,7 @@ import { Select } from '@/Components/ui/select';
 
 const Create: React.FC = () => {
     const [formData, setFormData] = useState({
-        user_id: '',
+        id: '',
         ticket_id: '',
         order_date: '',
         total_price: '',
@@ -32,11 +32,11 @@ const Create: React.FC = () => {
             halo tot
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <Label htmlFor="user_id">User ID</Label>
+                    <Label htmlFor="id">User ID</Label>
                     <Input
-                        id="user_id"
-                        name="user_id"
-                        value={formData.user_id}
+                        id="id"
+                        name="id"
+                        value={formData.id}
                         onChange={handleChange}
                         required
                     />

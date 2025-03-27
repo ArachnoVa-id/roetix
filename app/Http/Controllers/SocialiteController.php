@@ -32,7 +32,7 @@ class SocialiteController extends Controller
                 return redirect()->route('client.home');
             } else {
                 $userdata = User::create([
-                    'user_id' => (string) Str::uuid(),
+                    'id' => (string) Str::uuid(),
                     'email' => $google_user->email,
                     'password' => Hash::make('hallopwd123'),
                     'google_id' => $google_user->id,

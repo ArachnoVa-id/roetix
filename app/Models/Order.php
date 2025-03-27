@@ -46,9 +46,14 @@ class Order extends Model
         return $this->belongsToMany(Ticket::class, 'ticket_order', 'order_id', 'ticket_id');
     }
 
+    public function ticketOrders(): HasMany
+    {
+        return $this->hasMany(TicketOrder::class, 'order_id', 'order_id');
+    }
+
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id', 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     public function events(): BelongsToMany
