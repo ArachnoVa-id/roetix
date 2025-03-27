@@ -280,7 +280,7 @@ class UserPageController extends Controller
             }
 
             // Dapatkan order_id untuk user yang sedang login
-            $userOrderIds = Order::where('id', Auth::id())->pluck('order_id')->toArray();
+            $userOrderIds = Order::where('user_id', Auth::id())->pluck('order_id')->toArray();
 
             // Struktur query join berdasarkan struktur database Anda
             // Ini adalah contoh struktur, sesuaikan dengan struktur database yang sebenarnya
