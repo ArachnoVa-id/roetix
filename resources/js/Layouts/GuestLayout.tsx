@@ -22,9 +22,10 @@ export default function Guest({
                 />
             </Link>
             <div
-                className="w-fit max-w-7xl overflow-hidden px-6 shadow-md sm:rounded-lg"
+                className="w-fit max-w-7xl overflow-hidden rounded-lg p-6 shadow-md"
                 style={{
                     color: props.text_primary_color,
+                    backgroundColor: props.secondary_color,
                 }}
             >
                 {children}

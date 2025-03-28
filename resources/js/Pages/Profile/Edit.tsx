@@ -3,11 +3,8 @@ import { PageProps } from '@/types';
 import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
 import UpdateContactForm from './Partials/UpdateContactForm';
-import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 
 export default function Edit({
-    mustVerifyEmail,
-    status,
     client,
     props,
 }: PageProps<{
@@ -17,24 +14,13 @@ export default function Edit({
     props: EventProps;
 }>) {
     return (
-        <AuthenticatedLayout
-            props={props}
-            client={client}
-            header={
-                <h2
-                    className="text-xl font-semibold leading-tight"
-                    style={{ color: props.text_primary_color }}
-                >
-                    Profile
-                </h2>
-            }
-        >
+        <AuthenticatedLayout props={props} client={client}>
             <Head title="Profile" />
 
             <div className="py-12">
                 <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-8 sm:px-6 md:flex-row lg:px-8">
-                    <div
-                        className="h-[80vh] w-full p-4 shadow sm:rounded-lg sm:p-8 md:w-[35%]"
+                    {/* <div
+                        className="h-full w-full p-4 shadow sm:rounded-lg sm:p-8"
                         style={{
                             backgroundColor: props.primary_color,
                         }}
@@ -42,23 +28,18 @@ export default function Edit({
                         <UpdateProfileInformationForm
                             mustVerifyEmail={mustVerifyEmail}
                             status={status}
-                            className="max-w-xl"
                             client={client}
                             props={props}
                         />
-                    </div>
+                    </div> */}
 
                     <div
-                        className="h-full grow p-4 shadow sm:rounded-lg sm:p-8"
+                        className="h-full w-full p-4 shadow sm:rounded-lg sm:p-8"
                         style={{
                             backgroundColor: props.primary_color,
                         }}
                     >
-                        <UpdateContactForm
-                            className="max-w-xl"
-                            client={client}
-                            props={props}
-                        />
+                        <UpdateContactForm client={client} props={props} />
                     </div>
 
                     {/* <div

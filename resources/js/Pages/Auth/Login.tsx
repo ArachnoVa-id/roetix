@@ -57,12 +57,12 @@ export default function Login({
             <Head title="Log in" />
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
+                <div className="text-sm font-medium text-green-600 shadow-md">
                     {status}
                 </div>
             )}
 
-            <div className="mb-6 text-center font-bold">{event.name}</div>
+            <div className="text-center font-bold">{event.name}</div>
             {event.name === 'Admin NovaTix' ? (
                 <form onSubmit={submit}>
                     <div>

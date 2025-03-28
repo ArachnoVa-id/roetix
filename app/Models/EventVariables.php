@@ -39,10 +39,10 @@ class EventVariables extends Model
     public static function getDefaultValue()
     {
         $defaultValues = [
-            'primary_color' => '#FFF',
-            'secondary_color' => '#CCC',
-            'text_primary_color' => '#000000',
-            'text_secondary_color' => '#000000',
+            'primary_color' => '#CCC',
+            'secondary_color' => '#FFF',
+            'text_primary_color' => '#000',
+            'text_secondary_color' => '#000',
             'is_maintenance' => false,
             'maintenance_title' => '',
             'maintenance_message' => '',
