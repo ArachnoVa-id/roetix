@@ -8,9 +8,14 @@
         </div>
     </div>
 
-    {{ $this->form }}
+    <div class="m-[1vw]">
+        {{ $this->form }}
+    </div>
+    
+    <div class="m-[1vw]">
+        {{ $this->table }}
+    </div>
 
-    {{ $this->table }}
 
     {{-- JavaScript untuk mengakses kamera --}}
     <script>

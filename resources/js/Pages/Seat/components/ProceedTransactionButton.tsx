@@ -167,7 +167,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 showSuccess('Payment successful!');
                 clearTransaction(); // Clear the transaction data
                 window.location.reload();
-              },
+            },
             onPending: (result) => {
                 console.log('Payment pending:', result);
                 showSuccess(
@@ -304,51 +304,49 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
     const resumePayment = async () => {
         if (!transactionInfo || !window.snap) return;
-        
+
         setIsLoading(true);
         showSuccess('Preparing your payment...');
-        
+
         try {
-            // If we already have a snap_token, use it
-            if (transactionInfo.snap_token) {
-                const callbacks = createCallbacks(transactionInfo.snap_token);
-                window.snap.pay(transactionInfo.snap_token, callbacks);
-                return;
-            }
-            
-            // Otherwise, request a new snap token for the existing transaction
             const config = {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
                 },
             };
-            
+
             const response = await axios.post(
                 '/payment/resume',
                 { transaction_id: transactionInfo.transaction_id },
-                config
+                config,
             );
-            
+
             if (response.data && response.data.snap_token) {
                 const token = response.data.snap_token;
                 const callbacks = createCallbacks(token);
-                
-                // Update transaction info with new snap token
-                setTransactionInfo({
-                    ...transactionInfo,
-                    snap_token: token
-                });
-                
-                // Open the Midtrans Snap payment page
+
+                // Open the Midtrans Snap payment page using original transaction ID
                 window.snap.pay(token, callbacks);
             } else {
                 throw new Error('Invalid response from payment server');
             }
         } catch (err) {
             console.error('Failed to resume payment:', err);
-            showError('Failed to resume payment. Please try again.');
+
+            if (axios.isAxiosError(err)) {
+                const errorMsg =
+                    err.response?.data?.message ||
+                    'Failed to connect to payment server';
+                showError(errorMsg);
+            } else {
+                showError('Failed to resume payment. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }

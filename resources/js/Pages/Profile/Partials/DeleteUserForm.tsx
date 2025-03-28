@@ -80,7 +80,13 @@ export default function DeleteUserForm({
             </DangerButton>
 
             <Modal show={confirmingUserDeletion} onClose={closeModal}>
-                <form onSubmit={deleteUser} className="p-6">
+                <form
+                    onSubmit={deleteUser}
+                    className="p-6"
+                    style={{
+                        backgroundColor: props.primary_color,
+                    }}
+                >
                     <h2
                         className="text-lg font-medium"
                         style={{

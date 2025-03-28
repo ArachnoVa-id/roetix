@@ -682,11 +682,11 @@ class SeatController extends Controller
             // if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
             //     return response()->json([
             //         'success' => false,
-            //         'error' => 'Failed to save grid layout: ' . $e->getMessage()
+            //         'error' => 'Failed to Save grid layout: ' . $e->getMessage()
             //     ], 500);
             // }
 
-            return redirect()->back()->withErrors(['error' => 'Failed to save grid layout: ' . $e->getMessage()]);
+            return redirect()->back()->withErrors(['error' => 'Failed to Save grid layout: ' . $e->getMessage()]);
         }
     }
 

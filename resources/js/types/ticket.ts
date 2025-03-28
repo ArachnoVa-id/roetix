@@ -11,6 +11,7 @@ export interface TicketProps {
     ticketType: string;
     ticketCode: string;
     ticketURL: string;
+    status: string;
     ticketData: TicketData;
 }
 
@@ -46,7 +47,7 @@ export interface TicketInterface {
     status: string;
     event_id: string;
     seat_id: string;
-    user_id: string;
+    id: string;
     order_id?: string;
     ticket_category_id?: string;
     created_at: string;

@@ -8,8 +8,10 @@ use App\Models\EventVariables;
 use App\Models\TicketCategory;
 use App\Models\TimelineSession;
 use Filament\Actions;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -168,13 +170,14 @@ class EditEvent extends EditRecord
             $eventVariables = EventVariables::where('event_id', $eventId)->first();
 
             $eventVariables->fill($this->data);
-            $colors = Cache::get('color_preview_' . $user->user_id);
+            $colors = Cache::get('color_preview_' . $user->id);
+            if (!$colors) {
+                throw new \Exception('Please retry setting the colors.');
+            }
+
             $eventVariables->fill($colors);
 
             $eventVariables->save();
-
-            // Clear cache for colors
-            Cache::forget('color_preview_' . Auth::user()->user_id);
 
             // Sync the form state
             $this->form->fill($this->data);
@@ -183,15 +186,27 @@ class EditEvent extends EditRecord
                 $this->record->fill($this->form->getState());
                 $this->record->save();
 
-                Notification::make('saved')
+                // Clear cache for colors
+                Cache::forget('color_preview_' . Auth::user()->id);
+
+                // Get the redirect URL (like getRedirectUrl)
+                $redirectUrl = $this->getResource()::getUrl('view', ['record' => $eventId]);
+
+                // Determine whether to use navigate (SPA mode)
+                $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);
+
+                // Perform the redirect
+                $this->redirect($redirectUrl, navigate: $navigate);
+
+                Notification::make()
                     ->success()
                     ->title('Saved')
                     ->send();
 
                 DB::commit();
             } else {
-                Notification::make('error')
-                    ->title('Failed to save')
+                Notification::make()
+                    ->title('Failed to Save')
                     ->body('Unknown error occurred')
                     ->danger()
                     ->send();
@@ -199,8 +214,8 @@ class EditEvent extends EditRecord
                 DB::rollBack();
             }
         } catch (\Exception $e) {
-            Notification::make('error')
-                ->title('Failed to save')
+            Notification::make()
+                ->title('Failed to Save')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();
@@ -218,8 +233,11 @@ class EditEvent extends EditRecord
                 ->url(fn() => url()->previous())
                 ->icon('heroicon-o-arrow-left')
                 ->color('info'),
+            EventResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
             EventResource::EditSeatsButton(
-                Actions\Action::make('Edit Seats')
+                Actions\Action::make('editSeats')
             )->button(),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),

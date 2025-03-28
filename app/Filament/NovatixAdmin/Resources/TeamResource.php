@@ -2,6 +2,7 @@
 
 namespace App\Filament\NovatixAdmin\Resources;
 
+use App\Enums\UserRole;
 use App\Filament\NovatixAdmin\Resources\TeamResource\Pages;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\EventsRelationManager;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\UsersRelationManager;
@@ -23,7 +24,7 @@ class TeamResource extends Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin']);
+        return $user && in_array($user->role, [UserRole::ADMIN->value]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showMembers = true, bool $showEvents = true, bool $showVenues = true): Infolists\Infolist
@@ -39,7 +40,7 @@ class TeamResource extends Resource
                             Infolists\Components\TextEntry::make('code'),
 
                             Infolists\Components\TextEntry::make('vendor_quota')
-                                ->label('Vendor Quota')
+                                ->label('Venue Quota')
                                 ->formatStateUsing(fn($state) => max(0, $state)),
 
                             Infolists\Components\TextEntry::make('event_quota')
@@ -100,7 +101,7 @@ class TeamResource extends Resource
                                 }
                             }),
                         Forms\Components\TextInput::make('vendor_quota')
-                            ->label('Vendor Quota')
+                            ->label('Venue Quota')
                             ->minValue(0)
                             ->numeric()
                             ->maxLength(255),
@@ -141,7 +142,7 @@ class TeamResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\ViewAction::make()->modalHeading('View Team'),
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\DeleteAction::make(),
                 ]),

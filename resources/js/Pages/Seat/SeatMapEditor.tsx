@@ -30,7 +30,6 @@ const SeatMapEditor: React.FC<Props> = ({
     onSave,
     ticketTypes,
     categoryColors = {},
-    currentTimeline,
     categoryPrices = {}, // Default to empty object
 }) => {
     const [selectionMode, setSelectionMode] = useState<SelectionMode>('SINGLE');
@@ -43,7 +42,6 @@ const SeatMapEditor: React.FC<Props> = ({
         ticketTypes[0] || 'standard',
     );
     const sidebarContentRef = useRef<HTMLDivElement>(null);
-    const [isMouseDown, setIsMouseDown] = useState<boolean>(false);
 
     // Calculate current price based on selected ticket type
     const [currentPrice, setCurrentPrice] = useState<number>(

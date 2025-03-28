@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Event;
@@ -34,10 +35,10 @@ class AuthenticatedSessionController extends Controller
             $event = [
                 'name' => 'Admin NovaTix'
             ];
-            $props = [
-                'logo' => '/images/novatix-logo/android-chrome-512x512.png',
-                'alt' => 'Novatix Logo'
-            ];
+            $props = EventVariables::getDefaultValue();
+
+            $props['logo'] = '/images/novatix-logo-white/android-chrome-512x512.png';
+            $props['logo_alt'] = 'Novatix Logo';
         }
 
         return Inertia::render('Auth/Login', [
@@ -69,10 +70,10 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route($redirectProps['route'], $redirectProps['client']);
         }
 
-        $userModel = User::find($user->user_id);
+        $userModel = User::find($user->id);
         $firstTeam = $userModel->teams()->first();
 
-        if ($userModel->role === 'admin') {
+        if ($userModel->role === UserRole::ADMIN->value) {
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
         } else if ($userModel->role === 'user') {
             Auth::logout();

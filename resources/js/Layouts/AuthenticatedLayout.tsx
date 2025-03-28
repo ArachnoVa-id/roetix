@@ -118,11 +118,23 @@ export default function Authenticated({
                                     Profile
                                 </NavLink>
                                 <NavLink
+                                    className={
+                                        user.role === 'user' ? 'hidden' : ''
+                                    }
+                                    eventProps={props}
+                                    href="#"
+                                    active={false}
+                                    onClick={() => {
+                                        window.location.href = route('home');
+                                    }}
+                                >
+                                    Admin Dashboard
+                                </NavLink>
+                                <NavLink
                                     eventProps={props}
                                     method="post"
                                     href={route('logout')}
                                     target="_blank"
-                                    // as="button"
                                     active={false}
                                     headers={{
                                         'X-CSRF-TOKEN':
@@ -221,14 +233,14 @@ export default function Authenticated({
                             >
                                 {user.first_name + ' ' + user.last_name}
                             </div>
-                            <div
+                            {/* <div
                                 className="text-sm font-medium"
                                 style={{
                                     color: props?.text_secondary_color,
                                 }}
                             >
                                 {user.email}
-                            </div>
+                            </div> */}
                         </div>
 
                         <div className="mt-3 space-y-1">
@@ -238,6 +250,15 @@ export default function Authenticated({
                                 }
                             >
                                 Profile
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink
+                                className={user.role === 'user' ? 'hidden' : ''}
+                                href="#"
+                                onClick={() => {
+                                    window.location.href = route('home');
+                                }}
+                            >
+                                Admin Dashboard
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"
@@ -264,7 +285,9 @@ export default function Authenticated({
                 </header>
             )}
 
-            <main className="grow">{children}</main>
+            <main className="flex h-full w-full grow flex-col items-center justify-center">
+                {children}
+            </main>
 
             {footer ? (
                 <footer
@@ -289,13 +312,47 @@ export default function Authenticated({
                     }}
                 >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        <div className="flex flex-col space-y-4">
-                            <div className="flex justify-between">
+                        <div className="flex flex-col">
+                            <div className="relative flex flex-col items-center justify-between md:flex-row">
                                 <img
                                     src={props?.logo}
                                     alt={props?.logo_alt}
-                                    className="h-8"
+                                    className="h-32 max-md:mb-4 md:h-8"
                                 />
+                                <div className="flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
+                                    <Link
+                                        href={route(
+                                            'client.privacy_policy',
+                                            client,
+                                        )}
+                                        className="text-sm hover:underline"
+                                        style={{
+                                            color: props?.text_primary_color,
+                                        }}
+                                    >
+                                        Privacy Policy
+                                    </Link>
+                                    <span
+                                        className="mx-2"
+                                        style={{
+                                            color: props?.text_primary_color,
+                                        }}
+                                    >
+                                        •
+                                    </span>
+                                    <Link
+                                        href={route(
+                                            'client.terms_conditions',
+                                            client,
+                                        )}
+                                        className="text-sm hover:underline"
+                                        style={{
+                                            color: props?.text_primary_color,
+                                        }}
+                                    >
+                                        Terms & Conditions
+                                    </Link>
+                                </div>
                                 <p
                                     className="text-sm"
                                     style={{
@@ -304,35 +361,6 @@ export default function Authenticated({
                                 >
                                     &copy; 2025 ArachnoVa. All rights reserved.
                                 </p>
-                            </div>
-
-                            <div className="mt-2 flex justify-center">
-                                <Link
-                                    href={route(
-                                        'client.privacy_policy',
-                                        client,
-                                    )}
-                                    className="text-sm hover:underline"
-                                    style={{ color: props?.text_primary_color }}
-                                >
-                                    Privacy Policy
-                                </Link>
-                                <span
-                                    className="mx-2"
-                                    style={{ color: props?.text_primary_color }}
-                                >
-                                    •
-                                </span>
-                                <Link
-                                    href={route(
-                                        'client.terms_conditions',
-                                        client,
-                                    )}
-                                    className="text-sm hover:underline"
-                                    style={{ color: props?.text_primary_color }}
-                                >
-                                    Terms & Conditions
-                                </Link>
                             </div>
                         </div>
                     </div>

@@ -2,45 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Event;
-use App\Models\EventVariables;
-use App\Models\Ticket;
-use App\Models\Seat;
-use App\Models\Venue;
-use App\Models\TimelineSession;
-use App\Models\TicketCategory;
-use App\Models\EventCategoryTimeboundPrice;
-use App\Models\Order;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Seat;
+use Inertia\Inertia;
+use App\Models\Event;
+use App\Models\Order;
+use App\Models\Venue;
+use App\Models\Ticket;
+use App\Enums\TicketStatus;
+use App\Models\TicketOrder;
+use Illuminate\Http\Request;
+use App\Models\EventVariables;
+use App\Models\TicketCategory;
+use App\Models\TimelineSession;
+use App\Enums\TicketOrderStatus;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use App\Models\EventCategoryTimeboundPrice;
 
 class UserPageController extends Controller
 {
-    private function getDefaultValue()
-    {
-        $defaultValues = [
-            'primary_color' => '#FFF',
-            'secondary_color' => '#9FF',
-            'text_primary_color' => '#000000',
-            'text_secondary_color' => '#000000',
-            'ticket_limit' => 5,
-            'is_maintenance' => false,
-            'maintenance_title' => '',
-            'maintenance_message' => '',
-            'maintenance_expected_finish' => now(),
-            'is_locked' => false,
-            'locked_password' => '',
-            'logo' => '/images/novatix-logo-white/android-chrome-192x192.png',
-            'logo_alt' => 'Novatix Logo',
-            'favicon' => '/images/novatix-logo-white/favicon.ico',
-        ];
-
-        return $defaultValues;
-    }
     public function landing(Request $request, string $client = '')
     {
         // Get the event and associated venue
@@ -64,9 +46,72 @@ class UserPageController extends Controller
             ]);
         }
 
+        // Check if the event is in maintenance mode
+        if ($props->is_maintenance) {
+            return Inertia::render('User/Maintenance', [
+                'client' => $client,
+                'event' => [
+                    'name' => $event->name,
+                    'slug' => $event->slug
+                ],
+                'maintenance' => [
+                    'title' => $props->maintenance_title ?: 'Site Under Maintenance',
+                    'message' => $props->maintenance_message ?: 'We are currently performing maintenance on our system. Please check back later.',
+                    'expected_finish' => $props->maintenance_expected_finish ? Carbon::parse($props->maintenance_expected_finish)->format('F j, Y, g:i a') : null,
+                ],
+                'props' => $props
+            ]);
+        }
+
+        // Check if the event is locked
+        $isAuthenticated = false;
+        $hasAttemptedLogin = false;
+        $loginError = null;
+
+        if ($props->is_locked) {
+            // Check if the user has provided a password
+            if ($request->has('event_password')) {
+                $hasAttemptedLogin = true;
+
+                // Verify the password
+                if (
+                    Hash::check($request->event_password, $props->locked_password) ||
+                    $request->event_password === $props->locked_password
+                ) { // Allow plaintext comparison as fallback
+                    // Password is correct, store in session
+                    $request->session()->put("event_auth_{$event->event_id}", true);
+                    $isAuthenticated = true;
+                } else {
+                    // Password is incorrect
+                    $loginError = 'The password you entered is incorrect.';
+                }
+            } else {
+                // Check if user is already authenticated for this event
+                $isAuthenticated = $request->session()->get("event_auth_{$event->event_id}", false);
+            }
+
+            // If not authenticated, show the lock screen
+            if (!$isAuthenticated) {
+                return Inertia::render('User/LockedEvent', [
+                    'client' => $client,
+                    'event' => [
+                        'name' => $event->name,
+                        'slug' => $event->slug
+                    ],
+                    'hasAttemptedLogin' => $hasAttemptedLogin,
+                    'loginError' => $loginError,
+                    'props' => $props
+                ]);
+            }
+        }
+
         try {
             // Get the venue for this event
-            $venue = Venue::findOrFail($event->venue_id);
+            $venue = Venue::find($event->venue_id);
+
+            if (!$venue) {
+                throw new \Exception('Venue not found for event.');
+            }
 
             // Get all tickets for this event
             $tickets = Ticket::where('event_id', $event->event_id)
@@ -207,11 +252,14 @@ class UserPageController extends Controller
 
             // Gunakan try-catch untuk mendapatkan EventVariables atau gunakan default
             try {
-                $props = EventVariables::findOrFail($event->event_variables_id);
+                $props = $event->eventVariables;
+                if (!$props) {
+                    throw new \Exception('EventVariables not found.');
+                }
             } catch (\Exception $e) {
                 // Jika event_variables tidak ditemukan, gunakan nilai default
                 Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables($this->getDefaultValue());
+                $props = new EventVariables(EventVariables::getDefaultValue());
             }
 
             // Check if user is authenticated
@@ -220,21 +268,23 @@ class UserPageController extends Controller
             }
 
             // Dapatkan order_id untuk user yang sedang login
-            $userOrderIds = Order::where('user_id', Auth::id())->pluck('order_id')->toArray();
+            $userOrderIds = Order::where('user_id', Auth::id())
+                ->where('event_id', $event->event_id)
+                ->pluck('order_id')->toArray();
 
             // Struktur query join berdasarkan struktur database Anda
             // Ini adalah contoh struktur, sesuaikan dengan struktur database yang sebenarnya
-            $userTickets = DB::table('tickets')
+            $userTickets = Ticket::select(
+                'tickets.*',
+                'orders.order_date',
+                'orders.status as ticket_order_status'
+            )
                 ->join('ticket_order', 'tickets.ticket_id', '=', 'ticket_order.ticket_id')
                 ->join('orders', 'ticket_order.order_id', '=', 'orders.order_id')
                 ->where('tickets.event_id', $event->event_id)
-                ->where('tickets.status', 'booked')
-                ->whereIn('orders.order_id', $userOrderIds)
-                ->select('tickets.*', 'orders.order_date')
+                ->whereIn('ticket_order.order_id', $userOrderIds)
+                ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED, TicketOrderStatus::SCANNED])
                 ->get();
-
-            // Untuk debug
-            Log::info('Found ' . count($userTickets) . ' tickets for user ' . Auth::id() . ' in event ' . $event->event_id);
 
             // Load seat data for each ticket
             $tickets = [];
@@ -242,8 +292,9 @@ class UserPageController extends Controller
                 $ticket = Ticket::with('seat')->find($ticketData->ticket_id);
                 if ($ticket) {
                     $tickets[] = $ticket;
-                    // Attach order_date to ticket object
+                    // Attach order_date and ticket_order_status to ticket object
                     $ticket->order_date = $ticketData->order_date;
+                    $ticket->ticket_order_status = $ticketData->ticket_order_status; // Add this line
                 }
             }
 
@@ -260,16 +311,15 @@ class UserPageController extends Controller
                 // Determine ticket type
                 $typeName = $ticket->ticket_type ? ucfirst($ticket->ticket_type) : 'Standard';
 
-                // // Special handling for VIP tickets
-                // if (strtolower($typeName) === 'vip') {
-                //     $typeName = 'VIP+';
-                // }
+                // Add the ticket status from ticket_order
+                $ticketStatus = $ticket->ticket_order_status ?? TicketOrderStatus::ENABLED->value;
 
                 return [
                     'id' => $ticket->ticket_id,
                     'ticketType' => $typeName,
                     'ticketCode' => $ticket->ticket_id,
                     'ticketURL' => $ticketUrl,
+                    'status' => $ticketStatus, // Include the status
                     'ticketData' => [
                         'date' => $ticketDate->format('d F Y, H:i'),
                         'type' => $typeName,
@@ -315,11 +365,14 @@ class UserPageController extends Controller
 
             // Try to get EventVariables or use default values
             try {
-                $props = EventVariables::findOrFail($event->event_variables_id);
+                $props = $event->eventVariables;
+                if (!$props) {
+                    throw new \Exception('EventVariables not found.');
+                }
             } catch (\Exception $e) {
                 // If event_variables not found, use default values
                 Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables($this->getDefaultValue());
+                $props = new EventVariables(EventVariables::getDefaultValue());
             }
 
             return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
@@ -329,7 +382,8 @@ class UserPageController extends Controller
                     'event_id' => $event->event_id,
                     'name' => $event->name,
                     'slug' => $event->slug,
-                ]
+                ],
+                'user' => Auth::user()
             ]);
         } catch (\Exception $e) {
             // Log the error for debugging
@@ -354,11 +408,14 @@ class UserPageController extends Controller
 
             // Try to get EventVariables or use default values
             try {
-                $props = EventVariables::findOrFail($event->event_variables_id);
+                $props = $event->eventVariables;
+                if (!$props) {
+                    throw new \Exception('EventVariables not found.');
+                }
             } catch (\Exception $e) {
                 // If event_variables not found, use default values
                 Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables($this->getDefaultValue());
+                $props = new EventVariables(EventVariables::getDefaultValue());
             }
 
             return Inertia::render('Legality/termcondition/TermCondition', [
@@ -368,7 +425,8 @@ class UserPageController extends Controller
                     'event_id' => $event->event_id,
                     'name' => $event->name,
                     'slug' => $event->slug,
-                ]
+                ],
+                'user' => Auth::user(),
             ]);
         } catch (\Exception $e) {
             // Log the error for debugging
@@ -378,5 +436,54 @@ class UserPageController extends Controller
             return redirect()->route('client.home', ['client' => $client])
                 ->with('error', 'Failed to load terms and conditions: ' . $e->getMessage());
         }
+    }
+
+    public function verifyEventPassword(Request $request, string $client = '')
+    {
+        // Get the event
+        $event = Event::where('slug', $client)->first();
+        if (!$event || !$event->eventVariables) {
+            return redirect()->route('client.home', ['client' => $client])
+                ->with('error', 'Event not found or configuration missing.');
+        }
+
+        $props = $event->eventVariables;
+
+        // Verify the password
+        if ($props->is_locked) {
+            if ($request->has('event_password')) {
+                // First, try direct comparison (for plaintext passwords)
+                if ($request->event_password === $props->locked_password) {
+                    // Password is correct, store in session
+                    $request->session()->put("event_auth_{$event->event_id}", true);
+                    return redirect()->route('client.home', ['client' => $client]);
+                }
+
+                // Only try bcrypt check if the password looks like a bcrypt hash
+                // Bcrypt hashes start with $2y$ or $2a$
+                if (
+                    str_starts_with($props->locked_password, '$2y$') ||
+                    str_starts_with($props->locked_password, '$2a$')
+                ) {
+                    try {
+                        if (Hash::check($request->event_password, $props->locked_password)) {
+                            // Password is correct, store in session
+                            $request->session()->put("event_auth_{$event->event_id}", true);
+                            return redirect()->route('client.home', ['client' => $client]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Hash comparison failed: ' . $e->getMessage());
+                        // Continue to error message below
+                    }
+                }
+
+                // If we get here, password is incorrect
+                return redirect()->route('client.home', ['client' => $client])
+                    ->with('error', 'The password you entered is incorrect.');
+            }
+        }
+
+        // If we get here, something went wrong
+        return redirect()->route('client.home', ['client' => $client]);
     }
 }

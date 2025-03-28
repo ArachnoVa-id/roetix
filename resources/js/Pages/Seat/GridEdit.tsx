@@ -107,7 +107,7 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                     />
                 </div>
             </div>
-    
+
             <Toaster
                 message={toasterState.message}
                 type={toasterState.type}

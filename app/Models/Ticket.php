@@ -13,8 +13,7 @@ use Illuminate\Notifications\Notifiable;
 
 class Ticket extends Model
 {
-    /** @use HasFactory<\Database\Factories\TicketFactory> */
-    use HasFactory, Notifiable;
+    use Notifiable;
 
     protected $primaryKey = 'ticket_id';
     public $incrementing = false;
@@ -46,6 +45,12 @@ class Ticket extends Model
                 }
             }
         });
+    }
+
+    public function getTicketPDFTitle(): string
+    {
+        $event = $this->event;
+        return strtoupper($event->slug) . '-' . $event->eventYear() . '-' . strtoupper($this->ticket_id) . '-TICKET' . '.pdf';
     }
 
     public function event(): BelongsTo

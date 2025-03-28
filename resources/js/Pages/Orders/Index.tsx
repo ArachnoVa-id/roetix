@@ -12,7 +12,7 @@ import React from 'react';
 
 interface Order {
     order_id: string;
-    user_id: string;
+    id: string;
     ticket_id: string;
     order_date: string;
     total_price: number;

@@ -2,11 +2,20 @@ import Toaster from '@/Components/novatix/Toaster'; // Import the Toaster compon
 import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransactionButton';
-import SeatMapDisplay from '@/Pages/Seat/SeatMapDisplay';
-import { Layout, SeatItem } from '@/Pages/Seat/types';
+import {
+    Layout,
+    MidtransCallbacks,
+    MidtransError,
+    MidtransTransactionResult,
+    PaymentResponse,
+    SavedTransaction,
+    SeatItem,
+    Timeline,
+} from '@/Pages/Seat/types';
 import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import SeatMapDisplay from '../Seat/SeatMapDisplay';
 interface Venue {
     venue_id: string;
     name: string;
@@ -14,9 +23,6 @@ interface Venue {
 
 declare global {
     interface Window {
-        snap?: {
-            pay: (token: string, options: any) => void;
-        };
         eventTimelines?: Timeline[];
     }
 }
@@ -29,12 +35,12 @@ interface Event {
     status: string; // Tambahkan ini
 }
 
-interface Timeline {
-    timeline_id: string;
-    name: string;
-    start_date: string;
-    end_date: string;
-}
+// interface Timeline {
+//     timeline_id: string;
+//     name: string;
+//     start_date: string;
+//     end_date: string;
+// }
 
 interface TicketCategory {
     ticket_category_id: string;
@@ -77,7 +83,7 @@ export default function Landing({
     const [pendingTransactionSeats, setPendingTransactionSeats] = useState<
         SeatItem[]
     >([]);
-    const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+    const [, setIsLoadingTransactions] = useState(false);
 
     // Show error if it exists when component mounts
     useEffect(() => {
@@ -85,6 +91,114 @@ export default function Landing({
             showError(error);
         }
     }, [error, showError]);
+
+    const fetchPendingTransactions = useCallback(async (): Promise<void> => {
+        setIsLoadingTransactions(true);
+        try {
+            // Tambahkan timestamp untuk mencegah caching
+            const response = await fetch(
+                `/api/pending-transactions?t=${Date.now()}`,
+            );
+
+            if (!response.ok) {
+                console.error('Server response:', await response.text());
+                throw new Error(
+                    `Failed to fetch pending transactions: ${response.status} ${response.statusText}`,
+                );
+            }
+
+            interface PendingTransactionResponse {
+                success: boolean;
+                pendingTransactions: Array<{
+                    order_id: string;
+                    order_code: string;
+                    total_price: number;
+                    seats: SeatItem[];
+                }>;
+            }
+
+            const data = (await response.json()) as PendingTransactionResponse;
+
+            if (data.success && data.pendingTransactions.length > 0) {
+                // Get the first pending transaction's seats
+                const pendingSeats = data.pendingTransactions[0].seats;
+                setPendingTransactionSeats(pendingSeats);
+
+                // Store the transaction ID for resuming payment
+                if (pendingSeats.length > 0) {
+                    const savedData: SavedTransaction = {
+                        transactionInfo: {
+                            transaction_id:
+                                data.pendingTransactions[0].order_code,
+                            timestamp: Date.now(), // Tambahkan timestamp untuk validasi
+                        },
+                        seats: pendingSeats,
+                    };
+
+                    localStorage.setItem(
+                        'pendingTransaction',
+                        JSON.stringify(savedData),
+                    );
+                    console.log(
+                        'Stored pending transaction in localStorage:',
+                        data.pendingTransactions[0].order_code,
+                    );
+                }
+            } else {
+                // Jika tidak ada transaksi pending di server, periksa localStorage
+                const savedTransactionStr =
+                    localStorage.getItem('pendingTransaction');
+
+                if (savedTransactionStr) {
+                    try {
+                        const parsed = JSON.parse(
+                            savedTransactionStr,
+                        ) as SavedTransaction;
+
+                        // Periksa apakah localStorage memiliki data yang valid dan tidak terlalu lama
+                        // (misalnya transaksi dari localStorage yang lebih dari 24 jam sebaiknya dihapus)
+                        const MAX_AGE = 24 * 60 * 60 * 1000; // 24 jam dalam milidetik
+                        const now = Date.now();
+                        const timestamp =
+                            parsed.transactionInfo?.timestamp || 0;
+
+                        if (now - timestamp > MAX_AGE) {
+                            // Transaksi terlalu lama, hapus dari localStorage
+                            console.log(
+                                'Removing stale transaction from localStorage',
+                            );
+                            localStorage.removeItem('pendingTransaction');
+                            setPendingTransactionSeats([]);
+                        } else {
+                            // Transaksi masih valid berdasarkan waktu, tapi tidak ada di database
+                            // Tampilkan pesan ke user bahwa transaksi mungkin tidak ada di sistem
+                            console.warn(
+                                'Transaction found in localStorage but not in database:',
+                                parsed.transactionInfo?.transaction_id,
+                            );
+
+                            // Tetap tampilkan seats dari localStorage
+                            if (parsed.seats && Array.isArray(parsed.seats)) {
+                                setPendingTransactionSeats(parsed.seats);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse saved transaction', e);
+                        localStorage.removeItem('pendingTransaction');
+                    }
+                } else {
+                    setPendingTransactionSeats([]);
+                }
+            }
+        } catch (error: unknown) {
+            console.error('Error fetching pending transactions:', error);
+            showError(
+                'Failed to load pending transactions. Please refresh the page.',
+            );
+        } finally {
+            setIsLoadingTransactions(false);
+        }
+    }, [showError]);
 
     useEffect(() => {
         // First check localStorage as before
@@ -103,43 +217,7 @@ export default function Landing({
 
         // Then fetch actual pending transactions from the server
         fetchPendingTransactions();
-    }, []);
-
-    const fetchPendingTransactions = async () => {
-        setIsLoadingTransactions(true);
-        try {
-            const response = await fetch('/api/pending-transactions');
-            if (!response.ok) {
-                throw new Error('Failed to fetch pending transactions');
-            }
-            const data = await response.json();
-
-            if (data.success && data.pendingTransactions.length > 0) {
-                // Get the first pending transaction's seats
-                const pendingSeats = data.pendingTransactions[0].seats;
-                setPendingTransactionSeats(pendingSeats);
-
-                // Store the transaction ID for resuming payment
-                if (pendingSeats.length > 0) {
-                    localStorage.setItem(
-                        'pendingTransaction',
-                        JSON.stringify({
-                            transactionInfo: {
-                                transaction_id:
-                                    data.pendingTransactions[0].order_code,
-                                // We'll need to request a new snap token when resuming
-                            },
-                            seats: pendingSeats,
-                        }),
-                    );
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching pending transactions:', error);
-        } finally {
-            setIsLoadingTransactions(false);
-        }
-    };
+    }, [fetchPendingTransactions]);
 
     const markSeatsAsPendingTransaction = (seats: SeatItem[]) => {
         setPendingTransactionSeats(seats);
@@ -311,8 +389,13 @@ export default function Landing({
         }).format(value);
     };
 
-    const resumeTransaction = async (transactionId: string) => {
+    const resumeTransaction = async (transactionId: string): Promise<void> => {
         try {
+            showSuccess('Preparing to resume payment...');
+
+            // Log data untuk debugging
+            console.log('Resuming transaction:', transactionId);
+
             const response = await fetch('/payment/resume', {
                 method: 'POST',
                 headers: {
@@ -326,32 +409,73 @@ export default function Landing({
                 body: JSON.stringify({ transaction_id: transactionId }),
             });
 
+            // Log response status untuk debugging
+            console.log('Resume payment response status:', response.status);
+
+            // Jika response bukan OK, tampilkan pesan error dengan detail
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error(
+                    `Status: ${response.status}, Response:`,
+                    errorText,
+                );
+
+                let errorData: { message: string } = {
+                    message: 'Unknown error occurred',
+                };
+                try {
+                    errorData = JSON.parse(errorText) as { message: string };
+                } catch (e) {
+                    // Jika parsing gagal, gunakan nilai default
+                }
+
+                // Jika status 404, berarti transaksi tidak ditemukan
+                if (response.status === 404) {
+                    showError(
+                        'Transaction not found or already completed. The page will refresh.',
+                    );
+
+                    // Hapus data dari localStorage
+                    localStorage.removeItem('pendingTransaction');
+                    setPendingTransactionSeats([]);
+
+                    // Refresh halaman setelah delay
+                    setTimeout(() => window.location.reload(), 3000);
+                    return;
+                }
+
                 throw new Error(
-                    `Status: ${response.status}, Status Text: ${response.statusText}`,
+                    errorData.message ||
+                        `Status: ${response.status}, Status Text: ${response.statusText}`,
                 );
             }
 
-            const data = await response.json();
+            const data = (await response.json()) as PaymentResponse;
+            console.log('Resume payment response data:', data);
+
             if (data.snap_token) {
                 // Open Midtrans payment window
                 if (window.snap) {
-                    const callbacks = {
-                        onSuccess: () => {
+                    const callbacks: MidtransCallbacks = {
+                        onSuccess: (result: MidtransTransactionResult) => {
+                            console.log('Payment success:', result);
                             showSuccess('Payment successful!');
                             localStorage.removeItem('pendingTransaction');
                             setPendingTransactionSeats([]);
                             window.location.reload();
                         },
-                        onPending: () => {
+                        onPending: (result: MidtransTransactionResult) => {
+                            console.log('Payment pending:', result);
                             showSuccess(
                                 'Your payment is pending. Please complete the payment.',
                             );
                         },
-                        onError: () => {
+                        onError: (error: MidtransError | Error | unknown) => {
+                            console.error('Payment error:', error);
                             showError('Payment failed. Please try again.');
                         },
                         onClose: () => {
+                            console.log('Payment window closed');
                             showError(
                                 'Payment window closed. You can resume your payment later.',
                             );
@@ -367,9 +491,11 @@ export default function Landing({
             } else {
                 throw new Error('Invalid response from payment server');
             }
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Error resuming transaction:', error);
-            showError('Failed to resume payment. Please try again.');
+            showError(
+                `Failed to resume payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            );
         }
     };
 
@@ -398,6 +524,53 @@ export default function Landing({
         { label: 'Reserved', color: 'bg-gray-400' },
     ];
 
+    const ResumePaymentButton: React.FC = () => {
+        const { showError } = useToaster();
+        const [isLoading, setIsLoading] = useState<boolean>(false);
+
+        const handleResumePayment = () => {
+            setIsLoading(true);
+            const savedTransactionStr =
+                localStorage.getItem('pendingTransaction');
+
+            if (savedTransactionStr) {
+                try {
+                    const parsed = JSON.parse(
+                        savedTransactionStr,
+                    ) as SavedTransaction;
+                    if (
+                        parsed.transactionInfo &&
+                        parsed.transactionInfo.transaction_id
+                    ) {
+                        resumeTransaction(
+                            parsed.transactionInfo.transaction_id,
+                        ).finally(() => setIsLoading(false));
+                    } else {
+                        showError('Invalid transaction information.');
+                        setIsLoading(false);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse transaction info', e);
+                    showError('Failed to resume payment. Please try again.');
+                    setIsLoading(false);
+                }
+            } else {
+                showError('No pending transaction found.');
+                setIsLoading(false);
+            }
+        };
+
+        return (
+            <button
+                className="mt-3 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-blue-300"
+                onClick={handleResumePayment}
+                disabled={isLoading}
+            >
+                {isLoading ? 'Processing...' : 'Resume Payment'}
+            </button>
+        );
+    };
+
     // If we have an error, show it
     if (error) {
         return (
@@ -412,7 +585,7 @@ export default function Landing({
                             }}
                         >
                             <div className="p-6 text-gray-900">
-                                <h1 className="text-xl font-bold text-red-600">
+                                <h1 className="text-lg font-bold text-red-600">
                                     Error
                                 </h1>
                                 <p className="mt-4">{error}</p>
@@ -431,7 +604,7 @@ export default function Landing({
             {!isBookingAllowed && event && (
                 <div className="py-2">
                     <div className="mx-auto w-full sm:px-6 lg:px-8">
-                        <div className="overflow-hidden bg-yellow-100 p-2 shadow-md sm:rounded-lg">
+                        <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
                             <p className="text-center font-medium text-yellow-800">
                                 {eventStatusMessage}
                             </p>
@@ -455,7 +628,7 @@ export default function Landing({
                         >
                             {event && venue ? (
                                 <>
-                                    <h1 className="text-xl font-bold">
+                                    <h1 className="text-lg font-bold">
                                         {event.name}
                                     </h1>
                                     <p
@@ -479,7 +652,7 @@ export default function Landing({
                                     </p>
                                 </>
                             ) : (
-                                <h1 className="text-xl font-bold">
+                                <h1 className="text-lg font-bold">
                                     {(client ? client + ' : ' : '') +
                                         'Buy Tickets Here'}
                                 </h1>
@@ -500,7 +673,7 @@ export default function Landing({
                                 color: props.text_primary_color,
                             }}
                         >
-                            <h3 className="mb-3 text-xl font-semibold">
+                            <h3 className="mb-3 text-lg font-semibold">
                                 Current Ticket Period
                             </h3>
                             <div className="rounded-lg bg-blue-50 p-2 text-blue-800">
@@ -522,20 +695,20 @@ export default function Landing({
                 </div>
             )} */}
 
-            <div className="py-4">
-                <div className="mx-auto w-full sm:px-6 lg:px-8">
+            <div className="w-full py-4">
+                <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        className="flex flex-col overflow-hidden p-6 shadow-xl sm:rounded-lg"
                         style={{
                             backgroundColor: props.primary_color,
                             color: props.text_primary_color,
                         }}
                     >
                         {/* Three-column grid for A, B, C sections */}
-                        <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div className="mb-6 flex w-full flex-col gap-4 md:flex-row">
                             {/* Column A: Event Info */}
                             <div
-                                className="flex flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
+                                className="flex w-full flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg md:w-[35%]"
                                 style={{
                                     backgroundColor: props.secondary_color,
                                     borderRight: `4px solid ${props.primary_color}`,
@@ -543,89 +716,205 @@ export default function Landing({
                             >
                                 {event && venue ? (
                                     <>
-                                        <h2
-                                            className="text-xl font-bold"
-                                            style={{
-                                                color: props.text_primary_color,
-                                            }}
-                                        >
-                                            {event.name}
-                                        </h2>
-                                        <div className="">
-                                            <div className="flex items-center">
-                                                <svg
-                                                    className="mr-2 h-5 w-5"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    style={{
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                                    />
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                                    />
-                                                </svg>
-                                                <p
-                                                    style={{
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    <span className="font-medium">
-                                                        Venue:
-                                                    </span>{' '}
-                                                    {venue.name}
-                                                </p>
+                                        <div className="flex items-center justify-between">
+                                            <h2
+                                                className="text-lg font-bold"
+                                                style={{
+                                                    color: props.text_primary_color,
+                                                }}
+                                            >
+                                                {event.name}
+                                            </h2>
+                                            {/* Status section */}
+                                            <div className="w-fit">
+                                                {event && (
+                                                    <div
+                                                        className="flex w-full items-center justify-center rounded-lg bg-opacity-50 px-2"
+                                                        style={{
+                                                            backgroundColor:
+                                                                event.status ===
+                                                                'active'
+                                                                    ? 'rgba(34, 197, 94, 0.1)'
+                                                                    : event.status ===
+                                                                        'planned'
+                                                                      ? 'rgba(59, 130, 246, 0.1)'
+                                                                      : event.status ===
+                                                                          'completed'
+                                                                        ? 'rgba(107, 114, 128, 0.1)'
+                                                                        : 'rgba(239, 68, 68, 0.1)',
+                                                        }}
+                                                    >
+                                                        <div
+                                                            className={`h-2 w-2 rounded-full ${
+                                                                event.status ===
+                                                                'active'
+                                                                    ? 'bg-green-500'
+                                                                    : event.status ===
+                                                                        'planned'
+                                                                      ? 'bg-blue-500'
+                                                                      : event.status ===
+                                                                          'completed'
+                                                                        ? 'bg-gray-500'
+                                                                        : 'bg-red-500'
+                                                            } mr-2 animate-pulse`}
+                                                        ></div>
+                                                        <span
+                                                            className="text-xs font-medium"
+                                                            style={{
+                                                                color:
+                                                                    event.status ===
+                                                                    'active'
+                                                                        ? '#16a34a'
+                                                                        : event.status ===
+                                                                            'planned'
+                                                                          ? '#2563eb'
+                                                                          : event.status ===
+                                                                              'completed'
+                                                                            ? '#4b5563'
+                                                                            : '#dc2626',
+                                                            }}
+                                                        >
+                                                            {event.status ===
+                                                            'active'
+                                                                ? 'Active'
+                                                                : event.status ===
+                                                                    'planned'
+                                                                  ? 'Planned'
+                                                                  : event.status ===
+                                                                      'completed'
+                                                                    ? 'Completed'
+                                                                    : 'Cancelled'}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="flex items-center">
-                                                <svg
-                                                    className="mr-2 h-5 w-5"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    style={{
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                    />
-                                                </svg>
-                                                <p
-                                                    style={{
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    <span className="font-medium">
-                                                        D-Day:
-                                                    </span>{' '}
-                                                    {new Date(
-                                                        event.event_date,
-                                                    ).toLocaleDateString(
-                                                        'en-US',
-                                                        {
-                                                            weekday: 'short',
-                                                            year: 'numeric',
-                                                            month: 'short',
-                                                            day: 'numeric',
-                                                        },
-                                                    )}
-                                                </p>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex flex-col gap-1 text-xs">
+                                                <div className="flex items-center">
+                                                    <svg
+                                                        className="mr-1 h-4 w-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                                        />
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                                        />
+                                                    </svg>
+                                                    <p
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <span className="font-medium">
+                                                            Venue:
+                                                        </span>{' '}
+                                                        {venue.name}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <svg
+                                                        className="mr-1 h-4 w-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+                                                    <p
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        <span className="font-medium">
+                                                            D-Day:
+                                                        </span>{' '}
+                                                        {new Date(
+                                                            event.event_date,
+                                                        ).toLocaleDateString(
+                                                            'en-US',
+                                                            {
+                                                                weekday:
+                                                                    'short',
+                                                                year: 'numeric',
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                            },
+                                                        )}
+                                                    </p>
+                                                </div>
                                             </div>
+                                            {/* Timeline section */}
+                                            {currentTimeline && (
+                                                <div className="flex w-fit items-center justify-center">
+                                                    <div
+                                                        className="w-fit rounded-lg p-1 px-3"
+                                                        style={{
+                                                            backgroundColor:
+                                                                'rgba(59, 130, 246, 0.1)',
+                                                        }}
+                                                    >
+                                                        <div className="text-right text-sm font-semibold text-blue-600">
+                                                            {
+                                                                currentTimeline.name
+                                                            }
+                                                        </div>
+                                                        <div
+                                                            className="flex items-center justify-center text-right text-xs text-blue-500"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            {new Date(
+                                                                currentTimeline.start_date,
+                                                            ).toLocaleDateString()}{' '}
+                                                            -{' '}
+                                                            {new Date(
+                                                                currentTimeline.end_date,
+                                                            ).toLocaleDateString()}
+                                                            <svg
+                                                                className="ml-2 h-4 w-4"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={
+                                                                        2
+                                                                    }
+                                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                                />
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Additional content for section A */}
@@ -636,7 +925,7 @@ export default function Landing({
                                                     props.text_primary_color,
                                             }}
                                         />
-                                        <div className="">
+                                        <div className="flex justify-between">
                                             <div className="flex items-center">
                                                 <svg
                                                     className="ml-1 mr-2 h-4 w-4"
@@ -657,7 +946,7 @@ export default function Landing({
                                                 </svg>
 
                                                 <p
-                                                    className="mt-[1px] text-xs leading-[.8]"
+                                                    className="mt-[1px] text-xs leading-[1.1]"
                                                     style={{
                                                         color: props.text_secondary_color,
                                                     }}
@@ -669,8 +958,19 @@ export default function Landing({
                                             </div>
 
                                             <div className="flex items-center">
+                                                <p
+                                                    className="mt-[1px] text-right text-xs leading-[1.1]"
+                                                    style={{
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    You can select up to{' '}
+                                                    {props.ticket_limit || 5}{' '}
+                                                    seats
+                                                </p>
+
                                                 <svg
-                                                    className="ml-1 mr-2 h-4 w-4"
+                                                    className="ml-2 mr-1 h-4 w-4"
                                                     fill="none"
                                                     stroke="currentColor"
                                                     viewBox="0 0 24 24"
@@ -686,183 +986,20 @@ export default function Landing({
                                                         d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"
                                                     />
                                                 </svg>
-
-                                                <p
-                                                    className="mt-[1px] text-xs leading-[.8]"
-                                                    style={{
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    You can select up to{' '}
-                                                    {props.ticket_limit || 5}{' '}
-                                                    seats
-                                                </p>
                                             </div>
                                         </div>
                                     </>
                                 ) : (
-                                    <h2 className="text-xl font-bold">
+                                    <h2 className="text-lg font-bold">
                                         {(client ? client + ' : ' : '') +
                                             'Buy Tickets Here'}
                                     </h2>
                                 )}
                             </div>
 
-                            {/* Column B: Timeline and Status */}
+                            {/* Column B: Ticket Categories */}
                             <div
-                                className="flex flex-col justify-between gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
-                                style={{
-                                    backgroundColor: props.secondary_color,
-                                    borderRight: `4px solid ${props.primary_color}`,
-                                }}
-                            >
-                                <div className="flex flex-col gap-3">
-                                    <div className="relative flex w-full items-center justify-start">
-                                        <h3
-                                            className="w-full text-center text-xl font-semibold"
-                                            style={{
-                                                color: props.text_primary_color,
-                                            }}
-                                        >
-                                            Event Status
-                                        </h3>
-                                        {/* Status section */}
-                                        <div className="absolute left-0 top-0 w-fit">
-                                            {event && (
-                                                <div
-                                                    className="flex w-full items-center justify-center rounded-lg bg-opacity-50 px-2"
-                                                    style={{
-                                                        backgroundColor:
-                                                            event.status ===
-                                                            'active'
-                                                                ? 'rgba(34, 197, 94, 0.1)'
-                                                                : event.status ===
-                                                                    'planned'
-                                                                  ? 'rgba(59, 130, 246, 0.1)'
-                                                                  : event.status ===
-                                                                      'completed'
-                                                                    ? 'rgba(107, 114, 128, 0.1)'
-                                                                    : 'rgba(239, 68, 68, 0.1)',
-                                                    }}
-                                                >
-                                                    <div
-                                                        className={`h-2 w-2 rounded-full ${
-                                                            event.status ===
-                                                            'active'
-                                                                ? 'bg-green-500'
-                                                                : event.status ===
-                                                                    'planned'
-                                                                  ? 'bg-blue-500'
-                                                                  : event.status ===
-                                                                      'completed'
-                                                                    ? 'bg-gray-500'
-                                                                    : 'bg-red-500'
-                                                        } mr-2 animate-pulse`}
-                                                    ></div>
-                                                    <span
-                                                        className="text-xs font-medium"
-                                                        style={{
-                                                            color:
-                                                                event.status ===
-                                                                'active'
-                                                                    ? '#16a34a'
-                                                                    : event.status ===
-                                                                        'planned'
-                                                                      ? '#2563eb'
-                                                                      : event.status ===
-                                                                          'completed'
-                                                                        ? '#4b5563'
-                                                                        : '#dc2626',
-                                                        }}
-                                                    >
-                                                        {event.status ===
-                                                        'active'
-                                                            ? 'Active'
-                                                            : event.status ===
-                                                                'planned'
-                                                              ? 'Planned'
-                                                              : event.status ===
-                                                                  'completed'
-                                                                ? 'Completed'
-                                                                : 'Cancelled'}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {/* Timeline section */}
-                                    {currentTimeline && (
-                                        <div className="w-full">
-                                            <div
-                                                className="rounded-lg p-1"
-                                                style={{
-                                                    backgroundColor:
-                                                        'rgba(59, 130, 246, 0.1)',
-                                                }}
-                                            >
-                                                <div className="text-center font-semibold text-blue-600">
-                                                    {currentTimeline.name}
-                                                </div>
-                                                <div
-                                                    className="flex items-center justify-center text-sm text-blue-500"
-                                                    style={{
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    <svg
-                                                        className="mr-1 h-4 w-4"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                        />
-                                                    </svg>
-                                                    {new Date(
-                                                        currentTimeline.start_date,
-                                                    ).toLocaleDateString()}{' '}
-                                                    -{' '}
-                                                    {new Date(
-                                                        currentTimeline.end_date,
-                                                    ).toLocaleDateString()}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div>
-                                    {/* Add the status legends */}
-                                    <div className="flex w-full items-center justify-center gap-4 p-2">
-                                        {statusLegends.map((legend, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex items-center"
-                                            >
-                                                <div
-                                                    className={`h-3 w-3 ${legend.color} mr-1.5 rounded-full`}
-                                                ></div>
-                                                <span
-                                                    className="text-xs leading-[.8]"
-                                                    style={{
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    {legend.label}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Column C: Ticket Categories */}
-                            <div
-                                className="flex flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
+                                className="flex w-full flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg md:w-[65%]"
                                 style={{
                                     backgroundColor: props.secondary_color,
                                     borderRight: `4px solid ${props.primary_color}`,
@@ -870,14 +1007,14 @@ export default function Landing({
                             >
                                 {/* Ticket Categories with Prices */}
                                 <h3
-                                    className="text-center text-xl font-semibold"
+                                    className="text-center text-lg font-semibold"
                                     style={{
                                         color: props.text_primary_color,
                                     }}
                                 >
                                     Category & Price
                                 </h3>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-wrap gap-2">
                                     {ticketTypes.map((type) => {
                                         // Find the category and price information
                                         const category = ticketCategories.find(
@@ -902,7 +1039,7 @@ export default function Landing({
                                         return (
                                             <div
                                                 key={type}
-                                                className="flex rounded-lg p-2 shadow-sm"
+                                                className="flex grow rounded-lg p-3 shadow-sm"
                                                 style={{
                                                     backgroundColor: `${ticketTypeColors[type]}20`,
                                                     borderLeft: `3px solid ${ticketTypeColors[type]}`,
@@ -942,6 +1079,35 @@ export default function Landing({
                                         );
                                     })}
                                 </div>
+                                <hr
+                                    className="border-[1.5px]"
+                                    style={{
+                                        borderColor: props.text_primary_color,
+                                    }}
+                                />
+                                <div>
+                                    {/* Add the status legends */}
+                                    <div className="flex w-full items-center justify-center gap-4">
+                                        {statusLegends.map((legend, i) => (
+                                            <div
+                                                key={i}
+                                                className="flex items-center"
+                                            >
+                                                <div
+                                                    className={`h-3 w-3 ${legend.color} mr-1.5 rounded-full`}
+                                                ></div>
+                                                <span
+                                                    className="text-xs leading-[.8]"
+                                                    style={{
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    {legend.label}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
 
                                 {/* Extra description about ticket types */}
                                 {/* <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
@@ -976,18 +1142,18 @@ export default function Landing({
                         )} */}
 
                         {/* Seat Map Section - takes up more vertical space */}
-                        <div className="mt-2">
-                            <h3 className="mb-2 text-center text-xl font-bold">
+                        <div
+                            className="borde flex flex-col items-center justify-center gap-2 rounded-lg p-3"
+                            style={{
+                                backgroundColor: props.secondary_color,
+                                height: '80vh',
+                            }}
+                        >
+                            <h3 className="h-fit text-center text-lg font-bold">
                                 Seat Map
                             </h3>
-                            <div
-                                className="rounded-lg border p-2"
-                                style={{
-                                    backgroundColor: props.secondary_color,
-                                    height: '80vh',
-                                }}
-                            >
-                                <div className="flex h-full justify-center overflow-auto">
+                            <div className="flex h-[92%] w-full overflow-clip">
+                                <div className="flex w-full justify-center overflow-auto">
                                     <SeatMapDisplay
                                         config={layout}
                                         props={props}
@@ -1004,8 +1170,8 @@ export default function Landing({
             </div>
 
             {/* Keep the selected seats section below */}
-            <div className="py-4">
-                <div className="mx-auto w-full sm:px-6 lg:px-8">
+            <div className="w-full pb-4">
+                <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
                         className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
                         style={{
@@ -1013,7 +1179,7 @@ export default function Landing({
                             color: props.text_primary_color,
                         }}
                     >
-                        <h3 className="mb-4 text-xl font-semibold">
+                        <h3 className="mb-4 text-lg font-semibold">
                             Selected Seats
                         </h3>
                         {selectedSeats.length === 0 ? (
@@ -1057,7 +1223,7 @@ export default function Landing({
                         {/* Subtotal, Tax, and Total */}
                         {selectedSeats.length > 0 && (
                             <div
-                                className="mt-6 space-y-2 rounded-lg p-2"
+                                className="mt-6 space-y-2 rounded-lg p-3"
                                 style={{
                                     backgroundColor: props.secondary_color,
                                     color: props.text_secondary_color,
@@ -1119,43 +1285,7 @@ export default function Landing({
                                     seats.
                                 </p>
                                 {/* Resume Payment Button */}
-                                <button
-                                    className="mt-3 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-                                    onClick={() => {
-                                        const savedTransaction =
-                                            localStorage.getItem(
-                                                'pendingTransaction',
-                                            );
-                                        if (savedTransaction) {
-                                            try {
-                                                const parsed =
-                                                    JSON.parse(
-                                                        savedTransaction,
-                                                    );
-                                                if (
-                                                    parsed.transactionInfo &&
-                                                    parsed.transactionInfo
-                                                        .transaction_id
-                                                ) {
-                                                    resumeTransaction(
-                                                        parsed.transactionInfo
-                                                            .transaction_id,
-                                                    );
-                                                }
-                                            } catch (e) {
-                                                console.error(
-                                                    'Failed to parse transaction info',
-                                                    e,
-                                                );
-                                                showError(
-                                                    'Failed to resume payment. Please try again.',
-                                                );
-                                            }
-                                        }
-                                    }}
-                                >
-                                    Resume Payment
-                                </button>
+                                <ResumePaymentButton />
                             </div>
                         )}
                     </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Closure;
 use Illuminate\Container\Attributes\Log;
@@ -16,6 +17,11 @@ class ValidateMainDomain
     {
         $mainDomain = config('app.domain');
         $currentDomain = $request->getHost();
+
+        // Pastikan auth.google dan auth.google-authentication bisa diakses
+        if (in_array($request->route()->getName(), ['auth.google', 'auth.google-authentication', 'privacy_policy', 'terms_conditions'])) {
+            return $next($request);
+        }
 
         // Ensure subdomains are blocked from the main domain
         if ($currentDomain !== $mainDomain) {
@@ -32,9 +38,9 @@ class ValidateMainDomain
             return $next($request);
         }
 
-        $user = User::find($user->user_id);
+        $user = User::find($user->id);
 
-        if ($user->role === 'user') {
+        if ($user->role === UserRole::USER->value) {
             Auth::logout();
             return redirect()->route('login');
         }
@@ -46,7 +52,7 @@ class ValidateMainDomain
         }
 
         if ($request->route()->getName() === 'login') {
-            if ($user->role == 'admin') {
+            if ($user->role == UserRole::ADMIN->value) {
                 return redirect()->route('filament.novatix-admin.pages.dashboard');
             }
             return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]);

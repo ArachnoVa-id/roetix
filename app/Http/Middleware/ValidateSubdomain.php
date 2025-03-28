@@ -18,6 +18,12 @@ class ValidateSubdomain
      */
     public function handle(Request $request, Closure $next): Response
     {
+
+        // Pastikan auth.google dan auth.google-authentication bisa diakses
+        if (in_array($request->route()->getName(), ['client-auth.google', 'client-auth.google-authentication', 'client.privacy_policy', 'client.terms_conditions'])) {
+            return $next($request);
+        }
+
         // get host
         $host = $request->getHost();
 

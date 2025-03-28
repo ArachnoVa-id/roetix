@@ -18,10 +18,16 @@ class UserContact extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'nickname',
+        'fullname',
+        'avatar',
         'phone_number',
         'email',
         'whatsapp_number',
-        'instagram'
+        'instagram',
+        'birth_date',
+        'gender',
+        'address',
     ];
 
     protected static function boot()

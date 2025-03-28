@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
+use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -39,11 +41,12 @@ class OrderFactory extends Factory
 
         $event_id = $ticket->event_id;
         $event = $ticket->event;
+        $orderCode = Order::keyGen(OrderType::UNKNOWN);
 
         return [
-            'order_code' => 'ORDER-' . strtoupper(Str::random(6)),
+            'order_code' => $orderCode,
             'event_id' => $event_id,
-            'user_id' => $user->user_id,
+            'user_id' => $user->id,
             'team_id' => $event->team_id,
             'order_date' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'total_price' => $this->faker->randomFloat(2, 100000, 1000000),
@@ -73,13 +76,28 @@ class OrderFactory extends Factory
 
             foreach ($selected_tickets as $ticket) {
                 // Mark ticket as booked
-                $ticket->update(['status' => TicketStatus::BOOKED]);
+                // Check what is the current order status
+                switch ($order->status) {
+                    case OrderStatus::COMPLETED->value:
+                        // If order is paid, mark ticket as booked
+                        $ticket->update(['status' => TicketStatus::BOOKED]);
+                        break;
+                    case OrderStatus::PENDING->value:
+                        // If order is pending, mark ticket as reserved
+                        $ticket->update(['status' => TicketStatus::IN_TRANSACTION]);
+                        break;
+                    default:
+                        // If order is anything else, mark ticket as available
+                        $ticket->update(['status' => TicketStatus::AVAILABLE]);
+                        break;
+                }
 
                 // Create TicketOrder with correct order_id
                 TicketOrder::create([
                     'order_id' => $order->order_id,
                     'ticket_id' => $ticket->ticket_id,
                     'event_id' => $order->event_id,
+                    'status' => TicketOrderStatus::ENABLED,
                 ]);
             }
         });

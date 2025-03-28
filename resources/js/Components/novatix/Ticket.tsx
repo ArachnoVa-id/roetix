@@ -25,6 +25,7 @@ interface TicketComponentProps {
     ticketURL: string;
     ticketData: TicketData;
     eventId: string;
+    status?: string; // Add status prop
     userData?: {
         firstName: string;
         lastName: string;
@@ -42,8 +43,7 @@ export default function Ticket({
     ticketData,
     ticketURL,
     eventId,
-    // userData,
-    // eventInfo,
+    status = 'enabled', // Default to enabled if not provided
 }: TicketComponentProps): React.ReactElement {
     // Function to handle ticket download
     const handleDownload = (): void => {
@@ -107,11 +107,33 @@ export default function Ticket({
         }
     };
 
+    // const getTicketStyle = () => {
+    //     if (status === 'scanned') {
+    //         return {
+    //             opacity: 0.6,
+    //             pointerEvents: 'none' as const, // Type assertion needed
+    //             watermark: 'USED',
+    //         };
+    //     }
+
+    //     return {
+    //         opacity: 1,
+    //         pointerEvents: 'auto' as const,
+    //         watermark: null,
+    //     };
+    // };
+
+    // const ticketStyle = getTicketStyle();
+
     const colors = getTicketColors();
 
     return (
         <div
-            className={`relative mx-auto flex flex-col rounded-lg ${colors.border} w-full max-w-md transform overflow-hidden border-2 shadow-lg transition-transform hover:scale-[1.02] hover:shadow-xl`}
+            className={`relative flex grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? 'hover:scale-[1.02] hover:shadow-xl' : ''}`}
+            style={{
+                opacity: status === 'scanned' ? 0.6 : 1,
+                position: 'relative', // Add this to ensure absolute positioning works for the watermark
+            }}
         >
             {/* Ticket header with type */}
             <div
@@ -134,7 +156,8 @@ export default function Ticket({
                 </h3>
                 <Button
                     onClick={handleDownload}
-                    className="rounded-full border border-white bg-white px-3 py-1 text-sm font-medium text-gray-800 hover:bg-opacity-90 hover:text-black"
+                    className={`rounded-full border border-white bg-white px-3 py-1 text-sm font-medium text-gray-800 ${status !== 'scanned' ? 'hover:bg-opacity-90 hover:text-black' : 'cursor-not-allowed opacity-50'}`}
+                    disabled={status === 'scanned'}
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -152,6 +175,15 @@ export default function Ticket({
                 </Button>
             </div>
 
+            {/* Show a watermark for scanned tickets */}
+            {status === 'scanned' && (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                    <div className="rotate-45 transform text-6xl font-extrabold text-red-500 opacity-30">
+                        USED
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-row">
                 {/* Left side with QR code */}
                 <div
@@ -167,7 +199,7 @@ export default function Ticket({
                 </div>
 
                 {/* Right side with ticket info */}
-                <div className="flex w-[60%] flex-col justify-between bg-white p-4">
+                <div className="flex w-[60%] flex-col justify-between bg-white p-4 text-black">
                     <div className="space-y-1">
                         <RowComponent idtf="ID" content={ticketCode} />
                         <RowComponent
@@ -192,6 +224,11 @@ export default function Ticket({
             >
                 <span>Scan QR code for verification</span>
                 <span>Novatix ID: {ticketCode.substring(0, 8)}</span>
+                {status === 'scanned' && (
+                    <span className="rounded bg-red-500 px-2 py-1 text-xs text-white">
+                        USED
+                    </span>
+                )}
             </div>
         </div>
     );

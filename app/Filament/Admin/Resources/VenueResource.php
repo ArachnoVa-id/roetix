@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\UserRole;
 use App\Enums\VenueStatus;
 use Filament\Forms;
 use Filament\Tables;
@@ -14,6 +15,9 @@ use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationMa
 use App\Models\User;
 use Filament\Actions;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class VenueResource extends Resources\Resource
 {
@@ -25,7 +29,7 @@ class VenueResource extends Resources\Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin', 'vendor']);
+        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::VENDOR->value]);
     }
 
     public static function canCreate(): bool
@@ -45,7 +49,12 @@ class VenueResource extends Resources\Resource
             return false;
         }
 
-        return $team->vendor_quota > 0;
+        return $team->vendor_quota > $team->venues->count();
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -76,6 +85,57 @@ class VenueResource extends Resources\Resource
             ->icon('heroicon-m-map')
             ->color('info')
             ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}");
+    }
+
+    public static function ExportVenueButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Export Venue')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->color('info')
+            ->action(fn($record) => $record->exportSeats());
+    }
+
+    public static function ImportVenueButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Import Venue')
+            ->icon('heroicon-o-arrow-up-tray')
+            ->color('info')
+            ->requiresConfirmation()
+            ->form([
+                \Filament\Forms\Components\FileUpload::make('venue_json')
+                    ->label('Upload Venue JSON')
+                    ->required()
+                    ->acceptedFileTypes(['application/json']) // Accepts only .json files
+                    ->disk('local'),
+            ])
+            ->action(function ($record, array $data) {
+                // Get the uploaded file path
+                $filePath = $data['venue_json'];
+
+                if (!$filePath) {
+                    return;
+                }
+
+                // Read the file content
+                $jsonContent = file_get_contents(storage_path('app/private/' . $filePath));
+
+                // Decode the JSON content
+                $config = json_decode($jsonContent, true);
+
+                // Optionally delete the original temporary file
+                Storage::disk('local')->delete($filePath);
+
+                // Call the import function
+                $res = $record->importSeats(
+                    config: $config,
+                );
+
+                if ($res)
+                    Notification::make()->success()->title('Success')->body('Seats successfully imported!')->send();
+                else Notification::make()->danger()->title('Failed')->body('Seats failed to be imported!')->send();
+            });
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showEvents = true): Infolists\Infolist
@@ -178,10 +238,8 @@ class VenueResource extends Resources\Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('venue_id')
-                    ->limit(50)
-                    ->label('Venue'),
                 Tables\Columns\TextColumn::make('name')
+                    ->label('Venue Name')
                     ->searchable()
                     ->sortable()
                     ->limit(50),
@@ -238,7 +296,7 @@ class VenueResource extends Resources\Resource
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\ViewAction::make()->modalHeading('View Venue'),
                     Tables\Actions\EditAction::make(),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
@@ -246,12 +304,12 @@ class VenueResource extends Resources\Resource
                     self::EditVenueButton(
                         Tables\Actions\Action::make('editVenue')
                     ),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    self::ExportVenueButton(
+                        Tables\Actions\Action::make('exportVenue')
+                    ),
+                    self::ImportVenueButton(
+                        Tables\Actions\Action::make('importVenue')
+                    )
                 ]),
             ]);
     }
