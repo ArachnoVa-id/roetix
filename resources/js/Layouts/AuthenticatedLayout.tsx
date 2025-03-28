@@ -118,6 +118,19 @@ export default function Authenticated({
                                     Profile
                                 </NavLink>
                                 <NavLink
+                                    className={
+                                        user.role === 'user' ? 'hidden' : ''
+                                    }
+                                    eventProps={props}
+                                    href="#"
+                                    active={false}
+                                    onClick={() => {
+                                        window.location.href = route('home');
+                                    }}
+                                >
+                                    Admin Dashboard
+                                </NavLink>
+                                <NavLink
                                     eventProps={props}
                                     method="post"
                                     href={route('logout')}
@@ -220,14 +233,14 @@ export default function Authenticated({
                             >
                                 {user.first_name + ' ' + user.last_name}
                             </div>
-                            <div
+                            {/* <div
                                 className="text-sm font-medium"
                                 style={{
                                     color: props?.text_secondary_color,
                                 }}
                             >
                                 {user.email}
-                            </div>
+                            </div> */}
                         </div>
 
                         <div className="mt-3 space-y-1">
@@ -237,6 +250,15 @@ export default function Authenticated({
                                 }
                             >
                                 Profile
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink
+                                className={user.role === 'user' ? 'hidden' : ''}
+                                href="#"
+                                onClick={() => {
+                                    window.location.href = route('home');
+                                }}
+                            >
+                                Admin Dashboard
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"

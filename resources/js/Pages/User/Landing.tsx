@@ -118,7 +118,6 @@ export default function Landing({
             }
 
             const data = (await response.json()) as PendingTransactionResponse;
-            console.log('Pending transactions response:', data);
 
             if (data.success && data.pendingTransactions.length > 0) {
                 // Get the first pending transaction's seats

@@ -27,7 +27,7 @@ class CreateEvent extends CreateRecord
         $team = Team::where('team_id', $tenant_id)->first();
 
         if (!$team || $team->vendor_quota <= 0) {
-            throw new \Exception('Vendor quota tidak mencukupi untuk membuat venue baru.');
+            throw new \Exception('Venue Quota tidak mencukupi untuk membuat venue baru.');
         };
 
         $team->decrement('event_quota');

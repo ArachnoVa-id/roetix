@@ -40,7 +40,7 @@ class TeamResource extends Resource
                             Infolists\Components\TextEntry::make('code'),
 
                             Infolists\Components\TextEntry::make('vendor_quota')
-                                ->label('Vendor Quota')
+                                ->label('Venue Quota')
                                 ->formatStateUsing(fn($state) => max(0, $state)),
 
                             Infolists\Components\TextEntry::make('event_quota')
@@ -101,7 +101,7 @@ class TeamResource extends Resource
                                 }
                             }),
                         Forms\Components\TextInput::make('vendor_quota')
-                            ->label('Vendor Quota')
+                            ->label('Venue Quota')
                             ->minValue(0)
                             ->numeric()
                             ->maxLength(255),

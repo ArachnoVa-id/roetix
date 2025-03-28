@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Console\Commands\ImportSeatMap;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,12 +37,52 @@ class Venue extends Model
             if (empty($model->venue_id)) {
                 $model->venue_id = (string) Str::uuid();
             }
-
-            // protect from model
-            // if ($team && $team->venues()->count() >= $team->vendor_quota) {
-            //     throw new \Exception("This team has reached its venue limit.");
-            // }
         });
+    }
+
+    public function importSeats($config = null)
+    {
+        $success = false;
+
+        ImportSeatMap::generateFromConfig(
+            config: $config,
+            venueId: $this->venue_id,
+            successLineCallback: fn() => null,
+            successCallback: function () use (&$success) {
+                $success = true;
+            },
+            failedCallback: fn() => null
+        );
+
+        return $success;
+    }
+
+    public function exportSeats()
+    {
+        // Retrieve seat data related to the model, assuming it's related by 'seats' relationship
+        $seats = $this->seats()->pluck('position')->toArray();
+
+        // Format the data
+        $export = [
+            'layout' => [
+                'items' => $seats
+            ]
+        ];
+
+        // Encode data to JSON format
+        $encoded = json_encode($export, JSON_PRETTY_PRINT);
+
+        // Define the filename
+        $venueName = Str::slug($this->name);
+        $fileName = "{$venueName}_seatsconfig_export.json";
+
+        // Return a JSON download response
+        return response()->streamDownload(function () use ($encoded) {
+            echo $encoded;
+        }, $fileName, [
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => "attachment; filename={$fileName}",
+        ]);
     }
 
     public function capacity(): int
