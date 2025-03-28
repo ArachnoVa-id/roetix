@@ -70,8 +70,6 @@ export default function UpdateContactForm({
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             setData('phone_number', e.target.value)
                         }
-                        required
-                        isFocused
                         autoComplete="phone_number"
                         style={{
                             color: props.text_secondary_color,
@@ -100,8 +98,6 @@ export default function UpdateContactForm({
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             setData('whatsapp_number', e.target.value)
                         }
-                        required
-                        isFocused
                         autoComplete="whatsapp_number"
                         style={{
                             color: props.text_secondary_color,
@@ -130,8 +126,6 @@ export default function UpdateContactForm({
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             setData('instagram', e.target.value)
                         }
-                        required
-                        isFocused
                         autoComplete="instagram"
                         style={{
                             color: props.text_secondary_color,

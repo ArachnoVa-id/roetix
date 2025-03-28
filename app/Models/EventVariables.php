@@ -40,7 +40,7 @@ class EventVariables extends Model
     {
         $defaultValues = [
             'primary_color' => '#FFF',
-            'secondary_color' => '#9FF',
+            'secondary_color' => '#CCC',
             'text_primary_color' => '#000000',
             'text_secondary_color' => '#000000',
             'is_maintenance' => false,

@@ -2,9 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
 import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
-import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdateContactForm from './Partials/UpdateContactForm';
-import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 
 export default function Edit({
@@ -34,9 +32,9 @@ export default function Edit({
             <Head title="Profile" />
 
             <div className="py-12">
-                <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
+                <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-8 sm:px-6 md:flex-row lg:px-8">
                     <div
-                        className="p-4 shadow sm:rounded-lg sm:p-8"
+                        className="h-[80vh] w-full p-4 shadow sm:rounded-lg sm:p-8 md:w-[35%]"
                         style={{
                             backgroundColor: props.primary_color,
                         }}
@@ -51,7 +49,7 @@ export default function Edit({
                     </div>
 
                     <div
-                        className="p-4 shadow sm:rounded-lg sm:p-8"
+                        className="h-full grow p-4 shadow sm:rounded-lg sm:p-8"
                         style={{
                             backgroundColor: props.primary_color,
                         }}
@@ -63,7 +61,7 @@ export default function Edit({
                         />
                     </div>
 
-                    <div
+                    {/* <div
                         className="p-4 shadow sm:rounded-lg sm:p-8"
                         style={{ backgroundColor: props.primary_color }}
                     >
@@ -83,7 +81,7 @@ export default function Edit({
                             client={client}
                             props={props}
                         />
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </AuthenticatedLayout>

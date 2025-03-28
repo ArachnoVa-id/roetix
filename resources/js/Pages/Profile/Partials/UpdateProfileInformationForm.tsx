@@ -83,7 +83,6 @@ export default function UpdateProfileInformation({
                             setData('first_name', e.target.value)
                         }
                         required
-                        isFocused
                         autoComplete="first_name"
                         style={{
                             color: props.text_primary_color,
@@ -110,7 +109,6 @@ export default function UpdateProfileInformation({
                             setData('last_name', e.target.value)
                         }
                         required
-                        isFocused
                         autoComplete="last_name"
                         style={{
                             color: props.text_primary_color,

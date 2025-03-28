@@ -53,7 +53,7 @@ export default function Login({
     };
 
     return (
-        <GuestLayout props={props}>
+        <GuestLayout props={props} client={client}>
             <Head title="Log in" />
 
             {status && (
@@ -105,7 +105,7 @@ export default function Login({
                         />
                     </div>
 
-                    <div className="mt-4 block">
+                    <div className="mt-4 flex items-center justify-between">
                         <label className="flex items-center">
                             <Checkbox
                                 name="remember"
@@ -123,9 +123,6 @@ export default function Login({
                                 Remember me
                             </span>
                         </label>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-end">
                         {canResetPassword && (
                             <Link
                                 href={route('password.request')}

@@ -2,9 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\SeatController;
 
 use App\Http\Controllers\EoTiketController;
@@ -14,6 +12,8 @@ use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\TicketController;
+use App\Models\EventVariables;
+use Inertia\Inertia;
 
 // Guest Routes for Authentication
 Route::middleware('guest')->group(function () {
@@ -80,6 +80,21 @@ Route::domain(config('app.domain'))
                 ? redirect()->route('filament.admin.pages.dashboard', ['tenant' => $team->code])
                 : redirect()->route('login');
         })->name('home');
+
+        // Privacy Policy and Terms & Conditions pages
+        Route::get('/privacy-policy', function () {
+            return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
+                'props' => EventVariables::getDefaultValue()
+            ]);
+        })
+            ->name('privacy_policy');
+
+        Route::get('/terms-conditions', function () {
+            return Inertia::render('Legality/termcondition/TermCondition', [
+                'props' => EventVariables::getDefaultValue()
+            ]);
+        })
+            ->name('terms_conditions');
 
         // Seat Management Routes (Protected)
         Route::middleware('auth')->group(function () {

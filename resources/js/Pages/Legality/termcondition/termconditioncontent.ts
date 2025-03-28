@@ -2,7 +2,7 @@ export const termConditionContent = {
     title: 'Tata Tertib Event',
     lastUpdated: '25 Maret 2025',
     introduction:
-        'Selamat siang Bapak/Ibu/Saudara/I.\nTerima kasih atas ketertarikan Bapak/Ibu/Saudara/I dalam menghadiri Event **YOS** \nDemi kenyamanan bersama, kami mohon dapat memperhatikan dan mematuhi tata tertib yang berlaku selama event berlangsung,',
+        'Selamat siang Bapak/Ibu/Saudara/I.\nTerima kasih atas ketertarikan Bapak/Ibu/Saudara/I dalam menghadiri Event **NovaTix** \nDemi kenyamanan bersama, kami mohon dapat memperhatikan dan mematuhi tata tertib yang berlaku selama event berlangsung,',
     sections: [
         {
             content:
@@ -33,5 +33,5 @@ export const termConditionContent = {
                 'Penonton **DILARANG MENDOKUMENTASIKAN** event dalam bentuk apapun, baik foto, video, audio secara penuh ataupun beberapa bagian. Penonton dapat mendokumentasikan setelah event selesai.',
         },
     ],
-    footer: 'Bila ada pertanyaan lebih lanjut, silakan menghubungi kami melalui Direct Message Instagram **@arachnova.id** .\nAtas perhatian dan kerja sama, kami ucapkan terima kasih.\n\nHormat kami,\nPanitia **YOS**',
+    footer: 'Bila ada pertanyaan lebih lanjut, silakan menghubungi kami melalui Direct Message Instagram **@arachnova.id**.\n\nAtas perhatian dan kerja sama, kami ucapkan terima kasih.\n\nHormat kami,\nPanitia **NovaTix**',
 };
