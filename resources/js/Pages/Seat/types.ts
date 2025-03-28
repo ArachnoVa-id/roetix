@@ -108,6 +108,7 @@ export interface GroupedItem {
     quantity: number;
     seatNumbers: string[];
 }
+
 export interface PaymentRequestGroupedItems {
     [ticket_type: string]: GroupedItem;
 }
@@ -120,9 +121,21 @@ export interface PaymentRequestPayload {
 
 export interface PaymentResponse {
     snap_token: string;
+    transaction_id: string;
+    new_order_id?: string;
 }
 
-export interface MidtransTransactionResult {
+// Property sets yang valid untuk MidtransError
+export interface MidtransErrorDetail {
+    message: string;
+    status_code: string;
+    error_messages?: string[];
+}
+
+// Tambahkan properti lain yang mungkin ada dengan union type
+export type MidtransError = MidtransErrorDetail & Record<string, unknown>;
+
+export interface MidtransTransactionResultBase {
     order_id: string;
     transaction_status:
         | 'settlement'
@@ -140,14 +153,43 @@ export interface MidtransTransactionResult {
     status_message: string;
     status_code: string;
 }
-export interface MidtransError {
-    message: string;
-    status_code: string;
-    error_messages?: string[];
-}
+
+// Tambahkan properti lain dengan Record
+export type MidtransTransactionResult = MidtransTransactionResultBase & Record<string, unknown>;
+
+// Buat interface untuk callback yang lebih spesifik
 export interface MidtransCallbacks {
     onSuccess: (result: MidtransTransactionResult) => void;
     onPending: (result: MidtransTransactionResult) => void;
-    onError: (error: MidtransError) => void;
+    onError: (error: MidtransError | Error | unknown) => void;
     onClose: () => void;
+}
+
+// Tambahkan interface baru untuk transaksi yang tersimpan
+export interface PendingTransactionInfo {
+    transaction_id: string;
+    timestamp?: number;
+}
+
+export interface SavedTransaction {
+    transactionInfo: PendingTransactionInfo;
+    seats: SeatItem[];
+}
+
+// Interface untuk Timeline
+export interface Timeline {
+    timeline_id: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+}
+
+// Deklarasi global untuk Midtrans SDK
+declare global {
+    interface Window {
+        snap?: {
+            pay: (token: string, callbacks: MidtransCallbacks) => void;
+        };
+        eventTimelines?: Timeline[]; // Gunakan interface Timeline
+    }
 }

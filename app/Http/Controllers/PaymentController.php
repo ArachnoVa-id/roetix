@@ -219,26 +219,6 @@ class PaymentController extends Controller
                 return response()->json(['error' => 'Invalid callback data'], 400);
             }
 
-            // Check if this is a resumed transaction (order ID starting with 'RESUME-')
-            $originalOrderId = null;
-            if (strpos($identifier, 'RESUME-') === 0) {
-                // Extract the original order ID from custom_field1 if available
-                $originalOrderId = $data['custom_field1'] ?? null;
-
-                // If not available from custom field, extract from the order ID itself
-                if (!$originalOrderId) {
-                    $parts = explode('-', $identifier, 3);
-                    if (count($parts) == 3) {
-                        $originalOrderId = $parts[2];
-                    }
-                }
-
-                // If we found an original order ID, use that instead
-                if ($originalOrderId) {
-                    $identifier = $originalOrderId;
-                }
-            }
-
             // Process the callback based on transaction status
             switch ($data['transaction_status']) {
                 case 'capture':
@@ -275,10 +255,17 @@ class PaymentController extends Controller
     private function updateStatus($orderCode, $status, $transactionData)
     {
         try {
+            // Find order first
+            $order = Order::where('order_code', $orderCode)->first();
+
+            if (!$order) {
+                Log::warning('Order not found', ['order_code' => $orderCode]);
+                throw new \Exception('Order not found: ' . $orderCode);
+            }
+
             // Update order status
-            $order = Order::where('order_code', $orderCode)->update([
-                'status' => $status
-            ]);
+            $order->status = $status;
+            $order->save();
 
             // Update ticket statuses
             $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
@@ -306,6 +293,13 @@ class PaymentController extends Controller
         try {
             $userId = Auth::id();
 
+            // Tambahkan logging untuk debugging
+            Log::info('Fetching pending transactions', [
+                'user_id' => $userId,
+                'host' => $request->getHost(),
+                'client' => $request->route('client')
+            ]);
+
             // Get the client's event
             $client = $request->route('client');
             if (!$client) {
@@ -314,20 +308,37 @@ class PaymentController extends Controller
                 $client = $hostParts[0] !== 'api' ? $hostParts[0] : null;
 
                 if (!$client) {
+                    Log::error('Client identifier not found', [
+                        'host' => $request->getHost()
+                    ]);
                     return response()->json(['success' => false, 'error' => 'Client identifier not found'], 400);
                 }
             }
-            $event = Event::where('slug', $client)->first();
 
+            $event = Event::where('slug', $client)->first();
             if (!$event) {
+                Log::error('Event not found for client', ['client' => $client]);
                 return response()->json(['error' => 'Event not found'], 404);
             }
 
             // Get pending orders for this user and event
-            $pendingOrders = Order::where('order_id', $userId)
+            // PERBAIKAN: Logging sebelum query utama
+            Log::info('Querying pending orders', [
+                'user_id' => $userId,
+                'event_id' => $event->event_id
+            ]);
+
+            // PERBAIKAN: Gunakan query builder dengan kondisi yang benar
+            $pendingOrders = Order::where('user_id', $userId)  // Perhatikan: kolom 'id' merujuk ke user_id 
                 ->where('event_id', $event->event_id)
                 ->where('status', OrderStatus::PENDING)
                 ->get();
+
+            // PERBAIKAN: Logging hasil query
+            Log::info('Pending orders found', [
+                'count' => $pendingOrders->count(),
+                'orders' => $pendingOrders->pluck('order_code')->toArray()
+            ]);
 
             $pendingTransactions = [];
 
@@ -345,6 +356,12 @@ class PaymentController extends Controller
                 $seatsData = $seats->map(function ($seat) use ($tickets) {
                     $ticket = $tickets->where('seat_id', $seat->seat_id)->first();
 
+                    // PERBAIKAN: Tambahkan pengecekan agar tidak error jika ticket null
+                    if (!$ticket) {
+                        Log::warning('Ticket not found for seat', ['seat_id' => $seat->seat_id]);
+                        return null;
+                    }
+
                     return [
                         'seat_id' => $seat->seat_id,
                         'seat_number' => $seat->seat_number,
@@ -355,7 +372,7 @@ class PaymentController extends Controller
                         'price' => $ticket->price,
                         'type' => 'seat',
                     ];
-                });
+                })->filter()->values(); // PERBAIKAN: Filter null values dan reset index array
 
                 $pendingTransactions[] = [
                     'order_id' => $order->order_id,
@@ -370,6 +387,11 @@ class PaymentController extends Controller
                 'pendingTransactions' => $pendingTransactions
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to fetch pending transactions', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to fetch pending transactions: ' . $e->getMessage()
@@ -391,23 +413,54 @@ class PaymentController extends Controller
                 ], 422);
             }
 
-            // Find the order
             $orderCode = $request->transaction_id;
+
+            // PERBAIKAN: Tambahkan logging untuk debugging
+            Log::info('Attempting to resume payment', [
+                'order_code' => $orderCode,
+                'user_id' => Auth::id()
+            ]);
+
+            // PERBAIKAN: Cek apakah order ada di database dengan kondisi yang tepat
             $order = Order::where('order_code', $orderCode)
+                ->where('user_id', Auth::id())  // Pastikan order milik user yang sedang login
                 ->where('status', OrderStatus::PENDING)
                 ->first();
 
             if (!$order) {
+                // PERBAIKAN: Logging lebih detail jika order tidak ditemukan
+                $existingOrder = Order::where('order_code', $orderCode)->first();
+                if ($existingOrder) {
+                    Log::warning('Order found but not eligible for resume', [
+                        'order_code' => $orderCode,
+                        'user_id' => Auth::id(),
+                        'actual_user_id' => $existingOrder->id,
+                        'status' => $existingOrder->status
+                    ]);
+                } else {
+                    Log::warning('Order not found in database', [
+                        'order_code' => $orderCode
+                    ]);
+                }
+
                 return response()->json(['message' => 'Transaction not found or already completed'], 404);
             }
 
-            // Verify this order belongs to the current user
-            if ($order->id !== Auth::id()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
+            // PERBAIKAN PENTING: Jika transaksi ditemukan di localStorage tapi tidak di database
+            // Periksa apakah localStorage masih memiliki transaksi yang valid
+            // Ini bisa ditambahkan di frontend dengan mengirim timestamp transaksi
 
             // Get ticket orders for this order
             $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
+
+            // PERBAIKAN: Periksa apakah ada ticket orders
+            if ($ticketOrders->isEmpty()) {
+                Log::warning('No ticket orders found for this order', [
+                    'order_id' => $order->order_id
+                ]);
+                return response()->json(['message' => 'Invalid order: no tickets found'], 400);
+            }
+
             $ticketIds = $ticketOrders->pluck('ticket_id');
             $tickets = Ticket::whereIn('ticket_id', $ticketIds)->get();
 
@@ -445,31 +498,41 @@ class PaymentController extends Controller
             // Get user email
             $userEmail = Auth::user()->email ?? 'customer@example.com';
 
-            // Generate new order ID with reference to original
-            $newOrderCode = 'RESUME-' . time() . '-' . $orderCode;
+            // Use original order_code - PERBAIKAN UTAMA
+            Log::info('Generating Snap token for order', [
+                'order_code' => $orderCode,
+                'amount' => (int)$order->total_price
+            ]);
 
-            // Generate new snap token with new order ID
             $snapToken = Snap::getSnapToken([
                 'transaction_details' => [
-                    'order_id' => $newOrderCode,
+                    'order_id' => $orderCode, // Gunakan order_code asli
                     'gross_amount' => (int)$order->total_price
                 ],
                 'credit_card' => ['secure' => true],
                 'customer_details' => ['email' => $userEmail],
                 'item_details' => $itemDetails,
-                'custom_field1' => $orderCode, // Store original order ID for reference
             ]);
 
             if (!$snapToken) {
+                Log::error('Failed to get Snap token from Midtrans');
                 return response()->json(['message' => 'Failed to get Snap token'], 500);
             }
 
+            Log::info('Successfully generated Snap token', [
+                'order_code' => $orderCode
+            ]);
+
             return response()->json([
                 'snap_token' => $snapToken,
-                'transaction_id' => $orderCode, // Still return original ID for client reference
-                'new_order_id' => $newOrderCode,
+                'transaction_id' => $orderCode,
             ]);
         } catch (\Exception $e) {
+            Log::error('Error resuming payment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'message' => 'Error resuming payment: ' . $e->getMessage()
             ], 500);
