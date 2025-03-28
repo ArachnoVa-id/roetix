@@ -16,6 +16,7 @@ class SocialiteController extends Controller
 {
     public function googleLogin(string $client = "")
     {
+        // dd($client);
         session(['client' => $client]);
 
         $redirect = Socialite::driver('google')->redirect();

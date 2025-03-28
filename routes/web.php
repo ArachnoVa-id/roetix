@@ -119,7 +119,7 @@ Route::domain('{client}.' . config('app.domain'))
         // Socialite Authentication
         Route::controller(SocialiteController::class)
             ->group(function () {
-                Route::get('/auth/google', 'googleLogin')
+                Route::get('/auth/google', 'googleLogin', ['client' => '{client}'])
                     ->name('client-auth.google');
             });
 
