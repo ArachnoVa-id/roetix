@@ -326,12 +326,7 @@ class UserPageController extends Controller
                 $typeName = $ticket->ticket_type ? ucfirst($ticket->ticket_type) : 'Standard';
 
                 // Add the ticket status from ticket_order
-                $ticketStatus = $ticket->ticket_order_status ?? 'enabled';
-
-                // // Special handling for VIP tickets
-                // if (strtolower($typeName) === 'vip') {
-                //     $typeName = 'VIP+';
-                // }
+                $ticketStatus = $ticket->ticket_order_status ?? TicketOrderStatus::ENABLED->value;
 
                 return [
                     'id' => $ticket->ticket_id,

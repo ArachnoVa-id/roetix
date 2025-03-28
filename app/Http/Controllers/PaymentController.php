@@ -223,17 +223,17 @@ class PaymentController extends Controller
             switch ($data['transaction_status']) {
                 case 'capture':
                 case 'settlement':
-                    $this->updateStatus($identifier, 'completed', $data);
+                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
 
                 case 'pending':
-                    $this->updateStatus($identifier, 'pending', $data);
+                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
-                    $this->updateStatus($identifier, 'cancelled', $data);
+                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
                     break;
             }
 
@@ -272,7 +272,7 @@ class PaymentController extends Controller
             foreach ($ticketOrders as $ticketOrder) {
                 $ticket = Ticket::find($ticketOrder->ticket_id);
                 if ($ticket) { // Ensure the ticket exists before updating
-                    $ticket->status = $status === 'completed' ? 'booked' : 'available';
+                    $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
                     $ticket->save();
                 } else {
                     Log::warning('Ticket not found', ['ticket_id' => $ticketOrder->ticket_id]);
@@ -329,7 +329,7 @@ class PaymentController extends Controller
             ]);
 
             // PERBAIKAN: Gunakan query builder dengan kondisi yang benar
-            $pendingOrders = Order::where('user_id', $userId)  // Perhatikan: kolom 'id' merujuk ke user_id 
+            $pendingOrders = Order::where('user_id', $userId)  // Perhatikan: kolom 'id' merujuk ke user_id
                 ->where('event_id', $event->event_id)
                 ->where('status', OrderStatus::PENDING)
                 ->get();
