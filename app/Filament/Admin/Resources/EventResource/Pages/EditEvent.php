@@ -8,8 +8,10 @@ use App\Models\EventVariables;
 use App\Models\TicketCategory;
 use App\Models\TimelineSession;
 use Filament\Actions;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -169,12 +171,13 @@ class EditEvent extends EditRecord
 
             $eventVariables->fill($this->data);
             $colors = Cache::get('color_preview_' . $user->id);
+            if (!$colors) {
+                throw new \Exception('Please retry setting the colors.');
+            }
+
             $eventVariables->fill($colors);
 
             $eventVariables->save();
-
-            // Clear cache for colors
-            Cache::forget('color_preview_' . Auth::user()->id);
 
             // Sync the form state
             $this->form->fill($this->data);
@@ -182,6 +185,18 @@ class EditEvent extends EditRecord
             if ($this->record) {
                 $this->record->fill($this->form->getState());
                 $this->record->save();
+
+                // Clear cache for colors
+                Cache::forget('color_preview_' . Auth::user()->id);
+
+                // Get the redirect URL (like getRedirectUrl)
+                $redirectUrl = $this->getResource()::getUrl('view', ['record' => $eventId]);
+
+                // Determine whether to use navigate (SPA mode)
+                $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);
+
+                // Perform the redirect
+                $this->redirect($redirectUrl, navigate: $navigate);
 
                 Notification::make()
                     ->success()

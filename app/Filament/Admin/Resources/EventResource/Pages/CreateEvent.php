@@ -11,10 +11,11 @@ use App\Models\EventCategoryTimeboundPrice;
 use App\Models\EventVariables;
 use App\Models\TimelineSession;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-
+use Illuminate\Support\Facades\DB;
 
 class CreateEvent extends CreateRecord
 {
@@ -47,92 +48,112 @@ class CreateEvent extends CreateRecord
 
     public function afterCreate()
     {
-        $user = Auth::user();
-        if (!$user) {
-            return;
-        }
-
-        $data = $this->data;
-        $event_id = $this->record->event_id;
-
-        // Create Timeline
-        $ticketTimelines = $data['temp_data']['event_timeline'] ?? [];
-        $timelineFormXDb = [];
-
-        if (!empty($ticketTimelines)) {
-            foreach ($ticketTimelines as $key => $timeline) {
-                $db_timeline = TimelineSession::create([
-                    'event_id' => $event_id,
-                    'name' => $timeline['name'],
-                    'start_date' => $timeline['start_date'],
-                    'end_date' => $timeline['end_date'],
-                ]);
-
-                $timelineFormXDb[$key] = $db_timeline->timeline_id;
+        try {
+            DB::beginTransaction();
+            $user = Auth::user();
+            if (!$user) {
+                throw new \Exception('User not found.');
             }
-        }
 
-        // Create Ticket Categories
-        $ticketCategories = $data['temp_data']['ticket_categories'] ?? [];
-        if (!empty($ticketCategories)) {
-            foreach ($ticketCategories as $category) {
-                // Create Ticket Category
-                $ticketCategory = TicketCategory::create([
-                    'event_id' => $event_id,
-                    'name' => $category['name'],
-                    'color' => $category['color'],
-                ]);
+            $data = $this->data;
+            $event_id = $this->record->event_id;
 
-                $ticketCategories[$category['name']] = $ticketCategory->ticket_category_id;
+            // Create Timeline
+            $ticketTimelines = $data['temp_data']['event_timeline'] ?? [];
+            $timelineFormXDb = [];
 
-                if (!empty($category['event_category_timebound_prices'])) {
-                    foreach ($category['event_category_timebound_prices'] as $timeboundPrice) {
-                        EventCategoryTimeboundPrice::create([
-                            'ticket_category_id' => $ticketCategory->ticket_category_id,
-                            'timeline_id' => $timelineFormXDb[$timeboundPrice['timeline_id']],
-                            'price' => $timeboundPrice['price'],
-                            'is_active' => $timeboundPrice['is_active'],
-                        ]);
+            if (!empty($ticketTimelines)) {
+                foreach ($ticketTimelines as $key => $timeline) {
+                    $db_timeline = TimelineSession::create([
+                        'event_id' => $event_id,
+                        'name' => $timeline['name'],
+                        'start_date' => $timeline['start_date'],
+                        'end_date' => $timeline['end_date'],
+                    ]);
+
+                    $timelineFormXDb[$key] = $db_timeline->timeline_id;
+                }
+            }
+
+            // Create Ticket Categories
+            $ticketCategories = $data['temp_data']['ticket_categories'] ?? [];
+            if (!empty($ticketCategories)) {
+                foreach ($ticketCategories as $category) {
+                    // Create Ticket Category
+                    $ticketCategory = TicketCategory::create([
+                        'event_id' => $event_id,
+                        'name' => $category['name'],
+                        'color' => $category['color'],
+                    ]);
+
+                    $ticketCategories[$category['name']] = $ticketCategory->ticket_category_id;
+
+                    if (!empty($category['event_category_timebound_prices'])) {
+                        foreach ($category['event_category_timebound_prices'] as $timeboundPrice) {
+                            EventCategoryTimeboundPrice::create([
+                                'ticket_category_id' => $ticketCategory->ticket_category_id,
+                                'timeline_id' => $timelineFormXDb[$timeboundPrice['timeline_id']],
+                                'price' => $timeboundPrice['price'],
+                                'is_active' => $timeboundPrice['is_active'],
+                            ]);
+                        }
                     }
                 }
             }
+
+            // Create Event Variables
+            $colors = Cache::get('color_preview_' . $user->id);
+
+            // If no color, stop the request and tell the user to retry
+            if (!$colors) {
+                throw new \Exception('Please retry setting the colors.');
+            }
+
+            $eventVariables = [
+                'event_id' => $event_id,
+
+                'is_locked' => $data['is_locked'] ? (int) $data['is_locked'] : 0,
+                'locked_password' => $data['locked_password'] ?? '',
+
+                'is_maintenance' => $data['is_maintenance'] ? (int) $data['is_locked'] : 0,
+                'maintenance_title' => $data['maintenance_title'] ?? '',
+                'maintenance_message' => $data['maintenance_message'] ?? '',
+                'maintenance_expected_finish' => !empty($data['maintenance_expected_finish'])
+                    ? $data['maintenance_expected_finish']
+                    : now(), // Set to current timestamp if empty
+
+                'logo' => $data['logo'] ?? '',
+                'logo_alt' => $data['logo_alt'] ?? '',
+                'favicon' => $data['favicon'] ?? '',
+            ];
+
+            $eventVariables = array_merge($eventVariables, $colors);
+
+            EventVariables::create($eventVariables);
+
+            // Clear cache for colors
+            Cache::forget('color_preview_' . Auth::user()->id);
+
+            DB::commit();
+
+            // Get the redirect URL (like getRedirectUrl)
+            $redirectUrl = $this->getResource()::getUrl('view', ['record' => $event_id]);
+
+            // Determine whether to use navigate (SPA mode)
+            $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);
+
+            // Perform the redirect
+            $this->redirect($redirectUrl, navigate: $navigate);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Notification::make()
+                ->title('Error')
+                ->danger()
+                ->body($e->getMessage())
+                ->send();
+
+            return;
         }
-
-        // Create Event Variables
-        $colors = Cache::get('color_preview_' . $user->id);
-
-        $eventVariables = [
-            'event_id' => $event_id,
-
-            'is_locked' => $data['is_locked'] ? (int) $data['is_locked'] : 0,
-            'locked_password' => $data['locked_password'] ?? '',
-
-            'is_maintenance' => $data['is_maintenance'] ? (int) $data['is_locked'] : 0,
-            'maintenance_title' => $data['maintenance_title'] ?? '',
-            'maintenance_message' => $data['maintenance_message'] ?? '',
-            'maintenance_expected_finish' => !empty($data['maintenance_expected_finish'])
-                ? $data['maintenance_expected_finish']
-                : now(), // Set to current timestamp if empty
-
-            'logo' => $data['logo'] ?? '',
-            'logo_alt' => $data['logo_alt'] ?? '',
-            'favicon' => $data['favicon'] ?? '',
-        ];
-
-        $eventVariables = array_merge($eventVariables, $colors);
-
-        EventVariables::create($eventVariables);
-
-        // Clear cache for colors
-        Cache::forget('color_preview_' . Auth::user()->id);
-
-        // Get the redirect URL (like getRedirectUrl)
-        $redirectUrl = $this->getResource()::getUrl('view', ['record' => $event_id]);
-
-        // Determine whether to use navigate (SPA mode)
-        $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);
-
-        // Perform the redirect
-        $this->redirect($redirectUrl, navigate: $navigate);
     }
 }

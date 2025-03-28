@@ -155,7 +155,9 @@ class EventResource extends Resource
                                                         Infolists\Components\TextEntry::make('price'),
                                                         Infolists\Components\TextEntry::make('is_active')
                                                             ->label('Status')
-                                                            ->formatStateUsing(fn($state) => $state ? 'Active' : 'Inactive'),
+                                                            ->formatStateUsing(fn($state) => $state ? 'Active' : 'Inactive')
+                                                            ->color(fn($state) => $state ? 'success' : 'danger')
+                                                            ->badge(),
                                                         Infolists\Components\TextEntry::make('timelineSession.name')
                                                             ->label('Timeline')
                                                     ])
