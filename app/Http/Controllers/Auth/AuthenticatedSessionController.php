@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Event;
@@ -72,7 +73,7 @@ class AuthenticatedSessionController extends Controller
         $userModel = User::find($user->id);
         $firstTeam = $userModel->teams()->first();
 
-        if ($userModel->role === 'admin') {
+        if ($userModel->role === UserRole::ADMIN->value) {
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
         } else if ($userModel->role === 'user') {
             Auth::logout();

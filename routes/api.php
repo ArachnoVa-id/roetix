@@ -1,9 +1,10 @@
 <?php
 
-use App\Http\Controllers\PaymentController;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\TicketController;
 
 // Midtrans Payment Callback
 Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])
@@ -13,8 +14,8 @@ Route::middleware('auth:sanctum')->get('/user', function () {
     $userId = Auth::id();
 
     // Get all teams the user belongs to
-    $userTeams = DB::table('user_team')
-        ->where('id', $userId)
+    $userTeams =  User::find($userId)
+        ->teams()
         ->pluck('team_id')
         ->toArray();
 

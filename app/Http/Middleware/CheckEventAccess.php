@@ -3,11 +3,11 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Models\User;
+use App\Models\Event;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class CheckEventAccess
 {
@@ -27,13 +27,12 @@ class CheckEventAccess
             abort(400, 'Missing event_id');
         }
 
-        $userTeamIds = DB::table('user_team')
-            ->where('user_id', $userId)
-            ->pluck('team_id')
+        $userTeamIds = User::find($userId)
+            ->teams()
+            ->pluck('teams.team_id')
             ->toArray();
 
-        $eventTeamId = DB::table('events')
-            ->where('event_id', $eventId)
+        $eventTeamId = Event::where('event_id', $eventId)
             ->value('team_id');
 
         if (!$eventTeamId || !in_array($eventTeamId, $userTeamIds)) {

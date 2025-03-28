@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use App\Enums\UserRole;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Panel;
@@ -52,10 +53,11 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
     protected $fillable = [
         'email',
         'password',
+        'role',
         'first_name',
         'last_name',
-        'role',
         'google_id',
+        'email_verified_at',
         'contact_info'
     ];
 
@@ -100,7 +102,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role == 'admin' || $this->role == 'vendor' || $this->role == 'event-organizer';
+        return $this->role == UserRole::ADMIN->value || $this->role == UserRole::VENDOR->value || $this->role == UserRole::EVENT_ORGANIZER->value;
     }
 
     // has tenant things

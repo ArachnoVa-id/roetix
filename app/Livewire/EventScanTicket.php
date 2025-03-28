@@ -2,26 +2,23 @@
 
 namespace App\Livewire;
 
-use App\Enums\TicketOrderStatus;
-use App\Enums\TicketStatus;
-use Livewire\Component;
-
 use App\Models\Event;
-use App\Models\Order;
 use App\Models\Ticket;
+
+use Livewire\Component;
+use Filament\Tables\Table;
 use App\Models\TicketOrder;
+use App\Enums\TicketOrderStatus;
+use Illuminate\Support\Facades\DB;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
-use Filament\Notifications\Notification;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
 
-use Illuminate\Support\Facades\DB;
+use Filament\Tables\Concerns\InteractsWithTable;
 
 class EventScanTicket extends Component implements HasForms, HasTable
 {
@@ -71,50 +68,40 @@ class EventScanTicket extends Component implements HasForms, HasTable
         ]);
 
         try {
-            DB::transaction(function () {
-                $ticket = Ticket::where('ticket_id', $this->ticket_code)
-                    ->where('event_id', $this->event->event_id)
-                    ->first();
+            DB::beginTransaction();
+            $ticket = Ticket::where('ticket_id', $this->ticket_code)
+                ->where('event_id', $this->event->event_id)
+                ->lockForUpdate()
+                ->first();
 
-                if (!$ticket) {
-                    Notification::make()
-                        ->title('Invalid Ticket')
-                        ->danger()
-                        ->body('Tiket tidak ditemukan atau tidak valid.')
-                        ->send();
-                    return;
-                }
+            if (!$ticket) {
+                throw new \Exception('Tiket tidak ditemukan atau tidak valid.');
+            }
 
-                $ticketOrder = TicketOrder::where('ticket_id', $ticket->ticket_id)->first();
+            $ticketOrder = TicketOrder::where('ticket_id', $ticket->ticket_id)->first();
 
-                if (!$ticketOrder) {
-                    Notification::make()
-                        ->title('Invalid Ticket Order')
-                        ->danger()
-                        ->body('Order tiket tidak ditemukan.')
-                        ->send();
-                    return;
-                }
+            if (!$ticketOrder) {
+                throw new \Exception('Order tiket tidak ditemukan.');
+            }
 
-                $ticket->status = TicketStatus::BOOKED;
-                $ticket->save();
+            $ticketOrder->status = TicketOrderStatus::SCANNED;
+            $ticketOrder->save();
 
-                $ticketOrder->status = TicketOrderStatus::SCANNED;
-                $ticketOrder->save();
+            DB::commit();
 
-                // Notifikasi sukses
-                Notification::make()
-                    ->title('Ticket Berhasil discan')
-                    ->success()
-                    ->body("Tiket dengan kode {$this->ticket_code} berhasil discan.")
-                    ->send();
-            });
+            // Notifikasi sukses
+            Notification::make()
+                ->title('Ticket Berhasil discan')
+                ->success()
+                ->body("Tiket dengan kode {$this->ticket_code} berhasil discan.")
+                ->send();
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error')
                 ->danger()
-                ->body('Terjadi kesalahan saat memproses tiket. Coba lagi.')
+                ->body($e->getMessage())
                 ->send();
+            return;
         }
 
 

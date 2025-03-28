@@ -17,8 +17,9 @@ class EditVenue extends EditRecord
                 ->url(fn() => url()->previous())
                 ->icon('heroicon-o-arrow-left')
                 ->color('info'),
-            Actions\DeleteAction::make('Delete Event')
-                ->icon('heroicon-o-trash'),
+            VenueResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
         ];
     }
 }

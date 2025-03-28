@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\UserContact;
@@ -20,7 +21,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'user',
-                'role' => 'user',
+                'role' => UserRole::USER->value,
                 'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
@@ -30,7 +31,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'admin',
-                'role' => 'admin',
+                'role' => UserRole::ADMIN->value,
                 'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
@@ -40,7 +41,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'vendor1',
-                'role' => 'vendor',
+                'role' => UserRole::VENDOR->value,
                 'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
@@ -50,7 +51,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'vendor2',
-                'role' => 'vendor',
+                'role' => UserRole::VENDOR->value,
                 'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
@@ -60,7 +61,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'eo1',
-                'role' => 'event-organizer',
+                'role' => UserRole::EVENT_ORGANIZER->value,
                 'contact_info' => UserContact::factory()->create()->contact_id,
             ],
 
@@ -70,7 +71,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'eo2',
-                'role' => 'event-organizer',
+                'role' => UserRole::EVENT_ORGANIZER->value,
                 'contact_info' => UserContact::factory()->create()->contact_id,
             ],
         ];

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -39,7 +40,7 @@ class TeamFactory extends Factory
 
             // Make sure the role of the user is not admin and user
             $usingUsers = $allUsers->filter(function (User $user) {
-                return !in_array($user->role, ['admin', 'user']);
+                return !in_array($user->role, [UserRole::ADMIN->value, UserRole::USER->value]);
             });
 
             // Count how many users existing

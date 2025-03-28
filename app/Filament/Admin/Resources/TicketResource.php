@@ -16,6 +16,7 @@ use App\Enums\TicketStatus;
 use App\Models\TicketOrder;
 use Filament\Facades\Filament;
 use App\Enums\TicketOrderStatus;
+use App\Enums\UserRole;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
@@ -54,7 +55,7 @@ class TicketResource extends Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin', 'event-organizer']);
+        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
     }
 
     public static function TraceTicketOrderButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -440,8 +441,7 @@ class TicketResource extends Resource
                         Tables\Actions\Action::make('transferOwnership')
                     ),
                 ])
-            ])
-            ->bulkActions([]);
+            ]);
     }
 
     public static function getRelations(): array

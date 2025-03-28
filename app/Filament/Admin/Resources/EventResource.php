@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Enums\EventStatus;
+use App\Enums\UserRole;
 use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Tables;
@@ -19,7 +20,6 @@ use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationM
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
-use Livewire\Livewire;
 
 class EventResource extends Resource
 {
@@ -32,7 +32,7 @@ class EventResource extends Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin', 'event-organizer']);
+        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
     }
 
     public static function canCreate(): bool
@@ -72,7 +72,7 @@ class EventResource extends Resource
             ->form([
                 Forms\Components\Select::make('status')
                     ->label('Status')
-                    ->options(EventStatus::editableOptions())
+                    ->options(fn($record) => EventStatus::editableOptions(EventStatus::tryFrom($record->status)))
                     ->default(fn($record) => $record->status)
                     ->required(),
             ])
@@ -981,10 +981,12 @@ class EventResource extends Resource
         $defaultActions = [
             Tables\Actions\ViewAction::make()->modalHeading('View Event'),
             Tables\Actions\EditAction::make(),
-            self::ChangeStatusButton(Tables\Actions\Action::make('changeStatus')),
         ];
 
-        if ($role == 'event-organizer') $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));
+        if ($role == UserRole::EVENT_ORGANIZER->value) {
+            $defaultActions[] = self::ChangeStatusButton(Tables\Actions\Action::make('changeStatus'));
+            $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));
+        }
 
         return $table
             ->columns([
@@ -1015,18 +1017,13 @@ class EventResource extends Resource
             ->filters(
                 [
                     Tables\Filters\SelectFilter::make('status')
-                        ->options(EventStatus::editableOptions())
+                        ->options(EventStatus::toArray())
                         ->multiple()
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
                 Tables\Actions\ActionGroup::make($defaultActions),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    // Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ]);
     }
 

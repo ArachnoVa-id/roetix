@@ -29,8 +29,6 @@ class ViewVenue extends ViewRecord
             VenueResource::ChangeStatusButton(
                 Actions\Action::make('changeStatus')
             ),
-            Actions\DeleteAction::make('Delete Event')
-                ->icon('heroicon-o-trash'),
         ];
     }
 }

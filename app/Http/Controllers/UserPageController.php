@@ -2,22 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Event;
-use App\Models\EventVariables;
-use App\Models\Ticket;
-use App\Models\Seat;
-use App\Models\Venue;
-use App\Models\TimelineSession;
-use App\Models\TicketCategory;
-use App\Models\EventCategoryTimeboundPrice;
-use App\Models\Order;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Seat;
+use Inertia\Inertia;
+use App\Models\Event;
+use App\Models\Order;
+use App\Models\Venue;
+use App\Models\Ticket;
+use App\Enums\TicketStatus;
+use App\Models\TicketOrder;
+use Illuminate\Http\Request;
+use App\Models\EventVariables;
+use App\Models\TicketCategory;
+use App\Models\TimelineSession;
+use App\Enums\TicketOrderStatus;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\EventCategoryTimeboundPrice;
 
 class UserPageController extends Controller
 {
@@ -280,22 +282,23 @@ class UserPageController extends Controller
             }
 
             // Dapatkan order_id untuk user yang sedang login
-            $userOrderIds = Order::where('user_id', Auth::id())->pluck('order_id')->toArray();
+            $userOrderIds = Order::where('user_id', Auth::id())
+                ->where('event_id', $event->event_id)
+                ->pluck('order_id')->toArray();
 
             // Struktur query join berdasarkan struktur database Anda
             // Ini adalah contoh struktur, sesuaikan dengan struktur database yang sebenarnya
-            $userTickets = DB::table('tickets')
+            $userTickets = Ticket::select(
+                'tickets.*',
+                'orders.order_date',
+                'orders.status as ticket_order_status'
+            )
                 ->join('ticket_order', 'tickets.ticket_id', '=', 'ticket_order.ticket_id')
                 ->join('orders', 'ticket_order.order_id', '=', 'orders.order_id')
                 ->where('tickets.event_id', $event->event_id)
-                ->where('tickets.status', 'booked')
-                ->whereIn('orders.order_id', $userOrderIds)
-                ->whereIn('ticket_order.status', ['enabled', 'scanned']) // Only get enabled or scanned tickets (exclude deactivated)
-                ->select('tickets.*', 'orders.order_date', 'ticket_order.status as ticket_order_status')
+                ->whereIn('ticket_order.order_id', $userOrderIds)
+                ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED, TicketOrderStatus::SCANNED])
                 ->get();
-
-            // Untuk debug
-            Log::info('Found ' . count($userTickets) . ' tickets for user ' . Auth::id() . ' in event ' . $event->event_id);
 
             // Load seat data for each ticket
             $tickets = [];

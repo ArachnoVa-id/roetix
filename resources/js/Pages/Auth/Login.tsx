@@ -7,8 +7,8 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import { Event, EventProps } from '@/types/front-end';
 import { Head, Link, useForm } from '@inertiajs/react';
 import axios from 'axios';
-import { FormEventHandler, useEffect } from 'react';
 import { MailIcon } from 'lucide-react';
+import { FormEventHandler, useEffect } from 'react';
 
 export default function Login({
     status,
@@ -62,7 +62,7 @@ export default function Login({
                 </div>
             )}
 
-            <div className='mb-6 text-center font-bold'>{event.name}</div>
+            <div className="mb-6 text-center font-bold">{event.name}</div>
             {event.name === 'Admin NovaTix' ? (
                 <form onSubmit={submit}>
                     <div>
@@ -76,9 +76,9 @@ export default function Login({
                             className="mt-1 block w-full"
                             autoComplete="username"
                             isFocused={true}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                setData('email', e.target.value)
-                            }
+                            onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>,
+                            ) => setData('email', e.target.value)}
                         />
 
                         <InputError message={errors.email} className="mt-2" />
@@ -94,12 +94,15 @@ export default function Login({
                             value={data.password}
                             className="mt-1 block w-full"
                             autoComplete="current-password"
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                setData('password', e.target.value)
-                            }
+                            onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>,
+                            ) => setData('password', e.target.value)}
                         />
 
-                        <InputError message={errors.password} className="mt-2" />
+                        <InputError
+                            message={errors.password}
+                            className="mt-2"
+                        />
                     </div>
 
                     <div className="mt-4 block">
@@ -110,7 +113,10 @@ export default function Login({
                                 onChange={(
                                     e: React.ChangeEvent<HTMLInputElement>,
                                 ) =>
-                                    setData('remember', e.target.checked as boolean)
+                                    setData(
+                                        'remember',
+                                        e.target.checked as boolean,
+                                    )
                                 }
                             />
                             <span className="ms-2 text-sm text-gray-600">
@@ -133,18 +139,15 @@ export default function Login({
                             Log in
                         </PrimaryButton>
                     </div>
-                    {/* <a
-                        href={route('auth.google', {}, false)}
-                        className="mt-2 w-full text-center"
-                    >
-                        Login With Google
-                    </a> */}
                 </form>
             ) : (
-                <div className='flex'>
+                <div className="flex">
                     <a
-                        href={route('auth.google', {}, false)}
-                        className="mt-2 w-full text-center bg-red-700 text-white font-bold p-[1vw] rounded-md flex space-x-4 justify-center"
+                        href={route(
+                            client ? 'client-auth.google' : 'auth.google',
+                            client,
+                        )}
+                        className="mt-2 flex w-full justify-center space-x-4 rounded-md bg-red-700 p-[1vw] text-center font-bold text-white"
                     >
                         <MailIcon />
                         <span>Login With Google</span>

@@ -233,8 +233,11 @@ class EditEvent extends EditRecord
                 ->url(fn() => url()->previous())
                 ->icon('heroicon-o-arrow-left')
                 ->color('info'),
+            EventResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
             EventResource::EditSeatsButton(
-                Actions\Action::make('Edit Seats')
+                Actions\Action::make('editSeats')
             )->button(),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),

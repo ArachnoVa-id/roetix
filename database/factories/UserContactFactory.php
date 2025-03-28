@@ -19,10 +19,16 @@ class UserContactFactory extends Factory
     public function definition(): array
     {
         return [
-            'phone_number' => $this->faker->phoneNumber, // Menghasilkan nomor telepon acak
-            'email' => $this->faker->unique()->safeEmail, // Menghasilkan email unik
-            'whatsapp_number' => $this->faker->phoneNumber, // Menghasilkan nomor whatsapp acak (sama dengan phone_number)
-            'instagram' => $this->faker->userName, // Menghasilkan nama pengguna Instagram acak
+            'nickname' => $this->faker->userName,
+            'fullname' => $this->faker->name,
+            'avatar' => $this->faker->imageUrl(),
+            'phone_number' => $this->faker->phoneNumber,
+            'email' => $this->faker->unique()->safeEmail,
+            'whatsapp_number' => $this->faker->phoneNumber,
+            'instagram' => '@' . $this->faker->userName,
+            'birth_date' => $this->faker->date,
+            'gender' => $this->faker->randomElement(['M', 'F']),
+            'address' => $this->faker->address,
         ];
     }
 }

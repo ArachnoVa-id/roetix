@@ -23,7 +23,7 @@ class UserResource extends Resources\Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin']);
+        return $user && in_array($user->role, [UserRole::ADMIN->value]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTeams = true): Infolists\Infolist

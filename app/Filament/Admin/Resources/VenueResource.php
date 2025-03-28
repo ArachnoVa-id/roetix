@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources;
 
+use App\Enums\UserRole;
 use App\Enums\VenueStatus;
 use Filament\Forms;
 use Filament\Tables;
@@ -14,6 +15,7 @@ use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationMa
 use App\Models\User;
 use Filament\Actions;
 use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Model;
 
 class VenueResource extends Resources\Resource
 {
@@ -25,7 +27,7 @@ class VenueResource extends Resources\Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin', 'vendor']);
+        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::VENDOR->value]);
     }
 
     public static function canCreate(): bool
@@ -36,10 +38,10 @@ class VenueResource extends Resources\Resource
         }
 
         $user = User::find($user->id);
-        
+
         $tenant_id = Filament::getTenant()->team_id;
-        
-        
+
+
         $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
 
         if (!$team) {
@@ -47,6 +49,11 @@ class VenueResource extends Resources\Resource
         }
 
         return $team->vendor_quota > 0;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -247,12 +254,6 @@ class VenueResource extends Resources\Resource
                     self::EditVenueButton(
                         Tables\Actions\Action::make('editVenue')
                     ),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -54,18 +54,42 @@ enum EventStatus: string implements HasLabel, HasColor
         return array_map(fn($case) => $case->getLabel(), self::cases());
     }
 
-    public static function editableOptions()
+    public static function editableOptions(EventStatus $currentStatus)
     {
-        return [
-            self::PLANNED->value => self::PLANNED->getLabel(),
-            self::ACTIVE->value => self::ACTIVE->getLabel(),
-            self::COMPLETED->value => self::COMPLETED->getLabel(),
-            self::CANCELLED->value => self::CANCELLED->getLabel(),
-        ];
+        switch ($currentStatus) {
+            case self::PLANNED:
+                return [
+                    self::PLANNED->value => self::PLANNED->getLabel(),
+                    self::ACTIVE->value => self::ACTIVE->getLabel(),
+                    self::CANCELLED->value => self::CANCELLED->getLabel(),
+                ];
+            case self::ACTIVE:
+                return [
+                    self::ACTIVE->value => self::ACTIVE->getLabel(),
+                    self::COMPLETED->value => self::COMPLETED->getLabel(),
+                    self::CANCELLED->value => self::CANCELLED->getLabel(),
+                ];
+            case self::COMPLETED:
+                return [
+                    self::COMPLETED->value => self::COMPLETED->getLabel(),
+                ];
+            case self::CANCELLED:
+                return [
+                    self::CANCELLED->value => self::CANCELLED->getLabel(),
+                    self::PLANNED->value => self::PLANNED->getLabel(),
+                ];
+            default:
+                return [];
+        }
     }
 
-    public static function getEditableOptionsValues()
+    public static function getFilterOptions()
     {
-        return array_keys(self::editableOptions());
+        return [
+            self::PLANNED->getLabel() => self::PLANNED->getLabel(),
+            self::ACTIVE->getLabel() => self::ACTIVE->getLabel(),
+            self::COMPLETED->getLabel() => self::COMPLETED->getLabel(),
+            self::CANCELLED->getLabel() => self::CANCELLED->getLabel(),
+        ];
     }
 }

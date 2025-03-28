@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Closure;
 use Illuminate\Container\Attributes\Log;
@@ -39,7 +40,7 @@ class ValidateMainDomain
 
         $user = User::find($user->id);
 
-        if ($user->role === 'user') {
+        if ($user->role === UserRole::USER->value) {
             Auth::logout();
             return redirect()->route('login');
         }
@@ -51,7 +52,7 @@ class ValidateMainDomain
         }
 
         if ($request->route()->getName() === 'login') {
-            if ($user->role == 'admin') {
+            if ($user->role == UserRole::ADMIN->value) {
                 return redirect()->route('filament.novatix-admin.pages.dashboard');
             }
             return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]);

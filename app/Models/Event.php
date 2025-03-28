@@ -42,6 +42,16 @@ class Event extends Model
         });
     }
 
+    public function eventYear(): string
+    {
+        return $this->start_date->format('Y');
+    }
+
+    public function getAllTicketsPDFTitle()
+    {
+        return strtoupper($this->slug) . '-' . $this->eventYear() . '-TICKETS' . '.pdf';
+    }
+
     public function timelineSessions(): HasMany
     {
         return $this

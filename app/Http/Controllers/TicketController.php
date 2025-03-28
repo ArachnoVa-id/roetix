@@ -3,19 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
-use App\Models\Ticket;
-use App\Models\User;
 use App\Models\Order;
+use App\Models\Ticket;
+use App\Models\TicketOrder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
-use ZipArchive;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class TicketController extends Controller
 {
@@ -56,8 +50,7 @@ class TicketController extends Controller
 
             // Check pivot relationship
             if (!$hasAccess) {
-                $relatedOrders = DB::table('ticket_order')
-                    ->where('ticket_id', $ticket->ticket_id)
+                $relatedOrders = TicketOrder::where('ticket_id', $ticket->ticket_id)
                     ->whereIn('order_id', $userOrderIds)
                     ->count();
 
@@ -115,7 +108,7 @@ class TicketController extends Controller
                 ->setOptions($pdfOptions);
 
             // Return PDF download
-            return $pdf->download('ticket-' . $ticket->ticket_id . '.pdf');
+            return $pdf->download($ticket->getTicketPDFTitle());
         } catch (\Exception $e) {
             Log::error('Failed to download ticket: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
@@ -169,8 +162,7 @@ class TicketController extends Controller
 
                 // Check pivot relationship
                 if (!$hasAccess) {
-                    $relatedOrders = DB::table('ticket_order')
-                        ->where('ticket_id', $ticket->ticket_id)
+                    $relatedOrders = TicketOrder::where('ticket_id', $ticket->ticket_id)
                         ->whereIn('order_id', $userOrderIds)
                         ->count();
 
@@ -212,11 +204,8 @@ class TicketController extends Controller
                 ->setPaper('a4', 'portrait')
                 ->setOptions($pdfOptions);
 
-            // Generate a filename based on the event
-            $filename = 'tickets-' . $event->slug . '-' . now()->format('YmdHis') . '.pdf';
-
             // Return the PDF file
-            return $pdf->download($filename);
+            return $pdf->download($event->getAllTicketsPDFTitle());
         } catch (\Exception $e) {
             Log::error('Failed to download all tickets: ' . $e->getMessage(), [
                 'event_id' => $eventId,
@@ -276,7 +265,7 @@ class TicketController extends Controller
             $pdf = PDF::loadView('tickets.pdf', $data);
 
             // Return PDF download
-            return $pdf->download('ticket-' . $ticket->ticket_id . '.pdf');
+            return $pdf->download($ticket->getTicketPDFTitle());
         } catch (\Exception $e) {
             Log::error('Failed to force download ticket', [
                 'ticketId' => $ticketId ?? 'not provided',

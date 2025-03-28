@@ -16,6 +16,7 @@ class NovatixAdminPanelProvider extends PanelProvider
             SharedPanelSetup::commonSetup(
                 $panel
                     ->id('novatix-admin')
+                    ->domain(config('app.domain'))
                     ->path('novatix-admin')
                     ->colors([
                         'primary' => Color::Amber,

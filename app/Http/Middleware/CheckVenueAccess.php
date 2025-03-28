@@ -3,11 +3,11 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Models\User;
+use App\Models\Venue;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class CheckVenueAccess
 {
@@ -28,14 +28,13 @@ class CheckVenueAccess
         }
 
         // Ambil semua team_id milik user yang login
-        $userTeamIds = DB::table('user_team')
-            ->where('user_id', $userId)
-            ->pluck('team_id')
+        $userTeamIds = User::find($userId)
+            ->teams()
+            ->pluck('teams.team_id')
             ->toArray();
 
         // Ambil team_id dari venue
-        $venueTeamId = DB::table('venues')
-            ->where('venue_id', $venueId)
+        $venueTeamId = Venue::where('venue_id', $venueId)
             ->value('team_id');
 
         // Cek apakah user memiliki akses ke venue ini

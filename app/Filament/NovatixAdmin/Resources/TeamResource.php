@@ -2,6 +2,7 @@
 
 namespace App\Filament\NovatixAdmin\Resources;
 
+use App\Enums\UserRole;
 use App\Filament\NovatixAdmin\Resources\TeamResource\Pages;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\EventsRelationManager;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\UsersRelationManager;
@@ -23,7 +24,7 @@ class TeamResource extends Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin']);
+        return $user && in_array($user->role, [UserRole::ADMIN->value]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showMembers = true, bool $showEvents = true, bool $showVenues = true): Infolists\Infolist

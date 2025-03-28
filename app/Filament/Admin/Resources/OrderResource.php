@@ -14,6 +14,7 @@ use App\Enums\OrderStatus;
 use Filament\Tables\Table;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
+use App\Enums\UserRole;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
@@ -39,7 +40,7 @@ class OrderResource extends Resource
     {
         $user = Auth::user();
 
-        return $user && in_array($user->role, ['admin', 'event-organizer']);
+        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
     }
 
     public static function tableQuery(): Builder
@@ -273,8 +274,7 @@ class OrderResource extends Resource
                     Tables\Actions\ViewAction::make()->modalHeading('View Order'),
                     Tables\Actions\EditAction::make(),
                 ])
-            ])
-            ->bulkActions([]);
+            ]);
     }
 
     public static function getRelations(): array
