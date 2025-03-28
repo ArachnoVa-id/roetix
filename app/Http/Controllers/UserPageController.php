@@ -269,7 +269,10 @@ class UserPageController extends Controller
 
             // Gunakan try-catch untuk mendapatkan EventVariables atau gunakan default
             try {
-                $props = EventVariables::findOrFail($event->event_variables_id);
+                $props = $event->eventVariables;
+                if (!$props) {
+                    throw new \Exception('EventVariables not found.');
+                }
             } catch (\Exception $e) {
                 // Jika event_variables tidak ditemukan, gunakan nilai default
                 Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');

@@ -126,7 +126,7 @@ export default function MyTickets({
                             </div>
 
                             {tickets && tickets.length > 0 ? (
-                                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <div className="flex w-full flex-wrap gap-6">
                                     {tickets.map((ticket: TicketProps) => (
                                         <Ticket
                                             key={ticket.id}

@@ -5,17 +5,17 @@
   </div>
 
   {{-- Live Preview --}}
-  <div class="flex flex-col gap-2">
+  <div class="flex flex-col gap-3">
     <div>
       <h2>Color Preview</h2>
     </div>
 
-    <div class="overflow-hidden p-6 shadow-xl rounded-lg"
+    <div class="overflow-hidden p-6 shadow-xl rounded-lg flex flex-col gap-4"
       style="background-color: {{ $primary_color }}; color: {{ $text_primary_color }};">
       {{-- {/* Three-column grid for A, B, C sections */} --}}
       <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         {{-- {/* Column A: Event Info */} --}}
-        <div class="flex flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
+        <div class="flex flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg"
           style="background-color: {{ $secondary_color }}; border-right: 4px solid {{ $primary_color }};">
           <h2 class="text-md font-bold" style="color: {{ $text_primary_color }};">
             Event Name
@@ -76,7 +76,7 @@
         </div>
 
         {{-- {/* Column B: Timeline and Status */} --}}
-        <div class="flex flex-col justify-between gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
+        <div class="flex flex-col justify-between gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg"
           style="background-color: {{ $secondary_color }}; border-right: 4px solid {{ $primary_color }};">
           <div class="flex flex-col gap-3">
             <div class="relative flex w-full items-center justify-start">
@@ -115,7 +115,7 @@
           </div>
           <div>
             {{-- {/* Add the status legends */} --}}
-            <div class="flex w-full items-center justify-center gap-4 p-2">
+            <div class="flex w-full items-center justify-center gap-4 p-3">
               <div class="flex items-center gap-3">
                 <div class="h-3 w-3 mr-1.5 rounded-full" style="background-color: rgb(17, 180, 74);"></div>
                 <span class="text-xs leading-[.8]" style="color: {{ $text_secondary_color }};">
@@ -127,7 +127,7 @@
         </div>
 
         {{-- {/* Column C: Ticket Categories */} --}}
-        <div class="flex flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
+        <div class="flex flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg"
           style="background-color: {{ $secondary_color }}; border-right: 4px solid {{ $primary_color }};">
           {{-- {/* Ticket Categories with Prices */} --}}
           <h3 class="text-center text-md font-semibold" style="color: {{ $text_primary_color }};">
@@ -135,7 +135,7 @@
           </h3>
           <div class="grid grid-cols-2 gap-3">
 
-            <div key={type} class="flex rounded-lg p-2 shadow-sm gap-3"
+            <div key={type} class="flex rounded-lg p-3 shadow-sm gap-3"
               style="background-color: rgba(255, 255, 255, 0.2); border-left: 3px solid #16a34a;">
               <div class="h-3 w-3 rounded-full" style="background-color: #16a34a;"></div>
               <div class="flex w-full flex-col gap-1">
@@ -153,13 +153,12 @@
       </div>
 
       {{-- {/* Seat Map Section - takes up more vertical space */} --}}
-      <div class="mt-2">
+
+      <div class="rounded-lg p-3" style="background-color: {{ $secondary_color }}; height: 100px;">
         <h3 class="mb-2 text-center text-md font-bold">
           Seat Map
         </h3>
-        <div class="rounded-lg border p-2" style="background-color: {{ $secondary_color }}; height: 100px;">
-          <div class="flex h-full justify-center overflow-auto">
-          </div>
+        <div class="flex h-full justify-center overflow-auto">
         </div>
       </div>
     </div>

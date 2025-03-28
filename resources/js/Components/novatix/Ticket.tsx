@@ -129,7 +129,7 @@ export default function Ticket({
 
     return (
         <div
-            className={`relative mx-auto flex flex-col rounded-lg ${colors.border} w-full max-w-md transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? 'hover:scale-[1.02] hover:shadow-xl' : ''}`}
+            className={`relative flex grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? 'hover:scale-[1.02] hover:shadow-xl' : ''}`}
             style={{
                 opacity: status === 'scanned' ? 0.6 : 1,
                 position: 'relative', // Add this to ensure absolute positioning works for the watermark
@@ -199,7 +199,7 @@ export default function Ticket({
                 </div>
 
                 {/* Right side with ticket info */}
-                <div className="flex w-[60%] flex-col justify-between bg-white p-4">
+                <div className="flex w-[60%] flex-col justify-between bg-white p-4 text-black">
                     <div className="space-y-1">
                         <RowComponent idtf="ID" content={ticketCode} />
                         <RowComponent

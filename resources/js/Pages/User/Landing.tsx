@@ -2,20 +2,20 @@ import Toaster from '@/Components/novatix/Toaster'; // Import the Toaster compon
 import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransactionButton';
-import SeatMapDisplay from '@/Pages/Seat/SeatMapDisplay';
-import { 
-    Layout, 
-    SeatItem, 
-    SavedTransaction,
-    PaymentResponse,
+import {
+    Layout,
     MidtransCallbacks,
-    MidtransTransactionResult,
     MidtransError,
-    Timeline
-  } from '@/Pages/Seat/types';
+    MidtransTransactionResult,
+    PaymentResponse,
+    SavedTransaction,
+    SeatItem,
+    Timeline,
+} from '@/Pages/Seat/types';
 import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import SeatMapDisplay from '../Seat/SeatMapDisplay';
 interface Venue {
     venue_id: string;
     name: string;
@@ -586,7 +586,7 @@ export default function Landing({
                             }}
                         >
                             <div className="p-6 text-gray-900">
-                                <h1 className="text-xl font-bold text-red-600">
+                                <h1 className="text-lg font-bold text-red-600">
                                     Error
                                 </h1>
                                 <p className="mt-4">{error}</p>
@@ -605,7 +605,7 @@ export default function Landing({
             {!isBookingAllowed && event && (
                 <div className="py-2">
                     <div className="mx-auto w-full sm:px-6 lg:px-8">
-                        <div className="overflow-hidden bg-yellow-100 p-2 shadow-md sm:rounded-lg">
+                        <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
                             <p className="text-center font-medium text-yellow-800">
                                 {eventStatusMessage}
                             </p>
@@ -629,7 +629,7 @@ export default function Landing({
                         >
                             {event && venue ? (
                                 <>
-                                    <h1 className="text-xl font-bold">
+                                    <h1 className="text-lg font-bold">
                                         {event.name}
                                     </h1>
                                     <p
@@ -653,7 +653,7 @@ export default function Landing({
                                     </p>
                                 </>
                             ) : (
-                                <h1 className="text-xl font-bold">
+                                <h1 className="text-lg font-bold">
                                     {(client ? client + ' : ' : '') +
                                         'Buy Tickets Here'}
                                 </h1>
@@ -674,7 +674,7 @@ export default function Landing({
                                 color: props.text_primary_color,
                             }}
                         >
-                            <h3 className="mb-3 text-xl font-semibold">
+                            <h3 className="mb-3 text-lg font-semibold">
                                 Current Ticket Period
                             </h3>
                             <div className="rounded-lg bg-blue-50 p-2 text-blue-800">
@@ -699,17 +699,17 @@ export default function Landing({
             <div className="py-4">
                 <div className="mx-auto w-full sm:px-6 lg:px-8">
                     <div
-                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        className="flex flex-col overflow-hidden p-6 shadow-xl sm:rounded-lg"
                         style={{
                             backgroundColor: props.primary_color,
                             color: props.text_primary_color,
                         }}
                     >
                         {/* Three-column grid for A, B, C sections */}
-                        <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div className="mb-6 flex w-full flex-col gap-4 md:flex-row">
                             {/* Column A: Event Info */}
                             <div
-                                className="flex flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
+                                className="flex w-full flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg md:w-[30%]"
                                 style={{
                                     backgroundColor: props.secondary_color,
                                     borderRight: `4px solid ${props.primary_color}`,
@@ -718,7 +718,7 @@ export default function Landing({
                                 {event && venue ? (
                                     <>
                                         <h2
-                                            className="text-xl font-bold"
+                                            className="text-lg font-bold"
                                             style={{
                                                 color: props.text_primary_color,
                                             }}
@@ -875,7 +875,7 @@ export default function Landing({
                                         </div>
                                     </>
                                 ) : (
-                                    <h2 className="text-xl font-bold">
+                                    <h2 className="text-lg font-bold">
                                         {(client ? client + ' : ' : '') +
                                             'Buy Tickets Here'}
                                     </h2>
@@ -884,7 +884,7 @@ export default function Landing({
 
                             {/* Column B: Timeline and Status */}
                             <div
-                                className="flex flex-col justify-between gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
+                                className="flex w-full flex-col justify-between gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg md:w-[30%]"
                                 style={{
                                     backgroundColor: props.secondary_color,
                                     borderRight: `4px solid ${props.primary_color}`,
@@ -893,7 +893,7 @@ export default function Landing({
                                 <div className="flex flex-col gap-3">
                                     <div className="relative flex w-full items-center justify-start">
                                         <h3
-                                            className="w-full text-center text-xl font-semibold"
+                                            className="w-full text-center text-lg font-semibold"
                                             style={{
                                                 color: props.text_primary_color,
                                             }}
@@ -1011,7 +1011,7 @@ export default function Landing({
                                 </div>
                                 <div>
                                     {/* Add the status legends */}
-                                    <div className="flex w-full items-center justify-center gap-4 p-2">
+                                    <div className="flex w-full items-center justify-center gap-4">
                                         {statusLegends.map((legend, i) => (
                                             <div
                                                 key={i}
@@ -1036,7 +1036,7 @@ export default function Landing({
 
                             {/* Column C: Ticket Categories */}
                             <div
-                                className="flex flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-2 shadow-lg"
+                                className="flex w-full flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg md:w-[40%]"
                                 style={{
                                     backgroundColor: props.secondary_color,
                                     borderRight: `4px solid ${props.primary_color}`,
@@ -1044,14 +1044,14 @@ export default function Landing({
                             >
                                 {/* Ticket Categories with Prices */}
                                 <h3
-                                    className="text-center text-xl font-semibold"
+                                    className="text-center text-lg font-semibold"
                                     style={{
                                         color: props.text_primary_color,
                                     }}
                                 >
                                     Category & Price
                                 </h3>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-wrap gap-2">
                                     {ticketTypes.map((type) => {
                                         // Find the category and price information
                                         const category = ticketCategories.find(
@@ -1076,7 +1076,7 @@ export default function Landing({
                                         return (
                                             <div
                                                 key={type}
-                                                className="flex rounded-lg p-2 shadow-sm"
+                                                className="flex grow rounded-lg p-3 shadow-sm"
                                                 style={{
                                                     backgroundColor: `${ticketTypeColors[type]}20`,
                                                     borderLeft: `3px solid ${ticketTypeColors[type]}`,
@@ -1150,18 +1150,18 @@ export default function Landing({
                         )} */}
 
                         {/* Seat Map Section - takes up more vertical space */}
-                        <div className="mt-2">
-                            <h3 className="mb-2 text-center text-xl font-bold">
+                        <div
+                            className="borde flex flex-col items-center justify-center gap-2 rounded-lg p-3"
+                            style={{
+                                backgroundColor: props.secondary_color,
+                                height: '80vh',
+                            }}
+                        >
+                            <h3 className="h-fit text-center text-lg font-bold">
                                 Seat Map
                             </h3>
-                            <div
-                                className="rounded-lg border p-2"
-                                style={{
-                                    backgroundColor: props.secondary_color,
-                                    height: '80vh',
-                                }}
-                            >
-                                <div className="flex h-full justify-center overflow-auto">
+                            <div className="flex h-[92%] w-full overflow-clip">
+                                <div className="flex w-full justify-center overflow-auto">
                                     <SeatMapDisplay
                                         config={layout}
                                         props={props}
@@ -1178,7 +1178,7 @@ export default function Landing({
             </div>
 
             {/* Keep the selected seats section below */}
-            <div className="py-4">
+            <div className="pb-4">
                 <div className="mx-auto w-full sm:px-6 lg:px-8">
                     <div
                         className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
@@ -1187,7 +1187,7 @@ export default function Landing({
                             color: props.text_primary_color,
                         }}
                     >
-                        <h3 className="mb-4 text-xl font-semibold">
+                        <h3 className="mb-4 text-lg font-semibold">
                             Selected Seats
                         </h3>
                         {selectedSeats.length === 0 ? (
@@ -1231,7 +1231,7 @@ export default function Landing({
                         {/* Subtotal, Tax, and Total */}
                         {selectedSeats.length > 0 && (
                             <div
-                                className="mt-6 space-y-2 rounded-lg p-2"
+                                className="mt-6 space-y-2 rounded-lg p-3"
                                 style={{
                                     backgroundColor: props.secondary_color,
                                     color: props.text_secondary_color,
