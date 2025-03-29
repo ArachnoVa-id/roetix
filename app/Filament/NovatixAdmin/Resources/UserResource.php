@@ -168,6 +168,7 @@ class UserResource extends Resources\Resource
                         Forms\Components\Repeater::make('teams')
                             ->grid(4)
                             ->live()
+                            ->minItems(1)
                             ->addable(function ($get) {
                                 // overall team size
                                 $teamSize = Team::count();
