@@ -102,7 +102,7 @@ export default function Landing({
         const fetchPendingTransactions = async (): Promise<void> => {
             try {
                 // Tambahkan timestamp untuk mencegah caching
-                const response = await fetch(`/api/pending-transactions`);
+                const response = await fetch(route('payment.pending', client));
 
                 if (!response.ok) {
                     console.error('Server response:', await response.text());
@@ -129,7 +129,7 @@ export default function Landing({
         };
 
         fetchPendingTransactions();
-    }, []);
+    }, [client]);
 
     const createCallbacks = (): MidtransCallbacks => {
         return {
@@ -161,7 +161,6 @@ export default function Landing({
     const resumePayment = async (token: string) => {
         if (!window.snap) return;
 
-        console.log('Skibidi');
         showSuccess('Preparing your payment...');
 
         try {
@@ -176,6 +175,36 @@ export default function Landing({
                 showError(errorMsg);
             } else {
                 showError('Failed to resume payment. Please try again.');
+            }
+        }
+    };
+
+    const cancelPayment = async (order_ids: string[]) => {
+        if (!order_ids) return;
+
+        showSuccess('Cancelling your payment...');
+
+        try {
+            const response = await axios.post(route('payment.cancel', client), {
+                order_ids,
+            });
+
+            if (response.data.success) {
+                showSuccess('Payment cancelled successfully');
+                window.location.reload();
+            } else {
+                showError(response.data.message || 'Failed to cancel payment');
+            }
+        } catch (err) {
+            console.error('Failed to cancel payment:', err);
+
+            if (axios.isAxiosError(err)) {
+                const errorMsg =
+                    err.response?.data?.message ||
+                    'Failed to connect to payment server';
+                showError(errorMsg);
+            } else {
+                showError('Failed to cancel payment. Please try again.');
             }
         }
     };
@@ -1203,19 +1232,34 @@ export default function Landing({
                                                     </div>
                                                 </div>
                                             ))}
-                                            {/* Resume Button */}
-                                            {isBookingAllowed && (
-                                                <button
-                                                    className="mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-                                                    onClick={() =>
-                                                        resumePayment(
-                                                            transaction.snap_token,
-                                                        )
-                                                    }
-                                                >
-                                                    Resume Payment
-                                                </button>
-                                            )}
+                                            <div className="mt-4 flex gap-2">
+                                                {/* Resume Button */}
+                                                {isBookingAllowed && (
+                                                    <button
+                                                        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                                        onClick={() =>
+                                                            resumePayment(
+                                                                transaction.snap_token,
+                                                            )
+                                                        }
+                                                    >
+                                                        Resume Payment
+                                                    </button>
+                                                )}
+                                                {/* Resume Button */}
+                                                {isBookingAllowed && (
+                                                    <button
+                                                        className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                        onClick={() =>
+                                                            cancelPayment([
+                                                                transaction.order_id,
+                                                            ])
+                                                        }
+                                                    >
+                                                        Cancel Payment
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     ),
                                 )}
@@ -1291,6 +1335,7 @@ export default function Landing({
                             selectedSeats.length > 0 &&
                             isBookingAllowed && (
                                 <ProceedTransactionButton
+                                    client={client}
                                     selectedSeats={selectedSeats}
                                     taxAmount={taxAmount}
                                     subtotal={subtotal}

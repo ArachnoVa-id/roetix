@@ -168,16 +168,23 @@ Route::domain('{client}.' . config('app.domain'))
                         Route::get('tickets/download-all', 'downloadAllTickets')
                             ->name('api.tickets.download-all');
                     });
+
+                Route::controller(PaymentController::class)
+                    ->group(function () {
+                        Route::get('payment/pending', 'getPendingTransactions')
+                            ->name('payment.pending');
+
+                        Route::post('payment/cancel', 'cancelPendingTransactions')
+                            ->name('payment.cancel');
+
+                        // Ticket
+                        Route::post('payment/charge', 'charge')
+                            ->name('payment.charge');
+
+                        // Route::post('/payment/resume', 'resumePayment')
+                        //     ->name('payment.resume');
+                    });
             });
-
-            Route::controller(PaymentController::class)
-                ->group(function () {
-                    Route::get('/api/pending-transactions', 'getPendingTransactions')
-                        ->name('api.pending-transactions');
-
-                    // Route::post('/payment/resume', 'resumePayment')
-                    //     ->name('payment.resume');
-                });
         });
 
         // Event Tickets
@@ -203,10 +210,6 @@ Route::domain('{client}.' . config('app.domain'))
                 Route::delete('/profile', 'destroy')
                     ->name('profile.destroy');
             });
-
-        // Ticket
-        Route::post('/payment/charge', [PaymentController::class, 'charge'])
-            ->name('payment.charge');
 
         // Any unregistered route will be redirected to the client's home page
         Route::fallback(function () {
