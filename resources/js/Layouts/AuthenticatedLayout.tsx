@@ -36,7 +36,8 @@ export default function Authenticated({
     client: string;
     props: EventProps;
 }>) {
-    const user = usePage().props?.auth.user;
+    const user = usePage().props.auth.user;
+
     const [eventColorProps, setEventColorProps] = useState<EventColorProps>(
         {} as EventColorProps,
     );
@@ -117,8 +118,18 @@ export default function Authenticated({
                                             : ''
                                     }
                                     active={route().current('profile.edit')}
+                                    className="flex gap-3"
                                 >
-                                    Profile
+                                    <img
+                                        src={
+                                            user.contact_info.avatar ??
+                                            'images/default-avatar/default-avatar.png'
+                                        }
+                                        alt={'Avatar'}
+                                        className="h-8 rounded-lg"
+                                        loading="eager"
+                                    />
+                                    {user.first_name + ' ' + user.last_name}
                                 </NavLink>
                                 <NavLink
                                     className={
@@ -206,12 +217,14 @@ export default function Authenticated({
                 >
                     <div className="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
+                            eventProps={props}
                             href={client ? route('client.home', client) : ''}
                             active={route().current('client.home')}
                         >
                             Beli Tiket
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
+                            eventProps={props}
                             href={
                                 client ? route('client.my_tickets', client) : ''
                             }
@@ -229,25 +242,27 @@ export default function Authenticated({
                     >
                         <div className="px-4">
                             <div
-                                className="text-base font-medium"
+                                className="flex items-center gap-4 text-base font-medium"
                                 style={{
                                     color: props?.text_primary_color,
                                 }}
                             >
+                                <img
+                                    src={
+                                        user.contact_info.avatar ??
+                                        'images/default-avatar/default-avatar.png'
+                                    }
+                                    alt={'Avatar'}
+                                    className="h-8 rounded-lg"
+                                    loading="eager"
+                                />
                                 {user.first_name + ' ' + user.last_name}
                             </div>
-                            {/* <div
-                                className="text-sm font-medium"
-                                style={{
-                                    color: props?.text_secondary_color,
-                                }}
-                            >
-                                {user.email}
-                            </div> */}
                         </div>
 
                         <div className="mt-3 space-y-1">
                             <ResponsiveNavLink
+                                eventProps={props}
                                 href={
                                     client ? route('profile.edit', client) : ''
                                 }
@@ -255,6 +270,7 @@ export default function Authenticated({
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
+                                eventProps={props}
                                 className={user.role === 'user' ? 'hidden' : ''}
                                 href="#"
                                 onClick={() => {
@@ -264,6 +280,7 @@ export default function Authenticated({
                                 Admin Dashboard
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
+                                eventProps={props}
                                 method="post"
                                 href={route('logout')}
                                 as="button"

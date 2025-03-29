@@ -55,31 +55,7 @@ Route::domain(config('app.domain'))
         });
 
         // Redirect Home to Tenant Dashboard
-        Route::get('/', function () {
-            if (!Auth::check()) {
-                return redirect()->route('login');
-            }
-
-            $user = Auth::user();
-            $userInModel = User::find($user->id);
-
-            // Detect if the request is from a subdomain
-            $subdomain = request()->route('client');
-
-            // If user is in a subdomain, do not redirect to admin panel
-            if ($subdomain) {
-                return redirect()->route('client.home', ['client' => $subdomain]);
-            }
-
-            if ($userInModel?->role === 'user') {
-                Auth::logout();
-                return redirect()->route('login');
-            }
-
-            return ($team = $userInModel?->teams()->first())
-                ? redirect()->route('filament.admin.pages.dashboard', ['tenant' => $team->code])
-                : redirect()->route('login');
-        })->name('home');
+        Route::get('/', function () {})->name('home');
 
         // Privacy Policy and Terms & Conditions pages
         Route::get('/privacy-policy', function () {

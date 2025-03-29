@@ -115,7 +115,6 @@ export default function Landing({
                     success: boolean;
                     pendingTransactions: PendingTransactionResponseItem[];
                 };
-                console.log(data);
                 if (data.success && data.pendingTransactions.length > 0) {
                     // Set pending transactions
                     setPendingTransactions(data.pendingTransactions);

@@ -27,16 +27,11 @@ class ProfileController extends Controller
 
         $props = $event->eventVariables;
 
-        $user = $request->user()->load('contactInfo');
-
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
             'client' => $client,
             'props' => $props,
-            'auth' => [
-                'user' => $user,
-            ],
         ]);
     }
 
