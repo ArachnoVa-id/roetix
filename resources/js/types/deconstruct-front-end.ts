@@ -46,5 +46,6 @@ export const deconstructEventLogoProps = (
         logo: eventProps.logo,
         logo_alt: eventProps.logo_alt,
         favicon: eventProps.favicon,
+        texture: eventProps.texture,
     };
 };
