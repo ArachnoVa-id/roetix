@@ -148,7 +148,7 @@ const SeatMapDisplay: React.FC<Props> = ({
     const reversedGrid = [...grid].reverse();
 
     return (
-        <div className="flex w-full flex-col items-center">
+        <div className="flex h-fit w-full flex-col items-center">
             {/* Tampilkan pesan status event jika tidak active */}
             {/* {eventStatus !== 'active' && (
                 <div className="mb-4 w-full rounded-lg bg-yellow-50 p-3 text-center">
@@ -199,7 +199,7 @@ const SeatMapDisplay: React.FC<Props> = ({
             <div
                 className="mt-12 flex h-12 w-full max-w-4xl items-center justify-center rounded"
                 style={{
-                    backgroundColor: props.secondary_color,
+                    backgroundColor: props.primary_color,
                 }}
             >
                 Stage

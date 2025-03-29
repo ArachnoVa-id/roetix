@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const headers = JSON.parse(
             errorDiv.getAttribute('data-headers') || '{}',
         );
-        console.log(errorDiv);
 
         const root = createRoot(errorDiv);
         root.render(

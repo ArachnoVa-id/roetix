@@ -228,15 +228,31 @@ class TicketResource extends Resource
 
         $buyer = $ticketOrder?->order?->user;
         return $infolist
-            ->columns(3)
+            ->columns([
+                'default' => 1,
+                'sm' => 1,
+                'md' => 3,
+            ])
             ->schema(
                 [
                     Infolists\Components\Section::make('Ticket Information')
-                        ->columnSpan(3)
-                        ->columns(6)
+                        ->columnSpan([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 3,
+                        ])
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 6,
+                        ])
                         ->schema([
                             Infolists\Components\TextEntry::make('ticket_id')
-                                ->columnSpan(2)
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ])
                                 ->label('ID'),
                             Infolists\Components\TextEntry::make('ticket_type')
                                 ->label('Type'),
@@ -266,29 +282,61 @@ class TicketResource extends Resource
                         ]),
                     Infolists\Components\Section::make('Latest Buyer')
                         ->hidden(!$showBuyer)
-                        ->columnSpan(1)
-                        ->columns(2)
+                        ->columnSpan([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 1,
+                        ])
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
                         ->schema([
                             Infolists\Components\TextEntry::make('order_code')
-                                ->columnSpan(2)
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ])
                                 ->default(fn() => $ticketOrder?->order?->order_code)
                                 ->label('Order Code'),
                             Infolists\Components\TextEntry::make('first_name')
-                                ->columnSpan(1)
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 1,
+                                ])
                                 ->default(fn() => $buyer?->first_name)
                                 ->label('First Name'),
                             Infolists\Components\TextEntry::make('last_name')
-                                ->columnSpan(1)
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 1,
+                                ])
                                 ->default(fn() => $buyer?->last_name)
                                 ->label('Last Name'),
                             Infolists\Components\TextEntry::make('email')
-                                ->columnSpan(2)
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ])
                                 ->label('Email')
                                 ->default(fn() => $buyer?->email),
                         ]),
                     Infolists\Components\Section::make('Event')
-                        ->columnSpan(fn() => $showBuyer ? 1 : 2)
-                        ->columns(2)
+                        ->columnSpan([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => fn() => $showBuyer ? 1 : 2,
+                        ])
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
                         ->schema([
                             Infolists\Components\TextEntry::make('name')
                                 ->default(fn() => $event->name),
@@ -304,8 +352,16 @@ class TicketResource extends Resource
                         ]),
                     Infolists\Components\Section::make("Seat")
                         ->relationship('seat', 'seat_id')
-                        ->columnSpan(1)
-                        ->columns(2)
+                        ->columnSpan([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 1,
+                        ])
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
                         ->schema([
                             Infolists\Components\TextEntry::make('seat_number')
                                 ->label('Number'),
@@ -315,7 +371,11 @@ class TicketResource extends Resource
                         ]),
                     Infolists\Components\Section::make('Orders')
                         ->hidden(!$showOrders)
-                        ->columnSpan(3)
+                        ->columnSpan([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 3,
+                        ])
                         ->schema([
                             \Njxqlus\Filament\Components\Infolists\RelationManager::make()
                                 ->manager(TicketOrdersRelationManager::class)

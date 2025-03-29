@@ -89,12 +89,12 @@ const Edit: React.FC<Props> = ({
     // Process timeline data directly from props rather than from API
     useEffect(() => {
         // Get current date with Jakarta timezone
-        const formatJakartaTime = (date = new Date()) => {
-            return new Date(date).toLocaleString('en-US', {
-                timeZone: 'Asia/Jakarta',
-                hour12: false,
-            });
-        };
+        // const formatJakartaTime = (date = new Date()) => {
+        //     return new Date(date).toLocaleString('en-US', {
+        //         timeZone: 'Asia/Jakarta',
+        //         hour12: false,
+        //     });
+        // };
 
         // Function to determine which timeline is active based on current date
         const determineActiveTimeline = (
@@ -147,14 +147,14 @@ const Edit: React.FC<Props> = ({
 
             if (active) {
                 setActiveTimeline(active);
-                console.log(
-                    `[${formatJakartaTime()}] Active timeline: ${active.name} (${active.start_date} to ${active.end_date})`,
-                );
+                // console.log(
+                //     `[${formatJakartaTime()}] Active timeline: ${active.name} (${active.start_date} to ${active.end_date})`,
+                // );
             } else {
                 // If no active timeline found, keep using the current one from props
-                console.log(
-                    `[${formatJakartaTime()}] No active timeline found based on current date, using provided default`,
-                );
+                // console.log(
+                //     `[${formatJakartaTime()}] No active timeline found based on current date, using provided default`,
+                // );
             }
         }
     }, [currentTimeline, ticketCategories, categoryPrices]);
@@ -166,16 +166,16 @@ const Edit: React.FC<Props> = ({
             ticketCategories.length > 0 &&
             categoryPrices.length > 0
         ) {
-            const formatJakartaTime = (date = new Date()) => {
-                return new Date(date).toLocaleString('en-US', {
-                    timeZone: 'Asia/Jakarta',
-                    hour12: false,
-                });
-            };
+            // const formatJakartaTime = (date = new Date()) => {
+            //     return new Date(date).toLocaleString('en-US', {
+            //         timeZone: 'Asia/Jakarta',
+            //         hour12: false,
+            //     });
+            // };
 
-            console.log(
-                `[${formatJakartaTime()}] Updating price mappings for timeline: ${activeTimeline.name}`,
-            );
+            // console.log(
+            //     `[${formatJakartaTime()}] Updating price mappings for timeline: ${activeTimeline.name}`,
+            // );
 
             const priceMap: Record<string, number> = {};
             const colorMap: Record<string, string> = {};
@@ -206,8 +206,8 @@ const Edit: React.FC<Props> = ({
             setCategoryNameToPriceMap(priceMap);
             setCategoryColorMap(colorMap);
 
-            console.log('Updated price map:', priceMap);
-            console.log('Updated color map:', colorMap);
+            // console.log('Updated price map:', priceMap);
+            // console.log('Updated color map:', colorMap);
         }
     }, [activeTimeline, ticketCategories, categoryPrices]);
 
@@ -235,7 +235,7 @@ const Edit: React.FC<Props> = ({
             event_id: event.event_id,
             seats: updatedSeats,
         };
-        console.log('Sending request payload:', requestPayload);
+        // console.log('Sending request payload:', requestPayload);
 
         // Use fetch directly to avoid Inertia JSON response error
         fetch('/seats/update-event-seats', {

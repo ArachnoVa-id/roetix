@@ -64,7 +64,7 @@ export default function Login({
 
             <div className="text-center font-bold">{event.name}</div>
             {event.name === 'Admin NovaTix' ? (
-                <form onSubmit={submit} className="w-[20vmax] max-w-7xl">
+                <form onSubmit={submit} className="md:w-94 w-full">
                     <div>
                         <InputLabel htmlFor="email" value="Email" />
 

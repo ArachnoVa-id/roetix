@@ -450,7 +450,7 @@ const SeatMapEditor: React.FC<Props> = ({
             });
 
         if (updatedSeats.length > 0) {
-            console.log('Sending updated seats:', updatedSeats);
+            // console.log('Sending updated seats:', updatedSeats);
             onSave(updatedSeats);
         }
     };

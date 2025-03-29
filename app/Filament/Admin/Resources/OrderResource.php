@@ -58,7 +58,11 @@ class OrderResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Section::make('Buyer')
-                    ->columns(2)
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
                     ->schema([
                         // define the user
                         Forms\Components\Select::make('user_id')
@@ -90,7 +94,11 @@ class OrderResource extends Resource
                             ->hidden(fn(Forms\Get $get) => $get('event_id') == null)
                             ->minItems(1)
                             ->grid(3)
-                            ->columns(5)
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 5,
+                            ])
                             ->label('')
                             ->deletable(!$modelExists)
                             ->addable(!$modelExists)
@@ -120,7 +128,11 @@ class OrderResource extends Resource
                                     ->searchable()
                                     ->optionsLimit(5)
                                     ->disabled($modelExists)
-                                    ->columnSpan(fn() => !$modelExists ? 5 : 2)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'sm' => 1,
+                                        'md' => fn() => !$modelExists ? 5 : 2,
+                                    ])
                                     ->options(
                                         function (Forms\Get $get) {
                                             // Get all currently selected ticket IDs in the repeater
@@ -149,7 +161,11 @@ class OrderResource extends Resource
                                 Forms\Components\Select::make('status')
                                     ->options(TicketOrderStatus::editableOptions())
                                     ->searchable()
-                                    ->columnSpan(3)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'sm' => 1,
+                                        'md' => 3,
+                                    ])
                                     ->default(TicketOrderStatus::ENABLED)
                                     ->placeholder('Choose')
                                     ->hidden(!$modelExists)
@@ -164,11 +180,19 @@ class OrderResource extends Resource
         $order = Order::find($infolist->record->order_id);
         $firstEvent = $order->getSingleEvent();
         return $infolist
-            ->columns(3)
+            ->columns([
+                'default' => 1,
+                'sm' => 1,
+                'md' => 3,
+            ])
             ->schema([
                 Infolists\Components\Section::make('Order Information')
                     ->columnSpanFull()
-                    ->columns(2)
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
                     ->schema([
                         Infolists\Components\TextEntry::make('order_id')
                             ->label('ID'),
@@ -183,22 +207,50 @@ class OrderResource extends Resource
                             ->badge(),
                     ]),
                 Infolists\Components\Section::make('Buyer')
-                    ->columnSpan(1)
-                    ->columns(2)
+                    ->columnSpan([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 1,
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
                     ->relationship('user', 'id')
                     ->schema([
                         Infolists\Components\TextEntry::make('first_name')
-                            ->columnSpan(1)
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 1,
+                            ])
                             ->label('First Name'),
                         Infolists\Components\TextEntry::make('last_name')
-                            ->columnSpan(1)
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 1,
+                            ])
                             ->label('Last Name'),
                         Infolists\Components\TextEntry::make('email')
-                            ->columnSpan(2),
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 2,
+                            ]),
                     ]),
                 Infolists\Components\Section::make('Event')
-                    ->columnSpan(2)
-                    ->columns(2)
+                    ->columnSpan([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
                     ->schema([
                         Infolists\Components\TextEntry::make('name')
                             ->default(fn() => $firstEvent->name),

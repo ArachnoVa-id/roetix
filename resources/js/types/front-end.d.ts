@@ -25,6 +25,7 @@ export interface EventLogoProps {
     logo: string;
     logo_alt: string;
     favicon: string;
+    texture: string;
 }
 
 export interface EventProps

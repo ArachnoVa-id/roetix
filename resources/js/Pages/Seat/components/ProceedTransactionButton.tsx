@@ -1,4 +1,5 @@
 import useToaster from '@/hooks/useToaster';
+import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import {
@@ -9,19 +10,17 @@ import {
 } from '../types';
 
 const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
+    client,
     selectedSeats,
     taxAmount,
     subtotal,
     total,
     onTransactionStarted,
 }) => {
+    const user = usePage().props?.auth.user;
     const [isLoading, setIsLoading] = useState(false);
     const [snapInitialized, setSnapInitialized] = useState(false);
     const { showSuccess, showError } = useToaster();
-    const [transactionInfo, setTransactionInfo] = useState<{
-        snap_token: string;
-        transaction_id: string;
-    } | null>(null);
 
     // Initialize Midtrans Snap on component mount
     useEffect(() => {
@@ -39,7 +38,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             process.env.MIDTRANS_CLIENT_KEY || '',
         );
         snapScript.onload = () => {
-            console.log('Midtrans Snap loaded successfully');
+            // console.log('Midtrans Snap loaded successfully');
             setSnapInitialized(true);
         };
         snapScript.onerror = () => {
@@ -57,46 +56,46 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         };
     }, [showError]);
 
-    useEffect(() => {
-        // Load saved transaction on component mount
-        const savedTransaction = localStorage.getItem('pendingTransaction');
-        if (savedTransaction) {
-            try {
-                const parsed = JSON.parse(savedTransaction);
-                setTransactionInfo(parsed.transactionInfo);
+    // useEffect(() => {
+    //     // Load saved transaction on component mount
+    //     const savedTransaction = localStorage.getItem('pendingTransaction');
+    //     if (savedTransaction) {
+    //         try {
+    //             const parsed = JSON.parse(savedTransaction);
+    //             setTransactionInfo(parsed.transactionInfo);
 
-                // Notify parent component about pending transaction if needed
-                if (onTransactionStarted && parsed.seats) {
-                    onTransactionStarted(parsed.seats);
-                }
-            } catch (e) {
-                console.error('Failed to parse saved transaction', e);
-                localStorage.removeItem('pendingTransaction');
-            }
-        }
-    }, [onTransactionStarted]);
+    //             // Notify parent component about pending transaction if needed
+    //             if (onTransactionStarted && parsed.seats) {
+    //                 onTransactionStarted(parsed.seats);
+    //             }
+    //         } catch (e) {
+    //             console.error('Failed to parse saved transaction', e);
+    //             localStorage.removeItem('pendingTransaction');
+    //         }
+    //     }
+    // }, [onTransactionStarted]);
 
-    useEffect(() => {
-        if (transactionInfo) {
-            localStorage.setItem(
-                'pendingTransaction',
-                JSON.stringify({
-                    transactionInfo,
-                    seats: selectedSeats,
-                }),
-            );
-        } else {
-            localStorage.removeItem('pendingTransaction');
-        }
-    }, [transactionInfo, selectedSeats]);
+    // useEffect(() => {
+    //     if (transactionInfo) {
+    //         localStorage.setItem(
+    //             'pendingTransaction',
+    //             JSON.stringify({
+    //                 transactionInfo,
+    //                 seats: selectedSeats,
+    //             }),
+    //         );
+    //     } else {
+    //         localStorage.removeItem('pendingTransaction');
+    //     }
+    // }, [transactionInfo, selectedSeats]);
 
-    const clearTransaction = () => {
-        setTransactionInfo(null);
-        localStorage.removeItem('pendingTransaction');
-        if (onTransactionStarted) {
-            onTransactionStarted([]);
-        }
-    };
+    // const clearTransaction = () => {
+    //     setTransactionInfo(null);
+    //     localStorage.removeItem('pendingTransaction');
+    //     if (onTransactionStarted) {
+    //         onTransactionStarted([]);
+    //     }
+    // };
 
     // Function to safely parse price
     const getSafePrice = (price: string | number | undefined): number => {
@@ -160,37 +159,33 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         );
     };
 
-    const createCallbacks = (token: string): MidtransCallbacks => {
+    const createCallbacks = (): MidtransCallbacks => {
         return {
-            onSuccess: (result) => {
-                console.log('Payment success:', result);
+            onSuccess: () => {
+                // console.log('Payment success:', result);
                 showSuccess('Payment successful!');
-                clearTransaction(); // Clear the transaction data
+                // clearTransaction(); // Clear the transaction data
                 window.location.reload();
             },
-            onPending: (result) => {
-                console.log('Payment pending:', result);
+            onPending: () => {
+                // console.log('Payment pending:', result);
                 showSuccess(
                     'Your payment is pending. Please complete the payment.',
                 );
                 setIsLoading(false);
             },
-            onError: (result) => {
-                console.error('Payment error:', result);
+            onError: () => {
+                // console.error('Payment error:', result);
                 showError('Payment failed. Please try again.');
                 setIsLoading(false);
             },
             onClose: () => {
-                console.log('Snap payment closed');
+                // console.log('Snap payment closed');
                 setIsLoading(false);
-                // Save transaction information for later resumption
-                setTransactionInfo({
-                    snap_token: token,
-                    transaction_id: transactionInfo?.transaction_id || '',
-                });
                 showError(
                     'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
                 );
+                window.location.reload();
             },
         };
     };
@@ -225,20 +220,16 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             const calculatedTotal =
                 total || calculatedSubtotal + calculatedTaxAmount;
 
-            console.log('Payment data:', {
-                groupedItems,
-                subtotal: calculatedSubtotal,
-                taxAmount: calculatedTaxAmount,
-                total: calculatedTotal,
-            });
-
-            // Get the current user's email or use a default
-            // In a real app, you would get this from your auth system
-            const userEmail = 'user@example.com';
+            // console.log('Payment data:', {
+            //     groupedItems,
+            //     subtotal: calculatedSubtotal,
+            //     taxAmount: calculatedTaxAmount,
+            //     total: calculatedTotal,
+            // });
 
             // Create the request payload
             const payload = {
-                email: userEmail,
+                email: user.email,
                 amount: calculatedSubtotal, // Original amount before tax
                 tax_amount: calculatedTaxAmount, // Tax amount
                 total_with_tax: calculatedTotal, // Total with tax
@@ -255,9 +246,9 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             };
 
             // Send the payment request
-            console.log('Sending payment request');
+            // console.log('Sending payment request');
             const response = await axios.post(
-                '/payment/charge',
+                route('payment.charge', client),
                 payload,
                 config,
             );
@@ -268,7 +259,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 // If Midtrans snap.js is loaded
                 if (window.snap) {
                     const token = response.data.snap_token;
-                    const callbacks = createCallbacks(token);
+                    const callbacks = createCallbacks();
 
                     // Open the Midtrans Snap payment page
                     window.snap.pay(token, callbacks);
@@ -302,56 +293,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         }
     };
 
-    const resumePayment = async () => {
-        if (!transactionInfo || !window.snap) return;
-
-        setIsLoading(true);
-        showSuccess('Preparing your payment...');
-
-        try {
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-            };
-
-            const response = await axios.post(
-                '/payment/resume',
-                { transaction_id: transactionInfo.transaction_id },
-                config,
-            );
-
-            if (response.data && response.data.snap_token) {
-                const token = response.data.snap_token;
-                const callbacks = createCallbacks(token);
-
-                // Open the Midtrans Snap payment page using original transaction ID
-                window.snap.pay(token, callbacks);
-            } else {
-                throw new Error('Invalid response from payment server');
-            }
-        } catch (err) {
-            console.error('Failed to resume payment:', err);
-
-            if (axios.isAxiosError(err)) {
-                const errorMsg =
-                    err.response?.data?.message ||
-                    'Failed to connect to payment server';
-                showError(errorMsg);
-            } else {
-                showError('Failed to resume payment. Please try again.');
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     return (
         <div>
             <button
@@ -363,15 +304,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             >
                 {isLoading ? 'Processing...' : 'Proceed Transaction'}
             </button>
-
-            {transactionInfo && (
-                <button
-                    className="ml-2 mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-                    onClick={resumePayment}
-                >
-                    Resume Payment
-                </button>
-            )}
 
             {!snapInitialized && (
                 <div className="mt-2 text-sm text-gray-600">

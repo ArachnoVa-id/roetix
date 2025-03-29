@@ -5,16 +5,13 @@ import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransaction
 import {
     Layout,
     MidtransCallbacks,
-    MidtransError,
-    MidtransTransactionResult,
-    PaymentResponse,
-    SavedTransaction,
     SeatItem,
     Timeline,
 } from '@/Pages/Seat/types';
 import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
 interface Venue {
     venue_id: string;
@@ -67,6 +64,14 @@ interface Props {
     props: EventProps;
 }
 
+interface PendingTransactionResponseItem {
+    snap_token: string;
+    order_id: string;
+    order_code: string;
+    total_price: string;
+    seats: SeatItem[];
+}
+
 export default function Landing({
     client,
     layout,
@@ -80,10 +85,10 @@ export default function Landing({
 }: Props) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
-    const [pendingTransactionSeats, setPendingTransactionSeats] = useState<
-        SeatItem[]
+    // const [, setIsLoadingTransactions] = useState(false);
+    const [pendingTransactions, setPendingTransactions] = useState<
+        PendingTransactionResponseItem[]
     >([]);
-    const [, setIsLoadingTransactions] = useState(false);
 
     // Show error if it exists when component mounts
     useEffect(() => {
@@ -92,136 +97,244 @@ export default function Landing({
         }
     }, [error, showError]);
 
-    const fetchPendingTransactions = useCallback(async (): Promise<void> => {
-        setIsLoadingTransactions(true);
-        try {
-            // Tambahkan timestamp untuk mencegah caching
-            const response = await fetch(
-                `/api/pending-transactions?t=${Date.now()}`,
-            );
+    const refShowError = useRef(showError);
+    useEffect(() => {
+        const fetchPendingTransactions = async (): Promise<void> => {
+            try {
+                // Tambahkan timestamp untuk mencegah caching
+                const response = await fetch(route('payment.pending', client));
 
-            if (!response.ok) {
-                console.error('Server response:', await response.text());
-                throw new Error(
-                    `Failed to fetch pending transactions: ${response.status} ${response.statusText}`,
+                if (!response.ok) {
+                    console.error('Server response:', await response.text());
+                    throw new Error(
+                        `Failed to fetch pending transactions: ${response.status} ${response.statusText}`,
+                    );
+                }
+
+                const data = (await response.json()) as {
+                    success: boolean;
+                    pendingTransactions: PendingTransactionResponseItem[];
+                };
+                console.log(data);
+                if (data.success && data.pendingTransactions.length > 0) {
+                    // Set pending transactions
+                    setPendingTransactions(data.pendingTransactions);
+                }
+            } catch (error) {
+                console.error('Error fetching pending transactions:', error);
+                refShowError.current(
+                    'Failed to load pending transactions. Please refresh the page.',
                 );
             }
+        };
 
-            interface PendingTransactionResponse {
-                success: boolean;
-                pendingTransactions: Array<{
-                    order_id: string;
-                    order_code: string;
-                    total_price: number;
-                    seats: SeatItem[];
-                }>;
-            }
-
-            const data = (await response.json()) as PendingTransactionResponse;
-
-            if (data.success && data.pendingTransactions.length > 0) {
-                // Get the first pending transaction's seats
-                const pendingSeats = data.pendingTransactions[0].seats;
-                setPendingTransactionSeats(pendingSeats);
-
-                // Store the transaction ID for resuming payment
-                if (pendingSeats.length > 0) {
-                    const savedData: SavedTransaction = {
-                        transactionInfo: {
-                            transaction_id:
-                                data.pendingTransactions[0].order_code,
-                            timestamp: Date.now(), // Tambahkan timestamp untuk validasi
-                        },
-                        seats: pendingSeats,
-                    };
-
-                    localStorage.setItem(
-                        'pendingTransaction',
-                        JSON.stringify(savedData),
-                    );
-                    console.log(
-                        'Stored pending transaction in localStorage:',
-                        data.pendingTransactions[0].order_code,
-                    );
-                }
-            } else {
-                // Jika tidak ada transaksi pending di server, periksa localStorage
-                const savedTransactionStr =
-                    localStorage.getItem('pendingTransaction');
-
-                if (savedTransactionStr) {
-                    try {
-                        const parsed = JSON.parse(
-                            savedTransactionStr,
-                        ) as SavedTransaction;
-
-                        // Periksa apakah localStorage memiliki data yang valid dan tidak terlalu lama
-                        // (misalnya transaksi dari localStorage yang lebih dari 24 jam sebaiknya dihapus)
-                        const MAX_AGE = 24 * 60 * 60 * 1000; // 24 jam dalam milidetik
-                        const now = Date.now();
-                        const timestamp =
-                            parsed.transactionInfo?.timestamp || 0;
-
-                        if (now - timestamp > MAX_AGE) {
-                            // Transaksi terlalu lama, hapus dari localStorage
-                            console.log(
-                                'Removing stale transaction from localStorage',
-                            );
-                            localStorage.removeItem('pendingTransaction');
-                            setPendingTransactionSeats([]);
-                        } else {
-                            // Transaksi masih valid berdasarkan waktu, tapi tidak ada di database
-                            // Tampilkan pesan ke user bahwa transaksi mungkin tidak ada di sistem
-                            console.warn(
-                                'Transaction found in localStorage but not in database:',
-                                parsed.transactionInfo?.transaction_id,
-                            );
-
-                            // Tetap tampilkan seats dari localStorage
-                            if (parsed.seats && Array.isArray(parsed.seats)) {
-                                setPendingTransactionSeats(parsed.seats);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Failed to parse saved transaction', e);
-                        localStorage.removeItem('pendingTransaction');
-                    }
-                } else {
-                    setPendingTransactionSeats([]);
-                }
-            }
-        } catch (error: unknown) {
-            console.error('Error fetching pending transactions:', error);
-            showError(
-                'Failed to load pending transactions. Please refresh the page.',
-            );
-        } finally {
-            setIsLoadingTransactions(false);
-        }
-    }, [showError]);
-
-    useEffect(() => {
-        // First check localStorage as before
-        const savedTransaction = localStorage.getItem('pendingTransaction');
-        if (savedTransaction) {
-            try {
-                const parsed = JSON.parse(savedTransaction);
-                if (parsed.seats && Array.isArray(parsed.seats)) {
-                    setPendingTransactionSeats(parsed.seats);
-                }
-            } catch (e) {
-                console.error('Failed to parse saved transaction', e);
-                localStorage.removeItem('pendingTransaction');
-            }
-        }
-
-        // Then fetch actual pending transactions from the server
         fetchPendingTransactions();
-    }, [fetchPendingTransactions]);
+    }, [client]);
 
-    const markSeatsAsPendingTransaction = (seats: SeatItem[]) => {
-        setPendingTransactionSeats(seats);
+    const createCallbacks = (): MidtransCallbacks => {
+        return {
+            onSuccess: () => {
+                // console.log('Payment success:', result);
+                showSuccess('Payment successful!');
+                // clearTransaction(); // Clear the transaction data
+                window.location.reload();
+            },
+            onPending: () => {
+                // console.log('Payment pending:', result);
+                showSuccess(
+                    'Your payment is pending. Please complete the payment.',
+                );
+            },
+            onError: () => {
+                // console.error('Payment error:', result);
+                showError('Payment failed. Please try again.');
+            },
+            onClose: () => {
+                // console.log('Snap payment closed');
+                showError(
+                    'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
+                );
+            },
+        };
     };
+
+    const resumePayment = async (token: string) => {
+        if (!window.snap) return;
+
+        showSuccess('Preparing your payment...');
+
+        try {
+            window.snap.pay(token, createCallbacks());
+        } catch (err) {
+            console.error('Failed to resume payment:', err);
+
+            if (axios.isAxiosError(err)) {
+                const errorMsg =
+                    err.response?.data?.message ||
+                    'Failed to connect to payment server';
+                showError(errorMsg);
+            } else {
+                showError('Failed to resume payment. Please try again.');
+            }
+        }
+    };
+
+    const cancelPayment = async (order_ids: string[]) => {
+        if (!order_ids) return;
+
+        showSuccess('Cancelling your payment...');
+
+        try {
+            const response = await axios.post(route('payment.cancel', client), {
+                order_ids,
+            });
+
+            if (response.data.success) {
+                showSuccess('Payment cancelled successfully');
+                window.location.reload();
+            } else {
+                showError(response.data.message || 'Failed to cancel payment');
+            }
+        } catch (err) {
+            console.error('Failed to cancel payment:', err);
+
+            if (axios.isAxiosError(err)) {
+                const errorMsg =
+                    err.response?.data?.message ||
+                    'Failed to connect to payment server';
+                showError(errorMsg);
+            } else {
+                showError('Failed to cancel payment. Please try again.');
+            }
+        }
+    };
+
+    // const fetchPendingTransactions = useCallback(async (): Promise<void> => {
+    //     setIsLoadingTransactions(true);
+    //     try {
+    //         // Tambahkan timestamp untuk mencegah caching
+    //         const response = await fetch(
+    //             `/api/pending-transactions?t=${Date.now()}`,
+    //         );
+
+    //         if (!response.ok) {
+    //             console.error('Server response:', await response.text());
+    //             throw new Error(
+    //                 `Failed to fetch pending transactions: ${response.status} ${response.statusText}`,
+    //             );
+    //         }
+
+    //         interface PendingTransactionResponse {
+    //             success: boolean;
+    //             pendingTransactions: Array<{
+    //                 order_id: string;
+    //                 order_code: string;
+    //                 total_price: number;
+    //                 seats: SeatItem[];
+    //             }>;
+    //         }
+
+    //         const data = (await response.json()) as PendingTransactionResponse;
+
+    //         if (data.success && data.pendingTransactions.length > 0) {
+    //             // Get the first pending transaction's seats
+    //             const pendingSeats = data.pendingTransactions[0].seats;
+    //             setPendingTransactionSeats(pendingSeats);
+
+    //             // Store the transaction ID for resuming payment
+    //             if (pendingSeats.length > 0) {
+    //                 const savedData: SavedTransaction = {
+    //                     transactionInfo: {
+    //                         transaction_id:
+    //                             data.pendingTransactions[0].order_code,
+    //                         timestamp: Date.now(), // Tambahkan timestamp untuk validasi
+    //                     },
+    //                     seats: pendingSeats,
+    //                 };
+
+    //                 localStorage.setItem(
+    //                     'pendingTransaction',
+    //                     JSON.stringify(savedData),
+    //                 );
+    //             }
+    //         } else {
+    //             // Jika tidak ada transaksi pending di server, periksa localStorage
+    //             const savedTransactionStr =
+    //                 localStorage.getItem('pendingTransaction');
+
+    //             if (savedTransactionStr) {
+    //                 try {
+    //                     const parsed = JSON.parse(
+    //                         savedTransactionStr,
+    //                     ) as SavedTransaction;
+
+    //                     // Periksa apakah localStorage memiliki data yang valid dan tidak terlalu lama
+    //                     // (misalnya transaksi dari localStorage yang lebih dari 24 jam sebaiknya dihapus)
+    //                     const MAX_AGE = 24 * 60 * 60 * 1000; // 24 jam dalam milidetik
+    //                     const now = Date.now();
+    //                     const timestamp =
+    //                         parsed.transactionInfo?.timestamp || 0;
+
+    //                     if (now - timestamp > MAX_AGE) {
+    //                         // Transaksi terlalu lama, hapus dari localStorage
+    //                         console.log(
+    //                             'Removing stale transaction from localStorage',
+    //                         );
+    //                         localStorage.removeItem('pendingTransaction');
+    //                         setPendingTransactionSeats([]);
+    //                     } else {
+    //                         // Transaksi masih valid berdasarkan waktu, tapi tidak ada di database
+    //                         // Tampilkan pesan ke user bahwa transaksi mungkin tidak ada di sistem
+    //                         console.warn(
+    //                             'Transaction found in localStorage but not in database:',
+    //                             parsed.transactionInfo?.transaction_id,
+    //                         );
+
+    //                         // Tetap tampilkan seats dari localStorage
+    //                         if (parsed.seats && Array.isArray(parsed.seats)) {
+    //                             setPendingTransactionSeats(parsed.seats);
+    //                         }
+    //                     }
+    //                 } catch (e) {
+    //                     console.error('Failed to parse saved transaction', e);
+    //                     localStorage.removeItem('pendingTransaction');
+    //                 }
+    //             } else {
+    //                 setPendingTransactionSeats([]);
+    //             }
+    //         }
+    //     } catch (error: unknown) {
+    //         console.error('Error fetching pending transactions:', error);
+    //         showError(
+    //             'Failed to load pending transactions. Please refresh the page.',
+    //         );
+    //     } finally {
+    //         setIsLoadingTransactions(false);
+    //     }
+    // }, [showError]);
+
+    // useEffect(() => {
+    //     // First check localStorage as before
+    //     const savedTransaction = localStorage.getItem('pendingTransaction');
+    //     if (savedTransaction) {
+    //         try {
+    //             const parsed = JSON.parse(savedTransaction);
+    //             if (parsed.seats && Array.isArray(parsed.seats)) {
+    //                 setPendingTransactionSeats(parsed.seats);
+    //             }
+    //         } catch (e) {
+    //             console.error('Failed to parse saved transaction', e);
+    //             localStorage.removeItem('pendingTransaction');
+    //         }
+    //     }
+
+    //     // Then fetch actual pending transactions from the server
+    //     fetchPendingTransactions();
+    // }, [fetchPendingTransactions]);
+
+    // const markSeatsAsPendingTransaction = (seats: SeatItem[]) => {
+    //     setPendingTransactionSeats(seats);
+    // };
 
     // Tentukan apakah booking diperbolehkan berdasarkan status event
     const isBookingAllowed = useMemo(() => {
@@ -389,115 +502,115 @@ export default function Landing({
         }).format(value);
     };
 
-    const resumeTransaction = async (transactionId: string): Promise<void> => {
-        try {
-            showSuccess('Preparing to resume payment...');
+    // const resumeTransaction = async (transactionId: string): Promise<void> => {
+    //     try {
+    //         showSuccess('Preparing to resume payment...');
 
-            // Log data untuk debugging
-            console.log('Resuming transaction:', transactionId);
+    //         // Log data untuk debugging
+    //         console.log('Resuming transaction:', transactionId);
 
-            const response = await fetch('/payment/resume', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({ transaction_id: transactionId }),
-            });
+    //         const response = await fetch('/payment/resume', {
+    //             method: 'POST',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 'X-Requested-With': 'XMLHttpRequest',
+    //                 'X-CSRF-TOKEN':
+    //                     document
+    //                         .querySelector('meta[name="csrf-token"]')
+    //                         ?.getAttribute('content') || '',
+    //             },
+    //             body: JSON.stringify({ transaction_id: transactionId }),
+    //         });
 
-            // Log response status untuk debugging
-            console.log('Resume payment response status:', response.status);
+    //         // Log response status untuk debugging
+    //         console.log('Resume payment response status:', response.status);
 
-            // Jika response bukan OK, tampilkan pesan error dengan detail
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(
-                    `Status: ${response.status}, Response:`,
-                    errorText,
-                );
+    //         // Jika response bukan OK, tampilkan pesan error dengan detail
+    //         if (!response.ok) {
+    //             const errorText = await response.text();
+    //             console.error(
+    //                 `Status: ${response.status}, Response:`,
+    //                 errorText,
+    //             );
 
-                let errorData: { message: string } = {
-                    message: 'Unknown error occurred',
-                };
-                try {
-                    errorData = JSON.parse(errorText) as { message: string };
-                } catch (e) {
-                    // Jika parsing gagal, gunakan nilai default
-                }
+    //             let errorData: { message: string } = {
+    //                 message: 'Unknown error occurred',
+    //             };
+    //             try {
+    //                 errorData = JSON.parse(errorText) as { message: string };
+    //             } catch (e) {
+    //                 // Jika parsing gagal, gunakan nilai default
+    //             }
 
-                // Jika status 404, berarti transaksi tidak ditemukan
-                if (response.status === 404) {
-                    showError(
-                        'Transaction not found or already completed. The page will refresh.',
-                    );
+    //             // Jika status 404, berarti transaksi tidak ditemukan
+    //             if (response.status === 404) {
+    //                 showError(
+    //                     'Transaction not found or already completed. The page will refresh.',
+    //                 );
 
-                    // Hapus data dari localStorage
-                    localStorage.removeItem('pendingTransaction');
-                    setPendingTransactionSeats([]);
+    //                 // Hapus data dari localStorage
+    //                 localStorage.removeItem('pendingTransaction');
+    //                 setPendingTransactionSeats([]);
 
-                    // Refresh halaman setelah delay
-                    setTimeout(() => window.location.reload(), 3000);
-                    return;
-                }
+    //                 // Refresh halaman setelah delay
+    //                 setTimeout(() => window.location.reload(), 3000);
+    //                 return;
+    //             }
 
-                throw new Error(
-                    errorData.message ||
-                        `Status: ${response.status}, Status Text: ${response.statusText}`,
-                );
-            }
+    //             throw new Error(
+    //                 errorData.message ||
+    //                     `Status: ${response.status}, Status Text: ${response.statusText}`,
+    //             );
+    //         }
 
-            const data = (await response.json()) as PaymentResponse;
-            console.log('Resume payment response data:', data);
+    //         const data = (await response.json()) as PaymentResponse;
+    //         console.log('Resume payment response data:', data);
 
-            if (data.snap_token) {
-                // Open Midtrans payment window
-                if (window.snap) {
-                    const callbacks: MidtransCallbacks = {
-                        onSuccess: (result: MidtransTransactionResult) => {
-                            console.log('Payment success:', result);
-                            showSuccess('Payment successful!');
-                            localStorage.removeItem('pendingTransaction');
-                            setPendingTransactionSeats([]);
-                            window.location.reload();
-                        },
-                        onPending: (result: MidtransTransactionResult) => {
-                            console.log('Payment pending:', result);
-                            showSuccess(
-                                'Your payment is pending. Please complete the payment.',
-                            );
-                        },
-                        onError: (error: MidtransError | Error | unknown) => {
-                            console.error('Payment error:', error);
-                            showError('Payment failed. Please try again.');
-                        },
-                        onClose: () => {
-                            console.log('Payment window closed');
-                            showError(
-                                'Payment window closed. You can resume your payment later.',
-                            );
-                        },
-                    };
+    //         if (data.snap_token) {
+    //             // Open Midtrans payment window
+    //             if (window.snap) {
+    //                 const callbacks: MidtransCallbacks = {
+    //                     onSuccess: (result: MidtransTransactionResult) => {
+    //                         console.log('Payment success:', result);
+    //                         showSuccess('Payment successful!');
+    //                         localStorage.removeItem('pendingTransaction');
+    //                         setPendingTransactionSeats([]);
+    //                         window.location.reload();
+    //                     },
+    //                     onPending: (result: MidtransTransactionResult) => {
+    //                         console.log('Payment pending:', result);
+    //                         showSuccess(
+    //                             'Your payment is pending. Please complete the payment.',
+    //                         );
+    //                     },
+    //                     onError: (error: MidtransError | Error | unknown) => {
+    //                         console.error('Payment error:', error);
+    //                         showError('Payment failed. Please try again.');
+    //                     },
+    //                     onClose: () => {
+    //                         console.log('Payment window closed');
+    //                         showError(
+    //                             'Payment window closed. You can resume your payment later.',
+    //                         );
+    //                     },
+    //                 };
 
-                    window.snap.pay(data.snap_token, callbacks);
-                } else {
-                    showError(
-                        'Payment system not loaded. Please refresh the page and try again.',
-                    );
-                }
-            } else {
-                throw new Error('Invalid response from payment server');
-            }
-        } catch (error: unknown) {
-            console.error('Error resuming transaction:', error);
-            showError(
-                `Failed to resume payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            );
-        }
-    };
+    //                 window.snap.pay(data.snap_token, callbacks);
+    //             } else {
+    //                 showError(
+    //                     'Payment system not loaded. Please refresh the page and try again.',
+    //                 );
+    //             }
+    //         } else {
+    //             throw new Error('Invalid response from payment server');
+    //         }
+    //     } catch (error: unknown) {
+    //         console.error('Error resuming transaction:', error);
+    //         showError(
+    //             `Failed to resume payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    //         );
+    //     }
+    // };
 
     // Calculate prices using useMemo to avoid recalculating on every render
     const { subtotal, taxAmount, total } = useMemo(() => {
@@ -524,52 +637,52 @@ export default function Landing({
         { label: 'Reserved', color: 'bg-gray-400' },
     ];
 
-    const ResumePaymentButton: React.FC = () => {
-        const { showError } = useToaster();
-        const [isLoading, setIsLoading] = useState<boolean>(false);
+    // const ResumePaymentButton: React.FC = () => {
+    //     const { showError } = useToaster();
+    //     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-        const handleResumePayment = () => {
-            setIsLoading(true);
-            const savedTransactionStr =
-                localStorage.getItem('pendingTransaction');
+    //     const handleResumePayment = () => {
+    //         setIsLoading(true);
+    //         const savedTransactionStr =
+    //             localStorage.getItem('pendingTransaction');
 
-            if (savedTransactionStr) {
-                try {
-                    const parsed = JSON.parse(
-                        savedTransactionStr,
-                    ) as SavedTransaction;
-                    if (
-                        parsed.transactionInfo &&
-                        parsed.transactionInfo.transaction_id
-                    ) {
-                        resumeTransaction(
-                            parsed.transactionInfo.transaction_id,
-                        ).finally(() => setIsLoading(false));
-                    } else {
-                        showError('Invalid transaction information.');
-                        setIsLoading(false);
-                    }
-                } catch (e) {
-                    console.error('Failed to parse transaction info', e);
-                    showError('Failed to resume payment. Please try again.');
-                    setIsLoading(false);
-                }
-            } else {
-                showError('No pending transaction found.');
-                setIsLoading(false);
-            }
-        };
+    //         if (savedTransactionStr) {
+    //             try {
+    //                 const parsed = JSON.parse(
+    //                     savedTransactionStr,
+    //                 ) as SavedTransaction;
+    //                 if (
+    //                     parsed.transactionInfo &&
+    //                     parsed.transactionInfo.transaction_id
+    //                 ) {
+    //                     resumeTransaction(
+    //                         parsed.transactionInfo.transaction_id,
+    //                     ).finally(() => setIsLoading(false));
+    //                 } else {
+    //                     showError('Invalid transaction information.');
+    //                     setIsLoading(false);
+    //                 }
+    //             } catch (e) {
+    //                 console.error('Failed to parse transaction info', e);
+    //                 showError('Failed to resume payment. Please try again.');
+    //                 setIsLoading(false);
+    //             }
+    //         } else {
+    //             showError('No pending transaction found.');
+    //             setIsLoading(false);
+    //         }
+    //     };
 
-        return (
-            <button
-                className="mt-3 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-blue-300"
-                onClick={handleResumePayment}
-                disabled={isLoading}
-            >
-                {isLoading ? 'Processing...' : 'Resume Payment'}
-            </button>
-        );
-    };
+    //     return (
+    //         <button
+    //             className="mt-3 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-blue-300"
+    //             onClick={handleResumePayment}
+    //             disabled={isLoading}
+    //         >
+    //             {isLoading ? 'Processing...' : 'Resume Payment'}
+    //         </button>
+    //     );
+    // };
 
     // If we have an error, show it
     if (error) {
@@ -600,105 +713,20 @@ export default function Landing({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title="Book Tickets" />
-            {/* Tampilkan pesan status event jika tidak active */}
-            {!isBookingAllowed && event && (
-                <div className="py-2">
-                    <div className="mx-auto w-full sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col gap-4 py-4">
+                {/* Tampilkan pesan status event jika tidak active */}
+                {!isBookingAllowed && event && (
+                    <div className="mx-auto w-fit sm:px-6 lg:px-8">
                         <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
                             <p className="text-center font-medium text-yellow-800">
                                 {eventStatusMessage}
                             </p>
                         </div>
                     </div>
-                </div>
-            )}
-            {/* <div className="py-8">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div
-                        className="overflow-hidden shadow-sm sm:rounded-lg"
-                        style={{
-                            backgroundColor: props.primary_color,
-                        }}
-                    >
-                        <div
-                            className="p-6"
-                            style={{
-                                color: props.text_primary_color,
-                            }}
-                        >
-                            {event && venue ? (
-                                <>
-                                    <h1 className="text-lg font-bold">
-                                        {event.name}
-                                    </h1>
-                                    <p
-                                        className="text-lg"
-                                        style={{
-                                            color: props.text_secondary_color,
-                                        }}
-                                    >
-                                        Venue: {venue.name}
-                                    </p>
-                                    <p
-                                        className=""
-                                        style={{
-                                            color: props.text_secondary_color,
-                                        }}
-                                    >
-                                        Date:{' '}
-                                        {new Date(
-                                            event.event_date,
-                                        ).toLocaleDateString()}
-                                    </p>
-                                </>
-                            ) : (
-                                <h1 className="text-lg font-bold">
-                                    {(client ? client + ' : ' : '') +
-                                        'Buy Tickets Here'}
-                                </h1>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div> */}
-
-            {/* Timeline Information */}
-            {/* {currentTimeline && (
-                <div className="py-2">
-                    <div className="mx-auto w-full sm:px-6 lg:px-8">
-                        <div
-                            className="overflow-hidden p-2 shadow-md sm:rounded-lg"
-                            style={{
-                                backgroundColor: props.primary_color,
-                                color: props.text_primary_color,
-                            }}
-                        >
-                            <h3 className="mb-3 text-lg font-semibold">
-                                Current Ticket Period
-                            </h3>
-                            <div className="rounded-lg bg-blue-50 p-2 text-blue-800">
-                                <div className="text-lg font-medium">
-                                    {currentTimeline.name}
-                                </div>
-                                <div className="text-blue-600">
-                                    {new Date(
-                                        currentTimeline.start_date,
-                                    ).toLocaleDateString()}{' '}
-                                    -{' '}
-                                    {new Date(
-                                        currentTimeline.end_date,
-                                    ).toLocaleDateString()}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )} */}
-
-            <div className="w-full py-4">
+                )}
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="flex flex-col overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        className="flex flex-col overflow-hidden rounded-lg p-6 shadow-xl"
                         style={{
                             backgroundColor: props.primary_color,
                             color: props.text_primary_color,
@@ -1108,39 +1136,8 @@ export default function Landing({
                                         ))}
                                     </div>
                                 </div>
-
-                                {/* Extra description about ticket types */}
-                                {/* <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-                                        <div className="mb-1 font-medium">
-                                            Important Information
-                                        </div>
-                                        <ul className="list-disc space-y-1 pl-5">
-                                            <li>
-                                                Prices may vary based on current
-                                                sales period
-                                            </li>
-                                            <li>
-                                                One person can purchase up to 5
-                                                tickets
-                                            </li>
-                                            <li>
-                                                All ticket sales are final - no
-                                                refunds
-                                            </li>
-                                        </ul>
-                                    </div> */}
                             </div>
                         </div>
-
-                        {/* Show event status message if not active */}
-                        {/* {!isBookingAllowed && event && (
-                            <div className="mb-4 overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
-                                <p className="text-center font-medium text-yellow-800">
-                                    {eventStatusMessage}
-                                </p>
-                            </div>
-                        )} */}
-
                         {/* Seat Map Section - takes up more vertical space */}
                         <div
                             className="borde flex flex-col items-center justify-center gap-2 rounded-lg p-3"
@@ -1180,9 +1177,92 @@ export default function Landing({
                         }}
                     >
                         <h3 className="mb-4 text-lg font-semibold">
-                            Selected Seats
+                            {pendingTransactions.length > 0 ? (
+                                <span>Pending Transactions</span>
+                            ) : (
+                                <span>Selected Seats</span>
+                            )}
                         </h3>
-                        {selectedSeats.length === 0 ? (
+
+                        {pendingTransactions.length > 0 ? (
+                            <div className="space-y-4">
+                                {pendingTransactions.map(
+                                    (transaction, transactionIndex) => (
+                                        <div
+                                            key={transactionIndex}
+                                            className="space-y-4"
+                                        >
+                                            <h4 className="text-base font-semibold">
+                                                {'Transaction: ' +
+                                                    transaction.order_code}
+                                            </h4>
+                                            {transaction.seats.map((seat) => (
+                                                <div
+                                                    key={seat.seat_id}
+                                                    className="flex items-center justify-between rounded-lg p-3"
+                                                    style={{
+                                                        backgroundColor:
+                                                            props.secondary_color,
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    <div>
+                                                        <p className="font-semibold">
+                                                            Ticket Type:{' '}
+                                                            {seat.ticket_type ||
+                                                                seat.category ||
+                                                                'Standard'}
+                                                        </p>
+                                                        <p className="text-sm">
+                                                            Seat:{' '}
+                                                            {seat.seat_number}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold">
+                                                            Price:{' '}
+                                                            {formatRupiah(
+                                                                getSafePrice(
+                                                                    seat.price,
+                                                                ),
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div className="mt-4 flex gap-2">
+                                                {/* Resume Button */}
+                                                {isBookingAllowed && (
+                                                    <button
+                                                        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                                        onClick={() =>
+                                                            resumePayment(
+                                                                transaction.snap_token,
+                                                            )
+                                                        }
+                                                    >
+                                                        Resume Payment
+                                                    </button>
+                                                )}
+                                                {/* Resume Button */}
+                                                {isBookingAllowed && (
+                                                    <button
+                                                        className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                        onClick={() =>
+                                                            cancelPayment([
+                                                                transaction.order_id,
+                                                            ])
+                                                        }
+                                                    >
+                                                        Cancel Payment
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ),
+                                )}
+                            </div>
+                        ) : selectedSeats.length === 0 ? (
                             <p>No seats selected.</p>
                         ) : (
                             <div className="space-y-4">
@@ -1249,19 +1329,19 @@ export default function Landing({
                         )}
 
                         {/* Proceed Button */}
-                        {selectedSeats.length > 0 && isBookingAllowed && (
-                            <ProceedTransactionButton
-                                selectedSeats={selectedSeats}
-                                taxAmount={taxAmount}
-                                subtotal={subtotal}
-                                total={total}
-                                onTransactionStarted={
-                                    markSeatsAsPendingTransaction
-                                }
-                            />
-                        )}
+                        {pendingTransactions.length === 0 &&
+                            selectedSeats.length > 0 &&
+                            isBookingAllowed && (
+                                <ProceedTransactionButton
+                                    client={client}
+                                    selectedSeats={selectedSeats}
+                                    taxAmount={taxAmount}
+                                    subtotal={subtotal}
+                                    total={total}
+                                />
+                            )}
 
-                        {pendingTransactionSeats.length > 0 && (
+                        {/* {pendingTransactionSeats.length > 0 && (
                             <div className="mt-4 rounded-lg bg-yellow-50 p-3">
                                 <h4 className="font-medium text-yellow-800">
                                     Pending Transaction
@@ -1284,10 +1364,12 @@ export default function Landing({
                                     Please complete your payment to secure these
                                     seats.
                                 </p>
-                                {/* Resume Payment Button */}
+                                */}
+                        {/* Resume Payment Button */}
+                        {/*
                                 <ResumePaymentButton />
                             </div>
-                        )}
+                        )} */}
                     </div>
                 </div>
             </div>

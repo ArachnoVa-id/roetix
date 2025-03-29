@@ -44,6 +44,7 @@ class OrderFactory extends Factory
         $orderCode = Order::keyGen(OrderType::UNKNOWN);
 
         return [
+            'snap_token' => null,
             'order_code' => $orderCode,
             'event_id' => $event_id,
             'user_id' => $user->id,

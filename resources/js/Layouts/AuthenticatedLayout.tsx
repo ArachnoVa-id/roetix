@@ -52,8 +52,11 @@ export default function Authenticated({
         <div
             className="flex min-h-screen flex-col"
             style={{
-                backgroundColor: props?.secondary_color,
                 color: props?.text_secondary_color,
+                backgroundColor: props?.primary_color,
+                backgroundImage: `url(${props.texture})`,
+                backgroundRepeat: 'repeat',
+                backgroundSize: 'auto',
             }}
         >
             <nav
@@ -71,7 +74,7 @@ export default function Authenticated({
                                     <img
                                         src={props?.logo}
                                         alt={props?.logo_alt}
-                                        className="h-8"
+                                        className="h-8 rounded-lg"
                                     />
                                 </Link>
                             </div>

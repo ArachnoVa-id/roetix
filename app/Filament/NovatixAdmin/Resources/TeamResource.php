@@ -48,6 +48,7 @@ class TeamResource extends Resource
                                 ->formatStateUsing(fn($state) => max(0, $state)),
                         ]),
                     Infolists\Components\Tabs::make('')
+                        ->hidden(!$showMembers && !$showEvents && !$showVenues)
                         ->columnSpanFull()
                         ->schema([
                             Infolists\Components\Tabs\Tab::make('Members')
