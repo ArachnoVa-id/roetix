@@ -74,7 +74,7 @@ export default function Authenticated({
                                     <img
                                         src={props?.logo}
                                         alt={props?.logo_alt}
-                                        className="h-8"
+                                        className="h-8 rounded-lg"
                                     />
                                 </Link>
                             </div>

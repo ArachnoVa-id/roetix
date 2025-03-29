@@ -32,8 +32,16 @@ class UserResource extends Resources\Resource
             ->columns(4)
             ->schema([
                 Infolists\Components\Section::make('User Information')
-                    ->columnSpan(2)
-                    ->columns(2)
+                    ->columnSpan([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
                     ->schema([
                         Infolists\Components\TextEntry::make('first_name')
                             ->label('First Name'),
@@ -46,8 +54,16 @@ class UserResource extends Resources\Resource
                             ->badge(),
                     ]),
                 Infolists\Components\Section::make('User Contact')
-                    ->columnSpan(2)
-                    ->columns(2)
+                    ->columnSpan([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
                     ->relationship('contactInfo')
                     ->schema([
                         Infolists\Components\TextEntry::make('phone_number')
@@ -75,10 +91,18 @@ class UserResource extends Resources\Resource
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
-            ->columns(2)
+            ->columns([
+                'default' => 1,
+                'sm' => 1,
+                'md' => 2,
+            ])
             ->schema([
                 Forms\Components\Section::make('User Information')
-                    ->columnSpan(1)
+                    ->columnSpan([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 1,
+                    ])
                     ->schema([
                         Forms\Components\Group::make([
                             Forms\Components\TextInput::make('first_name')
@@ -111,7 +135,11 @@ class UserResource extends Resources\Resource
                         ]),
                     ]),
                 Forms\Components\Section::make('User Contact')
-                    ->columnSpan(1)
+                    ->columnSpan([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 1,
+                    ])
                     ->relationship('contactInfo', 'venue_id')
                     ->schema([
                         Forms\Components\TextInput::make('phone_number')
@@ -131,7 +159,11 @@ class UserResource extends Resources\Resource
                             ->prefix('@'),
                     ]),
                 Forms\Components\Section::make('Teams')
-                    ->columnSpan(2)
+                    ->columnSpan([
+                        'default' => 1,
+                        'sm' => 1,
+                        'md' => 2,
+                    ])
                     ->schema([
                         Forms\Components\Repeater::make('teams')
                             ->grid(4)

@@ -713,22 +713,20 @@ export default function Landing({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title="Book Tickets" />
-            {/* Tampilkan pesan status event jika tidak active */}
-            {!isBookingAllowed && event && (
-                <div className="py-2">
-                    <div className="mx-auto w-full sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col gap-4 py-4">
+                {/* Tampilkan pesan status event jika tidak active */}
+                {!isBookingAllowed && event && (
+                    <div className="mx-auto w-fit sm:px-6 lg:px-8">
                         <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
                             <p className="text-center font-medium text-yellow-800">
                                 {eventStatusMessage}
                             </p>
                         </div>
                     </div>
-                </div>
-            )}
-            <div className="w-full py-4">
+                )}
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="flex flex-col overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        className="flex flex-col overflow-hidden rounded-lg p-6 shadow-xl"
                         style={{
                             backgroundColor: props.primary_color,
                             color: props.text_primary_color,

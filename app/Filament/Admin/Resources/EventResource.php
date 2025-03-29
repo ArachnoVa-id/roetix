@@ -433,7 +433,11 @@ class EventResource extends Resource
                             ->schema([
                                 Forms\Components\Repeater::make('event_timeline')
                                     ->label('')
-                                    ->columns(5)
+                                    ->columns([
+                                        'default' => 1,
+                                        'sm' => 1,
+                                        'md' => 5,
+                                    ])
                                     ->minItems(1)
                                     ->live(debounce: 500)
                                     ->reorderable(false)
@@ -530,7 +534,11 @@ class EventResource extends Resource
                                     ->schema([
                                         Forms\Components\TextInput::make('name')
                                             ->label('Name')
-                                            ->columnSpan(1)
+                                            ->columnSpan([
+                                                'default' => 1,
+                                                'sm' => 1,
+                                                'md' => 1,
+                                            ])
                                             ->default(null)
                                             ->required()
                                             ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
@@ -549,7 +557,11 @@ class EventResource extends Resource
                                             ->label('Start Date')
                                             ->default(null)
                                             ->reactive()
-                                            ->columnSpan(2)
+                                            ->columnSpan([
+                                                'default' => 1,
+                                                'sm' => 1,
+                                                'md' => 2,
+                                            ])
                                             ->required()
                                             ->minDate(function (Forms\Get $get) {
                                                 $array = $get('../'); // Get all sibling entries
@@ -656,7 +668,11 @@ class EventResource extends Resource
                                                 Carbon::parse($get('start_date'))
                                             )
                                             ->default(null)
-                                            ->columnSpan(2)
+                                            ->columnSpan([
+                                                'default' => 1,
+                                                'sm' => 1,
+                                                'md' => 2,
+                                            ])
                                             ->required()
                                             ->reactive()
                                             ->maxDate(
@@ -729,7 +745,11 @@ class EventResource extends Resource
                                 Forms\Components\Repeater::make('ticket_categories')
                                     ->relationship('ticketCategories')
                                     ->minItems(1)
-                                    ->columns(5)
+                                    ->columns([
+                                        'default' => 1,
+                                        'sm' => 1,
+                                        'md' => 5,
+                                    ])
                                     ->defaultItems(0)
                                     ->reorderable(false)
                                     ->addable(function (Forms\Get $get) {
@@ -847,7 +867,11 @@ class EventResource extends Resource
                                     })
                                     ->schema([
                                         Forms\Components\Section::make('Category')
-                                            ->columnSpan(1)
+                                            ->columnSpan([
+                                                'default' => 1,
+                                                'sm' => 1,
+                                                'md' => 1,
+                                            ])
                                             ->schema([
                                                 Forms\Components\Hidden::make('ticket_category_id')
                                                     ->default('-'),
@@ -884,7 +908,11 @@ class EventResource extends Resource
                                                     ->required(),
                                             ]),
                                         Forms\Components\Section::make('Timeline')
-                                            ->columnSpan(4)
+                                            ->columnSpan([
+                                                'default' => 1,
+                                                'sm' => 1,
+                                                'md' => 4,
+                                            ])
                                             ->schema([
                                                 Forms\Components\Repeater::make('event_category_timebound_prices')
                                                     ->relationship('eventCategoryTimeboundPrices')
@@ -901,7 +929,11 @@ class EventResource extends Resource
                                                             Forms\Components\Toggle::make('is_active')
                                                                 ->default(true)
                                                                 ->label(fn($state) => $state ? 'On' : 'Off'),
-                                                        ])->columns(2),
+                                                        ])->columns([
+                                                            'default' => 1,
+                                                            'sm' => 1,
+                                                            'md' => 2,
+                                                        ]),
                                                         Forms\Components\Hidden::make('name')
                                                             ->default('')
                                                             ->formatStateUsing(function (Forms\Get $get) {
@@ -929,24 +961,44 @@ class EventResource extends Resource
                             ]),
                         Forms\Components\Tabs\Tab::make('Locking')
                             ->hidden(!$modelExists)
-                            ->columns(2)
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
                             ->schema([
                                 Forms\Components\Section::make('')
-                                    ->columnSpan(1)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'sm' => 1,
+                                        'md' => 1,
+                                    ])
                                     ->schema([
                                         Forms\Components\Toggle::make('is_locked')
                                             ->label('Is Locked')
                                     ]),
                                 Forms\Components\TextInput::make('locked_password')
-                                    ->columnSpan(1)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'sm' => 1,
+                                        'md' => 1,
+                                    ])
                                     ->label('Password'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Maintenance')
                             ->hidden(!$modelExists)
-                            ->columns(2)
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
                             ->schema([
                                 Forms\Components\Section::make('')
-                                    ->columnSpan(1)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'sm' => 1,
+                                        'md' => 1,
+                                    ])
                                     ->schema([
                                         Forms\Components\Toggle::make('is_maintenance')
                                             ->label('Is Maintenance')
@@ -964,7 +1016,11 @@ class EventResource extends Resource
                                     ->label('Message'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Limits')
-                            ->columns(2)
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
                             ->schema([
                                 Forms\Components\TextInput::make('ticket_limit')
                                     ->numeric()
@@ -980,7 +1036,11 @@ class EventResource extends Resource
                                 Forms\Components\Livewire::make('color-preview', ['record' => $record])
                             ]),
                         Forms\Components\Tabs\Tab::make('Identity')
-                            ->columns(2)
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
                             ->schema([
                                 Forms\Components\TextInput::make('logo')
                                     ->label('Logo'),

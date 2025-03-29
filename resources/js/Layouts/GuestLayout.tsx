@@ -9,7 +9,7 @@ export default function Guest({
 }: PropsWithChildren & { props: EventProps; client: string }) {
     return (
         <div
-            className="flex min-h-screen w-full flex-col items-center gap-4 p-4 sm:justify-center"
+            className="flex min-h-screen w-full flex-col items-center justify-center gap-4 p-4"
             style={{
                 backgroundColor: props?.primary_color,
                 backgroundImage: `url(${props.texture})`,
@@ -21,11 +21,11 @@ export default function Guest({
                 <img
                     src={props.logo}
                     alt={props.logo_alt}
-                    className="aspect-[1/1] w-40"
+                    className="aspect-[1/1] w-40 rounded-lg"
                 />
             </Link>
             <div
-                className="w-fit max-w-7xl overflow-hidden rounded-lg p-6 shadow-md"
+                className="h-fit w-fit max-w-7xl overflow-hidden rounded-lg p-6 shadow-md"
                 style={{
                     color: props.text_primary_color,
                     backgroundColor: props.secondary_color,
@@ -34,7 +34,7 @@ export default function Guest({
                 {children}
             </div>
             <div
-                className="flex h-full w-fit items-center justify-center rounded-full px-3"
+                className="flex w-fit items-center justify-center rounded-full px-3"
                 style={{
                     backgroundColor: props.secondary_color,
                 }}
