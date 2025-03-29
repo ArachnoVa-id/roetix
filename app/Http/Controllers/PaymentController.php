@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
+use App\Events\TicketPurchased;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Seat;
@@ -34,6 +35,7 @@ class PaymentController extends Controller
     /**
      * Handle payment charge requests from the frontend
      */
+    // disini nanti taro eventnya
     public function charge(Request $request)
     {
         DB::beginTransaction();
@@ -151,6 +153,9 @@ class PaymentController extends Controller
 
             // Lock tickets
             $tickets->each(fn($ticket) => $ticket->update(['status' => TicketStatus::IN_TRANSACTION]));
+
+            // Broadcast real-time event
+            event(new TicketPurchased($tickets));
 
             // Create order
             $order = Order::create([
