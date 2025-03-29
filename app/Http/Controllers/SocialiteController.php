@@ -30,11 +30,13 @@ class SocialiteController extends Controller
             $google_resp = Socialite::driver('google')->user();
             $google_user = $google_resp->user;
 
-            $user = User::where('google_id', $google_resp->id)
-                ->orWhere('email', $google_resp->email)
+            $user = User::where('email', $google_resp->email)
                 ->first();
 
-            if ($user) {
+            $userExists = $user !== null;
+            $userHasCorrectGoogleId = $userExists && $user->google_id === $google_resp->id;
+
+            if ($userHasCorrectGoogleId) {
                 Auth::login($user);
 
                 return redirect()->route('client.home', ['client' => $client]);
@@ -77,38 +79,57 @@ class SocialiteController extends Controller
                 //   ]
                 // }
 
-                // Make new user
-                $userData = User::create([
-                    'email' => $google_resp->email,
-                    'password' => Hash::make($google_resp->id),
-                    'role' => UserRole::USER,
+                // Check if $google_user has given_name and family_name
+                $given_name = $google_user['given_name'] ?? null;
+                $family_name = $google_user['family_name'] ?? null;
+
+                $userBody = [
+                    'email' => $userExists ? $user->email : $google_resp->email,
+                    'password' => $userExists ? $user->password : Hash::make($google_resp->id), // If user exists, keep the original password
+                    'role' => $userExists ? $user->role : UserRole::USER,
                     'google_id' => $google_resp->id,
-                    'first_name' => $google_user['given_name'],
-                    'last_name' => $google_user['family_name'],
-                    'email_verified_at' => now(),
-                ]);
+                    'first_name' => $userExists ? $user->first_name : $given_name,
+                    'last_name' => $userExists ? $user->last_name : $family_name,
+                    'email_verified_at' => $userExists ? $user->email_verified_at : now(),
+                ];
 
-                if (!$userData) throw new Exception('Failed to create user');
+                // Do new user
+                $userData = null;
+                if ($userExists) {
+                    $userData = $user;
+                    $userData->update($userBody);
+                } else {
+                    $userData = User::create($userBody);
+                    if (!$userData) throw new Exception('Failed to create user');
+                }
 
-                // Make user contact
-                $userContact = UserContact::create([
-                    'nickname' => $google_resp->nickname,
-                    'fullname' => $google_resp->name,
-                    'avatar' => $google_resp->avatar,
-                    'phone_number' => null,
-                    'email' => $google_resp->email,
-                    'whatsapp_number' => null,
-                    'instagram' => null,
-                    'birth_date' => null,
-                    'gender' => null,
-                    'address' => null,
-                ]);
+                // Do user contact
+                $userContactBody = [
+                    'nickname' => $userExists ? $user->contactInfo->nickname ?? $google_resp->nickname : $google_resp->nickname,
+                    'fullname' => $userExists ? $user->contactInfo->fullname ?? $google_resp->name : $google_resp->name,
+                    'avatar' => $userExists ? $user->contactInfo->avatar ?? $google_resp->avatar : $google_resp->avatar,
+                    'phone_number' => $userExists ? $user->contactInfo->phone_number : null,
+                    'email' => $userExists ? $user->contactInfo->email ?? $google_resp->email : $google_resp->email,
+                    'whatsapp_number' => $userExists ? $user->contactInfo->whatsapp_number : null,
+                    'instagram' => $userExists ? $user->contactInfo->instagram : null,
+                    'birth_date' => $userExists ? $user->contactInfo->birth_date : null,
+                    'gender' => $userExists ? $user->contactInfo->gender : null,
+                    'address' => $userExists ? $user->contactInfo->address : null,
+                ];
 
-                if (!$userContact) throw new Exception('Failed to create user contact');
+                $userContact = null;
+                if ($userExists) {
+                    $userContact = UserContact::find($userData->contactInfo->contact_id);
+                    $userContact->update($userContactBody);
+                } else {
+                    $userContact = UserContact::create($userContactBody);
 
-                // Link
-                $userData->contact_info = $userContact->contact_id;
-                $userData->save();
+                    if (!$userContact) throw new Exception('Failed to create user contact');
+
+                    // Link
+                    $userData->contact_info = $userContact->contact_id;
+                    $userData->save();
+                }
 
                 DB::commit();
 

@@ -10,6 +10,7 @@ import {
 } from '../types';
 
 const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
+    client,
     selectedSeats,
     taxAmount,
     subtotal,
@@ -184,6 +185,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 showError(
                     'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
                 );
+                window.location.reload();
             },
         };
     };
@@ -246,7 +248,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             // Send the payment request
             // console.log('Sending payment request');
             const response = await axios.post(
-                '/payment/charge',
+                route('payment.charge', client),
                 payload,
                 config,
             );

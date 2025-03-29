@@ -96,6 +96,7 @@ export interface SeatMapConfig {
 }
 
 export interface ProceedTransactionButtonProps {
+    client: string;
     selectedSeats: SeatItem[];
     taxAmount?: number; // Optional tax amount
     subtotal?: number; // Optional subtotal
@@ -155,7 +156,8 @@ export interface MidtransTransactionResultBase {
 }
 
 // Tambahkan properti lain dengan Record
-export type MidtransTransactionResult = MidtransTransactionResultBase & Record<string, unknown>;
+export type MidtransTransactionResult = MidtransTransactionResultBase &
+    Record<string, unknown>;
 
 // Buat interface untuk callback yang lebih spesifik
 export interface MidtransCallbacks {

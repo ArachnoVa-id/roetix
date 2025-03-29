@@ -76,7 +76,6 @@ enum EventStatus: string implements HasLabel, HasColor
             case self::CANCELLED:
                 return [
                     self::CANCELLED->value => self::CANCELLED->getLabel(),
-                    self::PLANNED->value => self::PLANNED->getLabel(),
                 ];
             default:
                 return [];

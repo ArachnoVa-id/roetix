@@ -258,12 +258,18 @@ class PaymentController extends Controller
     private function updateStatus($orderCode, $status, $transactionData)
     {
         try {
+            DB::beginTransaction();
             // Find order first
             $order = Order::where('order_code', $orderCode)->first();
-
             if (!$order) {
-                Log::warning('Order not found', ['order_code' => $orderCode]);
                 throw new \Exception('Order not found: ' . $orderCode);
+            }
+
+            $currentStatus = $order->status;
+            if ($currentStatus === $status) {
+                // No need to update if status is the same
+                DB::commit();
+                return;
             }
 
             // Update order status
@@ -277,16 +283,16 @@ class PaymentController extends Controller
                 if ($ticket) { // Ensure the ticket exists before updating
                     $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
                     $ticket->save();
-                } else {
-                    Log::warning('Ticket not found', ['ticket_id' => $ticketOrder->ticket_id]);
                 }
             }
+            DB::commit();
         } catch (\Exception $e) {
+            DB::rollBack();
             throw $e; // Re-throw the exception to ensure the outer transaction rolls back
         }
     }
 
-    public function getPendingTransactions(Request $request, string $client = '')
+    public function getPendingTransactions(string $client = '')
     {
         try {
             $userId = Auth::id();
@@ -355,6 +361,68 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to fetch pending transactions: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function cancelPendingTransactions(Request $request, string $client = '')
+    {
+        try {
+            DB::beginTransaction();
+            $validator = Validator::make($request->all(), [
+                'order_ids' => 'required|array',
+            ]);
+
+            if ($validator->fails()) {
+                throw new \Exception('Validation error: ' . $validator->errors()->first());
+            }
+
+            $event = Event::where('slug', $client)->first();
+            if (!$event) {
+                throw new \Exception('Event not found');
+            }
+
+            $orderIds = $request->order_ids;
+            $orders = Order::whereIn('order_id', $orderIds)
+                ->where('user_id', Auth::id())
+                ->where('event_id', $event->event_id)
+                ->where('status', OrderStatus::PENDING)
+                ->get();
+
+            if ($orders->isEmpty()) {
+                throw new \Exception('No pending orders found');
+            }
+
+            foreach ($orders as $order) {
+                // Update order status
+                $order->status = OrderStatus::CANCELLED;
+                $order->save();
+
+                // Update ticket statuses
+                $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
+                foreach ($ticketOrders as $ticketOrder) {
+                    $ticket = Ticket::find($ticketOrder->ticket_id);
+                    if ($ticket) { // Ensure the ticket exists before updating
+                        $ticket->status = TicketStatus::AVAILABLE;
+                        $ticket->save();
+                    }
+
+                    // Set current status to cancelled
+                    $ticketOrder->status = TicketOrderStatus::DEACTIVATED;
+                    $ticketOrder->save();
+                }
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Orders cancelled successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel orders: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -102,7 +102,7 @@ export default function Landing({
         const fetchPendingTransactions = async (): Promise<void> => {
             try {
                 // Tambahkan timestamp untuk mencegah caching
-                const response = await fetch(`/api/pending-transactions`);
+                const response = await fetch(route('payment.pending', client));
 
                 if (!response.ok) {
                     console.error('Server response:', await response.text());
@@ -115,7 +115,6 @@ export default function Landing({
                     success: boolean;
                     pendingTransactions: PendingTransactionResponseItem[];
                 };
-                console.log(data);
                 if (data.success && data.pendingTransactions.length > 0) {
                     // Set pending transactions
                     setPendingTransactions(data.pendingTransactions);
@@ -129,7 +128,7 @@ export default function Landing({
         };
 
         fetchPendingTransactions();
-    }, []);
+    }, [client]);
 
     const createCallbacks = (): MidtransCallbacks => {
         return {
@@ -161,7 +160,6 @@ export default function Landing({
     const resumePayment = async (token: string) => {
         if (!window.snap) return;
 
-        console.log('Skibidi');
         showSuccess('Preparing your payment...');
 
         try {
@@ -176,6 +174,36 @@ export default function Landing({
                 showError(errorMsg);
             } else {
                 showError('Failed to resume payment. Please try again.');
+            }
+        }
+    };
+
+    const cancelPayment = async (order_ids: string[]) => {
+        if (!order_ids) return;
+
+        showSuccess('Cancelling your payment...');
+
+        try {
+            const response = await axios.post(route('payment.cancel', client), {
+                order_ids,
+            });
+
+            if (response.data.success) {
+                showSuccess('Payment cancelled successfully');
+                window.location.reload();
+            } else {
+                showError(response.data.message || 'Failed to cancel payment');
+            }
+        } catch (err) {
+            console.error('Failed to cancel payment:', err);
+
+            if (axios.isAxiosError(err)) {
+                const errorMsg =
+                    err.response?.data?.message ||
+                    'Failed to connect to payment server';
+                showError(errorMsg);
+            } else {
+                showError('Failed to cancel payment. Please try again.');
             }
         }
     };
@@ -684,22 +712,20 @@ export default function Landing({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title="Book Tickets" />
-            {/* Tampilkan pesan status event jika tidak active */}
-            {!isBookingAllowed && event && (
-                <div className="py-2">
-                    <div className="mx-auto w-full sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col gap-4 py-4">
+                {/* Tampilkan pesan status event jika tidak active */}
+                {!isBookingAllowed && event && (
+                    <div className="mx-auto w-fit sm:px-6 lg:px-8">
                         <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
                             <p className="text-center font-medium text-yellow-800">
                                 {eventStatusMessage}
                             </p>
                         </div>
                     </div>
-                </div>
-            )}
-            <div className="w-full py-4">
+                )}
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="flex flex-col overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        className="flex flex-col overflow-hidden rounded-lg p-6 shadow-xl"
                         style={{
                             backgroundColor: props.primary_color,
                             color: props.text_primary_color,
@@ -1203,19 +1229,34 @@ export default function Landing({
                                                     </div>
                                                 </div>
                                             ))}
-                                            {/* Resume Button */}
-                                            {isBookingAllowed && (
-                                                <button
-                                                    className="mt-4 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-                                                    onClick={() =>
-                                                        resumePayment(
-                                                            transaction.snap_token,
-                                                        )
-                                                    }
-                                                >
-                                                    Resume Payment
-                                                </button>
-                                            )}
+                                            <div className="mt-4 flex gap-2">
+                                                {/* Resume Button */}
+                                                {isBookingAllowed && (
+                                                    <button
+                                                        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                                        onClick={() =>
+                                                            resumePayment(
+                                                                transaction.snap_token,
+                                                            )
+                                                        }
+                                                    >
+                                                        Resume Payment
+                                                    </button>
+                                                )}
+                                                {/* Resume Button */}
+                                                {isBookingAllowed && (
+                                                    <button
+                                                        className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                        onClick={() =>
+                                                            cancelPayment([
+                                                                transaction.order_id,
+                                                            ])
+                                                        }
+                                                    >
+                                                        Cancel Payment
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     ),
                                 )}
@@ -1291,6 +1332,7 @@ export default function Landing({
                             selectedSeats.length > 0 &&
                             isBookingAllowed && (
                                 <ProceedTransactionButton
+                                    client={client}
                                     selectedSeats={selectedSeats}
                                     taxAmount={taxAmount}
                                     subtotal={subtotal}

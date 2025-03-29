@@ -55,31 +55,7 @@ Route::domain(config('app.domain'))
         });
 
         // Redirect Home to Tenant Dashboard
-        Route::get('/', function () {
-            if (!Auth::check()) {
-                return redirect()->route('login');
-            }
-
-            $user = Auth::user();
-            $userInModel = User::find($user->id);
-
-            // Detect if the request is from a subdomain
-            $subdomain = request()->route('client');
-
-            // If user is in a subdomain, do not redirect to admin panel
-            if ($subdomain) {
-                return redirect()->route('client.home', ['client' => $subdomain]);
-            }
-
-            if ($userInModel?->role === 'user') {
-                Auth::logout();
-                return redirect()->route('login');
-            }
-
-            return ($team = $userInModel?->teams()->first())
-                ? redirect()->route('filament.admin.pages.dashboard', ['tenant' => $team->code])
-                : redirect()->route('login');
-        })->name('home');
+        Route::get('/', function () {})->name('home');
 
         // Privacy Policy and Terms & Conditions pages
         Route::get('/privacy-policy', function () {
@@ -168,16 +144,23 @@ Route::domain('{client}.' . config('app.domain'))
                         Route::get('tickets/download-all', 'downloadAllTickets')
                             ->name('api.tickets.download-all');
                     });
+
+                Route::controller(PaymentController::class)
+                    ->group(function () {
+                        Route::get('payment/pending', 'getPendingTransactions')
+                            ->name('payment.pending');
+
+                        Route::post('payment/cancel', 'cancelPendingTransactions')
+                            ->name('payment.cancel');
+
+                        // Ticket
+                        Route::post('payment/charge', 'charge')
+                            ->name('payment.charge');
+
+                        // Route::post('/payment/resume', 'resumePayment')
+                        //     ->name('payment.resume');
+                    });
             });
-
-            Route::controller(PaymentController::class)
-                ->group(function () {
-                    Route::get('/api/pending-transactions', 'getPendingTransactions')
-                        ->name('api.pending-transactions');
-
-                    // Route::post('/payment/resume', 'resumePayment')
-                    //     ->name('payment.resume');
-                });
         });
 
         // Event Tickets
@@ -203,10 +186,6 @@ Route::domain('{client}.' . config('app.domain'))
                 Route::delete('/profile', 'destroy')
                     ->name('profile.destroy');
             });
-
-        // Ticket
-        Route::post('/payment/charge', [PaymentController::class, 'charge'])
-            ->name('payment.charge');
 
         // Any unregistered route will be redirected to the client's home page
         Route::fallback(function () {

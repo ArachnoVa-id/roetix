@@ -141,16 +141,32 @@ class VenueResource extends Resources\Resource
     public static function infolist(Infolists\Infolist $infolist, bool $showEvents = true): Infolists\Infolist
     {
         return $infolist
-            ->columns(2)
+            ->columns([
+                'default' => 1,
+                'sm' => 1,
+                'md' => 2,
+            ])
             ->schema(
                 [
                     Infolists\Components\Section::make('Venue Information')
-                        ->columnSpan(1)
-                        ->columns(2)
+                        ->columnSpan([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 1,
+                        ])
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
                         ->schema([
                             Infolists\Components\TextEntry::make('venue_id')
                                 ->label('Venue ID')
-                                ->columnSpan(2),
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ]),
                             Infolists\Components\TextEntry::make('name'),
                             Infolists\Components\TextEntry::make('location'),
                             Infolists\Components\TextEntry::make('capacity_qty')
@@ -164,8 +180,16 @@ class VenueResource extends Resources\Resource
                     Infolists\Components\Group::make([
                         Infolists\Components\Section::make('Venue Contact')
                             ->relationship('contactInfo', 'venue_id')
-                            ->columnSpan(1)
-                            ->columns(2)
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 1,
+                            ])
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
                             ->schema([
                                 Infolists\Components\TextEntry::make('phone_number'),
                                 Infolists\Components\TextEntry::make('email'),
@@ -173,19 +197,27 @@ class VenueResource extends Resources\Resource
                                 Infolists\Components\TextEntry::make('instagram'),
                             ]),
                         Infolists\Components\Section::make('Venue Owner')
-                            ->columnSpan(1)
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 1,
+                            ])
                             ->relationship('team', 'team_id')
-                            ->columns(2)
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
                             ->schema([
                                 Infolists\Components\TextEntry::make('name'),
                                 Infolists\Components\TextEntry::make('code'),
                             ]),
                     ]),
                     Infolists\Components\Tabs::make()
+                        ->hidden(!$showEvents)
                         ->columnSpanFull()
                         ->schema([
                             Infolists\Components\Tabs\Tab::make('Events')
-                                ->hidden(!$showEvents)
                                 ->schema([
                                     \Njxqlus\Filament\Components\Infolists\RelationManager::make()
                                         ->manager(EventsRelationManager::class)
