@@ -35,10 +35,10 @@ class AuthenticatedSessionController extends Controller
             $event = [
                 'name' => 'Admin NovaTix'
             ];
-            $props = [
-                'logo' => '/images/novatix-logo-white/android-chrome-512x512.png',
-                'alt' => 'Novatix Logo'
-            ];
+            $props = EventVariables::getDefaultValue();
+
+            $props['logo'] = '/images/novatix-logo-white/android-chrome-512x512.png';
+            $props['logo_alt'] = 'Novatix Logo';
         }
 
         return Inertia::render('Auth/Login', [

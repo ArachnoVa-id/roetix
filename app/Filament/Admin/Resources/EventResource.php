@@ -2,24 +2,26 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\EventStatus;
-use App\Enums\UserRole;
 use Carbon\Carbon;
 use Filament\Forms;
+use App\Models\User;
 use Filament\Tables;
 use App\Models\Event;
+use App\Models\Venue;
 use Filament\Actions;
+use App\Enums\UserRole;
 use Filament\Infolists;
+use App\Enums\EventStatus;
+use App\Enums\VenueStatus;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Model;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
-use App\Models\User;
-use Filament\Facades\Filament;
-use Illuminate\Database\Eloquent\Model;
 
 class EventResource extends Resource
 {
@@ -46,14 +48,13 @@ class EventResource extends Resource
 
         $tenant_id = Filament::getTenant()->team_id;
 
-
         $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
 
         if (!$team) {
             return false;
         }
 
-        return $team->event_quota > 0;
+        return $team->event_quota > $team->events->count();
     }
 
     public static function canDelete(Model $record): bool
@@ -96,17 +97,30 @@ class EventResource extends Resource
         return $infolist->schema(
             [
                 Infolists\Components\Section::make()->schema([
-                    Infolists\Components\TextEntry::make('name')
-                        ->label('Name')
-                        ->icon('heroicon-m-film'),
-                    Infolists\Components\TextEntry::make('slug')
-                        ->label('Slug')
-                        ->icon('heroicon-m-magnifying-glass-plus'),
+                    Infolists\Components\TextEntry::make('event_id')
+                        ->label('Event ID')
+                        ->icon('heroicon-o-identification'),
                     Infolists\Components\TextEntry::make('status')
                         ->label('Status')
                         ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
                         ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
                         ->badge(),
+                    Infolists\Components\TextEntry::make('name')
+                        ->label('Name')
+                        ->icon('heroicon-m-film'),
+                    Infolists\Components\TextEntry::make('slug')
+                        ->label('Slug (click to open site)')
+                        ->action(
+                            Infolists\Components\Actions\Action::make('actionSlug')
+                                ->action(function ($record) {
+                                    $protocol = config('session.secure') ? 'https://' : 'http://';
+                                    $url = $protocol . $record->slug . '.' . config('app.domain');
+
+                                    // redirect new page to url
+                                    return redirect()->to($url);
+                                })
+                        )
+                        ->icon('heroicon-m-magnifying-glass-plus'),
                     Infolists\Components\TextEntry::make('start_date')
                         ->label('Start Serving')
                         ->icon('heroicon-m-calendar-date-range')
@@ -131,8 +145,8 @@ class EventResource extends Resource
                                             ->grid(2)
                                             ->schema([
                                                 Infolists\Components\TextEntry::make('name'),
-                                                Infolists\Components\TextEntry::make('start_date'),
-                                                Infolists\Components\TextEntry::make('end_date'),
+                                                Infolists\Components\TextEntry::make('start_date')->label('Start Date'),
+                                                Infolists\Components\TextEntry::make('end_date')->label('End Date'),
                                             ])
                                     ]),
                                 Infolists\Components\Section::make('Categories')
@@ -394,13 +408,16 @@ class EventResource extends Resource
                                     ->searchable()
                                     ->optionsLimit(5)
                                     ->options(
-                                        \App\Models\Venue::all()->pluck('name', 'venue_id')
+                                        function () {
+                                            $venues = Venue::where('status', VenueStatus::ACTIVE)->get()->pluck('name', 'venue_id');
+                                            return $venues;
+                                        }
                                     )
                                     ->required()
                                     ->label('Venue')
                                     ->placeholder('Select Venue')
                                     ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                                        $venue = \App\Models\Venue::find($get('venue_id'));
+                                        $venue = Venue::find($get('venue_id'));
                                         if ($venue) {
                                             $set('location', $venue->location);
                                         }

@@ -107,23 +107,23 @@ export default function Ticket({
         }
     };
 
-    const getTicketStyle = () => {
-        if (status === 'scanned') {
-            return {
-                opacity: 0.6,
-                pointerEvents: 'none' as const, // Type assertion needed
-                watermark: 'USED',
-            };
-        }
+    // const getTicketStyle = () => {
+    //     if (status === 'scanned') {
+    //         return {
+    //             opacity: 0.6,
+    //             pointerEvents: 'none' as const, // Type assertion needed
+    //             watermark: 'USED',
+    //         };
+    //     }
 
-        return {
-            opacity: 1,
-            pointerEvents: 'auto' as const,
-            watermark: null,
-        };
-    };
+    //     return {
+    //         opacity: 1,
+    //         pointerEvents: 'auto' as const,
+    //         watermark: null,
+    //     };
+    // };
 
-    const ticketStyle = getTicketStyle();
+    // const ticketStyle = getTicketStyle();
 
     const colors = getTicketColors();
 

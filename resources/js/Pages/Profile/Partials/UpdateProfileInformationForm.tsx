@@ -34,7 +34,6 @@ export default function UpdateProfileInformation({
         useForm({
             first_name: user.first_name,
             last_name: user.last_name,
-            email: user.email,
         });
 
     const submit: FormEventHandler = (e) => {
@@ -61,11 +60,11 @@ export default function UpdateProfileInformation({
                     className="mt-1 text-sm"
                     style={{ color: props.text_secondary_color }}
                 >
-                    Update your account's profile information and email address.
+                    Account's general profile.
                 </p>
             </header>
 
-            <form onSubmit={submit} className="mt-6 space-y-6">
+            <form onSubmit={submit} className="mt-6 flex flex-col gap-6">
                 <div>
                     <InputLabel
                         htmlFor="first_name"
@@ -83,7 +82,6 @@ export default function UpdateProfileInformation({
                             setData('first_name', e.target.value)
                         }
                         required
-                        isFocused
                         autoComplete="first_name"
                         style={{
                             color: props.text_primary_color,
@@ -110,7 +108,6 @@ export default function UpdateProfileInformation({
                             setData('last_name', e.target.value)
                         }
                         required
-                        isFocused
                         autoComplete="last_name"
                         style={{
                             color: props.text_primary_color,
@@ -120,7 +117,7 @@ export default function UpdateProfileInformation({
                     <InputError className="mt-2" message={errors.last_name} />
                 </div>
 
-                <div>
+                {/* <div>
                     <InputLabel
                         htmlFor="email"
                         value="Email"
@@ -145,7 +142,7 @@ export default function UpdateProfileInformation({
                     />
 
                     <InputError className="mt-2" message={errors.email} />
-                </div>
+                </div> */}
 
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <div>

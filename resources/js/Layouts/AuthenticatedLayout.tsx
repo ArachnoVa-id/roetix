@@ -118,6 +118,19 @@ export default function Authenticated({
                                     Profile
                                 </NavLink>
                                 <NavLink
+                                    className={
+                                        user.role === 'user' ? 'hidden' : ''
+                                    }
+                                    eventProps={props}
+                                    href="#"
+                                    active={false}
+                                    onClick={() => {
+                                        window.location.href = route('home');
+                                    }}
+                                >
+                                    Admin Dashboard
+                                </NavLink>
+                                <NavLink
                                     eventProps={props}
                                     method="post"
                                     href={route('logout')}
@@ -220,14 +233,14 @@ export default function Authenticated({
                             >
                                 {user.first_name + ' ' + user.last_name}
                             </div>
-                            <div
+                            {/* <div
                                 className="text-sm font-medium"
                                 style={{
                                     color: props?.text_secondary_color,
                                 }}
                             >
                                 {user.email}
-                            </div>
+                            </div> */}
                         </div>
 
                         <div className="mt-3 space-y-1">
@@ -237,6 +250,15 @@ export default function Authenticated({
                                 }
                             >
                                 Profile
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink
+                                className={user.role === 'user' ? 'hidden' : ''}
+                                href="#"
+                                onClick={() => {
+                                    window.location.href = route('home');
+                                }}
+                            >
+                                Admin Dashboard
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 method="post"
@@ -263,7 +285,9 @@ export default function Authenticated({
                 </header>
             )}
 
-            <main className="grow">{children}</main>
+            <main className="flex h-full w-full grow flex-col items-center justify-center">
+                {children}
+            </main>
 
             {footer ? (
                 <footer
@@ -288,14 +312,14 @@ export default function Authenticated({
                     }}
                 >
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        <div className="flex flex-col space-y-4">
-                            <div className="relative flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <div className="relative flex flex-col items-center justify-between md:flex-row">
                                 <img
                                     src={props?.logo}
                                     alt={props?.logo_alt}
-                                    className="h-8"
+                                    className="h-32 max-md:mb-4 md:h-8"
                                 />
-                                <div className="absolute left-0 top-0 flex h-full w-full items-center justify-center">
+                                <div className="flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
                                     <Link
                                         href={route(
                                             'client.privacy_policy',

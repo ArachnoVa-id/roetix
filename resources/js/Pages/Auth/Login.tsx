@@ -53,18 +53,18 @@ export default function Login({
     };
 
     return (
-        <GuestLayout props={props}>
+        <GuestLayout props={props} client={client}>
             <Head title="Log in" />
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
+                <div className="text-sm font-medium text-green-600 shadow-md">
                     {status}
                 </div>
             )}
 
-            <div className="mb-6 text-center font-bold">{event.name}</div>
+            <div className="text-center font-bold">{event.name}</div>
             {event.name === 'Admin NovaTix' ? (
-                <form onSubmit={submit}>
+                <form onSubmit={submit} className="w-[20vmax] max-w-7xl">
                     <div>
                         <InputLabel htmlFor="email" value="Email" />
 
@@ -105,7 +105,7 @@ export default function Login({
                         />
                     </div>
 
-                    <div className="mt-4 block">
+                    <div className="mt-4 flex items-center justify-between">
                         <label className="flex items-center">
                             <Checkbox
                                 name="remember"
@@ -123,9 +123,6 @@ export default function Login({
                                 Remember me
                             </span>
                         </label>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-end">
                         {canResetPassword && (
                             <Link
                                 href={route('password.request')}

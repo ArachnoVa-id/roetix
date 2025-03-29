@@ -15,6 +15,7 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->string('order_id', 36)->primary();
+            $table->string('snap_token', 36)->nullable();
             $table->string('order_code', 36)->unique();
             $table->string('user_id', 36);
             $table->string('event_id', 36);

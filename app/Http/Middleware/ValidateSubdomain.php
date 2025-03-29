@@ -20,7 +20,7 @@ class ValidateSubdomain
     {
 
         // Pastikan auth.google dan auth.google-authentication bisa diakses
-        if (in_array($request->route()->getName(), ['client-auth.google', 'client-auth.google-authentication'])) {
+        if (in_array($request->route()->getName(), ['client-auth.google', 'client-auth.google-authentication', 'client.privacy_policy', 'client.terms_conditions'])) {
             return $next($request);
         }
 

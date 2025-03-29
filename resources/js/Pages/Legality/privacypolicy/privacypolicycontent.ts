@@ -16,7 +16,7 @@ export const privacyPolicyContent = {
             points: [
                 'Mengelola dan memverifikasi akun pengguna untuk login.',
                 'Memproses dan menyelesaikan transaksi pembelian tiket.',
-                'Mengirimkan informasi terkait acara konser Yogyakarta Oratorio Society.',
+                'Mengirimkan informasi terkait acara konser NovaTix.',
                 'Kami tidak akan menggunakan informasi pribadi Anda untuk tujuan lain tanpa izin Anda.',
             ],
         },

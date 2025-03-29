@@ -23,27 +23,6 @@ use App\Models\EventCategoryTimeboundPrice;
 
 class UserPageController extends Controller
 {
-    private function getDefaultValue()
-    {
-        $defaultValues = [
-            'primary_color' => '#FFF',
-            'secondary_color' => '#9FF',
-            'text_primary_color' => '#000000',
-            'text_secondary_color' => '#000000',
-            'ticket_limit' => 5,
-            'is_maintenance' => false,
-            'maintenance_title' => '',
-            'maintenance_message' => '',
-            'maintenance_expected_finish' => now(),
-            'is_locked' => false,
-            'locked_password' => '',
-            'logo' => '/images/novatix-logo-white/android-chrome-192x192.png',
-            'logo_alt' => 'Novatix Logo',
-            'favicon' => '/images/novatix-logo-white/favicon.ico',
-        ];
-
-        return $defaultValues;
-    }
     public function landing(Request $request, string $client = '')
     {
         // Get the event and associated venue
@@ -128,7 +107,11 @@ class UserPageController extends Controller
 
         try {
             // Get the venue for this event
-            $venue = Venue::findOrFail($event->venue_id);
+            $venue = Venue::find($event->venue_id);
+
+            if (!$venue) {
+                throw new \Exception('Venue not found for event.');
+            }
 
             // Get all tickets for this event
             $tickets = Ticket::where('event_id', $event->event_id)
@@ -276,7 +259,7 @@ class UserPageController extends Controller
             } catch (\Exception $e) {
                 // Jika event_variables tidak ditemukan, gunakan nilai default
                 Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables($this->getDefaultValue());
+                $props = new EventVariables(EventVariables::getDefaultValue());
             }
 
             // Check if user is authenticated
@@ -382,11 +365,14 @@ class UserPageController extends Controller
 
             // Try to get EventVariables or use default values
             try {
-                $props = EventVariables::findOrFail($event->event_variables_id);
+                $props = $event->eventVariables;
+                if (!$props) {
+                    throw new \Exception('EventVariables not found.');
+                }
             } catch (\Exception $e) {
                 // If event_variables not found, use default values
                 Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables($this->getDefaultValue());
+                $props = new EventVariables(EventVariables::getDefaultValue());
             }
 
             return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
@@ -396,7 +382,8 @@ class UserPageController extends Controller
                     'event_id' => $event->event_id,
                     'name' => $event->name,
                     'slug' => $event->slug,
-                ]
+                ],
+                'user' => Auth::user()
             ]);
         } catch (\Exception $e) {
             // Log the error for debugging
@@ -421,11 +408,14 @@ class UserPageController extends Controller
 
             // Try to get EventVariables or use default values
             try {
-                $props = EventVariables::findOrFail($event->event_variables_id);
+                $props = $event->eventVariables;
+                if (!$props) {
+                    throw new \Exception('EventVariables not found.');
+                }
             } catch (\Exception $e) {
                 // If event_variables not found, use default values
                 Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables($this->getDefaultValue());
+                $props = new EventVariables(EventVariables::getDefaultValue());
             }
 
             return Inertia::render('Legality/termcondition/TermCondition', [
@@ -435,7 +425,8 @@ class UserPageController extends Controller
                     'event_id' => $event->event_id,
                     'name' => $event->name,
                     'slug' => $event->slug,
-                ]
+                ],
+                'user' => Auth::user(),
             ]);
         } catch (\Exception $e) {
             // Log the error for debugging
