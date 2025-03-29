@@ -175,8 +175,8 @@ Route::domain('{client}.' . config('app.domain'))
                     Route::get('/api/pending-transactions', 'getPendingTransactions')
                         ->name('api.pending-transactions');
 
-                    Route::post('/payment/resume', 'resumePayment')
-                        ->name('payment.resume');
+                    // Route::post('/payment/resume', 'resumePayment')
+                    //     ->name('payment.resume');
                 });
         });
 
