@@ -44,6 +44,7 @@ class OrderFactory extends Factory
         $orderCode = Order::keyGen(OrderType::UNKNOWN);
 
         return [
+            'snap_token' => null,
             'order_code' => $orderCode,
             'event_id' => $event_id,
             'user_id' => $user->id,
@@ -94,7 +95,6 @@ class OrderFactory extends Factory
 
                 // Create TicketOrder with correct order_id
                 TicketOrder::create([
-                    'snap_token' => null,
                     'order_id' => $order->order_id,
                     'ticket_id' => $ticket->ticket_id,
                     'event_id' => $order->event_id,
