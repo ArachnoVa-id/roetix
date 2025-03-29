@@ -244,7 +244,7 @@ class OrderResource extends Resource
                     ->columnSpan([
                         'default' => 1,
                         'sm' => 1,
-                        'md' => 2,
+                        'md' => 1,
                     ])
                     ->columns([
                         'default' => 1,

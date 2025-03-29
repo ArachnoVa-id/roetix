@@ -20,6 +20,12 @@ class EditVenue extends EditRecord
             VenueResource::ChangeStatusButton(
                 Actions\Action::make('changeStatus')
             ),
+            VenueResource::ExportVenueButton(
+                Actions\Action::make('exportVenue')
+            ),
+            VenueResource::ImportVenueButton(
+                Actions\Action::make('importVenue')
+            )
         ];
     }
 }

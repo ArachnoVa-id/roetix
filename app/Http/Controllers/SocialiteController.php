@@ -76,14 +76,18 @@ class SocialiteController extends Controller
                 //   ]
                 // }
 
+                // Check if $google_user has given_name and family_name
+                $given_name = $google_user['given_name'] ?? null;
+                $family_name = $google_user['family_name'] ?? null;
+
                 // Make new user
                 $userData = User::create([
                     'email' => $google_resp->email,
                     'password' => Hash::make($google_resp->id),
                     'role' => UserRole::USER,
                     'google_id' => $google_resp->id,
-                    'first_name' => $google_user['given_name'],
-                    'last_name' => $google_user['family_name'],
+                    'first_name' => $given_name,
+                    'last_name' => $family_name,
                     'email_verified_at' => now(),
                 ]);
 
