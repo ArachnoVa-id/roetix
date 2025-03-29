@@ -12,6 +12,9 @@ export default function Guest({
             className="flex min-h-screen w-full flex-col items-center gap-4 p-4 sm:justify-center"
             style={{
                 backgroundColor: props?.primary_color,
+                backgroundImage: `url(${props.texture})`,
+                backgroundRepeat: 'repeat',
+                backgroundSize: 'auto',
             }}
         >
             <Link href="/">

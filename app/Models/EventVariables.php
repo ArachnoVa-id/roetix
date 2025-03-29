@@ -29,6 +29,7 @@ class EventVariables extends Model
         'maintenance_expected_finish',
         'logo',
         'logo_alt',
+        'texture',
         'favicon',
         'primary_color',
         'secondary_color',
@@ -51,6 +52,7 @@ class EventVariables extends Model
             'locked_password' => '',
             'logo' => '/images/novatix-logo/android-chrome-192x192.png',
             'logo_alt' => 'Novatix Logo',
+            'texture' => '/images/default-texture/Texturelabs_Sky_152S.jpg',
             'favicon' => '/images/novatix-logo/favicon.ico',
             'ticket_limit' => 5,
         ];

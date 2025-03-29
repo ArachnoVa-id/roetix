@@ -7,6 +7,7 @@ use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use App\Models\Event;
+use App\Models\EventVariables;
 use App\Models\Seat;
 use App\Models\Team;
 use App\Models\TimelineSession;
@@ -71,15 +72,11 @@ class EventFactory extends Factory
 
     private function eventVariables(Event $event)
     {
-        $event->eventVariables()->create([
-            'is_locked' => false,
-            'locked_password' => '',
-            'is_maintenance' => false,
-            'maintenance_title' => '',
-            'maintenance_message' => '',
-            'maintenance_expected_finish' => now(),
-            'logo' => '/images/novatix-logo/android-chrome-192x192.png',
-            'favicon' => '/images/novatix-logo/favicon.ico',
+        $event->eventVariables()->create(EventVariables::getDefaultValue());
+
+        // Edit some values
+        $event->eventVariables->update([
+            'texture' => null,
             'primary_color' => $this->randomColor(),
             'secondary_color' => $this->randomColor(),
             'text_primary_color' => $this->randomColor(),

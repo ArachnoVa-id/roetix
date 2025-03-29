@@ -52,8 +52,11 @@ export default function Authenticated({
         <div
             className="flex min-h-screen flex-col"
             style={{
-                backgroundColor: props?.secondary_color,
                 color: props?.text_secondary_color,
+                backgroundColor: props?.primary_color,
+                backgroundImage: `url(${props.texture})`,
+                backgroundRepeat: 'repeat',
+                backgroundSize: 'auto',
             }}
         >
             <nav

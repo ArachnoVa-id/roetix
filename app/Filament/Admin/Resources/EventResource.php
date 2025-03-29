@@ -233,6 +233,9 @@ class EventResource extends Resource
                                         Infolists\Components\TextEntry::make('favicon')
                                             ->label('Favicon'),
 
+                                        Infolists\Components\TextEntry::make('texture')
+                                            ->label('Texture'),
+
                                     ]),
 
                                 Infolists\Components\Section::make('Colors')
@@ -977,14 +980,18 @@ class EventResource extends Resource
                                 Forms\Components\Livewire::make('color-preview', ['record' => $record])
                             ]),
                         Forms\Components\Tabs\Tab::make('Identity')
-                            ->columns(3)
+                            ->columns(2)
                             ->schema([
                                 Forms\Components\TextInput::make('logo')
                                     ->label('Logo'),
                                 Forms\Components\TextInput::make('logo_alt')
                                     ->label('Logo Alt'),
                                 Forms\Components\TextInput::make('favicon')
+                                    ->rule('regex:/\.ico$/i')
+                                    ->helperText('Must be a .ico file only.')
                                     ->label('Favicon'),
+                                Forms\Components\TextInput::make('texture')
+                                    ->label('Texture'),
                             ])
                     ]),
             ]);
