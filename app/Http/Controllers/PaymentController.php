@@ -154,8 +154,6 @@ class PaymentController extends Controller
             // Lock tickets
             $tickets->each(fn($ticket) => $ticket->update(['status' => TicketStatus::IN_TRANSACTION]));
 
-            // Broadcast real-time event
-            event(new TicketPurchased($tickets));
 
             // Create order
             $order = Order::create([
