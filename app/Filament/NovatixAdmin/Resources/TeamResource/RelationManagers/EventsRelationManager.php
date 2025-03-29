@@ -24,7 +24,7 @@ class EventsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return EventResource::table($table)
+        return EventResource::table($table, filterStatus: true)
             ->heading('');
     }
 }

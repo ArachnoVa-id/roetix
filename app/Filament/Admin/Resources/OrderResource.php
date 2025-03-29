@@ -277,8 +277,10 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function table(Table $table, bool $filterStatus = false): Table
     {
+        $tenant_id = Filament::getTenant()->team_id;
+
         return $table
             ->defaultSort('order_date', 'desc')
             ->columns([
@@ -315,9 +317,16 @@ class OrderResource extends Resource
             ])
             ->filters(
                 [
+                    Tables\Filters\SelectFilter::make('event_id')
+                        ->label('Filter by Event')
+                        ->options(fn() => Event::where('team_id', $tenant_id)->pluck('name', 'event_id'))
+                        ->searchable()
+                        ->multiple()
+                        ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
                     Tables\Filters\SelectFilter::make('status')
                         ->options(OrderStatus::editableOptions())
                         ->multiple()
+                        ->hidden(!$filterStatus)
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

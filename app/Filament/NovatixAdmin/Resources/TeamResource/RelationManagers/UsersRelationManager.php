@@ -24,7 +24,7 @@ class UsersRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return UserResource::table($table)
+        return UserResource::table($table, filterRole: true)
             ->heading('');
     }
 }

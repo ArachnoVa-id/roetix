@@ -24,7 +24,7 @@ class VenuesRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return VenueResource::table($table)
+        return VenueResource::table($table, filterStatus: true)
             ->heading('');
     }
 }

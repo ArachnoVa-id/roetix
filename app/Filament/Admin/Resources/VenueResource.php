@@ -266,7 +266,7 @@ class VenueResource extends Resources\Resource
             ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Tables\Table $table, bool $filterStatus = false): Tables\Table
     {
         return $table
             ->columns([
@@ -322,7 +322,8 @@ class VenueResource extends Resources\Resource
                         }),
                     Tables\Filters\SelectFilter::make('status')
                         ->options(VenueStatus::editableOptions())
-                        ->multiple(),
+                        ->multiple()
+                        ->hidden(!$filterStatus),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

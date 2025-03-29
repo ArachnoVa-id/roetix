@@ -18,7 +18,7 @@ class OrdersRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return OrderResource::table($table)
+        return OrderResource::table($table, filterStatus: true)
             ->heading('');
     }
 }

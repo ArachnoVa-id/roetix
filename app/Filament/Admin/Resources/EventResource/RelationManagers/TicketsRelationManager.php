@@ -18,7 +18,7 @@ class TicketsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return TicketResource::table($table, showEvent: false, showTraceButton: true)
+        return TicketResource::table($table, showEvent: false, showTraceButton: true, filterStatus: true)
             ->heading('');
     }
 }

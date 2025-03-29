@@ -384,7 +384,7 @@ class TicketResource extends Resource
             );
     }
 
-    public static function table(Table $table, array $dataSource = [], bool $showEvent = true, bool $showTraceButton = false): Table
+    public static function table(Table $table, array $dataSource = [], bool $showEvent = true, bool $showTraceButton = false, bool $filterStatus = false): Table
     {
         $tenant_id = Filament::getTenant()->team_id;
 
@@ -469,6 +469,7 @@ class TicketResource extends Resource
                         ->label('Filter by Status')
                         ->options(TicketStatus::editableOptions())
                         ->multiple()
+                        ->hidden(!$filterStatus)
                         ->default(request()->query('tableFilters')['status']['value'] ?? null),
 
                     SelectFilter::make('ticket_order_status')

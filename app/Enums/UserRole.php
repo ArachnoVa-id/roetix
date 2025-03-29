@@ -46,7 +46,7 @@ enum UserRole: string implements HasLabel, HasColor
 
     public static function toArray(): array
     {
-        return array_map(fn($case) => $case->value, self::cases());
+        return array_map(fn($case) => $case->getLabel(), self::cases());
     }
 
     public static function values(): array

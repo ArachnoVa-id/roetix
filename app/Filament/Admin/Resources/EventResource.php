@@ -1057,7 +1057,7 @@ class EventResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function table(Table $table, bool $filterStatus = false): Table
     {
         $user = Auth::user();
         $role = $user ? $user->role : null;
@@ -1103,6 +1103,7 @@ class EventResource extends Resource
                     Tables\Filters\SelectFilter::make('status')
                         ->options(EventStatus::toArray())
                         ->multiple()
+                        ->hidden(!$filterStatus)
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

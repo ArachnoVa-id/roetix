@@ -238,7 +238,7 @@ class UserResource extends Resources\Resource
             ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Tables\Table $table, bool $filterRole = false): Tables\Table
     {
         return $table
             ->columns([
@@ -276,6 +276,7 @@ class UserResource extends Resources\Resource
                     Tables\Filters\SelectFilter::make('role')
                         ->options(UserRole::editableOptions())
                         ->multiple()
+                        ->hidden(!$filterRole),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
