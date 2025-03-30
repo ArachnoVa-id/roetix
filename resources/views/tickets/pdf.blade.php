@@ -129,7 +129,8 @@
 
     <!-- Ticket Type and Seat -->
     <div class="section-title">{{ $ticket->ticket_type }} | Kursi
-      {{ $ticket->seat ? $ticket->seat->seat_number : 'N/A' }}</div>
+      {{ $ticket->seat ? $ticket->seat->seat_number : 'N/A' }}
+    </div>
 
     <!-- Ticket Details -->
     <div class="ticket-info-row">
@@ -174,14 +175,13 @@
     <div class="ticket-footer">
       <div class="terms-title">Syarat dan Ketentuan</div>
       <ul>
-        <li class="terms-item">E-tiket ini adalah bukti sah kepemilikan tiket untuk menghadiri GMCO</li>
+        <li class="terms-item">E-tiket ini adalah bukti sah kepemilikan tiket untuk menghadiri {{ $event->name }}</li>
         <li class="terms-item">E-tiket ini hanya berlaku untuk satu orang dan satu kali masuk</li>
         <li class="terms-item">E-tiket yang sudah dibeli tidak dapat dibatalkan atau ditukar</li>
         <li class="terms-item">Jaga keamanan data tiket anda. Pencurian data diluar hal teknis, diluar tanggung jawab
           kami</li>
       </ul>
     </div>
-  </div>
 </body>
 
 </html>
