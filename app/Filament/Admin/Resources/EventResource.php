@@ -1246,6 +1246,7 @@ class EventResource extends Resource
                                 ->label('Texture'),
                         ])
                 ])
+                    ->skippable($modelExists)
                     ->columnSpan('full'),
             ]);
     }
