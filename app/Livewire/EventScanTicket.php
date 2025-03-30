@@ -55,7 +55,7 @@ class EventScanTicket extends Component implements HasForms, HasTable
         return $table
             ->query(Ticket::query()->where('event_id', $this->event->event_id))
             ->columns([
-                TextColumn::make('ticket_id')->label('Ticket Code'),
+                TextColumn::make('ticket_code')->label('Ticket Code')->searchable(),
                 TextColumn::make('status')->label('Status')->searchable(),
                 TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->searchable(),
             ]);
@@ -69,7 +69,7 @@ class EventScanTicket extends Component implements HasForms, HasTable
 
         try {
             DB::beginTransaction();
-            $ticket = Ticket::where('ticket_id', $this->ticket_code)
+            $ticket = Ticket::where('ticket_code', $this->ticket_code)
                 ->where('event_id', $this->event->event_id)
                 ->lockForUpdate()
                 ->first();

@@ -38,14 +38,32 @@ class Ticket extends Model
                 $model->ticket_id = (string) Str::uuid();
             }
 
-            if (!empty($model->event_id)) {
-                $event = Event::find($model->event_id);
-                if ($event) {
-                    $model->team_id = $event->team_id;
+            if (empty($model->ticket_code)) {
+                // Ambil event jika ada
+                if (!empty($model->event_id)) {
+                    $event = Event::find($model->event_id);
+
+                    if ($event) {
+                        $model->team_id = $event->team_id;
+
+                        // Dapatkan kode event dari slug
+                        $slug = strtoupper(Str::slug($event->name));
+                        $codeEvent = substr($slug, 0, 4);
+
+                        // Jika kurang dari 4 karakter, tambahkan 0
+                        $codeEvent = str_pad($codeEvent, 4, '0');
+
+                        // Buat 8 karakter alfanumerik acak
+                        $randomCode = Str::random(8);
+
+                        // Kombinasikan
+                        $model->ticket_code = $codeEvent . $randomCode;
+                    }
                 }
             }
         });
     }
+
 
     public function getTicketPDFTitle(): string
     {
