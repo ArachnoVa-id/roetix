@@ -11,6 +11,7 @@ use Filament\Resources;
 use Filament\Tables;
 use App\Models\Team;
 use Filament\Infolists;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resources\Resource
@@ -121,8 +122,22 @@ class UserResource extends Resources\Resource
                                 ->searchable()
                                 ->required(),
                             Forms\Components\TextInput::make('email')
+                                ->label('Personal Email')
                                 ->required()
                                 ->email()
+                                ->live(debounce: 500)
+                                ->afterStateUpdated(function ($state, $record, Forms\Set $set) {
+                                    $find = User::where('email', $state)->first();
+                                    if ($record && $record->id === $find->id) return;
+                                    if ($find) {
+                                        $set('email', null);
+                                        Notification::make()
+                                            ->title('Email Already Exists')
+                                            ->body('The email you entered already exists in the system. Please enter a different email.')
+                                            ->danger()
+                                            ->send();
+                                    }
+                                })
                                 ->unique('users', 'email', ignoreRecord: true)
                                 ->maxLength(255),
                             Forms\Components\Toggle::make('change_password')
@@ -151,7 +166,7 @@ class UserResource extends Resources\Resource
                             ->tel(),
 
                         Forms\Components\TextInput::make('email')
-                            ->label('Email')
+                            ->label('Professional Email')
                             ->email(),
 
                         Forms\Components\TextInput::make('whatsapp_number')
