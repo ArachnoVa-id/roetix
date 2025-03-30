@@ -5,14 +5,10 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use App\Models\Seat;
 use Inertia\Inertia;
-use App\Models\Event;
 use App\Models\Order;
 use App\Models\Venue;
 use App\Models\Ticket;
-use App\Enums\TicketStatus;
-use App\Models\TicketOrder;
 use Illuminate\Http\Request;
-use App\Models\EventVariables;
 use App\Models\TicketCategory;
 use App\Models\TimelineSession;
 use App\Enums\TicketOrderStatus;
@@ -25,85 +21,8 @@ class UserPageController extends Controller
 {
     public function landing(Request $request, string $client = '')
     {
-        // Get the event and associated venue
-        $event = Event::where('slug', $client)
-            ->first();
-        if (!$event) {
-            return Inertia::render('User/Landing', [
-                'client' => $client,
-                'error' => 'Event not found.',
-                'props' => EventVariables::getDefaultValue()
-            ]);
-        }
-
-        $props = $event->eventVariables;
-
-        if (!$props) {
-            return Inertia::render('User/Landing', [
-                'client' => $client,
-                'error' => 'Event variables not found for ' . $event->name . '.',
-                'props' => EventVariables::getDefaultValue()
-            ]);
-        }
-
-        // Check if the event is in maintenance mode
-        if ($props->is_maintenance) {
-            return Inertia::render('User/Maintenance', [
-                'client' => $client,
-                'event' => [
-                    'name' => $event->name,
-                    'slug' => $event->slug
-                ],
-                'maintenance' => [
-                    'title' => $props->maintenance_title ?: 'Site Under Maintenance',
-                    'message' => $props->maintenance_message ?: 'We are currently performing maintenance on our system. Please check back later.',
-                    'expected_finish' => $props->maintenance_expected_finish ? Carbon::parse($props->maintenance_expected_finish)->format('F j, Y, g:i a') : null,
-                ],
-                'props' => $props
-            ]);
-        }
-
-        // Check if the event is locked
-        $isAuthenticated = false;
-        $hasAttemptedLogin = false;
-        $loginError = null;
-
-        if ($props->is_locked) {
-            // Check if the user has provided a password
-            if ($request->has('event_password')) {
-                $hasAttemptedLogin = true;
-
-                // Verify the password
-                if (
-                    Hash::check($request->event_password, $props->locked_password) ||
-                    $request->event_password === $props->locked_password
-                ) { // Allow plaintext comparison as fallback
-                    // Password is correct, store in session
-                    $request->session()->put("event_auth_{$event->event_id}", true);
-                    $isAuthenticated = true;
-                } else {
-                    // Password is incorrect
-                    $loginError = 'The password you entered is incorrect.';
-                }
-            } else {
-                // Check if user is already authenticated for this event
-                $isAuthenticated = $request->session()->get("event_auth_{$event->event_id}", false);
-            }
-
-            // If not authenticated, show the lock screen
-            if (!$isAuthenticated) {
-                return Inertia::render('User/LockedEvent', [
-                    'client' => $client,
-                    'event' => [
-                        'name' => $event->name,
-                        'slug' => $event->slug
-                    ],
-                    'hasAttemptedLogin' => $hasAttemptedLogin,
-                    'loginError' => $loginError,
-                    'props' => $props
-                ]);
-            }
-        }
+        $event = $request->get('event');
+        $props = $request->get('props');
 
         try {
             // Get the venue for this event
@@ -239,33 +158,11 @@ class UserPageController extends Controller
         }
     }
 
-    public function my_tickets(string $client = '')
+    public function my_tickets(Request $request, string $client = '')
     {
         try {
-            // Get the event by slug
-            $event = Event::where('slug', $client)->first();
-
-            if (!$event) {
-                Log::error('Event not found for slug: ' . $client);
-                return redirect()->route('login');
-            }
-
-            // Gunakan try-catch untuk mendapatkan EventVariables atau gunakan default
-            try {
-                $props = $event->eventVariables;
-                if (!$props) {
-                    throw new \Exception('EventVariables not found.');
-                }
-            } catch (\Exception $e) {
-                // Jika event_variables tidak ditemukan, gunakan nilai default
-                Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables(EventVariables::getDefaultValue());
-            }
-
-            // Check if user is authenticated
-            if (!Auth::check()) {
-                return redirect()->route('client.login', ['client' => $client]);
-            }
+            $event = $request->get('event');
+            $props = $request->get('props');
 
             // Dapatkan order_id untuk user yang sedang login
             $userOrderIds = Order::where('user_id', Auth::id())
@@ -352,28 +249,11 @@ class UserPageController extends Controller
         }
     }
 
-    public function privacyPolicy(string $client = '')
+    public function privacyPolicy(Request $request, string $client = '')
     {
         try {
-            // Get the event by slug
-            $event = Event::where('slug', $client)->first();
-
-            if (!$event) {
-                Log::error('Event not found for slug: ' . $client);
-                return redirect()->route('login');
-            }
-
-            // Try to get EventVariables or use default values
-            try {
-                $props = $event->eventVariables;
-                if (!$props) {
-                    throw new \Exception('EventVariables not found.');
-                }
-            } catch (\Exception $e) {
-                // If event_variables not found, use default values
-                Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables(EventVariables::getDefaultValue());
-            }
+            $event = $request->get('event');
+            $props = $request->get('props');
 
             return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
                 'client' => $client,
@@ -395,28 +275,11 @@ class UserPageController extends Controller
         }
     }
 
-    public function termCondition(string $client = '')
+    public function termCondition(Request $request, string $client = '')
     {
         try {
-            // Get the event by slug
-            $event = Event::where('slug', $client)->first();
-
-            if (!$event) {
-                Log::error('Event not found for slug: ' . $client);
-                return redirect()->route('login');
-            }
-
-            // Try to get EventVariables or use default values
-            try {
-                $props = $event->eventVariables;
-                if (!$props) {
-                    throw new \Exception('EventVariables not found.');
-                }
-            } catch (\Exception $e) {
-                // If event_variables not found, use default values
-                Log::warning('EventVariables not found for event: ' . $event->event_id . '. Using default values.');
-                $props = new EventVariables(EventVariables::getDefaultValue());
-            }
+            $event = $request->get('event');
+            $props = $request->get('props');
 
             return Inertia::render('Legality/termcondition/TermCondition', [
                 'client' => $client,
@@ -440,50 +303,44 @@ class UserPageController extends Controller
 
     public function verifyEventPassword(Request $request, string $client = '')
     {
-        // Get the event
-        $event = Event::where('slug', $client)->first();
-        if (!$event || !$event->eventVariables) {
-            return redirect()->route('client.home', ['client' => $client])
-                ->with('error', 'Event not found or configuration missing.');
-        }
+        $event = $request->get('event');
+        $props = $request->get('props');
 
-        $props = $event->eventVariables;
-
-        // Verify the password
+        // Check if event is locked
         if ($props->is_locked) {
             if ($request->has('event_password')) {
-                // First, try direct comparison (for plaintext passwords)
-                if ($request->event_password === $props->locked_password) {
-                    // Password is correct, store in session
+                $passwordInput = $request->event_password;
+                $storedPassword = $props->locked_password;
+
+                // Direct comparison (plain text)
+                if ($passwordInput === $storedPassword) {
                     $request->session()->put("event_auth_{$event->event_id}", true);
-                    return redirect()->route('client.home', ['client' => $client]);
+                    return Inertia::location(route('client.home', ['client' => $client]));
                 }
 
-                // Only try bcrypt check if the password looks like a bcrypt hash
-                // Bcrypt hashes start with $2y$ or $2a$
+                // Check if the password is hashed (bcrypt)
                 if (
-                    str_starts_with($props->locked_password, '$2y$') ||
-                    str_starts_with($props->locked_password, '$2a$')
+                    str_starts_with($storedPassword, '$2y$') ||
+                    str_starts_with($storedPassword, '$2a$')
                 ) {
-                    try {
-                        if (Hash::check($request->event_password, $props->locked_password)) {
-                            // Password is correct, store in session
-                            $request->session()->put("event_auth_{$event->event_id}", true);
-                            return redirect()->route('client.home', ['client' => $client]);
-                        }
-                    } catch (\Exception $e) {
-                        Log::error('Hash comparison failed: ' . $e->getMessage());
-                        // Continue to error message below
+                    if (Hash::check($passwordInput, $storedPassword)) {
+                        $request->session()->put("event_auth_{$event->event_id}", true);
+                        return Inertia::location(route('client.home', ['client' => $client]));
                     }
                 }
 
-                // If we get here, password is incorrect
-                return redirect()->route('client.home', ['client' => $client])
-                    ->with('error', 'The password you entered is incorrect.');
+                // When pass incorrect
+                return Inertia::render('User/LockedEvent', [
+                    'client' => $client,
+                    'event' => $event,
+                    'props' => $props,
+                ])->with([
+                    'errors' => ['event_password' => 'The password you entered is incorrect.']
+                ]);
             }
         }
 
-        // If we get here, something went wrong
-        return redirect()->route('client.home', ['client' => $client]);
+        // If the event is not locked or password is not required, proceed
+        return Inertia::location(route('client.home', ['client' => $client]));
     }
 }

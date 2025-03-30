@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 
 interface ResponsiveNavLinkProps extends InertiaLinkProps {
-    active: boolean;
+    active?: boolean;
     eventProps: EventProps;
 }
 
@@ -32,9 +32,9 @@ const StyledLink = styled(Link)<{ $props: NavLinkEventProps }>`
 
 export default function ResponsiveNavLink({
     eventProps,
+    children,
     active = false,
     className = '',
-    children,
     ...props
 }: ResponsiveNavLinkProps) {
     const [navLinkProps, setNavLinkProps] = useState<NavLinkEventProps>(

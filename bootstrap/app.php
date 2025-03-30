@@ -28,6 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'verify.maindomain' => \App\Http\Middleware\ValidateMainDomain::class,
             'event.access' => \App\Http\Middleware\CheckEventAccess::class,
             'venue.access' => \App\Http\Middleware\CheckVenueAccess::class,
+            'event.props' => \App\Http\Middleware\LoadEventProps::class,
+            'event.maintenance'  => \App\Http\Middleware\CheckEventMaintenance::class,
+            'event.lock'  => \App\Http\Middleware\CheckEventLock::class,
         ]);
     })
 

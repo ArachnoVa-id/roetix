@@ -1167,9 +1167,11 @@ class EventResource extends Resource
                                 ])
                                 ->schema([
                                     Forms\Components\Toggle::make('is_locked')
+                                        ->reactive()
                                         ->label('Is Locked')
                                 ]),
                             Forms\Components\TextInput::make('locked_password')
+                                ->required(fn(Forms\Get $get) => $get('is_locked'))
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -1271,7 +1273,7 @@ class EventResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->limit(50)
+                    ->limit(20)
                     ->label('Event Name')
                     ->sortable()
                     ->searchable(),
@@ -1280,7 +1282,11 @@ class EventResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->hidden(!($user->isAdmin()))
-                    ->limit(50),
+                    ->limit(20),
+                Tables\Columns\TextColumn::make('slug')
+                    ->limit(20)
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('start_date')
                     ->label('Start')
                     ->dateTime()

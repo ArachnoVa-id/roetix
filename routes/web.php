@@ -38,13 +38,12 @@ Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
         // Socialite Authentication
-        Route::controller(SocialiteController::class)
-            ->group(function () {
-                Route::get('/auth/google', 'googleLogin')
-                    ->name('auth.google');
-                Route::get('/auth/google-callback', 'googleAuthentication')
-                    ->name('auth.google-authentication');
-            });
+        Route::controller(SocialiteController::class)->group(function () {
+            Route::get('/auth/google', 'googleLogin')
+                ->name('auth.google');
+            Route::get('/auth/google-callback', 'googleAuthentication')
+                ->name('auth.google-authentication');
+        });
 
         // Session Debugging Route
         Route::get('/check-session', function () {
@@ -74,28 +73,27 @@ Route::domain(config('app.domain'))
 
         // Seat Management Routes (Protected)
         Route::middleware('auth')->group(function () {
-            Route::controller(SeatController::class)
-                ->group(function () {
-                    // Seats
-                    Route::get('/seats', 'index')
-                        ->name('seats.index');
-                    Route::get('/seats/grid-edit', 'gridEdit')
-                        ->middleware('venue.access')
-                        ->name('seats.grid-edit');
-                    Route::get('/seats/edit', 'edit')
-                        ->middleware('event.access')
-                        ->name('seats.edit');
+            Route::controller(SeatController::class)->group(function () {
+                // Seats
+                Route::get('/seats', 'index')
+                    ->name('seats.index');
+                Route::get('/seats/grid-edit', 'gridEdit')
+                    ->middleware('venue.access')
+                    ->name('seats.grid-edit');
+                Route::get('/seats/edit', 'edit')
+                    ->middleware('event.access')
+                    ->name('seats.edit');
 
-                    // Post handlers
-                    Route::post('/seats/update-layout', 'updateLayout')
-                        ->name('seats.update-layout');
-                    Route::post('/seats/update', 'update')
-                        ->name('seats.update');
-                    Route::post('/seats/update-event-seats', 'updateEventSeats')
-                        ->name('seats.update-event-seats');
-                    Route::post('/seats/save-grid-layout', 'saveGridLayout')
-                        ->name('seats.save-grid-layout');
-                });
+                // Post handlers
+                Route::post('/seats/update-layout', 'updateLayout')
+                    ->name('seats.update-layout');
+                Route::post('/seats/update', 'update')
+                    ->name('seats.update');
+                Route::post('/seats/update-event-seats', 'updateEventSeats')
+                    ->name('seats.update-event-seats');
+                Route::post('/seats/save-grid-layout', 'saveGridLayout')
+                    ->name('seats.save-grid-layout');
+            });
         });
 
         // Any unregistered route will be redirected to the main domain
@@ -108,20 +106,22 @@ Route::domain('{client}.' . config('app.domain'))
     ->middleware('verify.subdomain')
     ->group(function () {
         // Socialite Authentication
-        Route::controller(SocialiteController::class)
-            ->group(function () {
-                Route::get('/auth/google', 'googleLogin')
-                    ->name('client-auth.google');
-            });
+        Route::controller(SocialiteController::class)->group(function () {
+            Route::get('/auth/google', 'googleLogin')
+                ->name('client-auth.google');
+        });
+
+        Route::post('/verify-event-password', [UserPageController::class, 'verifyEventPassword'])
+            ->middleware('event.props')
+            ->name('client.verify-event-password');
 
         // User Page
-        Route::controller(UserPageController::class)
-            ->group(function () {
+        Route::middleware(['event.props', 'event.maintenance', 'event.lock'])->group(function () {
+            Route::controller(UserPageController::class)->group(function () {
                 // Home Page
                 Route::get('/', 'landing')
                     ->name('client.home');
-                Route::post('/verify-event-password', 'verifyEventPassword')
-                    ->name('client.verify-event-password');
+
                 // Privacy Policy and Terms & Conditions pages
                 Route::get('/privacy-policy', 'privacyPolicy')
                     ->name('client.privacy_policy');
@@ -129,63 +129,64 @@ Route::domain('{client}.' . config('app.domain'))
                     ->name('client.terms_conditions');
             });
 
-        // Fix: Add auth middleware to my_tickets route to ensure user authentication
-        Route::middleware('auth')->group(function () {
-            Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
-                ->name('client.my_tickets');
+            // Fix: Add auth middleware to my_tickets route to ensure user authentication
+            Route::middleware('auth')->group(function () {
+                Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
+                    ->name('client.my_tickets');
 
-            Route::prefix('api')->group(function () {
-                // Use a simple GET route with no path parameters
-                Route::controller(TicketController::class)
-                    ->group(function () {
-                        Route::get('tickets/download', 'downloadTicket')
-                            ->name('api.tickets.download');
+                Route::prefix('api')->group(function () {
+                    // Use a simple GET route with no path parameters
+                    Route::controller(TicketController::class)
+                        ->group(function () {
+                            Route::get('tickets/download', 'downloadTicket')
+                                ->name('api.tickets.download');
 
-                        Route::get('tickets/download-all', 'downloadAllTickets')
-                            ->name('api.tickets.download-all');
-                    });
+                            Route::get('tickets/download-all', 'downloadAllTickets')
+                                ->name('api.tickets.download-all');
+                        });
 
-                Route::controller(PaymentController::class)
-                    ->group(function () {
-                        Route::get('payment/pending', 'getPendingTransactions')
-                            ->name('payment.pending');
+                    Route::controller(PaymentController::class)
+                        ->group(function () {
+                            Route::get('payment/pending', 'getPendingTransactions')
+                                ->name('payment.pending');
 
-                        Route::post('payment/cancel', 'cancelPendingTransactions')
-                            ->name('payment.cancel');
+                            Route::post('payment/cancel', 'cancelPendingTransactions')
+                                ->name('payment.cancel');
 
-                        // Ticket
-                        Route::post('payment/charge', 'charge')
-                            ->name('payment.charge');
+                            // Ticket
+                            Route::post('payment/charge', 'charge')
+                                ->name('payment.charge');
 
-                        // Route::post('/payment/resume', 'resumePayment')
-                        //     ->name('payment.resume');
-                    });
+                            // Route::post('/payment/resume', 'resumePayment')
+                            //     ->name('payment.resume');
+                        });
+                });
             });
+
+            // Event Tickets
+            Route::controller(EoTiketController::class)
+                ->group(function () {
+                    Route::get('/events/{eventId}/tickets', 'show')
+                        ->name('events.tickets.show');
+                    Route::get('/events/tickets', 'index')
+                        ->name('events.tickets.index');
+                });
+
+            // Profile
+            Route::controller(ProfileController::class)
+                ->group(function () {
+                    Route::get('/profile', 'edit')
+                        ->name('profile.edit');
+                    // Route::patch('/profile', 'update')
+                    //     ->name('profile.update');
+                    // Route::put('/profile', 'updatePassword')
+                    //     ->name('profile.password_update');
+                    Route::put('/profile', 'updateContact')
+                        ->name('profile.contact_update');
+                    // Route::delete('/profile', 'destroy')
+                    //     ->name('profile.destroy');
+                });
         });
-
-        // Event Tickets
-        Route::controller(EoTiketController::class)
-            ->group(function () {
-                Route::get('/events/{eventId}/tickets', 'show')
-                    ->name('events.tickets.show');
-                Route::get('/events/tickets', 'index')
-                    ->name('events.tickets.index');
-            });
-
-        // Profile
-        Route::controller(ProfileController::class)
-            ->group(function () {
-                Route::get('/profile', 'edit')
-                    ->name('profile.edit');
-                Route::patch('/profile', 'update')
-                    ->name('profile.update');
-                Route::put('/profile', 'updatePassword')
-                    ->name('profile.password_update');
-                Route::put('/profile', 'updateContact')
-                    ->name('profile.contact_update');
-                Route::delete('/profile', 'destroy')
-                    ->name('profile.destroy');
-            });
 
         // Any unregistered route will be redirected to the client's home page
         Route::fallback(function () {
