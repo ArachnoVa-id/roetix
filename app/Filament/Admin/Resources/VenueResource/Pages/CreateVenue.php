@@ -10,12 +10,14 @@ use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Admin\Resources\VenueResource;
 use Filament\Facades\Filament;
 
-
 class CreateVenue extends CreateRecord
 {
     protected static string $resource = VenueResource::class;
 
-
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()->label('Create Venue');
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {

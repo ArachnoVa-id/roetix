@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateTeam extends CreateRecord
 {
     protected static string $resource = TeamResource::class;
+
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()->label('Create Team');
+    }
 }

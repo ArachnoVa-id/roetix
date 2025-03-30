@@ -21,4 +21,9 @@ class EditTeam extends EditRecord
                 ->icon('heroicon-o-trash'),
         ];
     }
+
+    protected function getSaveFormAction(): Actions\Action
+    {
+        return parent::getSaveFormAction()->label('Update Team');
+    }
 }

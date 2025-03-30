@@ -11,6 +11,11 @@ class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
 
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()->label('Create User');
+    }
+
     public function afterCreate()
     {
         $data = $this->data;

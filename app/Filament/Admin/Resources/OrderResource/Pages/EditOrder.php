@@ -123,4 +123,9 @@ class EditOrder extends EditRecord
 
         $this->halt();
     }
+
+    protected function getSaveFormAction(): Actions\Action
+    {
+        return parent::getSaveFormAction()->label('Update Order');
+    }
 }

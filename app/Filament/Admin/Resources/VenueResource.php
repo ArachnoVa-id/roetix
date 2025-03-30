@@ -128,13 +128,13 @@ class VenueResource extends Resources\Resource
                 Storage::disk('local')->delete($filePath);
 
                 // Call the import function
-                $res = $record->importSeats(
+                [$res, $message] = $record->importSeats(
                     config: $config,
                 );
 
                 if ($res)
-                    Notification::make()->success()->title('Success')->body('Seats successfully imported!')->send();
-                else Notification::make()->danger()->title('Failed')->body('Seats failed to be imported!')->send();
+                    Notification::make()->success()->title('Success')->body($message)->send();
+                else Notification::make()->danger()->title('Failed')->body($message)->send();
             });
     }
 

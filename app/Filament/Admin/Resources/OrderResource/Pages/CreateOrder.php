@@ -2,23 +2,29 @@
 
 namespace App\Filament\Admin\Resources\OrderResource\Pages;
 
-use App\Enums\OrderStatus;
-use App\Enums\OrderType;
-use App\Enums\TicketOrderStatus;
-use App\Enums\TicketStatus;
-use App\Filament\Admin\Resources\OrderResource;
 use App\Models\Order;
+use Filament\Actions;
 use App\Models\Ticket;
+use App\Enums\OrderType;
+use App\Enums\OrderStatus;
+use App\Enums\TicketStatus;
 use App\Models\TicketOrder;
 use Filament\Facades\Filament;
+use App\Enums\TicketOrderStatus;
+use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Facades\FilamentView;
-use Illuminate\Support\Facades\DB;
+use App\Filament\Admin\Resources\OrderResource;
 
 class CreateOrder extends CreateRecord
 {
     protected static string $resource = OrderResource::class;
+
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()->label('Create Order');
+    }
 
     public function beforeCreate()
     {

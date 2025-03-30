@@ -2,24 +2,29 @@
 
 namespace App\Filament\Admin\Resources\EventResource\Pages;
 
-use App\Filament\Admin\Resources\EventResource;
-use Filament\Resources\Pages\CreateRecord;
-
-use App\Models\TicketCategory;
 use App\Models\Team;
-use App\Models\EventCategoryTimeboundPrice;
+use Filament\Actions;
 use App\Models\EventVariables;
-use App\Models\TimelineSession;
+use App\Models\TicketCategory;
 use Filament\Facades\Filament;
-use Filament\Notifications\Notification;
-use Filament\Support\Facades\FilamentView;
+use App\Models\TimelineSession;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Facades\FilamentView;
+use App\Models\EventCategoryTimeboundPrice;
+use App\Filament\Admin\Resources\EventResource;
 
 class CreateEvent extends CreateRecord
 {
     protected static string $resource = EventResource::class;
+
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()->label('Create Event');
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -46,7 +51,7 @@ class CreateEvent extends CreateRecord
         return $data;
     }
 
-    public function afterCreate()
+    public function beforeCreate()
     {
         try {
             DB::beginTransaction();

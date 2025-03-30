@@ -43,18 +43,22 @@ class Venue extends Model
     public function importSeats($config = null)
     {
         $success = false;
+        $message = '';
 
         ImportSeatMap::generateFromConfig(
             config: $config,
             venueId: $this->venue_id,
             successLineCallback: fn() => null,
-            successCallback: function () use (&$success) {
+            successCallback: function ($msg) use (&$success, &$message) {
                 $success = true;
+                $message = $msg;
             },
-            failedCallback: fn() => null
+            failedCallback: function ($msg) use (&$message) {
+                $message = $msg;
+            }
         );
 
-        return $success;
+        return [$success, $message];
     }
 
     public function exportSeats()
@@ -74,7 +78,7 @@ class Venue extends Model
 
         // Define the filename
         $venueName = Str::slug($this->name);
-        $fileName = "{$venueName}_seatsconfig_export.json";
+        $fileName = "novatix-{$venueName}-seatconfig.json";
 
         // Return a JSON download response
         return response()->streamDownload(function () use ($encoded) {
