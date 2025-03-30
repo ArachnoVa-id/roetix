@@ -19,6 +19,8 @@ class UserResource extends Resources\Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user';
 
+    protected static ?int $navigationSort = 2;
+
     public static function canAccess(): bool
     {
         $user = Auth::user();
@@ -115,6 +117,8 @@ class UserResource extends Resources\Resource
                                 ->maxLength(255),
                             Forms\Components\Select::make('role')
                                 ->options(UserRole::editableOptions())
+                                ->preload()
+                                ->searchable()
                                 ->required(),
                             Forms\Components\TextInput::make('email')
                                 ->required()
@@ -276,6 +280,8 @@ class UserResource extends Resources\Resource
                     Tables\Filters\SelectFilter::make('role')
                         ->options(UserRole::editableOptions())
                         ->multiple()
+                        ->preload()
+                        ->searchable()
                         ->hidden(!$filterRole),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal

@@ -5,7 +5,6 @@ namespace App\Filament\Admin\Resources\TicketResource\Pages;
 use App\Enums\TicketStatus;
 use App\Filament\Admin\Resources\TicketResource;
 use App\Models\Ticket;
-use Filament\Actions;
 use Filament\Facades\Filament;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
@@ -22,14 +21,17 @@ class ListTickets extends ListRecords
 
     public function getTabs(): array
     {
-        $tenant_id = Filament::getTenant()->team_id;
+        $tenant_id = Filament::getTenant()?->team_id ?? null;
+
+        $baseQuery = Ticket::query();
+        if ($tenant_id) {
+            $baseQuery->where('team_id', $tenant_id);
+        }
 
         $tabs = [
             'All' => Tab::make()
-                ->badge(
-                    Ticket::query()
-                        ->where('team_id', $tenant_id)
-                        ->count()
+                ->modifyQueryUsing(
+                    fn(Builder $query) => $query->mergeConstraintsFrom(clone $baseQuery)
                 ),
         ];
 
@@ -39,17 +41,10 @@ class ListTickets extends ListRecords
             $status_label = $status_enum->getLabel();
 
             $tabs[$status_label] = Tab::make()
-                ->badge(
-                    Ticket::query()
-                        ->where('status', $status_value)
-                        ->where('team_id', $tenant_id)
-                        ->count()
-                )
-                ->modifyQueryUsing(
-                    function (Builder $query) use ($status_value) {
-                        $query->where('status', $status_value);
-                    }
-                );
+                ->modifyQueryUsing(function (Builder $query) use ($baseQuery, $status_value) {
+                    $query->mergeConstraintsFrom(clone $baseQuery)
+                        ->where('status', $status_value);
+                });
         }
 
         return $tabs;

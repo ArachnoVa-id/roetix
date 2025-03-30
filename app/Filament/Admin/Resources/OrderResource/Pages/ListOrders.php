@@ -26,14 +26,17 @@ class ListOrders extends ListRecords
 
     public function getTabs(): array
     {
-        $tenant_id = Filament::getTenant()->team_id;
+        $tenant_id = Filament::getTenant()?->team_id ?? null;
+
+        $baseQuery = Order::query();
+        if ($tenant_id) {
+            $baseQuery->where('team_id', $tenant_id);
+        }
 
         $tabs = [
             'All' => Tab::make()
-                ->badge(
-                    Order::query()
-                        ->where('team_id', $tenant_id)
-                        ->count()
+                ->modifyQueryUsing(
+                    fn(Builder $query) => $query->mergeConstraintsFrom(clone $baseQuery)
                 ),
         ];
 
@@ -43,17 +46,10 @@ class ListOrders extends ListRecords
             $status_label = $status_enum->getLabel();
 
             $tabs[$status_label] = Tab::make()
-                ->badge(
-                    Order::query()
-                        ->where('status', $status_value)
-                        ->where('team_id', $tenant_id)
-                        ->count()
-                )
-                ->modifyQueryUsing(
-                    function (Builder $query) use ($status_value) {
-                        $query->where('status', $status_value);
-                    }
-                );
+                ->modifyQueryUsing(function (Builder $query) use ($baseQuery, $status_value) {
+                    $query->mergeConstraintsFrom(clone $baseQuery)
+                        ->where('status', $status_value);
+                });
         }
 
         return $tabs;

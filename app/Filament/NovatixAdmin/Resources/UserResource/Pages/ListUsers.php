@@ -26,11 +26,7 @@ class ListUsers extends ListRecords
     public function getTabs(): array
     {
         $tabs = [
-            'All' => Tab::make()
-                ->badge(
-                    User::query()
-                        ->count()
-                ),
+            'All' => Tab::make(),
         ];
 
         foreach (UserRole::toArray() as $status) {
@@ -39,11 +35,6 @@ class ListUsers extends ListRecords
             $status_label = $status_enum->getLabel();
 
             $tabs[$status_label] = Tab::make()
-                ->badge(
-                    User::query()
-                        ->where('role', $status_value)
-                        ->count()
-                )
                 ->modifyQueryUsing(
                     function (Builder $query) use ($status_value) {
                         $query->where('role', $status_value);

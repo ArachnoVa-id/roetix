@@ -100,6 +100,34 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         return trim($this->first_name . ' ' . $this->last_name);
     }
 
+    /**
+     * @param UserRole[] $roles
+     */
+    public function isAllowedInRoles(array $roles): bool
+    {
+        return in_array(UserRole::tryFrom($this->role), $roles, strict: true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role == UserRole::ADMIN->value;
+    }
+
+    public function isEO(): bool
+    {
+        return $this->role == UserRole::EVENT_ORGANIZER->value;
+    }
+
+    public function isVendor(): bool
+    {
+        return $this->role == UserRole::VENDOR->value;
+    }
+
+    public function isUser(): bool
+    {
+        return $this->role == UserRole::USER->value;
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->role == UserRole::ADMIN->value || $this->role == UserRole::VENDOR->value || $this->role == UserRole::EVENT_ORGANIZER->value;

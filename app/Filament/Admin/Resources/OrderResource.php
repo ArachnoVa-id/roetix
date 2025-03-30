@@ -2,19 +2,22 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\EventStatus;
 use Filament\Forms;
 use App\Models\User;
 use Filament\Tables;
 use App\Models\Event;
 use App\Models\Order;
+use Filament\Actions;
 use App\Models\Ticket;
+use App\Enums\UserRole;
 use Filament\Infolists;
+use App\Enums\EventStatus;
 use App\Enums\OrderStatus;
 use Filament\Tables\Table;
-use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
-use App\Enums\UserRole;
+use App\Models\TicketOrder;
+use Filament\Facades\Filament;
+use App\Enums\TicketOrderStatus;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
@@ -22,11 +25,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
-use App\Models\TicketOrder;
-use Filament\Facades\Filament;
+use App\Models\Team;
 
 class OrderResource extends Resource
 {
+    protected static ?int $navigationSort = 3;
     protected static ?string $model = Order::class;
     protected static ?string $tenantRelationshipName = 'orders';
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
@@ -50,7 +53,6 @@ class OrderResource extends Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
-        $tenant_id = Filament::getTenant()->team_id;
         // get current form values
         $currentModel = $form->model;
         $modelExists = !is_string($currentModel);
@@ -71,6 +73,7 @@ class OrderResource extends Resource
                             ->options(fn() => User::pluck('email', 'id'))
                             ->optionsLimit(5)
                             ->required()
+                            ->preload()
                             ->disabled($modelExists),
                         // define the event
                         Forms\Components\Select::make('event_id')
@@ -78,8 +81,16 @@ class OrderResource extends Resource
                             ->searchable()
                             ->reactive()
                             ->optionsLimit(5)
-                            ->options(fn() => Event::where('team_id', $tenant_id)->pluck('name', 'event_id'))
+                            ->options(function () {
+                                $tenant_id = Filament::getTenant()?->team_id;
+                                $query = Event::query();
+                                if ($tenant_id) {
+                                    $query->where('team_id', $tenant_id);
+                                }
+                                return $query->pluck('name', 'event_id');
+                            })
                             ->required()
+                            ->preload()
                             ->disabled($modelExists),
                     ]),
                 Forms\Components\Section::make('Tickets')
@@ -168,6 +179,7 @@ class OrderResource extends Resource
                                     ])
                                     ->default(TicketOrderStatus::ENABLED)
                                     ->placeholder('Choose')
+                                    ->preload()
                                     ->hidden(!$modelExists)
                                     ->required(),
                             ]),
@@ -265,10 +277,10 @@ class OrderResource extends Resource
                             ->badge(),
                     ]),
                 Infolists\Components\Tabs::make()
+                    ->hidden(!$showTickets)
                     ->columnSpanFull()
                     ->schema([
                         Infolists\Components\Tabs\Tab::make('Tickets')
-                            ->hidden(!$showTickets)
                             ->schema([
                                 \Njxqlus\Filament\Components\Infolists\RelationManager::make()
                                     ->manager(TicketsRelationManager::class)
@@ -277,13 +289,19 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function table(Table $table, bool $filterStatus = false): Table
+    public static function table(Table $table, bool $filterStatus = false, bool $filterEvent = true): Table
     {
-        $tenant_id = Filament::getTenant()->team_id;
+        $user = User::find(Auth::id());
 
         return $table
             ->defaultSort('order_date', 'desc')
             ->columns([
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Team Name')
+                    ->searchable()
+                    ->sortable()
+                    ->hidden(!($user->isAdmin()))
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('order_code')
                     ->label('Code')
                     ->searchable(),
@@ -317,15 +335,37 @@ class OrderResource extends Resource
             ])
             ->filters(
                 [
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship('team', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
+                        ->multiple()
+                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->hidden(!($user->isAdmin())),
+
                     Tables\Filters\SelectFilter::make('event_id')
                         ->label('Filter by Event')
-                        ->options(fn() => Event::where('team_id', $tenant_id)->pluck('name', 'event_id'))
+                        ->options(function () {
+                            $tenant_id = Filament::getTenant()?->team_id ?? null;
+                            $query = Event::query();
+                            if ($tenant_id) {
+                                $query->where('team_id', $tenant_id);
+                            }
+                            return $query->pluck('name', 'event_id');
+                        })
                         ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
                         ->multiple()
+                        ->hidden(!$filterEvent)
                         ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
                     Tables\Filters\SelectFilter::make('status')
                         ->options(OrderStatus::editableOptions())
+                        ->searchable()
                         ->multiple()
+                        ->preload()
                         ->hidden(!$filterStatus)
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal

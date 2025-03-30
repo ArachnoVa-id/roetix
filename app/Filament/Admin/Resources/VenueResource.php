@@ -12,6 +12,7 @@ use Filament\Resources;
 use Illuminate\Support\Facades\Auth;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
+use App\Models\Team;
 use App\Models\User;
 use Filament\Actions;
 use Filament\Facades\Filament;
@@ -35,7 +36,7 @@ class VenueResource extends Resources\Resource
     public static function canCreate(): bool
     {
         $user = Auth::user();
-        if (!$user) {
+        if (!$user || $user->role !== UserRole::VENDOR->value) {
             return false;
         }
 
@@ -69,6 +70,7 @@ class VenueResource extends Resources\Resource
                 Forms\Components\Select::make('status')
                     ->label('Status')
                     ->options(VenueStatus::editableOptions())
+                    ->preload()
                     ->default(fn($record) => $record->status) // Set the current value as default
                     ->required(),
             ])
@@ -268,12 +270,20 @@ class VenueResource extends Resources\Resource
 
     public static function table(Tables\Table $table, bool $filterStatus = false): Tables\Table
     {
+        $user = User::find(Auth::id());
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Venue Name')
                     ->searchable()
                     ->sortable()
+                    ->limit(50),
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Team Name')
+                    ->searchable()
+                    ->sortable()
+                    ->hidden(!($user->isAdmin()))
                     ->limit(50),
                 Tables\Columns\TextColumn::make('location')
                     ->searchable()
@@ -322,8 +332,19 @@ class VenueResource extends Resources\Resource
                         }),
                     Tables\Filters\SelectFilter::make('status')
                         ->options(VenueStatus::editableOptions())
+                        ->searchable()
                         ->multiple()
+                        ->preload()
                         ->hidden(!$filterStatus),
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship('team', 'name')
+                        ->searchable()
+                        ->optionsLimit(5)
+                        ->preload()
+                        ->multiple()
+                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->hidden(!($user->isAdmin())),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use Closure;
 use App\Models\User;
 use App\Models\Venue;
@@ -18,7 +19,10 @@ class CheckVenueAccess
      */
     public function handle(Request $request, Closure $next)
     {
-        $userId = Auth::id();
+        $user = Auth::user();
+        if ($user->role == UserRole::ADMIN->value) return $next($request);
+
+        $userId = $user->id;
 
         // Check both route parameter and query parameter for venue_id
         $venueId = $request->route('venue_id') ?? $request->query('venue_id');
@@ -39,14 +43,6 @@ class CheckVenueAccess
 
         // Cek apakah user memiliki akses ke venue ini
         if (!$venueTeamId || !in_array($venueTeamId, $userTeamIds)) {
-            // Add logging to help debug
-            Log::error('Venue access denied', [
-                'id' => $userId,
-                'venue_id' => $venueId,
-                'user_team_ids' => $userTeamIds,
-                'venue_team_id' => $venueTeamId
-            ]);
-
             abort(403, 'Unauthorized Access to Venue');
         }
 

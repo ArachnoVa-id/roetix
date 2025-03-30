@@ -22,11 +22,13 @@ use Illuminate\Database\Eloquent\Model;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use App\Models\Team;
 
 class EventResource extends Resource
 {
-
     protected static ?string $model = Event::class;
+
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar';
 
@@ -40,7 +42,7 @@ class EventResource extends Resource
     public static function canCreate(): bool
     {
         $user = Auth::user();
-        if (!$user) {
+        if (!$user || $user->role != UserRole::EVENT_ORGANIZER->value) {
             return false;
         }
 
@@ -73,8 +75,10 @@ class EventResource extends Resource
             ->form([
                 Forms\Components\Select::make('status')
                     ->label('Status')
-                    ->options(fn($record) => EventStatus::editableOptions(EventStatus::tryFrom($record->status)))
+                    ->options(fn($record) => Auth::user()->role == UserRole::ADMIN->value ? EventStatus::allOptions() : EventStatus::editableOptions(EventStatus::tryFrom($record->status)))
                     ->default(fn($record) => $record->status)
+                    ->searchable()
+                    ->preload()
                     ->required(),
             ])
             ->action(function ($record, array $data) {
@@ -416,6 +420,7 @@ class EventResource extends Resource
                                             return $venues;
                                         }
                                     )
+                                    ->preload()
                                     ->required()
                                     ->label('Venue')
                                     ->placeholder('Select Venue')
@@ -1059,7 +1064,7 @@ class EventResource extends Resource
 
     public static function table(Table $table, bool $filterStatus = false): Table
     {
-        $user = Auth::user();
+        $user = User::find(Auth::id());
         $role = $user ? $user->role : null;
 
         $defaultActions = [
@@ -1079,6 +1084,12 @@ class EventResource extends Resource
                     ->label('Event Name')
                     ->sortable()
                     ->searchable(),
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Team Name')
+                    ->searchable()
+                    ->sortable()
+                    ->hidden(!($user->isAdmin()))
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('start_date')
                     ->label('Start')
                     ->dateTime()
@@ -1102,8 +1113,19 @@ class EventResource extends Resource
                 [
                     Tables\Filters\SelectFilter::make('status')
                         ->options(EventStatus::toArray())
+                        ->searchable()
                         ->multiple()
-                        ->hidden(!$filterStatus)
+                        ->preload()
+                        ->hidden(!$filterStatus),
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship('team', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
+                        ->multiple()
+                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->hidden(!($user->isAdmin())),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

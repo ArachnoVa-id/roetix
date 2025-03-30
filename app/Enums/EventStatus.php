@@ -82,6 +82,15 @@ enum EventStatus: string implements HasLabel, HasColor
         }
     }
 
+    public static function allOptions(): array
+    {
+        $options = [];
+        foreach (self::cases() as $case) {
+            $options[$case->value] = $case->getLabel();
+        }
+        return $options;
+    }
+
     public static function getFilterOptions()
     {
         return [
