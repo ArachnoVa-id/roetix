@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\VenueResource\Pages;
 
 use App\Filament\Admin\Resources\VenueResource;
+use App\Filament\Components\BackButtonAction;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -13,14 +14,9 @@ class ViewVenue extends ViewRecord
     public function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('Back')
-                ->url(
-                    fn() => request()->headers->get('referer') !== url()->current()
-                        ? url()->previous()
-                        : $this->getResource()::getUrl()
-                )
-                ->icon('heroicon-o-arrow-left')
-                ->color('info'),
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            ),
             Actions\EditAction::make('Edit Event')
                 ->icon('heroicon-o-pencil'),
             VenueResource::EditVenueButton(

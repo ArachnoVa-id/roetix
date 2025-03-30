@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\TicketResource\Pages;
 
 use App\Filament\Admin\Resources\TicketResource;
+use App\Filament\Components\BackButtonAction;
 use Filament\Actions;
 use Filament\Tables;
 use Filament\Resources\Pages\ViewRecord;
@@ -14,14 +15,9 @@ class ViewTicket extends ViewRecord
     public function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('Back')
-                ->url(
-                    fn() => request()->headers->get('referer') !== url()->current()
-                        ? url()->previous()
-                        : $this->getResource()::getUrl()
-                )
-                ->icon('heroicon-o-arrow-left')
-                ->color('info'),
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            ),
             TicketResource::ChangeStatusButton(
                 Actions\Action::make('changeStatus')
             ),

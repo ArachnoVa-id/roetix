@@ -16,6 +16,8 @@ use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Facades\FilamentView;
 use App\Models\EventCategoryTimeboundPrice;
 use App\Filament\Admin\Resources\EventResource;
+use App\Filament\Components\BackButtonAction;
+use Filament\Support\Enums\IconPosition;
 
 class CreateEvent extends CreateRecord
 {
@@ -23,7 +25,33 @@ class CreateEvent extends CreateRecord
 
     protected function getCreateFormAction(): Actions\Action
     {
-        return parent::getCreateFormAction()->label('Create Event');
+        return parent::getCreateFormAction()
+            ->label('Create Event')
+            ->icon('heroicon-o-plus');
+    }
+
+    protected function getCreateAnotherFormAction(): Actions\Action
+    {
+        return parent::getCreateAnotherFormAction()
+            ->label('Create & Create Another Event')
+            ->icon('heroicon-o-plus');
+    }
+
+    protected function getCancelFormAction(): Actions\Action
+    {
+        return parent::getCancelFormAction()->hidden();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            )
+                ->label('Cancel')
+                ->icon('heroicon-o-x-circle')
+                ->iconPosition(IconPosition::After)
+        ];
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array

@@ -16,6 +16,8 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Facades\FilamentView;
 use App\Filament\Admin\Resources\OrderResource;
+use App\Filament\Components\BackButtonAction;
+use Filament\Support\Enums\IconPosition;
 
 class CreateOrder extends CreateRecord
 {
@@ -23,7 +25,33 @@ class CreateOrder extends CreateRecord
 
     protected function getCreateFormAction(): Actions\Action
     {
-        return parent::getCreateFormAction()->label('Create Order');
+        return parent::getCreateFormAction()
+            ->label('Create Order')
+            ->icon('heroicon-o-plus');
+    }
+
+    protected function getCreateAnotherFormAction(): Actions\Action
+    {
+        return parent::getCreateAnotherFormAction()
+            ->label('Create & Create Another Order')
+            ->icon('heroicon-o-plus');
+    }
+
+    protected function getCancelFormAction(): Actions\Action
+    {
+        return parent::getCancelFormAction()->hidden();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            )
+                ->label('Cancel')
+                ->icon('heroicon-o-x-circle')
+                ->iconPosition(IconPosition::After)
+        ];
     }
 
     public function beforeCreate()

@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Filament\NovatixAdmin\Resources\UserResource;
 use App\Models\User;
 use Filament\Actions;
-use Filament\Facades\Filament;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;

@@ -2,6 +2,7 @@
 
 namespace App\Filament\NovatixAdmin\Resources\UserResource\Pages;
 
+use App\Filament\Components\BackButtonAction;
 use App\Filament\NovatixAdmin\Resources\UserResource;
 use App\Models\Team;
 use Filament\Actions;
@@ -14,10 +15,9 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('Back')
-                ->url(fn() => url()->previous())
-                ->icon('heroicon-o-arrow-left')
-                ->color('info'),
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            ),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
         ];

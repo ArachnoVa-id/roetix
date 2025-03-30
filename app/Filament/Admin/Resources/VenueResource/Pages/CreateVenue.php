@@ -8,7 +8,9 @@ use App\Models\Team;
 use Illuminate\Support\Str;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Admin\Resources\VenueResource;
+use App\Filament\Components\BackButtonAction;
 use Filament\Facades\Filament;
+use Filament\Support\Enums\IconPosition;
 
 class CreateVenue extends CreateRecord
 {
@@ -16,7 +18,33 @@ class CreateVenue extends CreateRecord
 
     protected function getCreateFormAction(): Actions\Action
     {
-        return parent::getCreateFormAction()->label('Create Venue');
+        return parent::getCreateFormAction()
+            ->label('Create Venue')
+            ->icon('heroicon-o-plus');
+    }
+
+    protected function getCreateAnotherFormAction(): Actions\Action
+    {
+        return parent::getCreateAnotherFormAction()
+            ->label('Create & Create Another Venue')
+            ->icon('heroicon-o-plus');
+    }
+
+    protected function getCancelFormAction(): Actions\Action
+    {
+        return parent::getCancelFormAction()->hidden();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            )
+                ->label('Cancel')
+                ->icon('heroicon-o-x-circle')
+                ->iconPosition(IconPosition::After)
+        ];
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
