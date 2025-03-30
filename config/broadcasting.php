@@ -2,12 +2,12 @@
 
 return [
 
-    'default' => env('BROADCAST_DRIVER', 'null'),
+    'default' => env('BROADCAST_DRIVER', 'redis'),
 
     'connections' => [
 
         'pusher' => [
-            'driver' => 'pusher',
+            'driver' => 'redis',
             'key' => env('PUSHER_APP_KEY'),
             'secret' => env('PUSHER_APP_SECRET'),
             'app_id' => env('PUSHER_APP_ID'),

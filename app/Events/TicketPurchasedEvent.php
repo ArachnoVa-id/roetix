@@ -11,7 +11,7 @@ use Illuminate\Queue\SerializesModels;
 use App\Models\Ticket;
 use Illuminate\Broadcasting\PrivateChannel;
 
-class TicketPurchased implements ShouldBroadcastNow
+class TicketPurchasedEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -27,7 +27,7 @@ class TicketPurchased implements ShouldBroadcastNow
 
     public function broadcastAs()
     {
-        return 'ticket.purchased';
+        return 'ticket-purchased';
     }
 
     /**
@@ -36,9 +36,8 @@ class TicketPurchased implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tickets'),
+            new Channel('tickets'),
         ];
-
     }
 
     /**
@@ -47,12 +46,12 @@ class TicketPurchased implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'tickets' => $this->tickets->map(fn($ticket) => [
-                'ticket_id' => $ticket->ticket_id,
-                'status' => $ticket->status,
-                'seat_id' => $ticket->seat_id,
-                'event_id' => $ticket->event_id,
-            ]),
+            'tickets' => [
+                'ticket_id' => $this->tickets->ticket_id,
+                'status' => $this->tickets->status,
+                'seat_id' => $this->tickets->seat_id,
+                'event_id' => $this->tickets->event_id,
+            ],
         ];
     }
 }
