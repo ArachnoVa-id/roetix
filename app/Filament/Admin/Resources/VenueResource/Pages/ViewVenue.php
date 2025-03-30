@@ -30,7 +30,9 @@ class ViewVenue extends ViewRecord
             ),
             VenueResource::ImportVenueButton(
                 Actions\Action::make('importVenue')
-            )
+            ),
+            Actions\DeleteAction::make('Delete Venue')
+                ->icon('heroicon-o-trash'),
         ];
     }
 }

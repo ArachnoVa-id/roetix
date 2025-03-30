@@ -28,15 +28,15 @@ class VenueResource extends Resources\Resource
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = User::find(Auth::id());
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::VENDOR->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::VENDOR]);
     }
 
     public static function canCreate(): bool
     {
-        $user = Auth::user();
-        if (!$user || $user->role !== UserRole::VENDOR->value) {
+        $user = User::find(Auth::id());
+        if (!$user || !$user->isAllowedInRoles([UserRole::VENDOR])) {
             return false;
         }
 
@@ -50,12 +50,13 @@ class VenueResource extends Resources\Resource
             return false;
         }
 
-        return $team->vendor_quota > $team->venues->count();
+        return $team->vendor_quota > 0;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return false;
+        $user = User::find(Auth::id());
+        return $user->isAdmin();
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -408,7 +409,9 @@ class VenueResource extends Resources\Resource
                     ),
                     self::ImportVenueButton(
                         Tables\Actions\Action::make('importVenue')
-                    )
+                    ),
+                    Tables\Actions\DeleteAction::make()
+                        ->icon('heroicon-o-trash'),
                 ]),
             ]);
     }

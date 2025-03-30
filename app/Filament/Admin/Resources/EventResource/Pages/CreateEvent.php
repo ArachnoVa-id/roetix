@@ -17,6 +17,7 @@ use Filament\Support\Facades\FilamentView;
 use App\Models\EventCategoryTimeboundPrice;
 use App\Filament\Admin\Resources\EventResource;
 use App\Filament\Components\BackButtonAction;
+use App\Models\Event;
 use Filament\Support\Enums\IconPosition;
 
 class CreateEvent extends CreateRecord
@@ -54,45 +55,36 @@ class CreateEvent extends CreateRecord
         ];
     }
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        $tenant_id = Filament::getTenant()->team_id;
-        $team = Team::where('team_id', $tenant_id)->first();
-
-        if (!$team || $team->vendor_quota <= 0) {
-            throw new \Exception('Venue Quota tidak mencukupi untuk membuat venue baru.');
-        };
-
-        $team->decrement('event_quota');
-        $tenant = Filament::getTenant();
-        $data['team_id'] = $tenant->team_id;
-        $data['team_code'] = $tenant->code;
-
-        $this->data['temp_data'] = [
-            'event_timeline' => $this->data['event_timeline'] ?? [],
-            'ticket_categories' => $this->data['ticket_categories'] ?? [],
-        ];
-
-        // Remove them from the main insert
-        unset($this->data['event_timeline'], $this->data['ticket_categories']);
-
-        return $data;
-    }
-
     public function beforeCreate()
     {
         try {
             DB::beginTransaction();
+
             $user = Auth::user();
             if (!$user) {
                 throw new \Exception('User not found.');
             }
 
+            $tenant_id = Filament::getTenant()->team_id;
+            $team = Team::where('team_id', $tenant_id)->first();
+
+            if (!$team || $team->event_quota <= 0) {
+                throw new \Exception('Event Quota tidak mencukupi untuk membuat venue baru.');
+            };
+
+            $team->decrement('event_quota');
+            $tenant = Filament::getTenant();
             $data = $this->data;
-            $event_id = $this->record->event_id;
+
+            $data['team_id'] = $tenant->team_id;
+            $data['team_code'] = $tenant->code;
+
+            // Create the Event with existing data
+            $event = Event::create($data);
+            $event_id = $event->event_id;
 
             // Create Timeline
-            $ticketTimelines = $data['temp_data']['event_timeline'] ?? [];
+            $ticketTimelines = $data['event_timeline'] ?? [];
             $timelineFormXDb = [];
 
             if (!empty($ticketTimelines)) {
@@ -109,9 +101,9 @@ class CreateEvent extends CreateRecord
             }
 
             // Create Ticket Categories
-            $ticketCategories = $data['temp_data']['ticket_categories'] ?? [];
+            $ticketCategories = $data['ticket_categories'] ?? [];
             if (!empty($ticketCategories)) {
-                foreach ($ticketCategories as $category) {
+                foreach ($ticketCategories as $idx => $category) {
                     // Create Ticket Category
                     $ticketCategory = TicketCategory::create([
                         'event_id' => $event_id,
@@ -119,16 +111,18 @@ class CreateEvent extends CreateRecord
                         'color' => $category['color'],
                     ]);
 
-                    $ticketCategories[$category['name']] = $ticketCategory->ticket_category_id;
+                    $ticketCategories[$idx]['ticket_category_id'] = $ticketCategory->ticket_category_id;
 
                     if (!empty($category['event_category_timebound_prices'])) {
-                        foreach ($category['event_category_timebound_prices'] as $timeboundPrice) {
-                            EventCategoryTimeboundPrice::create([
+                        foreach ($category['event_category_timebound_prices'] as $idx2 => $timeboundPrice) {
+                            $timeboundPrice = EventCategoryTimeboundPrice::create([
                                 'ticket_category_id' => $ticketCategory->ticket_category_id,
                                 'timeline_id' => $timelineFormXDb[$timeboundPrice['timeline_id']],
                                 'price' => $timeboundPrice['price'],
                                 'is_active' => $timeboundPrice['is_active'],
                             ]);
+
+                            $ticketCategories[$idx]['event_category_timebound_prices'][$idx2]['timebound_price_id'] = $timeboundPrice->timebound_price_id;
                         }
                     }
                 }
@@ -139,7 +133,7 @@ class CreateEvent extends CreateRecord
 
             // If no color, stop the request and tell the user to retry
             if (!$colors) {
-                throw new \Exception('Please retry setting the colors.');
+                throw new \Exception('Colors expired! Please retry readjusting the colors.');
             }
 
             $eventVariables = [
@@ -162,12 +156,19 @@ class CreateEvent extends CreateRecord
 
             $eventVariables = array_merge($eventVariables, $colors);
 
-            EventVariables::create($eventVariables);
+            $newEventVariables = EventVariables::create($eventVariables);
+
+            DB::commit();
+
+            // Notify success
+            Notification::make()
+                ->success()
+                ->title('Saved')
+                ->body("Event {$event->name} has been created.")
+                ->send();
 
             // Clear cache for colors
             Cache::forget('color_preview_' . Auth::user()->id);
-
-            DB::commit();
 
             // Get the redirect URL (like getRedirectUrl)
             $redirectUrl = $this->getResource()::getUrl('view', ['record' => $event_id]);
@@ -185,8 +186,7 @@ class CreateEvent extends CreateRecord
                 ->danger()
                 ->body($e->getMessage())
                 ->send();
-
-            return;
         }
+        $this->halt();
     }
 }

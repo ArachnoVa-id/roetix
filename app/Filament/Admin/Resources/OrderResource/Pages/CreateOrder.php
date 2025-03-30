@@ -130,13 +130,13 @@ class CreateOrder extends CreateRecord
             // Perform the redirect
             $this->redirect($redirectUrl, navigate: $navigate);
         } catch (\Exception $e) {
+            DB::rollBack();
+
             Notification::make()
                 ->title('Failed to Save')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();
-
-            DB::rollBack();
         }
         $this->halt();
     }

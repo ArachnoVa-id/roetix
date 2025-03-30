@@ -10,6 +10,7 @@ use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Admin\Resources\VenueResource;
 use App\Filament\Components\BackButtonAction;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\IconPosition;
 
 class CreateVenue extends CreateRecord
@@ -49,28 +50,39 @@ class CreateVenue extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $tenant_id = Filament::getTenant()->team_id;
-        $team = Team::where('team_id', $tenant_id)->first();
+        try {
+            $tenant_id = Filament::getTenant()->team_id;
+            $team = Team::where('team_id', $tenant_id)->first();
 
-        if (!$team || $team->vendor_quota <= 0) {
-            throw new \Exception('Venue Quota tidak mencukupi untuk membuat venue baru.');
-        };
+            if (!$team || $team->vendor_quota <= 0) {
+                throw new \Exception('Venue Quota tidak mencukupi untuk membuat venue baru.');
+            };
 
-        $team->decrement('vendor_quota');
+            $team->decrement('vendor_quota');
 
-        // Create new UserContact
-        $contactInfo = $this->data['contactInfo'];
-        $contact = UserContact::create([
-            'contact_id' => Str::uuid(),
-            'phone_number' => $contactInfo['phone_number'],
-            'email' => $contactInfo['email'],
-            'whatsapp_number' => $contactInfo['whatsapp_number'] ?? null,
-            'instagram' => $contactInfo['instagram'] ?? null,
-        ]);
+            // Create new UserContact
+            $contactInfo = $this->data['contactInfo'];
+            $contact = UserContact::create([
+                'contact_id' => Str::uuid(),
+                'phone_number' => $contactInfo['phone_number'],
+                'email' => $contactInfo['email'],
+                'whatsapp_number' => $contactInfo['whatsapp_number'] ?? null,
+                'instagram' => $contactInfo['instagram'] ?? null,
+            ]);
 
-        // Assign the new contact to the venue data
-        $data['contact_info'] = $contact->contact_id;
+            // Assign the new contact to the venue data
+            $data['contact_info'] = $contact->contact_id;
 
-        return $data;
+            return $data;
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error')
+                ->body($e->getMessage())
+                ->danger()
+                ->show();
+
+            $this->halt();
+            return $data;
+        }
     }
 }
