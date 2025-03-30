@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources;
 
 use Carbon\Carbon;
 use Filament\Forms;
+use App\Models\Team;
 use App\Models\User;
 use Filament\Tables;
 use App\Models\Event;
@@ -19,10 +20,10 @@ use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
-use App\Models\Team;
 
 class EventResource extends Resource
 {
@@ -82,7 +83,21 @@ class EventResource extends Resource
                     ->required(),
             ])
             ->action(function ($record, array $data) {
-                $record->update(['status' => $data['status']]);
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Event Status Changed')
+                        ->body("Event {$record->name} status has been changed to " . EventStatus::tryFrom($data['status'])->getLabel())
+                        ->success()
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed to Change Event Status')
+                        ->body("Failed to change event {$record->name} status: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
+                }
             })
             ->modal(true);
     }
@@ -1065,14 +1080,13 @@ class EventResource extends Resource
     public static function table(Table $table, bool $filterStatus = false): Table
     {
         $user = User::find(Auth::id());
-        $role = $user ? $user->role : null;
 
         $defaultActions = [
             Tables\Actions\ViewAction::make()->modalHeading('View Event'),
             Tables\Actions\EditAction::make(),
         ];
 
-        if ($role == UserRole::EVENT_ORGANIZER->value) {
+        if ($user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER])) {
             $defaultActions[] = self::ChangeStatusButton(Tables\Actions\Action::make('changeStatus'));
             $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));
         }

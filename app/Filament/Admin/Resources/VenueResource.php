@@ -2,23 +2,23 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\UserRole;
-use App\Enums\VenueStatus;
 use Filament\Forms;
-use Filament\Tables;
-use App\Models\Venue;
-use Filament\Infolists;
-use Filament\Resources;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Admin\Resources\VenueResource\Pages;
-use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
 use App\Models\Team;
 use App\Models\User;
+use Filament\Tables;
+use App\Models\Venue;
 use Filament\Actions;
+use App\Enums\UserRole;
+use Filament\Infolists;
+use Filament\Resources;
+use App\Enums\VenueStatus;
 use Filament\Facades\Filament;
-use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Filament\Notifications\Notification;
+use App\Filament\Admin\Resources\VenueResource\Pages;
+use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
 
 class VenueResource extends Resources\Resource
 {
@@ -75,7 +75,21 @@ class VenueResource extends Resources\Resource
                     ->required(),
             ])
             ->action(function ($record, array $data) {
-                $record->update(['status' => $data['status']]);
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Success')
+                        ->body("Venue {$record->name} status has been changed to " . VenueStatus::tryFrom($data['status'])->getLabel())
+                        ->success()
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed')
+                        ->body("Failed to change venue {$record->name} status: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
+                }
             })
             ->modal(true);
     }
@@ -95,7 +109,22 @@ class VenueResource extends Resources\Resource
             ->label('Export Venue')
             ->icon('heroicon-o-arrow-down-tray')
             ->color('info')
-            ->action(fn($record) => $record->exportSeats());
+            ->action(function ($record) {
+                try {
+                    $record->exportSeats();
+                    Notification::make()
+                        ->title('Success')
+                        ->body("Venue {$record->name} seats have been exported.")
+                        ->success()
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed')
+                        ->body("Failed to export venue {$record->name} seats: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
+                }
+            });
     }
 
     public static function ImportVenueButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -113,30 +142,46 @@ class VenueResource extends Resources\Resource
                     ->disk('local'),
             ])
             ->action(function ($record, array $data) {
-                // Get the uploaded file path
-                $filePath = $data['venue_json'];
+                try {
+                    // Get the uploaded file path
+                    $filePath = $data['venue_json'];
 
-                if (!$filePath) {
-                    return;
+                    if (!$filePath) {
+                        return;
+                    }
+
+                    // Read the file content
+                    $jsonContent = file_get_contents(storage_path('app/private/' . $filePath));
+
+                    // Decode the JSON content
+                    $config = json_decode($jsonContent, true);
+
+                    // Optionally delete the original temporary file
+                    Storage::disk('local')->delete($filePath);
+
+                    // Call the import function
+                    [$res, $message] = $record->importSeats(
+                        config: $config,
+                    );
+
+                    if ($res)
+                        Notification::make()
+                            ->success()
+                            ->title('Success')
+                            ->body($message)
+                            ->send();
+                    else Notification::make()
+                        ->danger()
+                        ->title('Failed')
+                        ->body($message)
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed')
+                        ->body("Failed to import venue {$record->name} seats: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
                 }
-
-                // Read the file content
-                $jsonContent = file_get_contents(storage_path('app/private/' . $filePath));
-
-                // Decode the JSON content
-                $config = json_decode($jsonContent, true);
-
-                // Optionally delete the original temporary file
-                Storage::disk('local')->delete($filePath);
-
-                // Call the import function
-                [$res, $message] = $record->importSeats(
-                    config: $config,
-                );
-
-                if ($res)
-                    Notification::make()->success()->title('Success')->body($message)->send();
-                else Notification::make()->danger()->title('Failed')->body($message)->send();
             });
     }
 

@@ -101,7 +101,21 @@ class TicketResource extends Resource
                     ->required(),
             ])
             ->action(function ($record, array $data) {
-                $record->update(['status' => $data['status']]);
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Success')
+                        ->success()
+                        ->body('Status changed successfully.')
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error')
+                        ->danger()
+                        ->body($e->getMessage())
+                        ->send();
+                }
             })
             ->modal(true);
     }
@@ -201,17 +215,19 @@ class TicketResource extends Resource
 
                     DB::commit();
 
+                    $user = User::find($data['user_id']);
+
                     Notification::make()
                         ->title('Success')
+                        ->body("Ownership of the ticket: {$ticket->seat->seat_number} has been transferred successfully to user: {$user->email}")
                         ->success()
-                        ->body('Ownership transferred successfully.')
                         ->send();
                 } catch (\Exception $e) {
                     DB::rollBack();
                     Notification::make()
                         ->title('Error')
+                        ->body("Failed to transfer ownership: {$e->getMessage()}")
                         ->danger()
-                        ->body($e->getMessage())
                         ->send();
                 }
             })
