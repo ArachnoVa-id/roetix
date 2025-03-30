@@ -42,6 +42,8 @@ class EditUser extends EditRecord
 
     protected function getSaveFormAction(): Actions\Action
     {
-        return parent::getSaveFormAction()->label('Update User');
+        return parent::getSaveFormAction()
+            ->label('Update User')
+            ->icon('heroicon-o-folder');
     }
 }

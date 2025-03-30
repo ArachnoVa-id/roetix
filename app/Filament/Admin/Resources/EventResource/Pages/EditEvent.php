@@ -40,7 +40,9 @@ class EditEvent extends EditRecord
 
     protected function getSaveFormAction(): Actions\Action
     {
-        return parent::getSaveFormAction()->label('Update Event');
+        return parent::getSaveFormAction()
+            ->label('Update Event')
+            ->icon('heroicon-o-folder');
     }
 
     protected function mutateFormDataBeforeFill(array $data): array
@@ -208,7 +210,7 @@ class EditEvent extends EditRecord
                 $this->record->save();
 
                 // Clear cache for colors
-                Cache::forget('color_preview_' . Auth::user()->id);
+                Cache::forget('color_preview_' . Auth::id());
 
                 // Get the redirect URL (like getRedirectUrl)
                 $redirectUrl = $this->getResource()::getUrl('view', ['record' => $eventId]);

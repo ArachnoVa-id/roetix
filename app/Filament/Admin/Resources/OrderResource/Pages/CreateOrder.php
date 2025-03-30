@@ -17,6 +17,7 @@ use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Facades\FilamentView;
 use App\Filament\Admin\Resources\OrderResource;
 use App\Filament\Components\BackButtonAction;
+use App\Models\Event;
 use Filament\Support\Enums\IconPosition;
 
 class CreateOrder extends CreateRecord
@@ -59,8 +60,9 @@ class CreateOrder extends CreateRecord
         DB::beginTransaction();
         try {
             $data = $this->data;
-            $tenant_id = Filament::getTenant()->team_id;
             $event_id = $data['event_id'];
+            $event = Event::where('event_id', $event_id)->first();
+            $tenant_id = $event->team_id;
             $user_id = $data['user_id'];
 
             // Lock all tickets

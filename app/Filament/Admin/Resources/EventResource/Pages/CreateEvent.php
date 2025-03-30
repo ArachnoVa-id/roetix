@@ -17,6 +17,7 @@ use Filament\Support\Facades\FilamentView;
 use App\Models\EventCategoryTimeboundPrice;
 use App\Filament\Admin\Resources\EventResource;
 use App\Filament\Components\BackButtonAction;
+use App\Http\Middleware\Filament\UrlHistoryStack;
 use App\Models\Event;
 use Filament\Support\Enums\IconPosition;
 
@@ -34,6 +35,7 @@ class CreateEvent extends CreateRecord
     protected function getCreateAnotherFormAction(): Actions\Action
     {
         return parent::getCreateAnotherFormAction()
+            ->hidden()
             ->label('Create & Create Another Event')
             ->icon('heroicon-o-plus');
     }
@@ -72,7 +74,6 @@ class CreateEvent extends CreateRecord
                 throw new \Exception('Event Quota tidak mencukupi untuk membuat venue baru.');
             };
 
-            $team->decrement('event_quota');
             $tenant = Filament::getTenant();
             $data = $this->data;
 
@@ -157,6 +158,12 @@ class CreateEvent extends CreateRecord
             $eventVariables = array_merge($eventVariables, $colors);
 
             $newEventVariables = EventVariables::create($eventVariables);
+
+            $team->decrement('event_quota');
+
+            if ($team->event_quota <= 0) {
+                UrlHistoryStack::popUrlStack();
+            }
 
             DB::commit();
 

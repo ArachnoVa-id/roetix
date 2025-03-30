@@ -9,9 +9,11 @@ use Illuminate\Support\Str;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Admin\Resources\VenueResource;
 use App\Filament\Components\BackButtonAction;
+use App\Http\Middleware\Filament\UrlHistoryStack;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\IconPosition;
+use Illuminate\Support\Facades\DB;
 
 class CreateVenue extends CreateRecord
 {
@@ -27,6 +29,7 @@ class CreateVenue extends CreateRecord
     protected function getCreateAnotherFormAction(): Actions\Action
     {
         return parent::getCreateAnotherFormAction()
+            ->hidden()
             ->label('Create & Create Another Venue')
             ->icon('heroicon-o-plus');
     }
@@ -51,14 +54,13 @@ class CreateVenue extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         try {
+            DB::beginTransaction();
             $tenant_id = Filament::getTenant()->team_id;
             $team = Team::where('team_id', $tenant_id)->first();
 
             if (!$team || $team->vendor_quota <= 0) {
                 throw new \Exception('Venue Quota tidak mencukupi untuk membuat venue baru.');
             };
-
-            $team->decrement('vendor_quota');
 
             // Create new UserContact
             $contactInfo = $this->data['contactInfo'];
@@ -73,8 +75,15 @@ class CreateVenue extends CreateRecord
             // Assign the new contact to the venue data
             $data['contact_info'] = $contact->contact_id;
 
+            $team->decrement('vendor_quota');
+            if ($team->vendor_quota <= 0) {
+                UrlHistoryStack::popUrlStack();
+            }
+
+            DB::commit();
             return $data;
         } catch (\Exception $e) {
+            DB::rollBack();
             Notification::make()
                 ->title('Error')
                 ->body($e->getMessage())

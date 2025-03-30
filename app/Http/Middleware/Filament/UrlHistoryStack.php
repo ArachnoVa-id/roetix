@@ -22,4 +22,15 @@ class UrlHistoryStack
 
         return $next($request);
     }
+
+    public static function popUrlStack()
+    {
+        $urlStack = session()->get('url_stack', []);
+
+        if (!empty($urlStack)) {
+            array_pop($urlStack);
+        }
+
+        session(['url_stack' => $urlStack]);
+    }
 }

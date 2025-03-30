@@ -24,6 +24,8 @@ class EditTeam extends EditRecord
 
     protected function getSaveFormAction(): Actions\Action
     {
-        return parent::getSaveFormAction()->label('Update Team');
+        return parent::getSaveFormAction()
+            ->label('Update Team')
+            ->icon('heroicon-o-folder');
     }
 }

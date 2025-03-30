@@ -33,6 +33,8 @@ class EditVenue extends EditRecord
 
     protected function getSaveFormAction(): Actions\Action
     {
-        return parent::getSaveFormAction()->label('Update Venue');
+        return parent::getSaveFormAction()
+            ->label('Update Venue')
+            ->icon('heroicon-o-folder');
     }
 }

@@ -126,6 +126,8 @@ class EditOrder extends EditRecord
 
     protected function getSaveFormAction(): Actions\Action
     {
-        return parent::getSaveFormAction()->label('Update Order');
+        return parent::getSaveFormAction()
+            ->label('Update Order')
+            ->icon('heroicon-o-folder');
     }
 }
