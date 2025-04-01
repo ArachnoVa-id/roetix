@@ -288,6 +288,13 @@ export default function Landing({
             return;
         }
 
+        if (pendingTransactions.length != 0) {
+            showError(
+                'You have pending transactions. Please complete or cancel them first.',
+            );
+            return;
+        }
+
         if (seat.status !== 'available') {
             showError('This seat is not available');
             return;
@@ -953,7 +960,7 @@ export default function Landing({
                                                         Resume Payment
                                                     </button>
                                                 )}
-                                                {/* Resume Button */}
+                                                {/* Cancel Button */}
                                                 {isBookingAllowed && (
                                                     <button
                                                         className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
