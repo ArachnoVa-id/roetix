@@ -136,7 +136,7 @@ class UserPageController extends Controller
                 ->where('status', OrderStatus::COMPLETED) // Filter orders that are completed
                 ->whereHas('tickets', function ($query) use ($event) {
                     $query->where('tickets.event_id', $event->event_id)
-                        ->where('ticket_order.status', TicketOrderStatus::ENABLED); // Count only enabled tickets
+                        ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED, TicketOrderStatus::SCANNED]); // Count only enabled tickets
                 })
                 ->count();
 
@@ -184,7 +184,8 @@ class UserPageController extends Controller
             $userTickets = Ticket::select(
                 'tickets.*',
                 'orders.order_date',
-                'orders.status as ticket_order_status'
+                'orders.status as order_status',
+                'ticket_order.status as ticket_order_status'
             )
                 ->join('ticket_order', 'tickets.ticket_id', '=', 'ticket_order.ticket_id')
                 ->join('orders', 'ticket_order.order_id', '=', 'orders.order_id')

@@ -39,7 +39,7 @@ export default function Ticket({
     data,
     qrStr,
     eventId,
-    status = 'enabled', // Default to enabled if not provided
+    status,
 }: TicketComponentProps): React.ReactElement {
     // Function to handle ticket download
     const handleDownload = (): void => {
@@ -103,24 +103,6 @@ export default function Ticket({
         }
     };
 
-    // const getTicketStyle = () => {
-    //     if (status === 'scanned') {
-    //         return {
-    //             opacity: 0.6,
-    //             pointerEvents: 'none' as const, // Type assertion needed
-    //             watermark: 'USED',
-    //         };
-    //     }
-
-    //     return {
-    //         opacity: 1,
-    //         pointerEvents: 'auto' as const,
-    //         watermark: null,
-    //     };
-    // };
-
-    // const ticketStyle = getTicketStyle();
-
     const colors = getTicketColors();
 
     return (
@@ -175,7 +157,7 @@ export default function Ticket({
             {status === 'scanned' && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                     <div className="rotate-45 transform text-6xl font-extrabold text-red-500 opacity-30">
-                        USED
+                        SCANNED
                     </div>
                 </div>
             )}
@@ -219,7 +201,7 @@ export default function Ticket({
                 <span>Novatix ID: {code.substring(0, 8)}</span>
                 {status === 'scanned' && (
                     <span className="rounded bg-red-500 px-2 py-1 text-xs text-white">
-                        USED
+                        SCANNED
                     </span>
                 )}
             </div>
