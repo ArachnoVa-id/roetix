@@ -55,6 +55,7 @@ interface Props {
     categoryPrices?: CategoryPrice[];
     error?: string;
     props: EventProps;
+    ownedTicketCount: number;
 }
 
 interface PendingTransactionResponseItem {
@@ -75,6 +76,7 @@ export default function Landing({
     categoryPrices = [],
     error,
     props,
+    ownedTicketCount,
 }: Props) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
@@ -291,6 +293,15 @@ export default function Landing({
         if (pendingTransactions.length != 0) {
             showError(
                 'You have pending transactions. Please complete or cancel them first.',
+            );
+            return;
+        }
+
+        const selectedTicketCount = selectedSeats.length;
+        const ticketLimit = props.ticket_limit || 0; // Fallback to 0 if not set
+        if (selectedTicketCount + 1 + ownedTicketCount > ticketLimit) {
+            showError(
+                'You have reached the maximum number of tickets you can purchase',
             );
             return;
         }
@@ -597,7 +608,7 @@ export default function Landing({
                                                             {new Date(
                                                                 event.event_date,
                                                             ).toLocaleDateString(
-                                                                'id-ID',
+                                                                'en-US',
                                                                 {
                                                                     weekday:
                                                                         'long',
@@ -708,7 +719,7 @@ export default function Landing({
                                                     }}
                                                 >
                                                     You can select up to{' '}
-                                                    {props.ticket_limit || 5}{' '}
+                                                    {props.ticket_limit || 0}{' '}
                                                     seats
                                                 </p>
 

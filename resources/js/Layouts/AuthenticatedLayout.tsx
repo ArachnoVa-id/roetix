@@ -90,7 +90,7 @@ export default function Authenticated({
                                     }
                                     active={route().current('client.home')}
                                 >
-                                    Beli Tiket
+                                    Buy Ticket
                                 </NavLink>
                                 <NavLink
                                     eventProps={props}
@@ -103,7 +103,7 @@ export default function Authenticated({
                                         'client.my_tickets',
                                     )}
                                 >
-                                    Tiket Saya
+                                    My Tickets
                                 </NavLink>
                             </div>
                         </div>
@@ -213,7 +213,7 @@ export default function Authenticated({
                             href={client ? route('client.home', client) : ''}
                             active={route().current('client.home')}
                         >
-                            Beli Tiket
+                            Buy Ticket
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             eventProps={props}
@@ -222,7 +222,7 @@ export default function Authenticated({
                             }
                             active={route().current('client.my_tickets')}
                         >
-                            Tiket Saya
+                            My Tickets
                         </ResponsiveNavLink>
                     </div>
 

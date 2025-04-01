@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrderStatus;
 use Carbon\Carbon;
 use App\Models\Seat;
 use Inertia\Inertia;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\EventCategoryTimeboundPrice;
+use App\Models\User;
 
 class UserPageController extends Controller
 {
@@ -74,7 +76,8 @@ class UserPageController extends Controller
                             'status' => 'unset',
                             'ticket_type' => 'unset',
                             'price' => 0,
-                            'category' => 'unset'
+                            'category' => 'unset',
+                            'ticket_category_id' => 'unset',
                         ];
                     }
                 })->values()
@@ -128,6 +131,15 @@ class UserPageController extends Controller
                     ->get();
             }
 
+            // Get owned ticket count
+            $ownedTicketCount = Order::where('user_id', Auth::id())
+                ->where('status', OrderStatus::COMPLETED) // Filter orders that are completed
+                ->whereHas('tickets', function ($query) use ($event) {
+                    $query->where('tickets.event_id', $event->event_id)
+                        ->where('ticket_order.status', TicketOrderStatus::ENABLED); // Count only enabled tickets
+                })
+                ->count();
+
             return Inertia::render('User/Landing', [
                 'client' => $client,
                 'layout' => $layout,
@@ -144,7 +156,8 @@ class UserPageController extends Controller
                 'ticketCategories' => $ticketCategories,
                 'currentTimeline' => $currentTimeline,
                 'categoryPrices' => $categoryPrices,
-                'props' => $props
+                'props' => $props,
+                'ownedTicketCount' => $ownedTicketCount,
             ]);
         } catch (\Exception $e) {
             return Inertia::render('User/Landing', [
@@ -176,6 +189,7 @@ class UserPageController extends Controller
                 ->join('ticket_order', 'tickets.ticket_id', '=', 'ticket_order.ticket_id')
                 ->join('orders', 'ticket_order.order_id', '=', 'orders.order_id')
                 ->where('tickets.event_id', $event->event_id)
+                ->whereIn('orders.status', [OrderStatus::COMPLETED])
                 ->whereIn('ticket_order.order_id', $userOrderIds)
                 ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED, TicketOrderStatus::SCANNED])
                 ->get();
