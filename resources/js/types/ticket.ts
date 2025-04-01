@@ -12,6 +12,7 @@ export interface TicketProps {
     code: string;
     qrStr: string;
     status: string;
+    categoryColor?: string; // Add optional categoryColor property
     data: TicketData;
 }
 
@@ -55,6 +56,7 @@ export interface TicketInterface {
     seat?: SeatInterface;
     order?: OrderInterface;
     ticketCategory?: TicketCategoryInterface;
+    category_color?: string; // Add optional category_color property
 }
 
 export interface EventInterface {

@@ -137,6 +137,9 @@ export default function MyTickets({
                                             data={ticket.data}
                                             eventId={event.event_id}
                                             status={ticket.status}
+                                            categoryColor={
+                                                (ticket as any).categoryColor
+                                            } // Pass the category color to the Ticket component
                                         />
                                     ))}
                                 </div>

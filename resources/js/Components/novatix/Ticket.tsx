@@ -1,6 +1,6 @@
 import { Button } from '@/Components/ui/button';
 import { TicketProps } from '@/types/ticket';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface RowComponentProps {
     idtf: string;
@@ -21,6 +21,7 @@ function RowComponent({
 
 interface TicketComponentProps extends TicketProps {
     eventId: string;
+    categoryColor?: string; // Add categoryColor prop
     userData?: {
         firstName: string;
         lastName: string;
@@ -40,7 +41,16 @@ export default function Ticket({
     qrStr,
     eventId,
     status,
+    categoryColor, // Accept categoryColor prop
 }: TicketComponentProps): React.ReactElement {
+    // State to store the converted colors
+    const [colors, setColors] = useState({
+        accent: 'bg-blue-500',
+        light: 'bg-blue-50',
+        border: 'border-blue-200',
+        text: 'text-blue-800',
+    });
+
     // Function to handle ticket download
     const handleDownload = (): void => {
         try {
@@ -76,46 +86,91 @@ export default function Ticket({
         }
     };
 
-    // Determine color scheme based on ticket type
-    const getTicketColors = () => {
-        const extractType = type.toLowerCase();
-        if (extractType.includes('vip')) {
-            return {
-                accent: 'bg-amber-500',
-                light: 'bg-amber-50',
-                border: 'border-amber-200',
-                text: 'text-amber-800',
-            };
-        } else if (extractType.includes('premium')) {
-            return {
-                accent: 'bg-purple-500',
-                light: 'bg-purple-50',
-                border: 'border-purple-200',
-                text: 'text-purple-800',
-            };
-        } else {
-            return {
+    // Function to convert hex color to tailwind-like color classes
+    useEffect(() => {
+        // Function to get color variants from the main color
+        const getColorClasses = () => {
+            // Default fallback - blue color scheme
+            const defaultColors = {
                 accent: 'bg-blue-500',
                 light: 'bg-blue-50',
                 border: 'border-blue-200',
                 text: 'text-blue-800',
             };
-        }
-    };
 
-    const colors = getTicketColors();
+            // If no categoryColor is provided, use a color based on ticket type
+            if (!categoryColor) {
+                const extractType = type.toLowerCase();
+                if (extractType.includes('vip')) {
+                    return {
+                        accent: 'bg-amber-500',
+                        light: 'bg-amber-50',
+                        border: 'border-amber-200',
+                        text: 'text-amber-800',
+                    };
+                } else if (extractType.includes('premium')) {
+                    return {
+                        accent: 'bg-purple-500',
+                        light: 'bg-purple-50',
+                        border: 'border-purple-200',
+                        text: 'text-purple-800',
+                    };
+                } else {
+                    return defaultColors;
+                }
+            }
+
+            try {
+                // If categoryColor is provided, use inline styles instead of Tailwind classes
+                // This allows us to use any color from the database
+                return {
+                    accent: '', // We'll use inline style for accent
+                    light: '', // We'll use inline style for light background
+                    border: '', // We'll use inline style for border
+                    text: '', // We'll use inline style for text
+                };
+            } catch (error) {
+                console.error('Error processing category color:', error);
+                return defaultColors;
+            }
+        };
+
+        setColors(getColorClasses());
+    }, [categoryColor, type]);
+
+    // Create inline styles based on categoryColor
+    const inlineStyles = categoryColor
+        ? {
+              accent: {
+                  backgroundColor: categoryColor,
+              },
+              light: {
+                  backgroundColor: categoryColor + '10', // Adding 10% opacity
+              },
+              border: {
+                  borderColor: categoryColor + '33', // Adding 20% opacity
+              },
+              text: {
+                  color: categoryColor,
+              },
+          }
+        : null;
 
     return (
         <div
             className={`relative flex grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? 'hover:scale-[1.02] hover:shadow-xl' : ''}`}
             style={{
                 opacity: status === 'scanned' ? 0.6 : 1,
-                position: 'relative', // Add this to ensure absolute positioning works for the watermark
+                position: 'relative',
+                ...(inlineStyles
+                    ? { borderColor: inlineStyles.border.borderColor }
+                    : {}),
             }}
         >
             {/* Ticket header with type */}
             <div
                 className={`${colors.accent} flex items-center justify-between px-4 py-2`}
+                style={inlineStyles ? inlineStyles.accent : {}}
             >
                 <h3 className="flex items-center text-lg font-bold text-white">
                     <svg
@@ -166,6 +221,14 @@ export default function Ticket({
                 {/* Left side with QR code */}
                 <div
                     className={`flex w-[40%] items-center justify-center ${colors.light} border-r px-3 py-6 ${colors.border}`}
+                    style={
+                        inlineStyles
+                            ? {
+                                  ...inlineStyles.light,
+                                  borderRight: `1px solid ${inlineStyles.border.borderColor}`,
+                              }
+                            : {}
+                    }
                 >
                     <div className="rounded-lg bg-white p-2 shadow-md">
                         <img
@@ -196,6 +259,14 @@ export default function Ticket({
             {/* Ticket footer with info */}
             <div
                 className={`${colors.light} px-4 py-2 text-center text-xs ${colors.text} flex items-center justify-between font-medium`}
+                style={
+                    inlineStyles
+                        ? {
+                              ...inlineStyles.light,
+                              color: inlineStyles.text.color,
+                          }
+                        : {}
+                }
             >
                 <span>Scan QR code for verification</span>
                 <span>Novatix ID: {code.substring(0, 8)}</span>
