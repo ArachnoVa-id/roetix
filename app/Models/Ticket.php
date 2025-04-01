@@ -77,7 +77,7 @@ class Ticket extends Model
         );
 
         $writer = new Writer($renderer);
-        $qrCode = base64_encode($writer->writeString($this->ticket_id));
+        $qrCode = base64_encode($writer->writeString($this->ticket_code));
 
         return $qrCode;
     }

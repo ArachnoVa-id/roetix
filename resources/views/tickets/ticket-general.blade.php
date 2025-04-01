@@ -110,7 +110,7 @@
                 <div><strong>Tempat:</strong> {{ $event->location ?? 'N/A' }}</div>
                 <div><strong>Tanggal:</strong> {{ $event->getEventDate() ?? 'N/A' }}</div>
                 <div><strong>Waktu:</strong> {{ $event->getEventTime() ?? 'N/A' }}</div>
-                <div><strong>Ticket Code:</strong> {{ $ticket->ticket_id ?? 'N\A' }}</div>
+                <div><strong>Ticket Code:</strong> {{ $ticket->ticket_code ?? 'N\A' }}</div>
                 <div style="padding: 16px 0px 0px 0px;"><strong>Syarat dan Ketentuan:</strong></div>
                 <!-- Terms and Conditions -->
                 <div style="font-size: 0.65rem;">1. E-tiket ini adalah bukti sah kepemilikan tiket untuk menghadiri
