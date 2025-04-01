@@ -318,20 +318,13 @@ export default function Landing({
             );
             showSuccess(`Seat ${seat.seat_number} removed from selection`);
         } else {
-            // Use the dynamic ticket limit from props instead of hardcoded 5
-            const ticketLimit = props.ticket_limit || 5; // Fallback to 5 if not set
-
-            if (selectedSeats.length < ticketLimit) {
-                // Calculate correct price based on category and timeline
-                const updatedSeat = {
-                    ...seat,
-                    price: getSeatPrice(seat),
-                };
-                setSelectedSeats([...selectedSeats, updatedSeat]);
-                showSuccess(`Seat ${seat.seat_number} added to selection`);
-            } else {
-                showError(`You can only select up to ${ticketLimit} seats`);
-            }
+            // Calculate correct price based on category and timeline
+            const updatedSeat = {
+                ...seat,
+                price: getSeatPrice(seat),
+            };
+            setSelectedSeats([...selectedSeats, updatedSeat]);
+            showSuccess(`Seat ${seat.seat_number} added to selection`);
         }
     };
 
