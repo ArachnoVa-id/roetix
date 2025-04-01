@@ -43,17 +43,27 @@ class Order extends Model
         });
     }
 
-    public static function keyGen(OrderType $type): string
+    public function keyGen(OrderType $type): string
     {
+        // generate unique id for event parsed from event name
+        $event = $this->events()->first();
+        $eventUniq = '';
+        if ($event) {
+            $eventName = $event->event_name;
+            $eventName = preg_replace('/\s+/', '', $eventName);
+            $eventName = substr($eventName, 0, 3);
+            $eventUniq = strtoupper($eventName);
+        }
+
         switch ($type) {
             case OrderType::AUTO:
-                return 'ORD-' . time() . '-' . rand(1000, 9999);
+                return 'ORD-' . $eventUniq . '-' . time() . '-' . rand(1000, 9999);
             case OrderType::MANUAL:
-                return 'MAN-' . time() . '-' . rand(1000, 9999);
+                return 'MAN-' . $eventUniq . '-' . time() . '-' . rand(1000, 9999);
             case OrderType::TRANSFER:
-                return 'TRF-' . time() . '-' . rand(1000, 9999);
+                return 'TRF-' . $eventUniq . '-' .  time() . '-' . rand(1000, 9999);
             default:
-                return 'UNK-' . time() . '-' . rand(1000, 9999);
+                return 'UNK-' . $eventUniq . '-' .  time() . '-' . rand(1000, 9999);
         }
     }
 

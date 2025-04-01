@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
 use App\Models\Team;
+use Filament\Notifications\Notification;
 
 class OrderResource extends Resource
 {
@@ -46,9 +47,42 @@ class OrderResource extends Resource
         return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
     }
 
-    public static function tableQuery(): Builder
+    public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
-        return parent::tableQuery()->withoutGlobalScope(SoftDeletingScope::class);
+        return $action
+            ->label('Change Status')
+            ->color('success')
+            ->icon('heroicon-o-cog')
+            ->modalHeading('Change Status')
+            ->modalDescription('Select a new status for this order.')
+            ->form([
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options(fn($record) => Auth::user()->role == UserRole::ADMIN->value ? OrderStatus::allOptions() : OrderStatus::editableOptions(OrderStatus::tryFrom($record->status)))
+                    ->default(fn($record) => $record->status)
+                    ->preload()
+                    ->searchable()
+                    ->default(fn($record) => $record->status) // Set the current value as default
+                    ->required(),
+            ])
+            ->action(function ($record, array $data) {
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Success')
+                        ->success()
+                        ->body('Status changed successfully.')
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error')
+                        ->danger()
+                        ->body($e->getMessage())
+                        ->send();
+                }
+            })
+            ->modal(true);
     }
 
     public static function form(Forms\Form $form): Forms\Form
@@ -304,14 +338,20 @@ class OrderResource extends Resource
                     ->limit(50),
                 Tables\Columns\TextColumn::make('order_code')
                     ->label('Code')
+                    ->copyable()
+                    ->copyMessage('Order code copied to clipboard')
+                    ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('user')
-                    ->formatStateUsing(function ($state) {
-                        return $state->getUserName();
-                    })
                     ->label('User')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(query: function ($query, $search) {
+                        $query->whereHas('user', function ($subQuery) use ($search) {
+                            $subQuery->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('last_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable()
+                    ->formatStateUsing(fn($state) => $state->getUserName()),
                 Tables\Columns\TextColumn::make('order_date')
                     ->label('Date')
                     ->sortable(),
@@ -362,7 +402,7 @@ class OrderResource extends Resource
                         ->hidden(!$filterEvent)
                         ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
                     Tables\Filters\SelectFilter::make('status')
-                        ->options(OrderStatus::editableOptions())
+                        ->options(OrderStatus::allOptions())
                         ->searchable()
                         ->multiple()
                         ->preload()
@@ -372,8 +412,12 @@ class OrderResource extends Resource
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->modalHeading('View Order'),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View Order'),
                     Tables\Actions\EditAction::make(),
+                    self::ChangeStatusButton(
+                        Tables\Actions\Action::make('changeStatus')
+                    )
                 ])
             ]);
     }

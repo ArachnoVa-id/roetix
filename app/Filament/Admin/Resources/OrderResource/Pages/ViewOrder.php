@@ -19,6 +19,9 @@ class ViewOrder extends ViewRecord
             ),
             Actions\EditAction::make('Edit Order')
                 ->icon('heroicon-o-pencil'),
+            OrderResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            )
         ];
     }
 }

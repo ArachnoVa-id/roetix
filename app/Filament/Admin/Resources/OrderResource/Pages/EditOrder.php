@@ -26,8 +26,9 @@ class EditOrder extends EditRecord
             BackButtonAction::make(
                 Actions\Action::make('back')
             ),
-            Actions\DeleteAction::make('Delete Event')
-                ->icon('heroicon-o-trash'),
+            OrderResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
         ];
     }
 
