@@ -70,10 +70,8 @@ class Order extends Model
         return "{$day} {$month} {$year}, {$time} WIB";
     }
 
-    public function keyGen(OrderType $type): string
+    public static function keyGen(OrderType $type, Event $event): string
     {
-        // generate unique id for event parsed from event name
-        $event = $this->events()->first();
         $eventUniq = '';
         if ($event) {
             $eventName = $event->event_name;
@@ -92,6 +90,13 @@ class Order extends Model
             default:
                 return 'UNK-' . $eventUniq . '-' .  time() . '-' . rand(1000, 9999);
         }
+    }
+
+    public function keyGenSelf(OrderType $type): string
+    {
+        // generate unique id for event parsed from event name
+        $event = $this->events()->first();
+        return self::keyGen($type, $event);
     }
 
     public function tickets(): BelongsToMany

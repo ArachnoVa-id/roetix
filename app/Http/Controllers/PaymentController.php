@@ -111,9 +111,6 @@ class PaymentController extends Controller
                 ->lockForUpdate()
                 ->get();
 
-            // Generate order ID
-            $orderCode = Order::keyGen(OrderType::AUTO);
-
             // Prepare transaction parameters
             $itemDetails = [];
             foreach ($groupedItems as $category => $item) {
@@ -156,6 +153,9 @@ class PaymentController extends Controller
 
             // Lock tickets
             $tickets->each(fn($ticket) => $ticket->update(['status' => TicketStatus::IN_TRANSACTION]));
+
+            // Generate order ID
+            $orderCode = Order::keyGen(OrderType::AUTO, $event);
 
             // Create order
             $order = Order::create([

@@ -78,7 +78,7 @@ class CreateOrder extends CreateRecord
             }
 
             // Create Order
-            $orderCode = Order::keyGen(OrderType::MANUAL);
+            $orderCode = Order::keyGen(OrderType::MANUAL, $event);
             $order = Order::create([
                 'order_code' => $orderCode,
                 'user_id' => $user_id,

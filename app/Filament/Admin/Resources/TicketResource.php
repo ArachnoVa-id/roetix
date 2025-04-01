@@ -183,7 +183,7 @@ class TicketResource extends Resource
                         ->update(['status' => TicketOrderStatus::DEACTIVATED]);
 
                     // Create new order
-                    $order_code = Order::keyGen(OrderType::TRANSFER);
+                    $order_code = Order::keyGen(OrderType::TRANSFER, $ticket->event);
                     $order = Order::create([
                         'order_code'  => $order_code,
                         'user_id'     => $data['user_id'],
