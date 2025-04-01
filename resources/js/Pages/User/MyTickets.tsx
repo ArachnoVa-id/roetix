@@ -35,7 +35,7 @@ export default function MyTickets({
         const ticketIds = tickets.map((ticket) => ticket.id);
 
         // Update the URL to use query parameters instead of path parameters
-        const downloadUrl = `/api/tickets/download-all?event_id=${event.event_id}&ticket_ids=${ticketIds.join(',')}`;
+        const downloadUrl = `/api/tickets/download?event_id=${event.event_id}&ticket_ids=${ticketIds.join(',')}`;
 
         try {
             window.open(downloadUrl, '_blank');
@@ -130,12 +130,13 @@ export default function MyTickets({
                                     {tickets.map((ticket: TicketProps) => (
                                         <Ticket
                                             key={ticket.id}
-                                            ticketType={ticket.ticketType}
-                                            ticketCode={ticket.ticketCode}
-                                            ticketURL={ticket.ticketURL}
-                                            ticketData={ticket.ticketData}
+                                            id={ticket.id}
+                                            type={ticket.type}
+                                            code={ticket.code}
+                                            qrStr={ticket.qrStr}
+                                            data={ticket.data}
                                             eventId={event.event_id}
-                                            status={ticket.status} // Pass the status
+                                            status={ticket.status}
                                         />
                                     ))}
                                 </div>

@@ -1,5 +1,5 @@
 import { Button } from '@/Components/ui/button';
-import { TicketData } from '@/types/ticket';
+import { TicketProps } from '@/types/ticket';
 import React from 'react';
 
 interface RowComponentProps {
@@ -19,13 +19,8 @@ function RowComponent({
     );
 }
 
-interface TicketComponentProps {
-    ticketType: string;
-    ticketCode: string;
-    ticketURL: string;
-    ticketData: TicketData;
+interface TicketComponentProps extends TicketProps {
     eventId: string;
-    status?: string; // Add status prop
     userData?: {
         firstName: string;
         lastName: string;
@@ -38,10 +33,11 @@ interface TicketComponentProps {
 }
 
 export default function Ticket({
-    ticketType,
-    ticketCode,
-    ticketData,
-    ticketURL,
+    id,
+    type,
+    code,
+    data,
+    qrStr,
     eventId,
     status = 'enabled', // Default to enabled if not provided
 }: TicketComponentProps): React.ReactElement {
@@ -52,15 +48,15 @@ export default function Ticket({
             const ticketActionEvent = new CustomEvent('ticket-action', {
                 detail: {
                     action: 'download',
-                    ticketId: ticketCode,
-                    ticketType: ticketType,
+                    ticketId: code,
+                    ticketType: type,
                 },
                 bubbles: true,
             });
             window.dispatchEvent(ticketActionEvent);
 
             // Call the ticket download endpoint
-            const downloadUrl = `/api/tickets/download?ticket_id=${ticketCode}&event_id=${eventId}`;
+            const downloadUrl = `/api/tickets/download?ticket_ids=${[id]}&event_id=${eventId}`;
 
             // Open in a new window/tab
             window.open(downloadUrl, '_blank');
@@ -71,7 +67,7 @@ export default function Ticket({
             const errorEvent = new CustomEvent('ticket-action', {
                 detail: {
                     action: 'error',
-                    ticketId: ticketCode,
+                    ticketId: code,
                     error: 'Failed to download ticket',
                 },
                 bubbles: true,
@@ -82,15 +78,15 @@ export default function Ticket({
 
     // Determine color scheme based on ticket type
     const getTicketColors = () => {
-        const type = ticketType.toLowerCase();
-        if (type.includes('vip')) {
+        const extractType = type.toLowerCase();
+        if (extractType.includes('vip')) {
             return {
                 accent: 'bg-amber-500',
                 light: 'bg-amber-50',
                 border: 'border-amber-200',
                 text: 'text-amber-800',
             };
-        } else if (type.includes('premium')) {
+        } else if (extractType.includes('premium')) {
             return {
                 accent: 'bg-purple-500',
                 light: 'bg-purple-50',
@@ -152,7 +148,7 @@ export default function Ticket({
                             clipRule="evenodd"
                         />
                     </svg>
-                    {ticketType}
+                    {type}
                 </h3>
                 <Button
                     onClick={handleDownload}
@@ -191,7 +187,7 @@ export default function Ticket({
                 >
                     <div className="rounded-lg bg-white p-2 shadow-md">
                         <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticketURL)}`}
+                            src={`data:image/svg+xml;base64,${qrStr}`}
                             alt="QR Code"
                             className="max-h-32 max-w-32"
                         />
@@ -201,17 +197,14 @@ export default function Ticket({
                 {/* Right side with ticket info */}
                 <div className="flex w-[60%] flex-col justify-between bg-white p-4 text-black">
                     <div className="space-y-1">
-                        <RowComponent idtf="ID" content={ticketCode} />
-                        <RowComponent
-                            idtf="Tanggal"
-                            content={ticketData.date}
-                        />
-                        <RowComponent idtf="Tipe" content={ticketData.type} />
-                        <RowComponent idtf="Kursi" content={ticketData.seat} />
+                        <RowComponent idtf="ID" content={code} />
+                        <RowComponent idtf="Tanggal" content={data.date} />
+                        <RowComponent idtf="Tipe" content={data.type} />
+                        <RowComponent idtf="Kursi" content={data.seat} />
                         <div className="my-2 border-t border-dashed pt-2">
                             <RowComponent
                                 idtf="Subtotal"
-                                content={ticketData.price}
+                                content={data.price}
                             />
                         </div>
                     </div>
@@ -223,7 +216,7 @@ export default function Ticket({
                 className={`${colors.light} px-4 py-2 text-center text-xs ${colors.text} flex items-center justify-between font-medium`}
             >
                 <span>Scan QR code for verification</span>
-                <span>Novatix ID: {ticketCode.substring(0, 8)}</span>
+                <span>Novatix ID: {code.substring(0, 8)}</span>
                 {status === 'scanned' && (
                     <span className="rounded bg-red-500 px-2 py-1 text-xs text-white">
                         USED

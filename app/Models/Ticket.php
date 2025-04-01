@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,6 +49,20 @@ class Ticket extends Model
                 }
             }
         });
+    }
+
+    public function getQRCode()
+    {
+        // Generate QR Code
+        $renderer = new ImageRenderer(
+            new RendererStyle(300, 0),
+            new SvgImageBackEnd()
+        );
+
+        $writer = new Writer($renderer);
+        $qrCode = base64_encode($writer->writeString($this->ticket_id));
+
+        return $qrCode;
     }
 
     public function getTicketPDFTitle(): string

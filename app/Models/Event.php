@@ -47,6 +47,35 @@ class Event extends Model
         return $this->start_date->format('Y');
     }
 
+    public function getEventDateAttribute(): string
+    {
+        $months = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        $day = $this->start_date->format('j');
+        $month = $months[(int)$this->start_date->format('n')];
+        $year = $this->start_date->format('Y');
+
+        return "{$day} {$month} {$year}";
+    }
+
+    public function getEventTimeAttribute(): string
+    {
+        return $this->start_date->format('H:i') . ' WIB';
+    }
+
     public function getAllTicketsPDFTitle()
     {
         return strtoupper($this->slug) . '-' . $this->eventYear() . '-TICKETS' . '.pdf';

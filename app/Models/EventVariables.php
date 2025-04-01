@@ -52,7 +52,7 @@ class EventVariables extends Model
             'locked_password' => '',
             'logo' => '/images/novatix-logo/android-chrome-192x192.png',
             'logo_alt' => 'Novatix Logo',
-            'texture' => '/images/default-texture/Texturelabs_Sky_152S.jpg',
+            'texture' => null,
             'favicon' => '/images/novatix-logo/favicon.ico',
             'ticket_limit' => 5,
         ];

@@ -197,9 +197,6 @@ class UserPageController extends Controller
 
             // Format tickets for display
             $formattedTickets = collect($tickets)->map(function ($ticket) use ($client) {
-                // Generate a ticket URL for the QR code
-                $ticketUrl = route('client.my_tickets', ['client' => $client]) . '?ticket=' . $ticket->ticket_id;
-
                 // Use order date or created_at for ticket date
                 $ticketDate = property_exists($ticket, 'order_date') && $ticket->order_date
                     ? Carbon::parse($ticket->order_date)
@@ -213,11 +210,11 @@ class UserPageController extends Controller
 
                 return [
                     'id' => $ticket->ticket_id,
-                    'ticketType' => $typeName,
-                    'ticketCode' => $ticket->ticket_id,
-                    'ticketURL' => $ticketUrl,
+                    'type' => $typeName,
+                    'code' => $ticket->ticket_id,
+                    'qrStr' => $ticket->getQRCode(),
                     'status' => $ticketStatus, // Include the status
-                    'ticketData' => [
+                    'data' => [
                         'date' => $ticketDate->format('d F Y, H:i'),
                         'type' => $typeName,
                         'seat' => $ticket->seat ? $ticket->seat->seat_number : 'N/A',
@@ -240,10 +237,6 @@ class UserPageController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            // Log the error for debugging
-            Log::error('Failed to load ticket data: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-
             return redirect()->route('client.home', ['client' => $client])
                 ->with('error', 'Failed to load ticket data: ' . $e->getMessage());
         }

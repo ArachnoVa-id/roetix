@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OrderType;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,32 @@ class Order extends Model
                 $model->order_id = (string) Str::uuid();
             }
         });
+    }
+
+    public function getOrderDateTimestamp()
+    {
+        $months = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        $order_date = Carbon::parse($this->order_date);
+        $day = $order_date->format('j');
+        $month = $months[(int)$order_date->format('n')];
+        $year = $order_date->format('Y');
+        $time = $order_date->format('H:i');
+
+        return "{$day} {$month} {$year}, {$time} WIB";
     }
 
     public function keyGen(OrderType $type): string

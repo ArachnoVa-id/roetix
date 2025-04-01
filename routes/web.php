@@ -34,6 +34,8 @@ Route::middleware('guest')->group(function () {
         });
 });
 
+// Route::get('/testticket', [TicketController::class, 'test'])->name('ticket.test');
+
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
@@ -138,11 +140,8 @@ Route::domain('{client}.' . config('app.domain'))
                     // Use a simple GET route with no path parameters
                     Route::controller(TicketController::class)
                         ->group(function () {
-                            Route::get('tickets/download', 'downloadTicket')
+                            Route::get('tickets/download', 'downloadTickets')
                                 ->name('api.tickets.download');
-
-                            Route::get('tickets/download-all', 'downloadAllTickets')
-                                ->name('api.tickets.download-all');
                         });
 
                     Route::controller(PaymentController::class)
@@ -156,9 +155,6 @@ Route::domain('{client}.' . config('app.domain'))
                             // Ticket
                             Route::post('payment/charge', 'charge')
                                 ->name('payment.charge');
-
-                            // Route::post('/payment/resume', 'resumePayment')
-                            //     ->name('payment.resume');
                         });
                 });
             });
