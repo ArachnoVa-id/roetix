@@ -139,7 +139,6 @@ class SocialiteController extends Controller
             }
         } catch (Exception $e) {
             DB::rollBack();
-            dd($e->getMessage());
             return redirect()
                 ->route('auth.google')
                 ->with('error', 'Google login failed: ' . $e->getMessage());

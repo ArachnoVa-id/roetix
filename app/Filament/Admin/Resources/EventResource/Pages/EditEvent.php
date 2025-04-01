@@ -2,25 +2,48 @@
 
 namespace App\Filament\Admin\Resources\EventResource\Pages;
 
-use App\Filament\Admin\Resources\EventResource;
-use App\Models\EventCategoryTimeboundPrice;
+use Filament\Actions;
 use App\Models\EventVariables;
 use App\Models\TicketCategory;
-use App\Models\TimelineSession;
-use Filament\Actions;
 use Filament\Facades\Filament;
+use App\Models\TimelineSession;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Facades\FilamentView;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Mockery\Matcher\Not;
+use App\Models\EventCategoryTimeboundPrice;
+use App\Filament\Admin\Resources\EventResource;
+use App\Filament\Components\BackButtonAction;
 
 class EditEvent extends EditRecord
 {
     protected static string $resource = EventResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            ),
+            EventResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
+            EventResource::EditSeatsButton(
+                Actions\Action::make('editSeats')
+            )->button(),
+            Actions\DeleteAction::make('Delete Event')
+                ->icon('heroicon-o-trash'),
+        ];
+    }
+
+    protected function getSaveFormAction(): Actions\Action
+    {
+        return parent::getSaveFormAction()
+            ->label('Update Event')
+            ->icon('heroicon-o-folder');
+    }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
@@ -187,7 +210,7 @@ class EditEvent extends EditRecord
                 $this->record->save();
 
                 // Clear cache for colors
-                Cache::forget('color_preview_' . Auth::user()->id);
+                Cache::forget('color_preview_' . Auth::id());
 
                 // Get the redirect URL (like getRedirectUrl)
                 $redirectUrl = $this->getResource()::getUrl('view', ['record' => $eventId]);
@@ -224,23 +247,5 @@ class EditEvent extends EditRecord
         }
 
         $this->halt();
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\Action::make('Back')
-                ->url(fn() => url()->previous())
-                ->icon('heroicon-o-arrow-left')
-                ->color('info'),
-            EventResource::ChangeStatusButton(
-                Actions\Action::make('changeStatus')
-            ),
-            EventResource::EditSeatsButton(
-                Actions\Action::make('editSeats')
-            )->button(),
-            Actions\DeleteAction::make('Delete Event')
-                ->icon('heroicon-o-trash'),
-        ];
     }
 }

@@ -11,6 +11,7 @@ use Filament\Resources;
 use Filament\Tables;
 use App\Models\Team;
 use Filament\Infolists;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resources\Resource
@@ -18,6 +19,8 @@ class UserResource extends Resources\Resource
     protected static ?string $model = User::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user';
+
+    protected static ?int $navigationSort = 2;
 
     public static function canAccess(): bool
     {
@@ -115,10 +118,26 @@ class UserResource extends Resources\Resource
                                 ->maxLength(255),
                             Forms\Components\Select::make('role')
                                 ->options(UserRole::editableOptions())
+                                ->preload()
+                                ->searchable()
                                 ->required(),
                             Forms\Components\TextInput::make('email')
+                                ->label('Personal Email')
                                 ->required()
                                 ->email()
+                                ->live(debounce: 500)
+                                ->afterStateUpdated(function ($state, $record, Forms\Set $set) {
+                                    $find = User::where('email', $state)->first();
+                                    if ($record && $record->id === $find->id) return;
+                                    if ($find) {
+                                        $set('email', null);
+                                        Notification::make()
+                                            ->title('Email Already Exists')
+                                            ->body('The email you entered already exists in the system. Please enter a different email.')
+                                            ->danger()
+                                            ->send();
+                                    }
+                                })
                                 ->unique('users', 'email', ignoreRecord: true)
                                 ->maxLength(255),
                             Forms\Components\Toggle::make('change_password')
@@ -147,7 +166,7 @@ class UserResource extends Resources\Resource
                             ->tel(),
 
                         Forms\Components\TextInput::make('email')
-                            ->label('Email')
+                            ->label('Professional Email')
                             ->email(),
 
                         Forms\Components\TextInput::make('whatsapp_number')
@@ -238,7 +257,7 @@ class UserResource extends Resources\Resource
             ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Tables\Table $table, bool $filterRole = false): Tables\Table
     {
         return $table
             ->columns([
@@ -276,12 +295,16 @@ class UserResource extends Resources\Resource
                     Tables\Filters\SelectFilter::make('role')
                         ->options(UserRole::editableOptions())
                         ->multiple()
+                        ->preload()
+                        ->searchable()
+                        ->hidden(!$filterRole),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->modalHeading('View User'),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View User'),
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\DeleteAction::make(),
                 ]),

@@ -20,6 +20,8 @@ class TeamResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
+    protected static ?int $navigationSort = 1;
+
     public static function canAccess(): bool
     {
         $user = Auth::user();
@@ -103,11 +105,13 @@ class TeamResource extends Resource
                             }),
                         Forms\Components\TextInput::make('vendor_quota')
                             ->label('Venue Quota')
+                            ->default(0)
                             ->minValue(0)
                             ->numeric()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('event_quota')
                             ->label('Event Quota')
+                            ->default(0)
                             ->minValue(0)
                             ->numeric()
                             ->maxLength(255),
@@ -143,7 +147,8 @@ class TeamResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->modalHeading('View Team'),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View Team'),
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\DeleteAction::make(),
                 ]),

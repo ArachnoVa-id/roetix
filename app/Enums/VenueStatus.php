@@ -51,7 +51,6 @@ enum VenueStatus: string implements HasLabel, HasColor
         return array_map(fn($case) => $case->getLabel(), self::cases());
     }
 
-
     public static function editableOptions()
     {
         return [
@@ -59,6 +58,15 @@ enum VenueStatus: string implements HasLabel, HasColor
             self::INACTIVE->value => self::INACTIVE->getLabel(),
             self::UNDER_MAINTENANCE->value => self::UNDER_MAINTENANCE->getLabel()
         ];
+    }
+
+    public static function allOptions(): array
+    {
+        $options = [];
+        foreach (self::cases() as $case) {
+            $options[$case->value] = $case->getLabel();
+        }
+        return $options;
     }
 
     public static function getEditableOptionsValues()

@@ -41,7 +41,7 @@ class OrderFactory extends Factory
 
         $event_id = $ticket->event_id;
         $event = $ticket->event;
-        $orderCode = Order::keyGen(OrderType::UNKNOWN);
+        $orderCode = Order::keyGen(OrderType::UNKNOWN, $event);
 
         return [
             'snap_token' => null,

@@ -15,6 +15,7 @@ use Filament\Models\Contracts\HasTenants;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
 class User extends Authenticatable implements FilamentUser, HasName, HasTenants
@@ -100,6 +101,34 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         return trim($this->first_name . ' ' . $this->last_name);
     }
 
+    /**
+     * @param UserRole[] $roles
+     */
+    public function isAllowedInRoles(array $roles): bool
+    {
+        return in_array(UserRole::tryFrom($this->role), $roles, strict: true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role == UserRole::ADMIN->value;
+    }
+
+    public function isEO(): bool
+    {
+        return $this->role == UserRole::EVENT_ORGANIZER->value;
+    }
+
+    public function isVendor(): bool
+    {
+        return $this->role == UserRole::VENDOR->value;
+    }
+
+    public function isUser(): bool
+    {
+        return $this->role == UserRole::USER->value;
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->role == UserRole::ADMIN->value || $this->role == UserRole::VENDOR->value || $this->role == UserRole::EVENT_ORGANIZER->value;
@@ -110,6 +139,11 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class, 'user_team', 'user_id', 'team_id');
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'user_id', 'id');
     }
 
     public function contactInfo(): BelongsTo

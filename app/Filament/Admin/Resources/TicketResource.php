@@ -24,14 +24,14 @@ use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Admin\Resources\TicketResource\Pages;
 use App\Filament\Admin\Resources\TicketResource\RelationManagers\TicketOrdersRelationManager;
 use App\Models\Order;
-use App\Models\Seat;
+use App\Models\Team;
 use App\Models\User;
 use Filament\Notifications\Notification;
-use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\DB;
 
 class TicketResource extends Resource
 {
+    protected static ?int $navigationSort = 2;
     protected static ?string $model = Ticket::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
@@ -95,11 +95,27 @@ class TicketResource extends Resource
                 Forms\Components\Select::make('status')
                     ->label('Status')
                     ->options(TicketStatus::editableOptions())
+                    ->preload()
+                    ->searchable()
                     ->default(fn($record) => $record->status) // Set the current value as default
                     ->required(),
             ])
             ->action(function ($record, array $data) {
-                $record->update(['status' => $data['status']]);
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Success')
+                        ->success()
+                        ->body('Status changed successfully.')
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error')
+                        ->danger()
+                        ->body($e->getMessage())
+                        ->send();
+                }
             })
             ->modal(true);
     }
@@ -119,6 +135,7 @@ class TicketResource extends Resource
                 Forms\Components\Select::make('user_id')
                     ->label('User')
                     ->searchable()
+                    ->preload()
                     ->options(function ($record) {
                         // Get the latest ticket order for this ticket
                         $latestTicketOrder = TicketOrder::where('ticket_id', $record->ticket_id)
@@ -166,7 +183,7 @@ class TicketResource extends Resource
                         ->update(['status' => TicketOrderStatus::DEACTIVATED]);
 
                     // Create new order
-                    $order_code = Order::keyGen(OrderType::TRANSFER);
+                    $order_code = Order::keyGen(OrderType::TRANSFER, $ticket->event);
                     $order = Order::create([
                         'order_code'  => $order_code,
                         'user_id'     => $data['user_id'],
@@ -198,17 +215,19 @@ class TicketResource extends Resource
 
                     DB::commit();
 
+                    $user = User::find($data['user_id']);
+
                     Notification::make()
                         ->title('Success')
+                        ->body("Ownership of the ticket: {$ticket->seat->seat_number} has been transferred successfully to user: {$user->email}")
                         ->success()
-                        ->body('Ownership transferred successfully.')
                         ->send();
                 } catch (\Exception $e) {
                     DB::rollBack();
                     Notification::make()
                         ->title('Error')
+                        ->body("Failed to transfer ownership: {$e->getMessage()}")
                         ->danger()
-                        ->body($e->getMessage())
                         ->send();
                 }
             })
@@ -384,9 +403,9 @@ class TicketResource extends Resource
             );
     }
 
-    public static function table(Table $table, array $dataSource = [], bool $showEvent = true, bool $showTraceButton = false): Table
+    public static function table(Table $table, array $dataSource = [], bool $showEvent = true, bool $showTraceButton = false, bool $filterStatus = false, bool $filterEvent = true): Table
     {
-        $tenant_id = Filament::getTenant()->team_id;
+        $user = User::find(Auth::id());
 
         $ownership = Tables\Columns\TextColumn::make('ticket_order_status')
             ->label('Ownership')
@@ -437,6 +456,12 @@ class TicketResource extends Resource
 
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Team Name')
+                    ->searchable()
+                    ->sortable()
+                    ->hidden(!($user->isAdmin()))
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('seat.seat_number')
                     ->searchable()
                     ->sortable(),
@@ -458,33 +483,54 @@ class TicketResource extends Resource
             ->defaultSort('seat.seat_number', 'asc')
             ->filters(
                 [
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship('team', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
+                        ->multiple()
+                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->hidden(!($user->isAdmin())),
+
                     SelectFilter::make('event_id')
                         ->label('Filter by Event')
-                        ->options(fn() => Event::where('team_id', $tenant_id)->pluck('name', 'event_id'))
+                        ->options(function () {
+                            $tenant_id = Filament::getTenant()?->team_id ?? null;
+                            $query = Event::query();
+                            if ($tenant_id) {
+                                $query->where('team_id', $tenant_id);
+                            }
+                            return $query->pluck('name', 'event_id');
+                        })
                         ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
                         ->multiple()
-                        ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
+                        ->hidden(!$filterEvent),
 
                     SelectFilter::make('status')
                         ->label('Filter by Status')
                         ->options(TicketStatus::editableOptions())
+                        ->searchable()
                         ->multiple()
-                        ->default(request()->query('tableFilters')['status']['value'] ?? null),
+                        ->preload()
+                        ->hidden(!$filterStatus),
 
                     SelectFilter::make('ticket_order_status')
                         ->label('Filter by Ownership')
                         ->options(TicketOrderStatus::editableOptions())
+                        ->searchable()
+                        ->preload()
                         ->multiple()
                         ->query(function ($query, array $data) {
                             if (!empty($data['values'])) {
                                 $query->whereHas('ticketOrders', function ($subQuery) use ($data) {
                                     $subQuery->whereIn('status', $data['values'])
-                                        ->orderByDesc('created_at'); // Ensure the latest status is considered
+                                        ->orderByDesc('created_at');
                                 });
                             }
-                        })
-                        ->default(request()->query('tableFilters')['ticket_order_status']['value'] ?? null),
-
+                        }),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

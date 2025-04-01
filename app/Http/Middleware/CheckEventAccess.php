@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use Closure;
 use App\Models\User;
 use App\Models\Event;
@@ -18,7 +19,10 @@ class CheckEventAccess
      */
     public function handle(Request $request, Closure $next)
     {
-        $userId = Auth::id();
+        $user = Auth::user();
+        if ($user->role == UserRole::ADMIN->value) return $next($request);
+
+        $userId = $user->id;
 
         // Check both route parameter and query parameter for event_id
         $eventId = $request->route('event_id') ?? $request->query('event_id');
@@ -36,14 +40,6 @@ class CheckEventAccess
             ->value('team_id');
 
         if (!$eventTeamId || !in_array($eventTeamId, $userTeamIds)) {
-            // Add logging to help debug
-            Log::error('Event access denied', [
-                'id' => $userId,
-                'event_id' => $eventId,
-                'user_team_ids' => $userTeamIds,
-                'event_team_id' => $eventTeamId
-            ]);
-
             abort(403, 'Unauthorized Access to Event');
         }
 

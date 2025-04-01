@@ -1,4 +1,3 @@
-import useToaster from '@/hooks/useToaster';
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
@@ -16,11 +15,11 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     subtotal,
     total,
     onTransactionStarted,
+    toasterFunction,
 }) => {
     const user = usePage().props?.auth.user;
-    const [isLoading, setIsLoading] = useState(false);
-    const [snapInitialized, setSnapInitialized] = useState(false);
-    const { showSuccess, showError } = useToaster();
+    const [snapInitialized, setSnapInitialized] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     // Initialize Midtrans Snap on component mount
     useEffect(() => {
@@ -43,7 +42,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         };
         snapScript.onerror = () => {
             console.error('Failed to load Midtrans Snap');
-            showError(
+            toasterFunction.showError(
                 'Payment system could not be loaded. Please try again later.',
             );
         };
@@ -54,48 +53,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
         return () => {
             document.head.removeChild(snapScript);
         };
-    }, [showError]);
-
-    // useEffect(() => {
-    //     // Load saved transaction on component mount
-    //     const savedTransaction = localStorage.getItem('pendingTransaction');
-    //     if (savedTransaction) {
-    //         try {
-    //             const parsed = JSON.parse(savedTransaction);
-    //             setTransactionInfo(parsed.transactionInfo);
-
-    //             // Notify parent component about pending transaction if needed
-    //             if (onTransactionStarted && parsed.seats) {
-    //                 onTransactionStarted(parsed.seats);
-    //             }
-    //         } catch (e) {
-    //             console.error('Failed to parse saved transaction', e);
-    //             localStorage.removeItem('pendingTransaction');
-    //         }
-    //     }
-    // }, [onTransactionStarted]);
-
-    // useEffect(() => {
-    //     if (transactionInfo) {
-    //         localStorage.setItem(
-    //             'pendingTransaction',
-    //             JSON.stringify({
-    //                 transactionInfo,
-    //                 seats: selectedSeats,
-    //             }),
-    //         );
-    //     } else {
-    //         localStorage.removeItem('pendingTransaction');
-    //     }
-    // }, [transactionInfo, selectedSeats]);
-
-    // const clearTransaction = () => {
-    //     setTransactionInfo(null);
-    //     localStorage.removeItem('pendingTransaction');
-    //     if (onTransactionStarted) {
-    //         onTransactionStarted([]);
-    //     }
-    // };
+    }, [toasterFunction]);
 
     // Function to safely parse price
     const getSafePrice = (price: string | number | undefined): number => {
@@ -162,29 +120,24 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     const createCallbacks = (): MidtransCallbacks => {
         return {
             onSuccess: () => {
-                // console.log('Payment success:', result);
-                showSuccess('Payment successful!');
-                // clearTransaction(); // Clear the transaction data
+                toasterFunction.showSuccess('Payment successful!');
                 window.location.reload();
             },
             onPending: () => {
-                // console.log('Payment pending:', result);
-                showSuccess(
+                toasterFunction.showSuccess(
                     'Your payment is pending. Please complete the payment.',
                 );
                 setIsLoading(false);
             },
             onError: () => {
-                // console.error('Payment error:', result);
-                showError('Payment failed. Please try again.');
+                toasterFunction.showError('Payment failed. Please try again.');
                 setIsLoading(false);
             },
             onClose: () => {
-                // console.log('Snap payment closed');
-                setIsLoading(false);
-                showError(
+                toasterFunction.showError(
                     'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
                 );
+                setIsLoading(false);
                 window.location.reload();
             },
         };
@@ -193,19 +146,21 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     // Handle payment process
     const handleProceedTransaction = async () => {
         if (selectedSeats.length === 0) {
-            showError('Please select at least one seat to proceed.');
+            toasterFunction.showError(
+                'Please select at least one seat to proceed.',
+            );
             return;
         }
 
         if (!snapInitialized) {
-            showError(
+            toasterFunction.showError(
                 'Payment system is still initializing. Please try again in a moment.',
             );
             return;
         }
 
+        toasterFunction.showSuccess('Preparing your payment...');
         setIsLoading(true);
-        showSuccess('Preparing your payment...');
 
         try {
             // Prepare the payment data
@@ -219,13 +174,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             // Calculate total with tax if not provided
             const calculatedTotal =
                 total || calculatedSubtotal + calculatedTaxAmount;
-
-            // console.log('Payment data:', {
-            //     groupedItems,
-            //     subtotal: calculatedSubtotal,
-            //     taxAmount: calculatedTaxAmount,
-            //     total: calculatedTotal,
-            // });
 
             // Create the request payload
             const payload = {
@@ -246,13 +194,11 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             };
 
             // Send the payment request
-            // console.log('Sending payment request');
             const response = await axios.post(
                 route('payment.charge', client),
                 payload,
                 config,
             );
-            console.log('Payment response:', response.data);
 
             // Handle the response
             if (response.data && response.data.snap_token) {
@@ -269,7 +215,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     }
                 } else {
                     console.error('Snap.js is not properly initialized');
-                    showError(
+                    toasterFunction.showError(
                         'Payment gateway not loaded. Please refresh the page and try again.',
                     );
                     setIsLoading(false);
@@ -284,9 +230,9 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 const errorMsg =
                     err.response?.data?.message ||
                     'Failed to connect to payment server';
-                showError(errorMsg);
+                toasterFunction.showError(errorMsg);
             } else {
-                showError('An unexpected error occurred');
+                toasterFunction.showError('An unexpected error occurred');
             }
 
             setIsLoading(false);

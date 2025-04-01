@@ -13,19 +13,9 @@ class EventsRelationManager extends RelationManager
 {
     protected static string $relationship = 'events';
 
-    public function infolist(Infolist $infolist): Infolist
-    {
-        return EventResource::infolist($infolist, showOrders: false, showTickets: false);
-    }
-
-    public function form(Form $form): Form
-    {
-        return EventResource::form($form);
-    }
-
     public function table(Table $table): Table
     {
-        return EventResource::table($table)
+        return EventResource::table($table, filterStatus: true)
             ->modifyQueryUsing(fn(Builder $query) => $query->withoutGlobalScopes())
             ->heading('');
     }

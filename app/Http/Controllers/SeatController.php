@@ -196,13 +196,13 @@ class SeatController extends Controller
                             }
                         } else {
                             // Fallback to stored ticket type
-                            $seatData['ticket_type'] = $ticket->ticket_type ?? 'standard';
+                            $seatData['ticket_type'] = $ticket->ticket_type ?? 'unset';
                             $seatData['price'] = $ticket->price ?? 0;
                         }
                     } else {
                         // Default values for seats without tickets
-                        $seatData['status'] = 'reserved';
-                        $seatData['ticket_type'] = 'standard';
+                        $seatData['status'] = 'unset';
+                        $seatData['ticket_type'] = 'unset';
                         $seatData['price'] = 0;
                     }
 
@@ -223,7 +223,7 @@ class SeatController extends Controller
 
             // If no categories are defined, use default
             if (empty($ticketTypes)) {
-                $ticketTypes = ['standard', 'VIP'];
+                $ticketTypes = ['unset'];
             }
 
             // Category colors for UI

@@ -12,19 +12,9 @@ class UsersRelationManager extends RelationManager
 {
     protected static string $relationship = 'users';
 
-    public function infolist(Infolist $infolist): Infolist
-    {
-        return UserResource::infolist($infolist, showTeams: false);
-    }
-
-    public function form(Form $form): Form
-    {
-        return UserResource::form($form);
-    }
-
     public function table(Table $table): Table
     {
-        return UserResource::table($table)
+        return UserResource::table($table, filterRole: true)
             ->heading('');
     }
 }

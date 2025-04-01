@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources;
 
 use Carbon\Carbon;
 use Filament\Forms;
+use App\Models\Team;
 use App\Models\User;
 use Filament\Tables;
 use App\Models\Event;
@@ -19,28 +20,30 @@ use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
 
 class EventResource extends Resource
 {
-
     protected static ?string $model = Event::class;
+
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar';
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = User::find(Auth::id());
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
 
     public static function canCreate(): bool
     {
-        $user = Auth::user();
-        if (!$user) {
+        $user = User::find(Auth::id());
+        if (!$user || !$user->isAllowedInRoles([UserRole::EVENT_ORGANIZER])) {
             return false;
         }
 
@@ -54,12 +57,13 @@ class EventResource extends Resource
             return false;
         }
 
-        return $team->event_quota > $team->events->count();
+        return $team->event_quota > 0;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return false;
+        $user = User::find(Auth::id());
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -73,12 +77,28 @@ class EventResource extends Resource
             ->form([
                 Forms\Components\Select::make('status')
                     ->label('Status')
-                    ->options(fn($record) => EventStatus::editableOptions(EventStatus::tryFrom($record->status)))
+                    ->options(fn($record) => Auth::user()->role == UserRole::ADMIN->value ? EventStatus::allOptions() : EventStatus::editableOptions(EventStatus::tryFrom($record->status)))
                     ->default(fn($record) => $record->status)
+                    ->searchable()
+                    ->preload()
                     ->required(),
             ])
             ->action(function ($record, array $data) {
-                $record->update(['status' => $data['status']]);
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Event Status Changed')
+                        ->body("Event {$record->name} status has been changed to " . EventStatus::tryFrom($data['status'])->getLabel())
+                        ->success()
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed to Change Event Status')
+                        ->body("Failed to change event {$record->name} status: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
+                }
             })
             ->modal(true);
     }
@@ -285,798 +305,986 @@ class EventResource extends Resource
 
         return $form
             ->schema([
-                Forms\Components\Tabs::make('Event Variables')
-                    ->columnSpan('full')
+                Forms\Components\Wizard::make([
+                    Forms\Components\Wizard\Step::make('General')
+                        ->columns(2)
+                        ->schema([
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->maxLength(255)
+                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                    // reject if name already used
+                                    $event_id = $get('event_id');
+                                    $foundEvent = Event::where('name', $get('name'))->first();
+                                    if ($foundEvent && $foundEvent->event_id != $event_id) {
+                                        $set('name', null);
+                                        $set('slug', null);
 
-                    ->schema([
-                        Forms\Components\Tabs\Tab::make('General')
-                            ->columns(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('name')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                                        // reject if name already used
-                                        $event_id = $get('event_id');
-                                        $foundEvent = Event::where('name', $get('name'))->first();
-                                        if ($foundEvent && $foundEvent->event_id != $event_id) {
-                                            $set('name', null);
-                                            $set('slug', null);
+                                        Notification::make()
+                                            ->title('Event Name Rejected')
+                                            ->body('Event name already exist')
+                                            ->info()
+                                            ->send();
+                                    }
+
+                                    // incrementing slug if exist same slug
+                                    $increment = 0;
+                                    $base_slug = Str::slug($get('name'));
+                                    $slug = $base_slug;
+
+                                    $foundEvent = Event::where('slug', $slug)->first();
+
+                                    while ($foundEvent && $foundEvent->event_id != $event_id) {
+                                        if ($increment > 0) {
+                                            $slug = $base_slug . '-' . $increment;
+                                            $foundEvent = Event::where('slug', $slug)->first();
+                                        }
+                                        $increment++;
+                                    }
+                                    $set('slug', $slug);
+                                })
+                                ->debounce(1000),
+                            Forms\Components\TextInput::make('slug')
+                                ->required()
+                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                    // incrementing slug if exist same slug
+                                    $increment = 0;
+                                    $base_slug = Str::slug($get('slug'));
+                                    $slug = $base_slug;
+
+                                    // current event id
+                                    $event_id = $get('event_id');
+                                    $foundEvent = Event::where('slug', $slug)->first();
+
+                                    while ($foundEvent && $foundEvent->event_id != $event_id) {
+                                        if ($increment > 0) {
+                                            $slug = $base_slug . '-' . $increment;
+                                            $foundEvent = Event::where('slug', $slug)->first();
+                                        }
+                                        $increment++;
+                                    }
+                                    $set('slug', $slug);
+                                })
+                                ->reactive(),
+                            Forms\Components\DateTimePicker::make('start_date')
+                                ->label('Start Date')
+                                ->minDate(
+                                    fn() => $modelExists
+                                        ? min(now(), optional($currentModel->start_date) ?? now())
+                                        : now()
+                                )
+                                ->reactive()
+                                ->required()
+                                ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
+                                    $carbonifiedStart = Carbon::parse($get('start_date'));
+                                    $carbonifiedEnd = Carbon::parse($get('event_date'));
+
+                                    if ($get('event_date') && ($carbonifiedStart >= $carbonifiedEnd)) {
+                                        $set('event_date', null);
+
+                                        Notification::make()
+                                            ->title('Event Date Rejected')
+                                            ->body('Event date is before the start date')
+                                            ->info()
+                                            ->send();
+                                    }
+
+                                    $copyTimeline = $get('event_timeline');
+
+                                    $idx = 1;
+                                    foreach ($copyTimeline as $key => $timeline) {
+                                        $carbonifiedTLStart = Carbon::parse($timeline['start_date']);
+                                        $carbonifiedTLEnd = Carbon::parse($timeline['end_date']);
+
+                                        // nullify all the start_date and event_date that is outside the constraints
+                                        if ($timeline['start_date'] && ($carbonifiedTLStart < $carbonifiedStart || $carbonifiedTLStart > $carbonifiedEnd)) {
+                                            $copyTimeline[$key]['start_date'] = null;
+
+                                            Notification::make()
+                                                ->title('Event Date Rejected for timeline: ' . ($timeline['name'] ?? 'Timeline no. ' . $idx))
+                                                ->body('Event start date is outside the event date constraints')
+                                                ->info()
+                                                ->send();
                                         }
 
-                                        // incrementing slug if exist same slug
-                                        $increment = 0;
-                                        $base_slug = Str::slug($get('name'));
-                                        $slug = $base_slug;
+                                        if ($timeline['end_date'] && ($carbonifiedTLEnd < $carbonifiedStart || $carbonifiedTLEnd > $carbonifiedEnd)) {
+                                            $copyTimeline[$key]['end_date'] = null;
 
-                                        $foundEvent = Event::where('slug', $slug)->first();
-
-                                        while ($foundEvent && $foundEvent->event_id != $event_id) {
-                                            if ($increment > 0) {
-                                                $slug = $base_slug . '-' . $increment;
-                                                $foundEvent = Event::where('slug', $slug)->first();
-                                            }
-                                            $increment++;
+                                            Notification::make()
+                                                ->title('Event Date Rejected for timeline: ' . ($timeline['name'] ?? 'Timeline no. ' . $idx))
+                                                ->body('Event end date is outside the event date constraints')
+                                                ->info()
+                                                ->send();
                                         }
-                                        $set('slug', $slug);
-                                    })
-                                    ->debounce(1000),
-                                Forms\Components\TextInput::make('slug')
-                                    ->required()
-                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                                        // incrementing slug if exist same slug
-                                        $increment = 0;
-                                        $base_slug = Str::slug($get('slug'));
-                                        $slug = $base_slug;
+                                        $idx++;
+                                    }
 
-                                        // current event id
-                                        $event_id = $get('event_id');
-                                        $foundEvent = Event::where('slug', $slug)->first();
+                                    $set('event_timeline', $copyTimeline);
+                                }),
+                            Forms\Components\DateTimePicker::make('event_date')
+                                ->label('Event Date')
+                                ->minDate(
+                                    fn(Forms\Get $get) => Carbon::parse($get('start_date'))
+                                )
+                                ->disabled(fn(Forms\Get $get) => $get('start_date') == null)
+                                ->reactive()
+                                ->required()
+                                ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
+                                    $copyTimeline = $get('event_timeline');
 
-                                        while ($foundEvent && $foundEvent->event_id != $event_id) {
-                                            if ($increment > 0) {
-                                                $slug = $base_slug . '-' . $increment;
-                                                $foundEvent = Event::where('slug', $slug)->first();
-                                            }
-                                            $increment++;
+                                    $carbonifiedStart = Carbon::parse($get('start_date'));
+                                    $carbonifiedEnd = Carbon::parse($get('event_date'));
+
+                                    $idx = 1;
+                                    foreach ($copyTimeline as $key => $timeline) {
+                                        $carbonifiedTLStart = Carbon::parse($timeline['start_date']);
+                                        $carbonifiedTLEnd = Carbon::parse($timeline['end_date']);
+
+                                        // nullify all the start_date and event_date that is outside the constraints
+                                        if ($timeline['start_date'] && ($carbonifiedTLStart < $carbonifiedStart || $carbonifiedTLStart > $carbonifiedEnd)) {
+                                            $copyTimeline[$key]['start_date'] = null;
+
+                                            Notification::make()
+                                                ->title('Event Date Rejected for timeline: ' . ($timeline['name'] ?? 'Timeline no. ' . $idx))
+                                                ->body('Timeline start date is outside the event date constraints')
+                                                ->info()
+                                                ->send();
                                         }
-                                        $set('slug', $slug);
-                                    })
-                                    ->reactive(),
-                                Forms\Components\DateTimePicker::make('start_date')
-                                    ->label('Start Date')
-                                    ->minDate(
-                                        fn() => $modelExists
-                                            ? min(now(), optional($currentModel->start_date) ?? now())
-                                            : now()
-                                    )
-                                    ->reactive()
-                                    ->required()
-                                    ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
-                                        $carbonifiedStart = Carbon::parse($get('start_date'));
-                                        $carbonifiedEnd = Carbon::parse($get('event_date'));
+                                        if ($timeline['end_date'] && ($carbonifiedTLEnd < $carbonifiedStart || $carbonifiedTLEnd > $carbonifiedEnd)) {
+                                            $copyTimeline[$key]['end_date'] = null;
 
-                                        if ($carbonifiedStart >= $carbonifiedEnd) {
-                                            $set('event_date', null);
+                                            Notification::make()
+                                                ->title('Event Date Rejected for timeline: ' . ($timeline['name'] ?? 'Timeline no. ' . $idx))
+                                                ->body('Timeline end date is outside the event date constraints')
+                                                ->info()
+                                                ->send();
                                         }
+                                        $idx++;
+                                    }
 
-                                        $copyTimeline = $get('event_timeline');
+                                    if ($carbonifiedStart >= $carbonifiedEnd) {
+                                        $set('event_date', null);
 
-                                        foreach ($copyTimeline as $key => $timeline) {
-                                            $carbonifiedTLStart = Carbon::parse($timeline['start_date']);
-                                            $carbonifiedTLEnd = Carbon::parse($timeline['end_date']);
+                                        Notification::make()
+                                            ->title('Event Date Rejected')
+                                            ->body('Event date is before the start date')
+                                            ->info()
+                                            ->send();
+                                    }
 
-                                            // nullify all the start_date and event_date that is outside the constraints
-                                            if ($carbonifiedTLStart < $carbonifiedStart || $carbonifiedTLStart > $carbonifiedEnd) {
-                                                $copyTimeline[$key]['start_date'] = null;
-                                            }
-                                            if ($carbonifiedTLEnd < $carbonifiedStart || $carbonifiedTLEnd > $carbonifiedEnd) {
-                                                $copyTimeline[$key]['end_date'] = null;
-                                            }
-                                        }
-
-                                        $set('event_timeline', $copyTimeline);
-                                    }),
-                                Forms\Components\DateTimePicker::make('event_date')
-                                    ->label('Event Date')
-                                    ->minDate(
-                                        fn(Forms\Get $get) =>
-                                        // Carbon::parse($get('start_date'))->addDay()
-                                        Carbon::parse($get('start_date'))
-                                    )
-                                    ->disabled(fn(Forms\Get $get) => $get('start_date') == null)
-                                    ->reactive()
-                                    ->required()
-                                    ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
-                                        $copyTimeline = $get('event_timeline');
-
-                                        $carbonifiedStart = Carbon::parse($get('start_date'));
-                                        $carbonifiedEnd = Carbon::parse($get('event_date'));
-
-                                        foreach ($copyTimeline as $key => $timeline) {
-                                            $carbonifiedTLStart = Carbon::parse($timeline['start_date']);
-                                            $carbonifiedTLEnd = Carbon::parse($timeline['event_date']);
-                                            // nullify all the start_date and event_date that is outside the constraints
-                                            if ($carbonifiedTLStart < $carbonifiedStart || $carbonifiedTLStart > $carbonifiedEnd) {
-                                                $copyTimeline[$key]['start_date'] = null;
-                                            }
-                                            if ($carbonifiedTLEnd < $carbonifiedStart || $carbonifiedTLEnd > $carbonifiedEnd) {
-                                                $copyTimeline[$key]['event_date'] = null;
-                                            }
-                                        }
-
-                                        $set('event_timeline', $copyTimeline);
-                                    }),
-                                Forms\Components\Select::make('venue_id')
-                                    ->searchable()
-                                    ->optionsLimit(5)
-                                    ->options(
-                                        function () {
-                                            $venues = Venue::where('status', VenueStatus::ACTIVE)->get()->pluck('name', 'venue_id');
-                                            return $venues;
-                                        }
-                                    )
-                                    ->required()
-                                    ->label('Venue')
-                                    ->placeholder('Select Venue')
-                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                                        $venue = Venue::find($get('venue_id'));
-                                        if ($venue) {
-                                            $set('location', $venue->location);
-                                        }
-                                    })
-                                    ->reactive(),
-                                Forms\Components\TextInput::make('location')
-                                    ->required(),
-                            ]),
-                        Forms\Components\Tabs\Tab::make('Timeline')
-                            ->schema([
-                                Forms\Components\Repeater::make('event_timeline')
-                                    ->label('')
-                                    ->columns([
-                                        'default' => 1,
-                                        'sm' => 1,
-                                        'md' => 5,
-                                    ])
-                                    ->minItems(1)
-                                    ->live(debounce: 500)
-                                    ->reorderable(false)
-                                    ->defaultItems(0)
-                                    ->relationship('timelineSessions')
-                                    ->addable(function (Forms\Get $get) {
-                                        if (!$get('event_timeline')) return true;
-                                        // if empty, addable true
-                                        if (count($get('event_timeline')) == 0) return true;
-                                        else {
-                                            // if exist, ensure no null in the whole body
-                                            $eventTimelines = $get('event_timeline');
-                                            $existsNull = false;
-                                            foreach ($eventTimelines as $timeline) {
-                                                foreach (array_values($timeline) as $value) {
-                                                    if ($value == null) {
-                                                        $existsNull = true;
-                                                        break;
-                                                    }
-                                                }
-
-                                                if ($existsNull) break;
-                                            }
-
-                                            return !$existsNull;
-                                        }
-                                    })
-                                    ->deletable(fn(Forms\Get $get) => $get('event_timeline') && count($get('event_timeline')) > 1)
-                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                                        $eventTimelines = $get('event_timeline') ?? [];
-
-                                        // Normalize the keys (remove "record-" if present to work in edit mode)
-                                        $normalizedTimelines = [];
-                                        foreach ($eventTimelines as $key => $value) {
-                                            $normalizedKey = preg_replace('/^record-/', '', $key);
-                                            $value['timeline_id'] = $normalizedKey;
-                                            $normalizedTimelines[$normalizedKey] = $value;
-                                        }
-
-                                        $ticketCategories = $get('ticket_categories');
-                                        $newCategories = [];
-
-                                        foreach ($ticketCategories as $category) {
-                                            $existingPrices = $category['event_category_timebound_prices'] ?? [];
-
-                                            $newPrices = [];
-
-                                            // Scan existing prices, update if found, add if missing
-                                            foreach ($normalizedTimelines as $timelineId => $timeline) {
-                                                $found = false;
-
-                                                foreach ($existingPrices as $price) {
-                                                    if (($price['timeline_id'] ?? null) == $timelineId) {
-                                                        $price['name'] = $timeline['name'] ?? "";
-                                                        $newPrices[] = $price;
-                                                        $found = true;
-                                                        break;
-                                                    }
-                                                }
-
-                                                if (!$found) {
-                                                    $newPrices[] = [
-                                                        'timeline_id' => $timelineId,
-                                                        'price' => 0,
-                                                        'name' => $timeline['name'] ?? "",
-                                                        'is_active' => true
-                                                    ];
-                                                }
-                                            }
-
-                                            // Reorder prices based on the normalized timeline order
-                                            $reorderedPrices = [];
-                                            foreach ($normalizedTimelines as $timelineId => $timeline) {
-                                                foreach ($newPrices as $newPrice) {
-                                                    if ($timelineId == $newPrice['timeline_id']) {
-                                                        $reorderedPrices[] = $newPrice;
-                                                        break;
-                                                    }
+                                    $set('event_timeline', $copyTimeline);
+                                }),
+                            Forms\Components\Select::make('venue_id')
+                                ->searchable()
+                                ->optionsLimit(5)
+                                ->options(
+                                    function () {
+                                        $venues = Venue::where('status', VenueStatus::ACTIVE)->get()->pluck('name', 'venue_id');
+                                        return $venues;
+                                    }
+                                )
+                                ->preload()
+                                ->required()
+                                ->label('Venue')
+                                ->placeholder('Select Venue')
+                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                    $venue = Venue::find($get('venue_id'));
+                                    if ($venue) {
+                                        $set('location', $venue->location);
+                                    }
+                                })
+                                ->reactive(),
+                            Forms\Components\TextInput::make('location')
+                                ->required(),
+                        ]),
+                    Forms\Components\Wizard\Step::make('Timeline')
+                        ->schema([
+                            Forms\Components\Repeater::make('event_timeline')
+                                ->label('')
+                                ->columns([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 5,
+                                ])
+                                ->minItems(1)
+                                ->live(debounce: 500)
+                                ->reorderable(false)
+                                ->defaultItems(0)
+                                ->relationship('timelineSessions')
+                                ->addable(function (Forms\Get $get) {
+                                    if (!$get('event_timeline')) return true;
+                                    // if empty, addable true
+                                    if (count($get('event_timeline')) == 0) return true;
+                                    else {
+                                        // if exist, ensure no null in the whole body
+                                        $eventTimelines = $get('event_timeline');
+                                        $existsNull = false;
+                                        foreach ($eventTimelines as $timeline) {
+                                            foreach (array_values($timeline) as $value) {
+                                                if ($value == null) {
+                                                    // dd($timeline);
+                                                    $existsNull = true;
+                                                    break;
                                                 }
                                             }
 
-                                            // Preserve other category attributes
-                                            $newCategories[] = [
-                                                'ticket_category_id' => $category['ticket_category_id'] ?? '-',
-                                                'name' => $category['name'] ?? '',
-                                                'color' => $category['color'] ?? '',
-                                                'event_category_timebound_prices' => $reorderedPrices
+                                            if ($existsNull) break;
+                                        }
+
+                                        return !$existsNull;
+                                    }
+                                })
+                                ->deletable(fn(Forms\Get $get) => $get('event_timeline') && count($get('event_timeline')) > 1)
+                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                    $eventTimelines = $get('event_timeline') ?? [];
+
+                                    // Normalize the keys (remove "record-" if present to work in edit mode)
+                                    $normalizedTimelines = [];
+                                    foreach ($eventTimelines as $key => $value) {
+                                        $normalizedKey = preg_replace('/^record-/', '', $key);
+                                        $value['timeline_id'] = $normalizedKey;
+                                        $normalizedTimelines[$normalizedKey] = $value;
+                                    }
+
+                                    $ticketCategories = $get('ticket_categories');
+                                    $newCategories = [];
+
+                                    foreach ($ticketCategories as $category) {
+                                        $existingPrices = $category['event_category_timebound_prices'] ?? [];
+
+                                        $newPrices = [];
+
+                                        // Scan existing prices, update if found, add if missing
+                                        foreach ($normalizedTimelines as $timelineId => $timeline) {
+                                            $found = false;
+
+                                            foreach ($existingPrices as $price) {
+                                                if (($price['timeline_id'] ?? null) == $timelineId) {
+                                                    $price['name'] = $timeline['name'] ?? "";
+                                                    $newPrices[] = $price;
+                                                    $found = true;
+                                                    break;
+                                                }
+                                            }
+
+                                            if (!$found) {
+                                                $newPrices[] = [
+                                                    'timeline_id' => $timelineId,
+                                                    'price' => 0,
+                                                    'name' => $timeline['name'] ?? "",
+                                                    'is_active' => true
+                                                ];
+                                            }
+                                        }
+
+                                        // Reorder prices based on the normalized timeline order
+                                        $reorderedPrices = [];
+                                        foreach ($normalizedTimelines as $timelineId => $timeline) {
+                                            foreach ($newPrices as $newPrice) {
+                                                if ($timelineId == $newPrice['timeline_id']) {
+                                                    $reorderedPrices[] = $newPrice;
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        // Preserve other category attributes
+                                        $newCategories[] = [
+                                            'ticket_category_id' => $category['ticket_category_id'] ?? '-',
+                                            'name' => $category['name'] ?? '',
+                                            'color' => $category['color'] ?? '',
+                                            'event_category_timebound_prices' => $reorderedPrices
+                                        ];
+                                    }
+
+                                    // Save the corrected ticket categories
+                                    $set('ticket_categories', $newCategories);
+                                })
+                                ->schema([
+                                    Forms\Components\TextInput::make('name')
+                                        ->label('Name')
+                                        ->columnSpan([
+                                            'default' => 1,
+                                            'sm' => 1,
+                                            'md' => 1,
+                                        ])
+                                        ->default(null)
+                                        ->required()
+                                        ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
+                                            // calculate how many names that is the same
+                                            $array = $get('../');
+
+                                            // in array, find how many with name exactly as state
+                                            $count = collect($array)->filter(function ($item) use ($state) {
+                                                return $item['name'] == $state;
+                                            })->count();
+
+                                            // if only one, then it is already unique, else reject state
+                                            if ($count > 1) {
+                                                $set('name', null);
+
+                                                Notification::make()
+                                                    ->title('Timeline Name Rejected')
+                                                    ->body('Timeline name already exist')
+                                                    ->info()
+                                                    ->send();
+                                            }
+                                        }),
+                                    Forms\Components\DateTimePicker::make('start_date')
+                                        ->label('Start Date')
+                                        ->default(null)
+                                        ->reactive()
+                                        ->columnSpan([
+                                            'default' => 1,
+                                            'sm' => 1,
+                                            'md' => 2,
+                                        ])
+                                        ->required()
+                                        ->minDate(function (Forms\Get $get) {
+                                            $array = $get('../'); // Get all sibling entries
+                                            $current_body = [
+                                                'name' => $get('name'),
+                                                'start_date' => $get('start_date'),
+                                                'end_date' => $get('end_date')
                                             ];
-                                        }
 
-                                        // Save the corrected ticket categories
-                                        $set('ticket_categories', $newCategories);
-                                    })
-                                    ->schema([
-                                        Forms\Components\TextInput::make('name')
-                                            ->label('Name')
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'sm' => 1,
-                                                'md' => 1,
-                                            ])
-                                            ->default(null)
-                                            ->required()
-                                            ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
-                                                // calculate how many names that is the same
+                                            // Clean indexedArray objects to only keep relevant fields
+                                            $indexedArray = array_map(fn($item) => [
+                                                'name' => $item['name'],
+                                                'start_date' => $item['start_date'],
+                                                'end_date' => $item['end_date']
+                                            ], array_values($array));
+
+                                            // Custom search for the index of the current entry
+                                            $index = null;
+                                            foreach ($indexedArray as $key => $item) {
+                                                if (
+                                                    $item['name'] === $current_body['name'] &&
+                                                    $item['start_date'] === $current_body['start_date'] &&
+                                                    $item['end_date'] === $current_body['end_date']
+                                                ) {
+                                                    $index = $key;
+                                                    break;
+                                                }
+                                            }
+
+                                            // If not found, return now (fallback)
+                                            if ($index === null) return now();
+
+                                            // First index → compare parent start_date with now
+                                            if ($index == 0) {
+                                                $minDate = $get('../../start_date');
+                                                $now = now();
+
+                                                if ($minDate) {
+                                                    $minDate = Carbon::parse($minDate);
+                                                    return $minDate->greaterThan($now) ? $minDate : $now;
+                                                }
+
+                                                return $now;
+                                            }
+
+                                            // For other indexes, use previous entry's end_date but allow same day with different time
+                                            $prevEndDate = $indexedArray[$index - 1]['end_date'] ?? null;
+
+                                            if ($prevEndDate) {
+                                                $prevEnd = Carbon::parse($prevEndDate);
+                                                // return $prevEnd->isSameDay(now()) ? $prevEnd->addMinute() : $prevEnd->addDay();
+                                                return $prevEnd;
+                                            }
+
+                                            return now();
+                                        })
+                                        ->maxDate(
+                                            fn(Forms\Get $get) =>
+                                            $get('../../event_date') ? Carbon::parse($get('../../event_date')) : null
+                                        )
+                                        ->afterStateUpdated(
+                                            function (Forms\Set $set, Forms\Get $get) {
+                                                // Restart end_date if date clashes
+                                                $startDate = Carbon::parse($get('start_date'));
+                                                // If start date set is greater than event date or earlier than event start date, reset end date
+                                                $eventStartDate = Carbon::parse($get('../../start_date'));
+                                                $eventDate = Carbon::parse($get('../../event_date'));
+
+                                                // Make sure the selected date is not earlier than the previous date
                                                 $array = $get('../');
-
-                                                // in array, find how many with name exactly as state
-                                                $count = collect($array)->filter(function ($item) use ($state) {
-                                                    return $item['name'] == $state;
-                                                })->count();
-
-                                                // if only one, then it is already unique, else reject state
-                                                if ($count > 1) $set('name', null);
-                                            }),
-                                        Forms\Components\DateTimePicker::make('start_date')
-                                            ->label('Start Date')
-                                            ->default(null)
-                                            ->reactive()
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'sm' => 1,
-                                                'md' => 2,
-                                            ])
-                                            ->required()
-                                            ->minDate(function (Forms\Get $get) {
-                                                $array = $get('../'); // Get all sibling entries
                                                 $current_body = [
                                                     'name' => $get('name'),
                                                     'start_date' => $get('start_date'),
                                                     'end_date' => $get('end_date')
                                                 ];
 
-                                                // Clean indexedArray objects to only keep relevant fields
-                                                $indexedArray = array_map(fn($item) => [
-                                                    'name' => $item['name'],
-                                                    'start_date' => $item['start_date'],
-                                                    'end_date' => $item['end_date']
-                                                ], array_values($array));
+                                                $indexedArray = array_values($array);
 
-                                                // Custom search for the index of the current entry
-                                                $index = null;
-                                                foreach ($indexedArray as $key => $item) {
-                                                    if (
-                                                        $item['name'] === $current_body['name'] &&
-                                                        $item['start_date'] === $current_body['start_date'] &&
-                                                        $item['end_date'] === $current_body['end_date']
-                                                    ) {
-                                                        $index = $key;
-                                                        break;
-                                                    }
-                                                }
-
-                                                // If not found, return now (fallback)
-                                                if ($index === null) return now();
-
-                                                // First index → compare parent start_date with now
-                                                if ($index == 0) {
-                                                    $minDate = $get('../../start_date');
-                                                    $now = now();
-
-                                                    if ($minDate) {
-                                                        $minDate = Carbon::parse($minDate);
-                                                        return $minDate->greaterThan($now) ? $minDate : $now;
-                                                    }
-
-                                                    return $now;
-                                                }
-
-                                                // For other indexes, use previous entry's end_date but allow same day with different time
-                                                $prevEndDate = $indexedArray[$index - 1]['end_date'] ?? null;
-
-                                                if ($prevEndDate) {
-                                                    $prevEnd = Carbon::parse($prevEndDate);
-                                                    // return $prevEnd->isSameDay(now()) ? $prevEnd->addMinute() : $prevEnd->addDay();
-                                                    return $prevEnd;
-                                                }
-
-                                                return now();
-                                            })
-                                            ->maxDate(
-                                                fn(Forms\Get $get) =>
-                                                $get('../../event_date') ? Carbon::parse($get('../../event_date')) : null
-                                            )
-                                            ->afterStateUpdated(
-                                                function (Forms\Set $set, Forms\Get $get) {
-                                                    // Restart end_date if date clashes
-                                                    $startDate = Carbon::parse($get('start_date'));
-                                                    $endDate = Carbon::parse($get('end_date'));
-
-                                                    if ($startDate && $endDate && $startDate->greaterThanOrEqualTo($endDate)) {
-                                                        $set('end_date', null); // Reset end_date if it's before start_date
-                                                    }
-                                                }
-                                            )
-                                            ->disabled(
-                                                function (Forms\Get $get, Forms\Set $set) {
-                                                    // check on previous end date
-                                                    $array = $get('../');
-                                                    $current_body = [
-                                                        'name' => $get('name'),
-                                                        'start_date' => $get('start_date'),
-                                                        'end_date' => $get('end_date')
+                                                // Clean indexedArray objects to only have name, start_date, and end_date
+                                                $indexedArray = array_map(function ($item) {
+                                                    return [
+                                                        'name' => $item['name'],
+                                                        'start_date' => $item['start_date'],
+                                                        'end_date' => $item['end_date']
                                                     ];
-                                                    $indexedArray = array_values($array);
-                                                    // clean indexedArray objects to only have name, start_date, and end_date
-                                                    $indexedArray = array_map(function ($item) {
-                                                        return [
-                                                            'name' => $item['name'],
-                                                            'start_date' => $item['start_date'],
-                                                            'end_date' => $item['end_date']
-                                                        ];
-                                                    }, $indexedArray);
-                                                    $index = array_search($current_body, $indexedArray);
+                                                }, $indexedArray);
 
-                                                    // First index now
-                                                    if ($index > 0) return $indexedArray[$index - 1]['end_date'] == null;
-                                                    // Second index prev end
-                                                    else return false;
-                                                }
-                                            ),
-                                        Forms\Components\DateTimePicker::make('end_date')
-                                            ->label('End Date')
-                                            ->disabled(fn(Forms\Get $get) => $get('start_date') == null)
-                                            ->minDate(
-                                                fn(Forms\Get $get) =>
-                                                // Carbon::parse($get('start_date'))->addDay()
-                                                Carbon::parse($get('start_date'))
-                                            )
-                                            ->default(null)
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'sm' => 1,
-                                                'md' => 2,
-                                            ])
-                                            ->required()
-                                            ->reactive()
-                                            ->maxDate(
-                                                fn(Forms\Get $get) => $get('../../event_date')
-                                                    ? Carbon::parse($get('../../event_date'))->max(now())
-                                                    : now()
-                                            )
+                                                $index = array_search($current_body, $indexedArray);
 
-                                            ->afterStateUpdated(
-                                                function (Forms\Get $get, Forms\Set $set) {
-                                                    // remove next if date overlaps
-                                                    $array = $get('../');
+                                                // First index now
+                                                if ($index > 0) {
+                                                    $prev = $indexedArray[$index - 1];
 
-                                                    // if end date overlaps start date, reset
-                                                    if ($get('start_date') && $get('end_date')) {
-                                                        $carbonifiedStart = Carbon::parse($get('start_date'));
-                                                        $carbonifiedEnd = Carbon::parse($get('end_date'));
+                                                    $carbonifiedPrev = Carbon::parse($prev['end_date']);
+                                                    $carbonifiedStart = Carbon::parse($get('start_date'));
 
-                                                        if ($carbonifiedStart >= $carbonifiedEnd) {
-                                                            $set('end_date', null);
-                                                        }
-                                                    }
+                                                    if ($carbonifiedPrev >= $carbonifiedStart) {
+                                                        $set('start_date', null);
 
-                                                    $current_body = [
-                                                        'name' => $get('name'),
-                                                        'start_date' => $get('start_date'),
-                                                        'end_date' => $get('end_date')
-                                                    ];
-                                                    $indexedArray = array_values($array);
-                                                    // clean indexedArray objects to only have name, start_date, and end_date
-                                                    $indexedArray = array_map(function ($item) {
-                                                        return [
-                                                            'name' => $item['name'],
-                                                            'start_date' => $item['start_date'],
-                                                            'end_date' => $item['end_date']
-                                                        ];
-                                                    }, $indexedArray);
-                                                    $index = array_search($current_body, $indexedArray);
-
-                                                    // First index now
-                                                    $lastIdx = count($indexedArray) - 1;
-                                                    if ($index != $lastIdx) {
-                                                        $keysArray = array_keys($array);
-                                                        $next = $indexedArray[$index + 1];
-
-                                                        $carbonifiedNext = Carbon::parse($next['start_date']);
-                                                        $carbonifiedEnd = Carbon::parse($get('end_date'));
-
-                                                        if ($carbonifiedNext <= $carbonifiedEnd) {
-                                                            $nextUUID = $keysArray[$index + 1];
-                                                            $array[$nextUUID]['start_date'] = null;
-                                                            $set('../', $array);
-                                                        }
-                                                    }
-                                                }
-                                            ),
-                                    ]),
-                            ]),
-
-                        Forms\Components\Tabs\Tab::make('Ticket Prices')
-                            ->schema([
-                                // add a text info
-                                Forms\Components\Placeholder::make('empty_message')
-                                    ->label('')
-                                    ->content('No timeline has set. Please set the timeline first!')
-                                    ->hidden(
-                                        fn(Forms\Get $get) =>
-                                        $get('event_timeline') && count($get('event_timeline')) > 0
-                                    ),
-                                Forms\Components\Repeater::make('ticket_categories')
-                                    ->relationship('ticketCategories')
-                                    ->minItems(1)
-                                    ->columns([
-                                        'default' => 1,
-                                        'sm' => 1,
-                                        'md' => 5,
-                                    ])
-                                    ->defaultItems(0)
-                                    ->reorderable(false)
-                                    ->addable(function (Forms\Get $get) {
-                                        $timelineExists = $get('event_timeline') && count($get('event_timeline')) > 0;
-
-                                        if (!$timelineExists) return false;
-
-                                        $ticketCategories = $get('ticket_categories');
-                                        // if empty, addable true
-                                        if (!$ticketCategories) return true;
-                                        else {
-                                            // if exist, ensure no null in the whole body
-                                            $existsNull = false;
-                                            foreach ($ticketCategories as $timeline) {
-                                                foreach (array_values($timeline) as $value) {
-                                                    if ($value == null) {
-                                                        $existsNull = true;
-                                                        break;
+                                                        Notification::make()
+                                                            ->title('Timeline Date Rejected for ' . (!empty($get('name')) ? $get('name') : 'Timeline with unset name'))
+                                                            ->body('Timeline start date is before the previous end date')
+                                                            ->info()
+                                                            ->send();
                                                     }
                                                 }
 
-                                                if ($existsNull) break;
-                                            }
+                                                // Handle event date constraints
+                                                if ($get('start_date')) {
+                                                    if ($startDate->greaterThan($eventDate) || $startDate->lessThan($eventStartDate)) {
+                                                        $set('start_date', null);
 
-                                            return !$existsNull;
-                                        }
-                                    })
-                                    ->deletable(fn(Forms\Get $get) => count($get('ticket_categories')) > 1)
-                                    ->live(debounce: 1000)
-                                    ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
-                                        $currentCategories = $get('ticket_categories') ?? [];
-                                        // retrieve cache
-                                        $timeline = $get('event_timeline');
-                                        // normalize the timeline
-                                        $usingTimeline = [];
-                                        foreach ($timeline as $key => $value) {
-                                            $normalizedKey = preg_replace('/^record-/', '', $key);
-                                            $value['timeline_id'] = $normalizedKey;
-                                            $usingTimeline[$normalizedKey] = $value;
-                                        }
-
-                                        // ensure all categories have the same timeline prices
-                                        $newCategories = [];
-
-                                        foreach ($currentCategories as $category) {
-                                            // delete all that doesnt share the same timeline and save all that share the same timeline
-                                            $newPrices = [];
-
-                                            // assume all keys non-existing
-                                            $nonExistingKeys = [];
-                                            foreach ($usingTimeline as $timeline) {
-                                                $nonExistingKeys[] = $timeline['timeline_id'];
-                                            }
-
-                                            $timeboundPrices = $category['event_category_timebound_prices'] ?? [];
-
-                                            foreach ($timeboundPrices as $price) {
-                                                if (!is_array($price)) {
-                                                    // ignore
-                                                    continue;
-                                                }
-                                                if (!isset($price['timeline_id'])) {
-                                                    // ignore
-                                                    continue;
-                                                }
-                                                foreach ($usingTimeline as $timeline) {
-                                                    if ($price['timeline_id'] == $timeline['timeline_id']) {
-                                                        // set price values
-                                                        $selectedTimeline = collect($usingTimeline)->firstWhere('timeline_id', $timeline['timeline_id']);
-                                                        $price['name'] = $selectedTimeline['name'];
-                                                        // insert to new prices
-                                                        $newPrices[] = $price;
-                                                        // remove id from nonExistingKeys
-                                                        $nonExistingKeys = array_filter($nonExistingKeys, function ($key) use ($timeline) {
-                                                            return $key !== $timeline['timeline_id'];
-                                                        });
-                                                        // break id seeking
-                                                        break;
+                                                        Notification::make()
+                                                            ->title('Event Date Rejected')
+                                                            ->body('Event start date is outside the event date constraints')
+                                                            ->info()
+                                                            ->send();
                                                     }
+                                                }
+
+                                                $endDate = Carbon::parse($get('end_date'));
+
+                                                if ($get('start_date') && $get('end_date') && $startDate->greaterThanOrEqualTo($endDate)) {
+                                                    $set('end_date', null); // Reset end_date if it's before start_date
+
+                                                    Notification::make()
+                                                        ->title('Event Date Rejected')
+                                                        ->body('Event end date is before the start date')
+                                                        ->info()
+                                                        ->send();
                                                 }
                                             }
-
-                                            // fill the nonExistingKeys to the category
-                                            foreach ($nonExistingKeys as $key) {
-                                                $selectedTimeline = collect($usingTimeline)->firstWhere('timeline_id', $key);
-                                                $newPrices[] = [
-                                                    'timeline_id' => $key,
-                                                    'price' => 0,
-                                                    'name' => $selectedTimeline['name'] ?? "",
-                                                    'is_active' => true
+                                        )
+                                        ->disabled(
+                                            function (Forms\Get $get, Forms\Set $set) {
+                                                // check on previous end date
+                                                $array = $get('../');
+                                                $current_body = [
+                                                    'name' => $get('name'),
+                                                    'start_date' => $get('start_date'),
+                                                    'end_date' => $get('end_date')
                                                 ];
-                                            }
+                                                $indexedArray = array_values($array);
+                                                // clean indexedArray objects to only have name, start_date, and end_date
+                                                $indexedArray = array_map(function ($item) {
+                                                    return [
+                                                        'name' => $item['name'],
+                                                        'start_date' => $item['start_date'],
+                                                        'end_date' => $item['end_date']
+                                                    ];
+                                                }, $indexedArray);
+                                                $index = array_search($current_body, $indexedArray);
 
-                                            // reorder the prices according to the timeline
-                                            $reorderedPrices = [];
-                                            foreach ($usingTimeline as $timeline) {
-                                                foreach ($newPrices as $newPrice) {
-                                                    if ($timeline['timeline_id'] == $newPrice['timeline_id']) {
-                                                        $reorderedPrices[] = $newPrice;
-                                                        break;
+                                                // First index now
+                                                if ($index > 0) return $indexedArray[$index - 1]['end_date'] == null;
+                                                // Second index prev end
+                                                else return false;
+                                            }
+                                        ),
+                                    Forms\Components\DateTimePicker::make('end_date')
+                                        ->label('End Date')
+                                        ->disabled(fn(Forms\Get $get) => $get('start_date') == null)
+                                        ->minDate(
+                                            fn(Forms\Get $get) =>
+                                            // Carbon::parse($get('start_date'))->addDay()
+                                            Carbon::parse($get('start_date'))
+                                        )
+                                        ->default(null)
+                                        ->columnSpan([
+                                            'default' => 1,
+                                            'sm' => 1,
+                                            'md' => 2,
+                                        ])
+                                        ->required()
+                                        ->reactive()
+                                        ->maxDate(
+                                            fn(Forms\Get $get) => $get('../../event_date')
+                                                ? Carbon::parse($get('../../event_date'))->max(now())
+                                                : now()
+                                        )
+
+                                        ->afterStateUpdated(
+                                            function (Forms\Get $get, Forms\Set $set) {
+                                                // If end date is greater than event date, reset
+                                                $event_date = Carbon::parse($get('../../event_date'));
+                                                $end_date = Carbon::parse($get('end_date'));
+                                                if ($get('end_date') && $end_date->greaterThan($event_date)) {
+                                                    $set('end_date', null);
+
+                                                    Notification::make()
+                                                        ->title('Event Date Rejected')
+                                                        ->body('Event end date is after the event date')
+                                                        ->info()
+                                                        ->send();
+                                                }
+
+                                                // remove next if date overlaps
+                                                $array = $get('../');
+
+                                                // if end date overlaps start date, reset
+                                                if ($get('start_date') && $get('end_date')) {
+                                                    $carbonifiedStart = Carbon::parse($get('start_date'));
+                                                    $carbonifiedEnd = Carbon::parse($get('end_date'));
+
+                                                    if ($carbonifiedStart >= $carbonifiedEnd) {
+                                                        $set('end_date', null);
+
+                                                        Notification::make()
+                                                            ->title('Timeline Date Rejected for ' . (!empty($get('name')) ? $get('name') : 'Timeline with unset name'))
+                                                            ->body('Timeline end date is before the start date')
+                                                            ->info()
+                                                            ->send();
+                                                    }
+                                                }
+
+                                                $current_body = [
+                                                    'name' => $get('name'),
+                                                    'start_date' => $get('start_date'),
+                                                    'end_date' => $get('end_date')
+                                                ];
+                                                $indexedArray = array_values($array);
+                                                // clean indexedArray objects to only have name, start_date, and end_date
+                                                $indexedArray = array_map(function ($item) {
+                                                    return [
+                                                        'name' => $item['name'],
+                                                        'start_date' => $item['start_date'],
+                                                        'end_date' => $item['end_date']
+                                                    ];
+                                                }, $indexedArray);
+                                                $index = array_search($current_body, $indexedArray);
+
+                                                // First index now
+                                                $lastIdx = count($indexedArray) - 1;
+                                                if ($index != $lastIdx) {
+                                                    $keysArray = array_keys($array);
+                                                    $next = $indexedArray[$index + 1];
+
+                                                    $carbonifiedNext = Carbon::parse($next['start_date']);
+                                                    $carbonifiedEnd = Carbon::parse($get('end_date'));
+
+                                                    if ($carbonifiedNext <= $carbonifiedEnd) {
+                                                        $nextUUID = $keysArray[$index + 1];
+                                                        $array[$nextUUID]['start_date'] = null;
+                                                        $set('../', $array);
                                                     }
                                                 }
                                             }
+                                        ),
+                                ]),
+                        ]),
 
-                                            // update
-                                            $newCategories[] = [
-                                                'ticket_category_id' => $category['ticket_category_id'] ?? '-',
-                                                'name' => $category['name'] ?? '',
-                                                'color' => $category['color'] ?? '',
-                                                'event_category_timebound_prices' => $reorderedPrices
+                    Forms\Components\Wizard\Step::make('Ticket Prices')
+                        ->schema([
+                            // add a text info
+                            Forms\Components\Placeholder::make('empty_message')
+                                ->label('')
+                                ->content('No timeline has set. Please set the timeline first!')
+                                ->hidden(
+                                    fn(Forms\Get $get) =>
+                                    $get('event_timeline') && count($get('event_timeline')) > 0
+                                ),
+                            Forms\Components\Repeater::make('ticket_categories')
+                                ->relationship('ticketCategories')
+                                ->minItems(1)
+                                ->columns([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 5,
+                                ])
+                                ->defaultItems(0)
+                                ->reorderable(false)
+                                ->addable(function (Forms\Get $get) {
+                                    $timelineExists = $get('event_timeline') && count($get('event_timeline')) > 0;
+
+                                    if (!$timelineExists) return false;
+
+                                    $ticketCategories = $get('ticket_categories');
+                                    // if empty, addable true
+                                    if (!$ticketCategories) return true;
+                                    else {
+                                        // if exist, ensure no null in the whole body
+                                        $existsNull = false;
+                                        foreach ($ticketCategories as $timeline) {
+                                            foreach (array_values($timeline) as $value) {
+                                                if ($value == null) {
+                                                    $existsNull = true;
+                                                    break;
+                                                }
+                                            }
+
+                                            if ($existsNull) break;
+                                        }
+
+                                        return !$existsNull;
+                                    }
+                                })
+                                ->deletable(fn(Forms\Get $get) => count($get('ticket_categories')) > 1)
+                                ->live(debounce: 1000)
+                                ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
+                                    $currentCategories = $get('ticket_categories') ?? [];
+                                    // retrieve cache
+                                    $timeline = $get('event_timeline');
+                                    // normalize the timeline
+                                    $usingTimeline = [];
+                                    foreach ($timeline as $key => $value) {
+                                        $normalizedKey = preg_replace('/^record-/', '', $key);
+                                        $value['timeline_id'] = $normalizedKey;
+                                        $usingTimeline[$normalizedKey] = $value;
+                                    }
+
+                                    // ensure all categories have the same timeline prices
+                                    $newCategories = [];
+
+                                    foreach ($currentCategories as $category) {
+                                        // delete all that doesnt share the same timeline and save all that share the same timeline
+                                        $newPrices = [];
+
+                                        // assume all keys non-existing
+                                        $nonExistingKeys = [];
+                                        foreach ($usingTimeline as $timeline) {
+                                            $nonExistingKeys[] = $timeline['timeline_id'];
+                                        }
+
+                                        $timeboundPrices = $category['event_category_timebound_prices'] ?? [];
+
+                                        foreach ($timeboundPrices as $price) {
+                                            if (!is_array($price)) {
+                                                // ignore
+                                                continue;
+                                            }
+                                            if (!isset($price['timeline_id'])) {
+                                                // ignore
+                                                continue;
+                                            }
+                                            foreach ($usingTimeline as $timeline) {
+                                                if ($price['timeline_id'] == $timeline['timeline_id']) {
+                                                    // set price values
+                                                    $selectedTimeline = collect($usingTimeline)->firstWhere('timeline_id', $timeline['timeline_id']);
+                                                    $price['name'] = $selectedTimeline['name'];
+                                                    // insert to new prices
+                                                    $newPrices[] = $price;
+                                                    // remove id from nonExistingKeys
+                                                    $nonExistingKeys = array_filter($nonExistingKeys, function ($key) use ($timeline) {
+                                                        return $key !== $timeline['timeline_id'];
+                                                    });
+                                                    // break id seeking
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        // fill the nonExistingKeys to the category
+                                        foreach ($nonExistingKeys as $key) {
+                                            $selectedTimeline = collect($usingTimeline)->firstWhere('timeline_id', $key);
+                                            $newPrices[] = [
+                                                'timeline_id' => $key,
+                                                'price' => 0,
+                                                'name' => $selectedTimeline['name'] ?? "",
+                                                'is_active' => true
                                             ];
                                         }
+
+                                        // reorder the prices according to the timeline
+                                        $reorderedPrices = [];
+                                        foreach ($usingTimeline as $timeline) {
+                                            foreach ($newPrices as $newPrice) {
+                                                if ($timeline['timeline_id'] == $newPrice['timeline_id']) {
+                                                    $reorderedPrices[] = $newPrice;
+                                                    break;
+                                                }
+                                            }
+                                        }
+
                                         // update
-                                        $set('ticket_categories', $newCategories);
-                                    })
-                                    ->schema([
-                                        Forms\Components\Section::make('Category')
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'sm' => 1,
-                                                'md' => 1,
-                                            ])
-                                            ->schema([
-                                                Forms\Components\Hidden::make('ticket_category_id')
-                                                    ->default('-'),
-                                                Forms\Components\TextInput::make('name')
-                                                    ->default('')
-                                                    ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
-                                                        // calculate how many names that is the same
-                                                        $array = $get('../');
+                                        $newCategories[] = [
+                                            'ticket_category_id' => $category['ticket_category_id'] ?? '-',
+                                            'name' => $category['name'] ?? '',
+                                            'color' => $category['color'] ?? '',
+                                            'event_category_timebound_prices' => $reorderedPrices
+                                        ];
+                                    }
+                                    // update
+                                    $set('ticket_categories', $newCategories);
+                                })
+                                ->schema([
+                                    Forms\Components\Section::make('Category')
+                                        ->columnSpan([
+                                            'default' => 1,
+                                            'sm' => 1,
+                                            'md' => 1,
+                                        ])
+                                        ->schema([
+                                            Forms\Components\Hidden::make('ticket_category_id')
+                                                ->default('-'),
+                                            Forms\Components\TextInput::make('name')
+                                                ->default('')
+                                                ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
+                                                    // calculate how many names that is the same
+                                                    $array = $get('../');
 
-                                                        // in array, find how many with name exactly as state
-                                                        $count = collect($array)->filter(function ($item) use ($state) {
-                                                            return $item['name'] == $state;
-                                                        })->count();
+                                                    // in array, find how many with name exactly as state
+                                                    $count = collect($array)->filter(function ($item) use ($state) {
+                                                        return $item['name'] == $state;
+                                                    })->count();
 
-                                                        // if only one, then it is already unique, else reject state
-                                                        if ($count > 1) $set('name', null);
-                                                    })
-                                                    ->required(),
-                                                Forms\Components\ColorPicker::make('color')
-                                                    ->default('')
-                                                    ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
-                                                        // calculate how many names that is the same
-                                                        $array = $get('../');
+                                                    // if only one, then it is already unique, else reject state
+                                                    if ($count > 1) {
+                                                        $set('name', null);
 
-                                                        // in array, find how many with name exactly as state
-                                                        $count = collect($array)->filter(function ($item) use ($state) {
-                                                            return $item['color'] == $state;
-                                                        })->count();
+                                                        Notification::make()
+                                                            ->title('Category Name Rejected')
+                                                            ->body('Category name already exist')
+                                                            ->info()
+                                                            ->send();
+                                                    }
+                                                })
+                                                ->required(),
+                                            Forms\Components\ColorPicker::make('color')
+                                                ->default('')
+                                                ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
+                                                    // calculate how many names that is the same
+                                                    $array = $get('../');
 
-                                                        // if only one, then it is already unique, else reject state
-                                                        if ($count > 1) $set('color', null);
-                                                    })
-                                                    ->hex()
-                                                    ->required(),
-                                            ]),
-                                        Forms\Components\Section::make('Timeline')
-                                            ->columnSpan([
-                                                'default' => 1,
-                                                'sm' => 1,
-                                                'md' => 4,
-                                            ])
-                                            ->schema([
-                                                Forms\Components\Repeater::make('event_category_timebound_prices')
-                                                    ->relationship('eventCategoryTimeboundPrices')
-                                                    ->defaultItems(0)
-                                                    ->grid(3)
-                                                    ->label('')
-                                                    ->reorderable(false)
-                                                    ->deletable(false)
-                                                    ->addable(false)
-                                                    ->schema([
-                                                        Forms\Components\Group::make([
-                                                            Forms\Components\Placeholder::make('title')
-                                                                ->label(fn(Forms\Get $get) => $get('name')),
-                                                            Forms\Components\Toggle::make('is_active')
-                                                                ->default(true)
-                                                                ->label(fn($state) => $state ? 'On' : 'Off'),
-                                                        ])->columns([
-                                                            'default' => 1,
-                                                            'sm' => 1,
-                                                            'md' => 2,
-                                                        ]),
-                                                        Forms\Components\Hidden::make('name')
-                                                            ->default('')
-                                                            ->formatStateUsing(function (Forms\Get $get) {
-                                                                $id = $get('timeline_id');
-                                                                $timeline = $get('../../../../event_timeline');
+                                                    // in array, find how many with name exactly as state
+                                                    $count = collect($array)->filter(function ($item) use ($state) {
+                                                        return $item['color'] == $state;
+                                                    })->count();
 
-                                                                // timeline has key => obj where one of th obj is timeline_id to matched with $id, find and acquire
-                                                                $found = collect($timeline)->firstWhere('timeline_id', $id);
+                                                    // if only one, then it is already unique, else reject state
+                                                    if ($count > 1) {
+                                                        $set('color', null);
 
-                                                                if ($found) return $found['name'];
-                                                                else return '';
-                                                            }),
+                                                        Notification::make()
+                                                            ->title('Category Color Rejected')
+                                                            ->body('Category color already exist')
+                                                            ->info()
+                                                            ->send();
+                                                    }
+                                                })
+                                                ->hex()
+                                                ->required(),
+                                        ]),
+                                    Forms\Components\Section::make('Timeline')
+                                        ->columnSpan([
+                                            'default' => 1,
+                                            'sm' => 1,
+                                            'md' => 4,
+                                        ])
+                                        ->schema([
+                                            Forms\Components\Repeater::make('event_category_timebound_prices')
+                                                ->relationship('eventCategoryTimeboundPrices')
+                                                ->defaultItems(0)
+                                                ->grid(3)
+                                                ->label('')
+                                                ->reorderable(false)
+                                                ->deletable(false)
+                                                ->addable(false)
+                                                ->schema([
+                                                    Forms\Components\Group::make([
+                                                        Forms\Components\Placeholder::make('title')
+                                                            ->label(fn(Forms\Get $get) => $get('name')),
+                                                        Forms\Components\Toggle::make('is_active')
+                                                            ->default(true)
+                                                            ->label(fn($state) => $state ? 'On' : 'Off'),
+                                                    ])->columns([
+                                                        'default' => 1,
+                                                        'sm' => 1,
+                                                        'md' => 2,
+                                                    ]),
+                                                    Forms\Components\Hidden::make('name')
+                                                        ->default('')
+                                                        ->formatStateUsing(function (Forms\Get $get) {
+                                                            $id = $get('timeline_id');
+                                                            $timeline = $get('../../../../event_timeline');
 
-                                                        Forms\Components\TextInput::make('price')
-                                                            ->default(0)
-                                                            ->hidden(fn(Forms\Get $get) => !$get('is_active'))
-                                                            ->prefix('Rp')
-                                                            ->inputMode('decimal')
-                                                            ->numeric()
-                                                            ->required(),
-                                                    ])
-                                            ])
-                                    ])
-                                    ->label('')
-                            ]),
-                        Forms\Components\Tabs\Tab::make('Locking')
-                            ->hidden(!$modelExists)
-                            ->columns([
-                                'default' => 1,
-                                'sm' => 1,
-                                'md' => 2,
-                            ])
-                            ->schema([
-                                Forms\Components\Section::make('')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'sm' => 1,
-                                        'md' => 1,
-                                    ])
-                                    ->schema([
-                                        Forms\Components\Toggle::make('is_locked')
-                                            ->label('Is Locked')
-                                    ]),
-                                Forms\Components\TextInput::make('locked_password')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'sm' => 1,
-                                        'md' => 1,
-                                    ])
-                                    ->label('Password'),
-                            ]),
-                        Forms\Components\Tabs\Tab::make('Maintenance')
-                            ->hidden(!$modelExists)
-                            ->columns([
-                                'default' => 1,
-                                'sm' => 1,
-                                'md' => 2,
-                            ])
-                            ->schema([
-                                Forms\Components\Section::make('')
-                                    ->columnSpan([
-                                        'default' => 1,
-                                        'sm' => 1,
-                                        'md' => 1,
-                                    ])
-                                    ->schema([
-                                        Forms\Components\Toggle::make('is_maintenance')
-                                            ->label('Is Maintenance')
-                                    ]),
-                                Forms\Components\TextInput::make('maintenance_title')
-                                    ->label('Title'),
-                                Forms\Components\DateTimePicker::make('maintenance_expected_finish')
-                                    ->label('Expected Finish')
-                                    ->minDate(
-                                        fn() => $modelExists
-                                            ? min(now(), optional($currentModel->eventVariables->maintenance_expected_finish) ? Carbon::parse($currentModel->eventVariables->maintenance_expected_finish) : now())
-                                            : now()
-                                    ),
-                                Forms\Components\TextInput::make('maintenance_message')
-                                    ->label('Message'),
-                            ]),
-                        Forms\Components\Tabs\Tab::make('Limits')
-                            ->columns([
-                                'default' => 1,
-                                'sm' => 1,
-                                'md' => 2,
-                            ])
-                            ->schema([
-                                Forms\Components\TextInput::make('ticket_limit')
-                                    ->numeric()
-                                    ->default(5)
-                                    ->minValue(1)
-                                    ->maxValue(20)
-                                    ->required()
-                                    ->label('Ticket Purchase Limit')
-                                    ->helperText('Maximum number of tickets a customer can purchase at once'),
-                            ]),
-                        Forms\Components\Tabs\Tab::make('Colors')
-                            ->schema(fn($record) => [
-                                Forms\Components\Livewire::make('color-preview', ['record' => $record])
-                            ]),
-                        Forms\Components\Tabs\Tab::make('Identity')
-                            ->columns([
-                                'default' => 1,
-                                'sm' => 1,
-                                'md' => 2,
-                            ])
-                            ->schema([
-                                Forms\Components\TextInput::make('logo')
-                                    ->label('Logo'),
-                                Forms\Components\TextInput::make('logo_alt')
-                                    ->label('Logo Alt'),
-                                Forms\Components\TextInput::make('favicon')
-                                    ->rule('regex:/\.ico$/i')
-                                    ->helperText('Must be a .ico file only.')
-                                    ->label('Favicon'),
-                                Forms\Components\TextInput::make('texture')
-                                    ->label('Texture'),
-                            ])
-                    ]),
+                                                            // timeline has key => obj where one of th obj is timeline_id to matched with $id, find and acquire
+                                                            $found = collect($timeline)->firstWhere('timeline_id', $id);
+
+                                                            if ($found) return $found['name'];
+                                                            else return '';
+                                                        }),
+
+                                                    Forms\Components\TextInput::make('price')
+                                                        ->default(1)
+                                                        ->hidden(fn(Forms\Get $get) => !$get('is_active'))
+                                                        ->prefix('Rp')
+                                                        ->inputMode('decimal')
+                                                        ->numeric()
+                                                        ->required()
+                                                        ->reactive()
+                                                        ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                                            $numericValue = (float) preg_replace('/[^\d]/', '', $state);
+
+                                                            if ($numericValue <= 0) {
+                                                                $set('price', 1);
+
+                                                                Notification::make()
+                                                                    ->title('Price Rejected')
+                                                                    ->body('Price must be greater than 0')
+                                                                    ->info()
+                                                                    ->send();
+                                                            } else {
+                                                                // Save the plain numeric value without formatting
+                                                                $set('price', $numericValue);
+                                                            }
+                                                        }),
+
+                                                ])
+                                        ])
+                                ])
+                                ->label('')
+                        ]),
+                    Forms\Components\Wizard\Step::make('Locking')
+                        ->hidden(!$modelExists)
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
+                        ->schema([
+                            Forms\Components\Section::make('')
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 1,
+                                ])
+                                ->schema([
+                                    Forms\Components\Toggle::make('is_locked')
+                                        ->reactive()
+                                        ->label('Is Locked')
+                                ]),
+                            Forms\Components\TextInput::make('locked_password')
+                                ->required(fn(Forms\Get $get) => $get('is_locked'))
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 1,
+                                ])
+                                ->label('Password'),
+                        ]),
+                    Forms\Components\Wizard\Step::make('Maintenance')
+                        ->hidden(!$modelExists)
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
+                        ->schema([
+                            Forms\Components\Section::make('')
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 1,
+                                ])
+                                ->schema([
+                                    Forms\Components\Toggle::make('is_maintenance')
+                                        ->label('Is Maintenance')
+                                ]),
+                            Forms\Components\TextInput::make('maintenance_title')
+                                ->label('Title'),
+                            Forms\Components\DateTimePicker::make('maintenance_expected_finish')
+                                ->label('Expected Finish')
+                                ->minDate(
+                                    fn() => $modelExists
+                                        ? min(now(), optional($currentModel->eventVariables->maintenance_expected_finish) ? Carbon::parse($currentModel->eventVariables->maintenance_expected_finish) : now())
+                                        : now()
+                                ),
+                            Forms\Components\TextInput::make('maintenance_message')
+                                ->label('Message'),
+                        ]),
+                    Forms\Components\Wizard\Step::make('Limits')
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
+                        ->schema([
+                            Forms\Components\TextInput::make('ticket_limit')
+                                ->numeric()
+                                ->default(5)
+                                ->minValue(1)
+                                ->maxValue(20)
+                                ->required()
+                                ->label('Ticket Purchase Limit')
+                                ->helperText('Maximum number of tickets a customer can purchase at once'),
+                        ]),
+                    Forms\Components\Wizard\Step::make('Colors')
+                        ->schema(fn($record) => [
+                            Forms\Components\Livewire::make('color-preview', ['record' => $record])
+                        ]),
+                    Forms\Components\Wizard\Step::make('Identity')
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
+                        ->schema([
+                            Forms\Components\TextInput::make('logo')
+                                ->label('Logo'),
+                            Forms\Components\TextInput::make('logo_alt')
+                                ->label('Logo Alt'),
+                            Forms\Components\TextInput::make('favicon')
+                                ->rule('regex:/\.ico$/i')
+                                ->helperText('Must be a .ico file only.')
+                                ->label('Favicon'),
+                            Forms\Components\TextInput::make('texture')
+                                ->label('Texture'),
+                        ])
+                ])
+                    ->skippable($modelExists)
+                    ->columnSpan('full'),
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function table(Table $table, bool $filterStatus = false): Table
     {
-        $user = Auth::user();
-        $role = $user ? $user->role : null;
+        $user = User::find(Auth::id());
 
         $defaultActions = [
             Tables\Actions\ViewAction::make()->modalHeading('View Event'),
             Tables\Actions\EditAction::make(),
         ];
 
-        if ($role == UserRole::EVENT_ORGANIZER->value) {
+        if ($user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER])) {
             $defaultActions[] = self::ChangeStatusButton(Tables\Actions\Action::make('changeStatus'));
             $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));
         }
 
+        $defaultActions[] = Tables\Actions\DeleteAction::make()
+            ->icon('heroicon-o-trash');
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->limit(50)
+                    ->limit(20)
                     ->label('Event Name')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Team Name')
+                    ->searchable()
+                    ->sortable()
+                    ->hidden(!($user->isAdmin()))
+                    ->limit(20),
+                Tables\Columns\TextColumn::make('slug')
+                    ->limit(20)
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('start_date')
@@ -1102,7 +1310,19 @@ class EventResource extends Resource
                 [
                     Tables\Filters\SelectFilter::make('status')
                         ->options(EventStatus::toArray())
+                        ->searchable()
                         ->multiple()
+                        ->preload()
+                        ->hidden(!$filterStatus),
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship('team', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
+                        ->multiple()
+                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->hidden(!($user->isAdmin())),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

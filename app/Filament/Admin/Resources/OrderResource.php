@@ -2,19 +2,22 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\EventStatus;
 use Filament\Forms;
 use App\Models\User;
 use Filament\Tables;
 use App\Models\Event;
 use App\Models\Order;
+use Filament\Actions;
 use App\Models\Ticket;
+use App\Enums\UserRole;
 use Filament\Infolists;
+use App\Enums\EventStatus;
 use App\Enums\OrderStatus;
 use Filament\Tables\Table;
-use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
-use App\Enums\UserRole;
+use App\Models\TicketOrder;
+use Filament\Facades\Filament;
+use App\Enums\TicketOrderStatus;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
@@ -22,11 +25,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
-use App\Models\TicketOrder;
-use Filament\Facades\Filament;
+use App\Models\Team;
+use Filament\Notifications\Notification;
 
 class OrderResource extends Resource
 {
+    protected static ?int $navigationSort = 3;
     protected static ?string $model = Order::class;
     protected static ?string $tenantRelationshipName = 'orders';
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
@@ -43,14 +47,46 @@ class OrderResource extends Resource
         return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
     }
 
-    public static function tableQuery(): Builder
+    public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
-        return parent::tableQuery()->withoutGlobalScope(SoftDeletingScope::class);
+        return $action
+            ->label('Change Status')
+            ->color('success')
+            ->icon('heroicon-o-cog')
+            ->modalHeading('Change Status')
+            ->modalDescription('Select a new status for this order.')
+            ->form([
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options(fn($record) => Auth::user()->role == UserRole::ADMIN->value ? OrderStatus::allOptions() : OrderStatus::editableOptions(OrderStatus::tryFrom($record->status)))
+                    ->default(fn($record) => $record->status)
+                    ->preload()
+                    ->searchable()
+                    ->default(fn($record) => $record->status) // Set the current value as default
+                    ->required(),
+            ])
+            ->action(function ($record, array $data) {
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Success')
+                        ->success()
+                        ->body('Status changed successfully.')
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error')
+                        ->danger()
+                        ->body($e->getMessage())
+                        ->send();
+                }
+            })
+            ->modal(true);
     }
 
     public static function form(Forms\Form $form): Forms\Form
     {
-        $tenant_id = Filament::getTenant()->team_id;
         // get current form values
         $currentModel = $form->model;
         $modelExists = !is_string($currentModel);
@@ -71,6 +107,7 @@ class OrderResource extends Resource
                             ->options(fn() => User::pluck('email', 'id'))
                             ->optionsLimit(5)
                             ->required()
+                            ->preload()
                             ->disabled($modelExists),
                         // define the event
                         Forms\Components\Select::make('event_id')
@@ -78,8 +115,16 @@ class OrderResource extends Resource
                             ->searchable()
                             ->reactive()
                             ->optionsLimit(5)
-                            ->options(fn() => Event::where('team_id', $tenant_id)->pluck('name', 'event_id'))
+                            ->options(function () {
+                                $tenant_id = Filament::getTenant()?->team_id;
+                                $query = Event::query();
+                                if ($tenant_id) {
+                                    $query->where('team_id', $tenant_id);
+                                }
+                                return $query->pluck('name', 'event_id');
+                            })
                             ->required()
+                            ->preload()
                             ->disabled($modelExists),
                     ]),
                 Forms\Components\Section::make('Tickets')
@@ -168,6 +213,7 @@ class OrderResource extends Resource
                                     ])
                                     ->default(TicketOrderStatus::ENABLED)
                                     ->placeholder('Choose')
+                                    ->preload()
                                     ->hidden(!$modelExists)
                                     ->required(),
                             ]),
@@ -265,10 +311,10 @@ class OrderResource extends Resource
                             ->badge(),
                     ]),
                 Infolists\Components\Tabs::make()
+                    ->hidden(!$showTickets)
                     ->columnSpanFull()
                     ->schema([
                         Infolists\Components\Tabs\Tab::make('Tickets')
-                            ->hidden(!$showTickets)
                             ->schema([
                                 \Njxqlus\Filament\Components\Infolists\RelationManager::make()
                                     ->manager(TicketsRelationManager::class)
@@ -277,21 +323,35 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function table(Table $table, bool $filterStatus = false, bool $filterEvent = true): Table
     {
+        $user = User::find(Auth::id());
+
         return $table
             ->defaultSort('order_date', 'desc')
             ->columns([
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Team Name')
+                    ->searchable()
+                    ->sortable()
+                    ->hidden(!($user->isAdmin()))
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('order_code')
                     ->label('Code')
+                    ->copyable()
+                    ->copyMessage('Order code copied to clipboard')
+                    ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('user')
-                    ->formatStateUsing(function ($state) {
-                        return $state->getUserName();
-                    })
                     ->label('User')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(query: function ($query, $search) {
+                        $query->whereHas('user', function ($subQuery) use ($search) {
+                            $subQuery->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('last_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable()
+                    ->formatStateUsing(fn($state) => $state->getUserName()),
                 Tables\Columns\TextColumn::make('order_date')
                     ->label('Date')
                     ->sortable(),
@@ -315,16 +375,49 @@ class OrderResource extends Resource
             ])
             ->filters(
                 [
-                    Tables\Filters\SelectFilter::make('status')
-                        ->options(OrderStatus::editableOptions())
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship('team', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
                         ->multiple()
+                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->hidden(!($user->isAdmin())),
+
+                    Tables\Filters\SelectFilter::make('event_id')
+                        ->label('Filter by Event')
+                        ->options(function () {
+                            $tenant_id = Filament::getTenant()?->team_id ?? null;
+                            $query = Event::query();
+                            if ($tenant_id) {
+                                $query->where('team_id', $tenant_id);
+                            }
+                            return $query->pluck('name', 'event_id');
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
+                        ->multiple()
+                        ->hidden(!$filterEvent)
+                        ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
+                    Tables\Filters\SelectFilter::make('status')
+                        ->options(OrderStatus::allOptions())
+                        ->searchable()
+                        ->multiple()
+                        ->preload()
+                        ->hidden(!$filterStatus)
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->modalHeading('View Order'),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View Order'),
                     Tables\Actions\EditAction::make(),
+                    self::ChangeStatusButton(
+                        Tables\Actions\Action::make('changeStatus')
+                    )
                 ])
             ]);
     }

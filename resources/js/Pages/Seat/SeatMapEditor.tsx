@@ -39,7 +39,7 @@ const SeatMapEditor: React.FC<Props> = ({
     );
     const [selectedStatus, setSelectedStatus] = useState<string>('available');
     const [selectedTicketType, setSelectedTicketType] = useState<string>(
-        ticketTypes[0] || 'standard',
+        ticketTypes[0] || 'unset',
     );
     const sidebarContentRef = useRef<HTMLDivElement>(null);
 
@@ -93,8 +93,7 @@ const SeatMapEditor: React.FC<Props> = ({
 
         // Default colors jika tidak disediakan (gunakan hex)
         const defaultColors: Record<string, string> = {
-            standard: '#90CAF9', // biru
-            VIP: '#FFD54F', // kuning
+            unset: '#FFFFFF',
         };
 
         return defaultColors[category] || '#E0E0E0'; // default abu-abu
@@ -179,7 +178,7 @@ const SeatMapEditor: React.FC<Props> = ({
             }
         } else {
             // Jika available, tampilkan warna tipe tiket
-            const ticketType = seat.ticket_type || 'standard';
+            const ticketType = seat.ticket_type || 'unset';
             baseColor = getColorForCategory(ticketType);
         }
 
@@ -330,7 +329,7 @@ const SeatMapEditor: React.FC<Props> = ({
                     next.add(seatId);
                     // Set current values from the seat for editing
                     setSelectedStatus(seat.status);
-                    setSelectedTicketType(seat.ticket_type || 'standard');
+                    setSelectedTicketType(seat.ticket_type || 'unset');
                     break;
 
                 case 'MULTIPLE':
@@ -354,7 +353,7 @@ const SeatMapEditor: React.FC<Props> = ({
                             next.add(id);
                         }
                     });
-                    setSelectedCategory(seat.ticket_type || 'standard');
+                    setSelectedCategory(seat.ticket_type || 'unset');
                     break;
             }
 
@@ -412,7 +411,7 @@ const SeatMapEditor: React.FC<Props> = ({
                     title={
                         !isEditable
                             ? 'This seat is booked and cannot be edited'
-                            : `${seat.seat_number} - ${seat.ticket_type || 'Standard'} - ${seat.status} - ${seat.price || 0}`
+                            : `${seat.seat_number} - ${seat.ticket_type || 'Unset'} - ${seat.status} - ${seat.price || 0}`
                     }
                     draggable={false}
                 >

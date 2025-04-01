@@ -8,11 +8,11 @@ export interface TicketData {
 
 export interface TicketProps {
     id: string;
-    ticketType: string;
-    ticketCode: string;
-    ticketURL: string;
+    type: string;
+    code: string;
+    qrStr: string;
     status: string;
-    ticketData: TicketData;
+    data: TicketData;
 }
 
 export interface SeatInterface {

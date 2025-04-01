@@ -12,19 +12,9 @@ class VenuesRelationManager extends RelationManager
 {
     protected static string $relationship = 'venues';
 
-    public function infolist(Infolist $infolist): Infolist
-    {
-        return VenueResource::infolist($infolist, showEvents: false);
-    }
-
-    public function form(Form $form): Form
-    {
-        return VenueResource::form($form);
-    }
-
     public function table(Table $table): Table
     {
-        return VenueResource::table($table)
+        return VenueResource::table($table, filterStatus: true)
             ->heading('');
     }
 }

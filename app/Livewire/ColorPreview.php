@@ -47,7 +47,7 @@ class ColorPreview extends Component implements HasForms
             'secondary_color' => $this->secondary_color,
             'text_primary_color' => $this->text_primary_color,
             'text_secondary_color' => $this->text_secondary_color,
-        ], 60);
+        ], 60 * 15);
     }
 
     public function updated($property, $value)
@@ -62,7 +62,7 @@ class ColorPreview extends Component implements HasForms
             'secondary_color' => $this->secondary_color,
             'text_primary_color' => $this->text_primary_color,
             'text_secondary_color' => $this->text_secondary_color,
-        ], 60);
+        ], 60 * 15);
     }
 
     public function form(Form $form): Form

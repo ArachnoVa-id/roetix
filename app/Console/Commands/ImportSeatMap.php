@@ -28,6 +28,11 @@ class ImportSeatMap extends Command
                     throw new \Exception("Invalid position format: {$position}");
                 }
 
+                // check if position already exists
+                if (Seat::where('venue_id', $venueId)->where('position', $position)->exists()) {
+                    throw new \Exception("Seat at position {$position} already exists");
+                }
+
                 $row = strtoupper($matches[1]);
                 $column = (int) $matches[2];
 
