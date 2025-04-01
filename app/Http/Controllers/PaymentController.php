@@ -37,7 +37,7 @@ class PaymentController extends Controller
      * Handle payment charge requests from the frontend
      */
     // disini nanti taro eventnya
-    public function charge(Request $request)
+    public function charge(Request $request, string $client = "")
     {
         DB::beginTransaction();
         try {
