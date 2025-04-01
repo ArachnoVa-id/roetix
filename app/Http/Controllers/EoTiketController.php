@@ -146,18 +146,18 @@ class EoTiketController extends Controller
                                 }
                             } else {
                                 // Fallback to stored ticket type
-                                $seatData['ticket_type'] = $ticket->ticket_type ?? 'standard';
+                                $seatData['ticket_type'] = $ticket->ticket_type ?? 'unset';
                                 $seatData['price'] = $ticket->price ?? 0;
                             }
                         } else {
                             // Fallback to stored ticket type
-                            $seatData['ticket_type'] = $ticket->ticket_type ?? 'standard';
+                            $seatData['ticket_type'] = $ticket->ticket_type ?? 'unset';
                             $seatData['price'] = $ticket->price ?? 0;
                         }
                     } else {
                         // Default values for seats without tickets
-                        $seatData['status'] = 'reserved';
-                        $seatData['ticket_type'] = 'standard';
+                        $seatData['status'] = 'unset';
+                        $seatData['ticket_type'] = 'unset';
                         $seatData['price'] = 0;
                     }
 

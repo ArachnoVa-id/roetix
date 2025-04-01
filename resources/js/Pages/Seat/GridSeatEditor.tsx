@@ -1,7 +1,7 @@
 import { Button } from '@/Components/ui/button';
 import { MousePointer, Plus, Square, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Category, Layout, LayoutItem, SeatItem, SeatStatus } from './types';
+import { Layout, LayoutItem, SeatItem, SeatStatus } from './types';
 
 interface Props {
     initialLayout?: Layout;
@@ -69,7 +69,7 @@ const GridSeatEditor: React.FC<Props> = ({
     } | null>(null);
 
     // Default values for new seats
-    const defaultCategory: Category = 'standard';
+    const defaultCategory = 'unset';
     const defaultStatus: SeatStatus = 'available';
 
     const totalRows = dimensions.top + dimensions.bottom;

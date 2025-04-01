@@ -226,7 +226,7 @@ export default function Landing({
         () =>
             ticketCategories.length > 0
                 ? ticketCategories.map((cat) => cat.name)
-                : ['standard', 'VIP', 'Regular'],
+                : ['unset'],
         [ticketCategories],
     );
 
@@ -242,9 +242,7 @@ export default function Landing({
             });
         } else {
             // Fallback colors dalam hex
-            colors['VIP'] = '#FFD54F'; // Kuning
-            colors['standard'] = '#90CAF9'; // Biru
-            colors['Regular'] = '#A5D6A7'; // Hijau
+            colors['unset'] = '#FFFFFF';
         }
 
         return colors;
@@ -386,6 +384,7 @@ export default function Landing({
 
     // Status legend
     const statusLegends = [
+        { label: 'Available', color: 'bg-white' },
         { label: 'Booked', color: 'bg-red-500' },
         { label: 'In Transaction', color: 'bg-yellow-500' },
         { label: 'Reserved', color: 'bg-gray-400' },
@@ -524,132 +523,134 @@ export default function Landing({
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="flex items-center justify-between gap-4">
-                                            <div className="flex flex-col gap-1 text-xs">
-                                                <div className="flex items-center">
-                                                    <svg
-                                                        className="mr-1 h-4 w-4"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        style={{
-                                                            color: props.text_secondary_color,
-                                                        }}
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                                        />
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                                        />
-                                                    </svg>
-                                                    <p
-                                                        style={{
-                                                            color: props.text_secondary_color,
-                                                        }}
-                                                    >
-                                                        <span className="font-medium">
-                                                            Venue:
-                                                        </span>{' '}
-                                                        {venue.name}
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <svg
-                                                        className="mr-1 h-4 w-4"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        style={{
-                                                            color: props.text_secondary_color,
-                                                        }}
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                        />
-                                                    </svg>
-                                                    <p
-                                                        style={{
-                                                            color: props.text_secondary_color,
-                                                        }}
-                                                    >
-                                                        <span className="font-medium">
-                                                            D-Day:
-                                                        </span>{' '}
-                                                        {new Date(
-                                                            event.event_date,
-                                                        ).toLocaleDateString(
-                                                            'en-US',
-                                                            {
-                                                                weekday:
-                                                                    'short',
-                                                                year: 'numeric',
-                                                                month: 'short',
-                                                                day: 'numeric',
-                                                            },
-                                                        )}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            {/* Timeline section */}
-                                            {currentTimeline && (
-                                                <div className="flex w-fit items-center justify-center">
-                                                    <div
-                                                        className="w-fit rounded-lg p-1 px-3"
-                                                        style={{
-                                                            backgroundColor:
-                                                                'rgba(59, 130, 246, 0.1)',
-                                                        }}
-                                                    >
-                                                        <div className="text-right text-sm font-semibold text-blue-600">
-                                                            {
-                                                                currentTimeline.name
-                                                            }
-                                                        </div>
-                                                        <div
-                                                            className="flex items-center justify-center text-right text-xs text-blue-500"
+                                        <div className="flex grow items-start">
+                                            <div className="flex w-full items-center justify-between gap-4">
+                                                <div className="flex flex-col justify-center gap-1 text-xs">
+                                                    <div className="flex items-center">
+                                                        <svg
+                                                            className="mr-1 h-4 w-4"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                            xmlns="http://www.w3.org/2000/svg"
                                                             style={{
                                                                 color: props.text_secondary_color,
                                                             }}
                                                         >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                                            />
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                                            />
+                                                        </svg>
+                                                        <p
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            <span className="font-medium">
+                                                                Venue:
+                                                            </span>{' '}
+                                                            {venue.name}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <svg
+                                                            className="mr-1 h-4 w-4"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                            />
+                                                        </svg>
+                                                        <p
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            <span className="font-medium">
+                                                                D-Day:
+                                                            </span>{' '}
                                                             {new Date(
-                                                                currentTimeline.start_date,
-                                                            ).toLocaleDateString()}{' '}
-                                                            -{' '}
-                                                            {new Date(
-                                                                currentTimeline.end_date,
-                                                            ).toLocaleDateString()}
-                                                            <svg
-                                                                className="ml-2 h-4 w-4"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                viewBox="0 0 24 24"
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                            >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    strokeWidth={
-                                                                        2
-                                                                    }
-                                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                                />
-                                                            </svg>
-                                                        </div>
+                                                                event.event_date,
+                                                            ).toLocaleDateString(
+                                                                'id-ID',
+                                                                {
+                                                                    weekday:
+                                                                        'long',
+                                                                    year: 'numeric',
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                },
+                                                            )}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                            )}
+                                                {/* Timeline section */}
+                                                {currentTimeline && (
+                                                    <div className="flex w-fit items-center justify-center">
+                                                        <div
+                                                            className="w-fit rounded-lg p-1 px-3"
+                                                            style={{
+                                                                backgroundColor:
+                                                                    'rgba(59, 130, 246, 0.1)',
+                                                            }}
+                                                        >
+                                                            <div className="text-right text-sm font-semibold text-blue-600">
+                                                                {
+                                                                    currentTimeline.name
+                                                                }
+                                                            </div>
+                                                            <div
+                                                                className="flex items-center justify-center text-right text-xs text-blue-500"
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                {new Date(
+                                                                    currentTimeline.start_date,
+                                                                ).toLocaleDateString()}{' '}
+                                                                -{' '}
+                                                                {new Date(
+                                                                    currentTimeline.end_date,
+                                                                ).toLocaleDateString()}
+                                                                <svg
+                                                                    className="ml-2 h-4 w-4"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24"
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={
+                                                                            2
+                                                                        }
+                                                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                                    />
+                                                                </svg>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Additional content for section A */}
@@ -663,7 +664,7 @@ export default function Landing({
                                         <div className="flex justify-between">
                                             <div className="flex items-center">
                                                 <svg
-                                                    className="ml-1 mr-2 h-4 w-4"
+                                                    className="-mb-1 -mt-1 ml-1 mr-2 h-4 w-4"
                                                     fill="none"
                                                     stroke="currentColor"
                                                     viewBox="0 0 24 24"
@@ -681,20 +682,20 @@ export default function Landing({
                                                 </svg>
 
                                                 <p
-                                                    className="mt-[1px] text-xs leading-[1.1]"
+                                                    className="text-xs leading-[1.1]"
                                                     style={{
                                                         color: props.text_secondary_color,
                                                     }}
                                                 >
                                                     {isBookingAllowed
-                                                        ? 'Tickets are available for booking'
-                                                        : 'Booking is currently unavailable'}
+                                                        ? 'Available for booking'
+                                                        : 'Unavailable for booking'}
                                                 </p>
                                             </div>
 
                                             <div className="flex items-center">
                                                 <p
-                                                    className="mt-[1px] text-right text-xs leading-[1.1]"
+                                                    className="text-right text-xs leading-[1.1]"
                                                     style={{
                                                         color: props.text_secondary_color,
                                                     }}
@@ -705,7 +706,7 @@ export default function Landing({
                                                 </p>
 
                                                 <svg
-                                                    className="ml-2 mr-1 h-4 w-4"
+                                                    className="-mb-1 -mt-1 ml-2 mr-1 h-4 w-4"
                                                     fill="none"
                                                     stroke="currentColor"
                                                     viewBox="0 0 24 24"
@@ -820,28 +821,29 @@ export default function Landing({
                                         borderColor: props.text_primary_color,
                                     }}
                                 />
-                                <div>
-                                    {/* Add the status legends */}
-                                    <div className="flex w-full items-center justify-center gap-4">
-                                        {statusLegends.map((legend, i) => (
+                                {/* Add the status legends */}
+                                <div className="flex w-full items-center justify-center gap-4">
+                                    <p className="text-xs leading-[.8]">
+                                        Border Color:{' '}
+                                    </p>
+                                    {statusLegends.map((legend, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center"
+                                        >
                                             <div
-                                                key={i}
-                                                className="flex items-center"
+                                                className={`h-3 w-3 ${legend.color} mr-1.5 rounded-full`}
+                                            ></div>
+                                            <span
+                                                className="text-xs leading-[.8]"
+                                                style={{
+                                                    color: props.text_secondary_color,
+                                                }}
                                             >
-                                                <div
-                                                    className={`h-3 w-3 ${legend.color} mr-1.5 rounded-full`}
-                                                ></div>
-                                                <span
-                                                    className="text-xs leading-[.8]"
-                                                    style={{
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    {legend.label}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
+                                                {legend.label}
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -918,7 +920,7 @@ export default function Landing({
                                                             Ticket Type:{' '}
                                                             {seat.ticket_type ||
                                                                 seat.category ||
-                                                                'Standard'}
+                                                                'Unset'}
                                                         </p>
                                                         <p className="text-sm">
                                                             Seat:{' '}
@@ -988,7 +990,7 @@ export default function Landing({
                                                 Ticket Type:{' '}
                                                 {seat.ticket_type ||
                                                     seat.category ||
-                                                    'Standard'}
+                                                    'Unset'}
                                             </p>
                                             <p className="text-sm">
                                                 Seat: {seat.seat_number}

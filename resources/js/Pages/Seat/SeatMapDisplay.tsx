@@ -99,18 +99,18 @@ const SeatMapDisplay: React.FC<Props> = ({
         if (seat.status !== 'available') {
             switch (seat.status) {
                 case 'booked':
-                    return '#F44336'; // Merah
+                    return 'rgba(244, 67, 54, 0.5)'; // Merah with 50% opacity
                 case 'in_transaction':
-                    return '#FF9800'; // Oranye
+                    return 'rgba(255, 152, 0, 0.5)'; // Oranye with 50% opacity
                 case 'reserved':
-                    return '#9E9E9E'; // Abu-abu
+                    return 'rgba(158, 158, 158, 0.5)'; // Abu-abu with 50% opacity
                 default:
-                    return '#E0E0E0';
+                    return 'rgba(224, 224, 224, 0.5)'; // Default color with 50% opacity
             }
         }
 
         // If available, use ticket type color from provided colors
-        const ticketType = seat.ticket_type || 'standard';
+        const ticketType = seat.ticket_type || 'Not Specified';
 
         // Gunakan warna dari ticket type jika tersedia
         // Ubah format jika perlu - jika ticketTypeColors sudah berisi nilai hex
@@ -131,13 +131,48 @@ const SeatMapDisplay: React.FC<Props> = ({
         const seatColor = getSeatColor(seat);
         const isSelectable = isSeatSelectable(seat);
 
+        let borderColor;
+
+        switch (seat.status) {
+            case 'booked':
+                borderColor = '#F44336'; // Merah
+                break;
+            case 'in_transaction':
+                borderColor = '#FF9800'; // Oranye
+                break;
+            case 'reserved':
+                borderColor = '#9E9E9E'; // Abu-abu
+                break;
+            default:
+                borderColor = '#E0E0E0';
+                break;
+        }
+
+        // Format the price as IDR
+        const formattedPrice = new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+        }).format(seat.price as number);
+
+        // Capitalize the first letter of ticket type and status
+        const formattedTicketType = seat.ticket_type
+            ? seat.ticket_type.charAt(0).toUpperCase() +
+              seat.ticket_type.slice(1)
+            : 'Unset';
+
+        const formattedStatus =
+            seat.status.charAt(0).toUpperCase() + seat.status.slice(1);
+
+        // Use the formatted variables in the title
+        const title = `Seat: ${seat.seat_number} | Type: ${formattedTicketType} | Price: ${formattedPrice} | Status: ${formattedStatus}`;
+
         return (
             <div
                 key={colIndex}
                 onClick={() => isSelectable && onSeatClick && onSeatClick(seat)}
-                className={`flex h-8 w-8 items-center justify-center rounded border ${isSelectable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-75'} text-xs`}
-                style={{ backgroundColor: seatColor }}
-                title={`Seat: ${seat.seat_number} | Type: ${seat.ticket_type || 'Standard'} | Price: ${seat.price} | Status: ${seat.status}`}
+                className={`flex h-8 w-8 items-center justify-center rounded border-2 ${isSelectable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-75'} text-xs`}
+                style={{ backgroundColor: seatColor, borderColor }}
+                title={title}
             >
                 {seat.seat_number}
             </div>
@@ -149,19 +184,6 @@ const SeatMapDisplay: React.FC<Props> = ({
 
     return (
         <div className="flex h-fit w-full flex-col items-center">
-            {/* Tampilkan pesan status event jika tidak active */}
-            {/* {eventStatus !== 'active' && (
-                <div className="mb-4 w-full rounded-lg bg-yellow-50 p-3 text-center">
-                    <p className="text-yellow-800">
-                        {eventStatus === 'planned' &&
-                            'This event is not yet ready for booking'}
-                        {eventStatus === 'completed' &&
-                            'This event does not accept booking anymore'}
-                        {eventStatus === 'cancelled' &&
-                            'This event has been cancelled'}
-                    </p>
-                </div>
-            )} */}
             {/* Timeline Information */}
             {currentTimeline && (
                 <div className="mb-4 w-full rounded-lg bg-blue-50 p-3 text-center">

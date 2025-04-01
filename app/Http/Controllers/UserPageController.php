@@ -54,7 +54,6 @@ class UserPageController extends Controller
 
                     if ($ticket) {
                         return [
-                            'type' => 'seat',
                             'seat_id' => $seat->seat_id,
                             'seat_number' => $seat->seat_number,
                             'row' => $seat->row,
@@ -68,15 +67,14 @@ class UserPageController extends Controller
                     } else {
                         // Fallback for seats without tickets
                         return [
-                            'type' => 'seat',
                             'seat_id' => $seat->seat_id,
                             'seat_number' => $seat->seat_number,
                             'row' => $seat->row,
                             'column' => $seat->column,
-                            'status' => 'reserved',
-                            'ticket_type' => 'standard',
+                            'status' => 'unset',
+                            'ticket_type' => 'unset',
                             'price' => 0,
-                            'category' => 'standard'
+                            'category' => 'unset'
                         ];
                     }
                 })->values()
@@ -96,8 +94,7 @@ class UserPageController extends Controller
             // If no ticket categories found, create default ones
             if ($ticketCategories->isEmpty()) {
                 $ticketCategories = collect([
-                    (object)['ticket_category_id' => 'standard', 'name' => 'standard', 'color' => '#4AEDC4'],
-                    (object)['ticket_category_id' => 'vip', 'name' => 'VIP', 'color' => '#F9A825']
+                    (object)['ticket_category_id' => 'unset', 'name' => 'Unset', 'color' => '#FFFFFF'],
                 ]);
             }
 
@@ -203,7 +200,7 @@ class UserPageController extends Controller
                     : Carbon::parse($ticket->created_at);
 
                 // Determine ticket type
-                $typeName = $ticket->ticket_type ? ucfirst($ticket->ticket_type) : 'Standard';
+                $typeName = $ticket->ticket_type ? ucfirst($ticket->ticket_type) : 'Unset';
 
                 // Add the ticket status from ticket_order
                 $ticketStatus = $ticket->ticket_order_status ?? TicketOrderStatus::ENABLED->value;

@@ -47,7 +47,7 @@ class Event extends Model
         return $this->start_date->format('Y');
     }
 
-    public function getEventDateAttribute(): string
+    public function getEventDate(): string
     {
         $months = [
             1 => 'Januari',
@@ -71,7 +71,7 @@ class Event extends Model
         return "{$day} {$month} {$year}";
     }
 
-    public function getEventTimeAttribute(): string
+    public function getEventTime(): string
     {
         return $this->start_date->format('H:i') . ' WIB';
     }

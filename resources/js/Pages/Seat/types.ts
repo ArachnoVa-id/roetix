@@ -1,7 +1,6 @@
 import { Toaster } from '@/hooks/useToaster';
 
 export type SeatStatus = 'available' | 'booked' | 'reserved' | 'in_transaction';
-export type Category = 'standard' | 'VIP';
 export type ItemType = 'seat' | 'label';
 
 export interface SeatPosition {
@@ -20,7 +19,7 @@ export interface SeatItem extends BaseItem {
     seat_number: string;
     status: string;
     ticket_type?: string;
-    category?: Category;
+    category?: string;
     price: number | string | undefined;
 }
 
@@ -45,7 +44,6 @@ export interface Seat {
     position: Position;
     status: SeatStatus;
     ticket_type?: string;
-    category?: Category;
     row: string;
     column: number;
     price: number;
@@ -65,7 +63,7 @@ export interface SeatMapProps {
 
 export interface EditorState {
     mode: 'SINGLE' | 'CAT_GROUP' | 'DRAG';
-    selectedCategory?: Category;
+    selectedCategory?: string;
     selectedSeats: Set<string>;
     isDragging: boolean;
     dragStartPosition?: {
@@ -84,7 +82,7 @@ export interface SeatMap {
     row: number;
     column: number;
     type: 'seat' | 'label';
-    category?: Category;
+    category?: string;
     ticket_type?: string;
     status?: SeatStatus;
     label?: string;
