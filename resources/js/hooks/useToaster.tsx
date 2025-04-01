@@ -6,7 +6,14 @@ interface ToasterState {
     isVisible: boolean;
 }
 
-const useToaster = () => {
+export interface Toaster {
+    toasterState: ToasterState;
+    showSuccess: (message: string) => void;
+    showError: (message: string) => void;
+    hideToaster: () => void;
+}
+
+const useToaster = (): Toaster => {
     const [toasterState, setToasterState] = useState<ToasterState>({
         message: '',
         type: 'success',

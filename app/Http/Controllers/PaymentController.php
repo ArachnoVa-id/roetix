@@ -12,6 +12,7 @@ use App\Models\Seat;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketOrder;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
 use Midtrans\Snap;
@@ -34,7 +35,7 @@ class PaymentController extends Controller
     /**
      * Handle payment charge requests from the frontend
      */
-    public function charge(Request $request)
+    public function charge(Request $request, string $client = "")
     {
         DB::beginTransaction();
         try {
@@ -61,18 +62,22 @@ class PaymentController extends Controller
                 return response()->json(['message' => 'Unauthorized'], 401);
             }
 
-            // Validate host
-            $hostParts = explode('.', $request->getHost());
-            if (count($hostParts) < 2) {
-                DB::rollBack();
-                return response()->json(['message' => 'Invalid host'], 400);
-            }
-
-            $client = $hostParts[0];
             $event = Event::where('slug', $client)->first();
             if (!$event) {
                 DB::rollBack();
                 return response()->json(['message' => 'Event not found'], 404);
+            }
+
+            // Check if there's still existing order
+            $existingOrders = User::find(Auth::id())
+                ->orders()
+                ->where('event_id', $event->event_id)
+                ->where('status', OrderStatus::PENDING)
+                ->get();
+
+            if ($existingOrders->isNotEmpty()) {
+                DB::rollBack();
+                return response()->json(['message' => 'There is an existing pending order'], 400);
             }
 
             // Check Array
@@ -205,7 +210,7 @@ class PaymentController extends Controller
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error processing payment: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'System failed to process payment!'], 500);
         }
     }
 

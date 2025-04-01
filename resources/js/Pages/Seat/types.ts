@@ -1,3 +1,5 @@
+import { Toaster } from '@/hooks/useToaster';
+
 export type SeatStatus = 'available' | 'booked' | 'reserved' | 'in_transaction';
 export type Category = 'standard' | 'VIP';
 export type ItemType = 'seat' | 'label';
@@ -98,10 +100,11 @@ export interface SeatMapConfig {
 export interface ProceedTransactionButtonProps {
     client: string;
     selectedSeats: SeatItem[];
-    taxAmount?: number; // Optional tax amount
-    subtotal?: number; // Optional subtotal
-    total?: number; // Optional total with tax
+    taxAmount?: number;
+    subtotal?: number;
+    total?: number;
     onTransactionStarted?: (seats: SeatItem[]) => void;
+    toasterFunction: Toaster;
 }
 
 export interface GroupedItem {

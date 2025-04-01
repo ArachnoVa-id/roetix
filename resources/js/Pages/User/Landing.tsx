@@ -29,15 +29,8 @@ interface Event {
     name: string;
     event_date: string;
     venue_id: string;
-    status: string; // Tambahkan ini
+    status: string;
 }
-
-// interface Timeline {
-//     timeline_id: string;
-//     name: string;
-//     start_date: string;
-//     end_date: string;
-// }
 
 interface TicketCategory {
     ticket_category_id: string;
@@ -85,7 +78,6 @@ export default function Landing({
 }: Props) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
-    // const [, setIsLoadingTransactions] = useState(false);
     const [pendingTransactions, setPendingTransactions] = useState<
         PendingTransactionResponseItem[]
     >([]);
@@ -207,133 +199,6 @@ export default function Landing({
             }
         }
     };
-
-    // const fetchPendingTransactions = useCallback(async (): Promise<void> => {
-    //     setIsLoadingTransactions(true);
-    //     try {
-    //         // Tambahkan timestamp untuk mencegah caching
-    //         const response = await fetch(
-    //             `/api/pending-transactions?t=${Date.now()}`,
-    //         );
-
-    //         if (!response.ok) {
-    //             console.error('Server response:', await response.text());
-    //             throw new Error(
-    //                 `Failed to fetch pending transactions: ${response.status} ${response.statusText}`,
-    //             );
-    //         }
-
-    //         interface PendingTransactionResponse {
-    //             success: boolean;
-    //             pendingTransactions: Array<{
-    //                 order_id: string;
-    //                 order_code: string;
-    //                 total_price: number;
-    //                 seats: SeatItem[];
-    //             }>;
-    //         }
-
-    //         const data = (await response.json()) as PendingTransactionResponse;
-
-    //         if (data.success && data.pendingTransactions.length > 0) {
-    //             // Get the first pending transaction's seats
-    //             const pendingSeats = data.pendingTransactions[0].seats;
-    //             setPendingTransactionSeats(pendingSeats);
-
-    //             // Store the transaction ID for resuming payment
-    //             if (pendingSeats.length > 0) {
-    //                 const savedData: SavedTransaction = {
-    //                     transactionInfo: {
-    //                         transaction_id:
-    //                             data.pendingTransactions[0].order_code,
-    //                         timestamp: Date.now(), // Tambahkan timestamp untuk validasi
-    //                     },
-    //                     seats: pendingSeats,
-    //                 };
-
-    //                 localStorage.setItem(
-    //                     'pendingTransaction',
-    //                     JSON.stringify(savedData),
-    //                 );
-    //             }
-    //         } else {
-    //             // Jika tidak ada transaksi pending di server, periksa localStorage
-    //             const savedTransactionStr =
-    //                 localStorage.getItem('pendingTransaction');
-
-    //             if (savedTransactionStr) {
-    //                 try {
-    //                     const parsed = JSON.parse(
-    //                         savedTransactionStr,
-    //                     ) as SavedTransaction;
-
-    //                     // Periksa apakah localStorage memiliki data yang valid dan tidak terlalu lama
-    //                     // (misalnya transaksi dari localStorage yang lebih dari 24 jam sebaiknya dihapus)
-    //                     const MAX_AGE = 24 * 60 * 60 * 1000; // 24 jam dalam milidetik
-    //                     const now = Date.now();
-    //                     const timestamp =
-    //                         parsed.transactionInfo?.timestamp || 0;
-
-    //                     if (now - timestamp > MAX_AGE) {
-    //                         // Transaksi terlalu lama, hapus dari localStorage
-    //                         console.log(
-    //                             'Removing stale transaction from localStorage',
-    //                         );
-    //                         localStorage.removeItem('pendingTransaction');
-    //                         setPendingTransactionSeats([]);
-    //                     } else {
-    //                         // Transaksi masih valid berdasarkan waktu, tapi tidak ada di database
-    //                         // Tampilkan pesan ke user bahwa transaksi mungkin tidak ada di sistem
-    //                         console.warn(
-    //                             'Transaction found in localStorage but not in database:',
-    //                             parsed.transactionInfo?.transaction_id,
-    //                         );
-
-    //                         // Tetap tampilkan seats dari localStorage
-    //                         if (parsed.seats && Array.isArray(parsed.seats)) {
-    //                             setPendingTransactionSeats(parsed.seats);
-    //                         }
-    //                     }
-    //                 } catch (e) {
-    //                     console.error('Failed to parse saved transaction', e);
-    //                     localStorage.removeItem('pendingTransaction');
-    //                 }
-    //             } else {
-    //                 setPendingTransactionSeats([]);
-    //             }
-    //         }
-    //     } catch (error: unknown) {
-    //         console.error('Error fetching pending transactions:', error);
-    //         showError(
-    //             'Failed to load pending transactions. Please refresh the page.',
-    //         );
-    //     } finally {
-    //         setIsLoadingTransactions(false);
-    //     }
-    // }, [showError]);
-
-    // useEffect(() => {
-    //     // First check localStorage as before
-    //     const savedTransaction = localStorage.getItem('pendingTransaction');
-    //     if (savedTransaction) {
-    //         try {
-    //             const parsed = JSON.parse(savedTransaction);
-    //             if (parsed.seats && Array.isArray(parsed.seats)) {
-    //                 setPendingTransactionSeats(parsed.seats);
-    //             }
-    //         } catch (e) {
-    //             console.error('Failed to parse saved transaction', e);
-    //             localStorage.removeItem('pendingTransaction');
-    //         }
-    //     }
-
-    //     // Then fetch actual pending transactions from the server
-    //     fetchPendingTransactions();
-    // }, [fetchPendingTransactions]);
-
-    // const markSeatsAsPendingTransaction = (seats: SeatItem[]) => {
-    //     setPendingTransactionSeats(seats);
-    // };
 
     // Tentukan apakah booking diperbolehkan berdasarkan status event
     const isBookingAllowed = useMemo(() => {
@@ -501,116 +366,6 @@ export default function Landing({
         }).format(value);
     };
 
-    // const resumeTransaction = async (transactionId: string): Promise<void> => {
-    //     try {
-    //         showSuccess('Preparing to resume payment...');
-
-    //         // Log data untuk debugging
-    //         console.log('Resuming transaction:', transactionId);
-
-    //         const response = await fetch('/payment/resume', {
-    //             method: 'POST',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //                 'X-Requested-With': 'XMLHttpRequest',
-    //                 'X-CSRF-TOKEN':
-    //                     document
-    //                         .querySelector('meta[name="csrf-token"]')
-    //                         ?.getAttribute('content') || '',
-    //             },
-    //             body: JSON.stringify({ transaction_id: transactionId }),
-    //         });
-
-    //         // Log response status untuk debugging
-    //         console.log('Resume payment response status:', response.status);
-
-    //         // Jika response bukan OK, tampilkan pesan error dengan detail
-    //         if (!response.ok) {
-    //             const errorText = await response.text();
-    //             console.error(
-    //                 `Status: ${response.status}, Response:`,
-    //                 errorText,
-    //             );
-
-    //             let errorData: { message: string } = {
-    //                 message: 'Unknown error occurred',
-    //             };
-    //             try {
-    //                 errorData = JSON.parse(errorText) as { message: string };
-    //             } catch (e) {
-    //                 // Jika parsing gagal, gunakan nilai default
-    //             }
-
-    //             // Jika status 404, berarti transaksi tidak ditemukan
-    //             if (response.status === 404) {
-    //                 showError(
-    //                     'Transaction not found or already completed. The page will refresh.',
-    //                 );
-
-    //                 // Hapus data dari localStorage
-    //                 localStorage.removeItem('pendingTransaction');
-    //                 setPendingTransactionSeats([]);
-
-    //                 // Refresh halaman setelah delay
-    //                 setTimeout(() => window.location.reload(), 3000);
-    //                 return;
-    //             }
-
-    //             throw new Error(
-    //                 errorData.message ||
-    //                     `Status: ${response.status}, Status Text: ${response.statusText}`,
-    //             );
-    //         }
-
-    //         const data = (await response.json()) as PaymentResponse;
-    //         console.log('Resume payment response data:', data);
-
-    //         if (data.snap_token) {
-    //             // Open Midtrans payment window
-    //             if (window.snap) {
-    //                 const callbacks: MidtransCallbacks = {
-    //                     onSuccess: (result: MidtransTransactionResult) => {
-    //                         console.log('Payment success:', result);
-    //                         showSuccess('Payment successful!');
-    //                         localStorage.removeItem('pendingTransaction');
-    //                         setPendingTransactionSeats([]);
-    //                         window.location.reload();
-    //                     },
-    //                     onPending: (result: MidtransTransactionResult) => {
-    //                         console.log('Payment pending:', result);
-    //                         showSuccess(
-    //                             'Your payment is pending. Please complete the payment.',
-    //                         );
-    //                     },
-    //                     onError: (error: MidtransError | Error | unknown) => {
-    //                         console.error('Payment error:', error);
-    //                         showError('Payment failed. Please try again.');
-    //                     },
-    //                     onClose: () => {
-    //                         console.log('Payment window closed');
-    //                         showError(
-    //                             'Payment window closed. You can resume your payment later.',
-    //                         );
-    //                     },
-    //                 };
-
-    //                 window.snap.pay(data.snap_token, callbacks);
-    //             } else {
-    //                 showError(
-    //                     'Payment system not loaded. Please refresh the page and try again.',
-    //                 );
-    //             }
-    //         } else {
-    //             throw new Error('Invalid response from payment server');
-    //         }
-    //     } catch (error: unknown) {
-    //         console.error('Error resuming transaction:', error);
-    //         showError(
-    //             `Failed to resume payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    //         );
-    //     }
-    // };
-
     // Calculate prices using useMemo to avoid recalculating on every render
     const { subtotal, taxAmount, total } = useMemo(() => {
         // Calculate subtotal
@@ -635,53 +390,6 @@ export default function Landing({
         { label: 'In Transaction', color: 'bg-yellow-500' },
         { label: 'Reserved', color: 'bg-gray-400' },
     ];
-
-    // const ResumePaymentButton: React.FC = () => {
-    //     const { showError } = useToaster();
-    //     const [isLoading, setIsLoading] = useState<boolean>(false);
-
-    //     const handleResumePayment = () => {
-    //         setIsLoading(true);
-    //         const savedTransactionStr =
-    //             localStorage.getItem('pendingTransaction');
-
-    //         if (savedTransactionStr) {
-    //             try {
-    //                 const parsed = JSON.parse(
-    //                     savedTransactionStr,
-    //                 ) as SavedTransaction;
-    //                 if (
-    //                     parsed.transactionInfo &&
-    //                     parsed.transactionInfo.transaction_id
-    //                 ) {
-    //                     resumeTransaction(
-    //                         parsed.transactionInfo.transaction_id,
-    //                     ).finally(() => setIsLoading(false));
-    //                 } else {
-    //                     showError('Invalid transaction information.');
-    //                     setIsLoading(false);
-    //                 }
-    //             } catch (e) {
-    //                 console.error('Failed to parse transaction info', e);
-    //                 showError('Failed to resume payment. Please try again.');
-    //                 setIsLoading(false);
-    //             }
-    //         } else {
-    //             showError('No pending transaction found.');
-    //             setIsLoading(false);
-    //         }
-    //     };
-
-    //     return (
-    //         <button
-    //             className="mt-3 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-blue-300"
-    //             onClick={handleResumePayment}
-    //             disabled={isLoading}
-    //         >
-    //             {isLoading ? 'Processing...' : 'Resume Payment'}
-    //         </button>
-    //     );
-    // };
 
     // If we have an error, show it
     if (error) {
@@ -1337,38 +1045,14 @@ export default function Landing({
                                     taxAmount={taxAmount}
                                     subtotal={subtotal}
                                     total={total}
+                                    toasterFunction={{
+                                        toasterState,
+                                        showSuccess,
+                                        showError,
+                                        hideToaster,
+                                    }}
                                 />
                             )}
-
-                        {/* {pendingTransactionSeats.length > 0 && (
-                            <div className="mt-4 rounded-lg bg-yellow-50 p-3">
-                                <h4 className="font-medium text-yellow-800">
-                                    Pending Transaction
-                                </h4>
-                                <p className="text-sm text-yellow-600">
-                                    You have a payment in progress for the
-                                    following seats:
-                                </p>
-                                <div className="mt-2">
-                                    {pendingTransactionSeats.map((seat) => (
-                                        <span
-                                            key={seat.seat_id}
-                                            className="mr-2 rounded bg-yellow-200 px-2 py-1 text-xs leading-[.8]"
-                                        >
-                                            {seat.seat_number}
-                                        </span>
-                                    ))}
-                                </div>
-                                <p className="mt-2 text-sm text-yellow-700">
-                                    Please complete your payment to secure these
-                                    seats.
-                                </p>
-                                */}
-                        {/* Resume Payment Button */}
-                        {/*
-                                <ResumePaymentButton />
-                            </div>
-                        )} */}
                     </div>
                 </div>
             </div>

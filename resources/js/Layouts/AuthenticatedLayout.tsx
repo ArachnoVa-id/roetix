@@ -326,12 +326,14 @@ export default function Authenticated({
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         <div className="flex flex-col">
                             <div className="relative flex flex-col items-center justify-between md:flex-row">
-                                <img
-                                    src={props?.logo}
-                                    alt={props?.logo_alt}
-                                    className="h-32 max-md:mb-4 md:h-8"
-                                />
-                                <div className="flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
+                                <Link href="/">
+                                    <img
+                                        src={props?.logo}
+                                        alt={props?.logo_alt}
+                                        className="h-8 rounded-lg"
+                                    />
+                                </Link>
+                                <div className="z-0 flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
                                     <Link
                                         href={route(
                                             'client.privacy_policy',
@@ -366,7 +368,7 @@ export default function Authenticated({
                                     </Link>
                                 </div>
                                 <p
-                                    className="text-sm"
+                                    className="z-10 text-sm"
                                     style={{
                                         color: props?.text_primary_color,
                                     }}
