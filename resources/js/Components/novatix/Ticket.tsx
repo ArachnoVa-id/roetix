@@ -1,11 +1,6 @@
 import { Button } from '@/Components/ui/button';
-import { TicketProps } from '@/types/ticket';
+import { RowComponentProps, TicketComponentProps } from '@/types/ticket';
 import React, { useEffect, useState } from 'react';
-
-interface RowComponentProps {
-    idtf: string;
-    content: string;
-}
 
 function RowComponent({
     idtf,
@@ -17,20 +12,6 @@ function RowComponent({
             <p className="w-[70%] font-semibold">{content}</p>
         </div>
     );
-}
-
-interface TicketComponentProps extends TicketProps {
-    eventId: string;
-    categoryColor?: string; // Add categoryColor prop
-    userData?: {
-        firstName: string;
-        lastName: string;
-        email: string;
-    };
-    eventInfo?: {
-        location: string;
-        eventDate: string;
-    };
 }
 
 export default function Ticket({

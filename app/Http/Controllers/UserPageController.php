@@ -248,10 +248,21 @@ class UserPageController extends Controller
                 ];
             });
 
+            // Get ticket categories for this specific event
+            $ticketCategories = TicketCategory::where('event_id', $event->event_id)->get();
+
+            // If no ticket categories found, create default ones
+            if ($ticketCategories->isEmpty()) {
+                $ticketCategories = collect([
+                    (object)['ticket_category_id' => 'unset', 'name' => 'Unset', 'color' => '#FFFFFF'],
+                ]);
+            }
+
             return Inertia::render('User/MyTickets', [
                 'client' => $client,
                 'props' => $props,
                 'tickets' => $formattedTickets,
+                'ticketCategories' => $ticketCategories,
                 'event' => [
                     'event_id' => $event->event_id,
                     'name' => $event->name,

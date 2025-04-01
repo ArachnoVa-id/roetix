@@ -3,68 +3,15 @@ import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransactionButton';
 import {
-    Layout,
+    LandingProps,
     MidtransCallbacks,
+    PendingTransactionResponseItem,
     SeatItem,
-    Timeline,
-} from '@/Pages/Seat/types';
-import { EventProps } from '@/types/front-end';
+} from '@/types/seatmap';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
-interface Venue {
-    venue_id: string;
-    name: string;
-}
-
-declare global {
-    interface Window {
-        eventTimelines?: Timeline[];
-    }
-}
-
-interface Event {
-    event_id: string;
-    name: string;
-    event_date: string;
-    venue_id: string;
-    status: string;
-}
-
-interface TicketCategory {
-    ticket_category_id: string;
-    name: string;
-    color: string;
-}
-
-interface CategoryPrice {
-    timebound_price_id: string;
-    ticket_category_id: string;
-    timeline_id: string;
-    price: number;
-}
-
-interface Props {
-    client: string;
-    layout: Layout;
-    event: Event;
-    venue: Venue;
-    ticketCategories: TicketCategory[];
-    currentTimeline?: Timeline;
-    categoryPrices?: CategoryPrice[];
-    error?: string;
-    props: EventProps;
-    ownedTicketCount: number;
-}
-
-interface PendingTransactionResponseItem {
-    snap_token: string;
-    order_id: string;
-    order_code: string;
-    total_price: string;
-    seats: SeatItem[];
-}
 
 export default function Landing({
     client,
@@ -77,7 +24,7 @@ export default function Landing({
     error,
     props,
     ownedTicketCount,
-}: Props) {
+}: LandingProps) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
     const [pendingTransactions, setPendingTransactions] = useState<
@@ -244,7 +191,7 @@ export default function Landing({
             });
         } else {
             // Fallback colors dalam hex
-            colors['unset'] = '#FFFFFF';
+            colors['unset'] = '#FFF';
         }
 
         return colors;

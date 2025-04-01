@@ -3,24 +3,19 @@ import Ticket from '@/Components/novatix/Ticket';
 import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { MyTicketsPageProps, TicketProps } from '@/types/ticket';
+import {
+    MyTicketsPageProps,
+    TicketActionEvent,
+    TicketProps,
+} from '@/types/ticket';
 import { Head } from '@inertiajs/react';
 import React, { useCallback, useEffect } from 'react';
-
-// Define the type for the custom event
-interface TicketActionEvent extends Event {
-    detail: {
-        action: string;
-        ticketId: string;
-        ticketType?: string;
-        error?: string;
-    };
-}
 
 export default function MyTickets({
     client,
     props,
     tickets,
+
     event,
 }: MyTicketsPageProps): React.ReactElement {
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();

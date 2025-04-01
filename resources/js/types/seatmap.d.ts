@@ -1,7 +1,6 @@
 import { Toaster } from '@/hooks/useToaster';
 
-export type SeatStatus = 'available' | 'booked' | 'reserved' | 'in_transaction';
-export type ItemType = 'seat' | 'label';
+type SeatStatus = 'available' | 'booked' | 'reserved' | 'in_transaction';
 
 export interface SeatPosition {
     x: number;
@@ -11,7 +10,6 @@ export interface SeatPosition {
 export interface BaseItem {
     row: string | number;
     column: number;
-    type: ItemType;
 }
 
 export interface SeatItem extends BaseItem {
@@ -28,7 +26,7 @@ export interface LabelItem extends BaseItem {
     text: string;
 }
 
-export type LayoutItem = SeatItem | LabelItem;
+type LayoutItem = SeatItem | LabelItem;
 
 export interface Layout {
     totalRows: number;
@@ -36,7 +34,7 @@ export interface Layout {
     items: LayoutItem[];
 }
 
-export type Position = string | { x: number; y: number };
+type Position = string | { x: number; y: number };
 
 export interface Seat {
     seat_id: string;
@@ -135,7 +133,7 @@ export interface MidtransErrorDetail {
 }
 
 // Tambahkan properti lain yang mungkin ada dengan union type
-export type MidtransError = MidtransErrorDetail & Record<string, unknown>;
+type MidtransError = MidtransErrorDetail & Record<string, unknown>;
 
 export interface MidtransTransactionResultBase {
     order_id: string;
@@ -157,10 +155,10 @@ export interface MidtransTransactionResultBase {
 }
 
 // Tambahkan properti lain dengan Record
-export type MidtransTransactionResult = MidtransTransactionResultBase &
+type MidtransTransactionResult = MidtransTransactionResultBase &
     Record<string, unknown>;
 
-// Buat interface untuk callback yang lebih spesifik
+// Buat export  interface untuk callback yang lebih spesifik
 export interface MidtransCallbacks {
     onSuccess: (result: MidtransTransactionResult) => void;
     onPending: (result: MidtransTransactionResult) => void;
@@ -168,7 +166,7 @@ export interface MidtransCallbacks {
     onClose: () => void;
 }
 
-// Tambahkan interface baru untuk transaksi yang tersimpan
+// Tambahkan export  interface baru untuk transaksi yang tersimpan
 export interface PendingTransactionInfo {
     transaction_id: string;
     timestamp?: number;
@@ -179,7 +177,7 @@ export interface SavedTransaction {
     seats: SeatItem[];
 }
 
-// Interface untuk Timeline
+// export  interface untuk Timeline
 export interface Timeline {
     timeline_id: string;
     name: string;
@@ -187,12 +185,83 @@ export interface Timeline {
     end_date: string;
 }
 
-// Deklarasi global untuk Midtrans SDK
-declare global {
-    interface Window {
-        snap?: {
-            pay: (token: string, callbacks: MidtransCallbacks) => void;
-        };
-        eventTimelines?: Timeline[]; // Gunakan interface Timeline
-    }
+export interface Venue {
+    venue_id: string;
+    name: string;
+}
+
+export interface Event {
+    event_id: string;
+    name: string;
+    event_date: string;
+    venue_id: string;
+    status: string;
+}
+
+export interface TicketCategory {
+    ticket_category_id: string;
+    name: string;
+    color: string;
+}
+
+export interface CategoryPrice {
+    timebound_price_id: string;
+    ticket_category_id: string;
+    timeline_id: string;
+    price: number;
+}
+
+export interface PendingTransactionResponseItem {
+    snap_token: string;
+    order_id: string;
+    order_code: string;
+    total_price: string;
+    seats: SeatItem[];
+}
+
+export type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
+
+export interface UpdatedSeats {
+    seat_id: string;
+    status: string;
+    ticket_type: string;
+    price: number;
+}
+
+export interface SeatMapEditorProps {
+    layout: Layout;
+    onSave: (updatedSeats: UpdatedSeats[]) => void;
+    ticketTypes: string[];
+    categoryColors?: Record<string, string>;
+    currentTimeline?: {
+        timeline_id: string;
+        name: string;
+        start_date: string;
+        end_date: string;
+    };
+    // Add categoryPrices prop
+    categoryPrices?: Record<string, number>;
+}
+
+export interface SeatMapDisplayProps {
+    config: Layout;
+    onSeatClick?: (seat: SeatItem) => void;
+    selectedSeats?: SeatItem[];
+    ticketTypeColors?: Record<string, string>;
+    props: EventProps;
+    currentTimeline?: Timeline;
+    eventStatus?: string; // Tambahkan ini
+}
+
+export interface LandingProps {
+    client: string;
+    layout: Layout;
+    event: Event;
+    venue: Venue;
+    ticketCategories: TicketCategory[];
+    currentTimeline?: Timeline;
+    categoryPrices?: CategoryPrice[];
+    error?: string;
+    props: EventProps;
+    ownedTicketCount: number;
 }

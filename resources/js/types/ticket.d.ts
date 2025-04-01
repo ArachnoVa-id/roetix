@@ -1,4 +1,3 @@
-// types/ticket.ts
 export interface TicketData {
     date: string;
     type: string;
@@ -68,10 +67,38 @@ export interface EventInterface {
     event_variables_id: string;
 }
 
+export interface TicketActionEvent extends Event {
+    detail: {
+        action: string;
+        ticketId: string;
+        ticketType?: string;
+        error?: string;
+    };
+}
+
 // Add additional interfaces for use in the MyTickets component
 export interface MyTicketsPageProps {
     client: string;
     props: import('@/types/front-end').EventProps;
     tickets: TicketProps[];
     event: EventInterface;
+}
+
+export interface RowComponentProps {
+    idtf: string;
+    content: string;
+}
+
+export interface TicketComponentProps extends TicketProps {
+    eventId: string;
+    categoryColor?: string;
+    userData?: {
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
+    eventInfo?: {
+        location: string;
+        eventDate: string;
+    };
 }
