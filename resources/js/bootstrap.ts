@@ -16,7 +16,6 @@ window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 
-
 window.io = io;
 window.Echo = new Echo({
     broadcaster: 'socket.io',
