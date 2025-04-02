@@ -29,10 +29,10 @@ enum EventStatus: string implements HasLabel, HasColor
     public function getColor(): string|array|null
     {
         return match ($this) {
-            self::PLANNED => Color::Green,
-            self::ACTIVE => Color::Red,
-            self::COMPLETED => Color::Gray,
-            self::CANCELLED => Color::Yellow
+            self::PLANNED => Color::Yellow,
+            self::ACTIVE => Color::Blue,
+            self::COMPLETED => Color::Green,
+            self::CANCELLED => Color::Red
         };
     }
 

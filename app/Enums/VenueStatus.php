@@ -29,7 +29,7 @@ enum VenueStatus: string implements HasLabel, HasColor
         return match ($this) {
             self::ACTIVE => Color::Green,
             self::INACTIVE => Color::Red,
-            self::UNDER_MAINTENANCE => Color::Gray
+            self::UNDER_MAINTENANCE => Color::Slate
         };
     }
 

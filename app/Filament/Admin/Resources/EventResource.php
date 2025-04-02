@@ -24,6 +24,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use Filament\Support\Colors\Color;
 
 class EventResource extends Resource
 {
@@ -70,7 +71,7 @@ class EventResource extends Resource
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this event.')
@@ -112,7 +113,7 @@ class EventResource extends Resource
         return $action
             ->label('Seating')
             ->icon('heroicon-o-adjustments-horizontal')
-            ->color('info')
+            ->color(Color::Indigo)
             ->url(fn($record) => "/seats/edit?event_id={$record->event_id}");
     }
 
@@ -1426,8 +1427,10 @@ class EventResource extends Resource
         $user = User::find(Auth::id());
 
         $defaultActions = [
-            Tables\Actions\ViewAction::make()->modalHeading('View Event'),
-            Tables\Actions\EditAction::make(),
+            Tables\Actions\ViewAction::make()
+                ->modalHeading('View Event'),
+            Tables\Actions\EditAction::make()
+                ->color(Color::Orange),
         ];
 
         if ($user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER])) {

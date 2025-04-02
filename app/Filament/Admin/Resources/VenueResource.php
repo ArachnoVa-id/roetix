@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
+use Filament\Support\Colors\Color;
 
 class VenueResource extends Resources\Resource
 {
@@ -63,7 +64,7 @@ class VenueResource extends Resources\Resource
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this venue.')
@@ -105,7 +106,7 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Edit Venue')
             ->icon('heroicon-m-map')
-            ->color('info')
+            ->color(Color::Indigo)
             ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}");
     }
 
@@ -114,7 +115,7 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Export Venue')
             ->icon('heroicon-o-arrow-down-tray')
-            ->color('info')
+            ->color(Color::Emerald)
             ->action(function ($record) {
                 try {
                     $record->exportSeats();
@@ -138,7 +139,7 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Import Venue')
             ->icon('heroicon-o-arrow-up-tray')
-            ->color('info')
+            ->color(Color::Teal)
             ->requiresConfirmation()
             ->form([
                 \Filament\Forms\Components\FileUpload::make('venue_json')
@@ -443,8 +444,10 @@ class VenueResource extends Resources\Resource
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->modalHeading('View Venue'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View Venue'),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
                     ),

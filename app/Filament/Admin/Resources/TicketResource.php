@@ -27,6 +27,7 @@ use App\Models\Order;
 use App\Models\Team;
 use App\Models\User;
 use Filament\Notifications\Notification;
+use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\DB;
 
 class TicketResource extends Resource
@@ -87,7 +88,7 @@ class TicketResource extends Resource
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this ticket.')

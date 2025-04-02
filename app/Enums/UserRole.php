@@ -30,8 +30,8 @@ enum UserRole: string implements HasLabel, HasColor
     {
         return match ($this) {
             self::USER => Color::Green,
-            self::ADMIN => Color::Red,
-            self::VENDOR => Color::Gray,
+            self::ADMIN => Color::Purple,
+            self::VENDOR => Color::Blue,
             self::EVENT_ORGANIZER => Color::Yellow
         };
     }

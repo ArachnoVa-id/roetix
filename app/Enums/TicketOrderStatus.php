@@ -28,7 +28,7 @@ enum TicketOrderStatus: string implements HasLabel, HasColor
     {
         return match ($this) {
             self::ENABLED => Color::Green,
-            self::SCANNED => Color::Yellow,
+            self::SCANNED => Color::Blue,
             self::DEACTIVATED => Color::Red,
         };
     }

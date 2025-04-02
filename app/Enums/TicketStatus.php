@@ -29,10 +29,10 @@ enum TicketStatus: string implements HasLabel, HasColor
     public function getColor(): string|array|null
     {
         return match ($this) {
-            self::AVAILABLE => Color::Green,
-            self::BOOKED => Color::Red,
-            self::RESERVED => Color::Gray,
-            self::IN_TRANSACTION => Color::Yellow
+            self::AVAILABLE => Color::Emerald,
+            self::BOOKED => Color::Cyan,
+            self::RESERVED => Color::Stone,
+            self::IN_TRANSACTION => Color::Rose
         };
     }
 

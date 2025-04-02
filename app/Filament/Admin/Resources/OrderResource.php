@@ -27,6 +27,7 @@ use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
 use App\Models\Team;
 use Filament\Notifications\Notification;
+use Filament\Support\Colors\Color;
 
 class OrderResource extends Resource
 {
@@ -51,7 +52,7 @@ class OrderResource extends Resource
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this order.')
@@ -438,7 +439,8 @@ class OrderResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->modalHeading('View Order'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
                     )

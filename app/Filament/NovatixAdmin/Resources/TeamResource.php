@@ -12,6 +12,7 @@ use Filament\Forms;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Colors\Color;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 
@@ -220,7 +221,8 @@ class TeamResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->modalHeading('View Team'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     Tables\Actions\DeleteAction::make(),
                 ]),
             ])

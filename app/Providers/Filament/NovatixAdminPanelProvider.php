@@ -5,7 +5,6 @@ namespace App\Providers\Filament;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
 use Filament\Widgets;
 
 class NovatixAdminPanelProvider extends PanelProvider
@@ -18,9 +17,6 @@ class NovatixAdminPanelProvider extends PanelProvider
                     ->id('novatix-admin')
                     ->domain(config('app.domain'))
                     ->path('novatix-admin')
-                    ->colors([
-                        'primary' => Color::Amber,
-                    ])
                     ->discoverResources(in: app_path('Filament/NovatixAdmin/Resources'), for: 'App\\Filament\\NovatixAdmin\\Resources')
                     ->discoverPages(in: app_path('Filament/NovatixAdmin/Pages'), for: 'App\\Filament\\NovatixAdmin\\Pages')
                     ->pages([

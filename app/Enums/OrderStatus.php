@@ -27,9 +27,9 @@ enum OrderStatus: string implements HasLabel, HasColor
     public function getColor(): string|array|null
     {
         return match ($this) {
-            self::PENDING => Color::Green,
-            self::COMPLETED => Color::Red,
-            self::CANCELLED => Color::Gray
+            self::PENDING => Color::Blue,
+            self::COMPLETED => Color::Green,
+            self::CANCELLED => Color::Red
         };
     }
 

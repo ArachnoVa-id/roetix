@@ -12,6 +12,7 @@ use Filament\Tables;
 use App\Models\Team;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
+use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resources\Resource
@@ -372,7 +373,8 @@ class UserResource extends Resources\Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->modalHeading('View User'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     Tables\Actions\DeleteAction::make(),
                 ]),
             ])

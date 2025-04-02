@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\EventResource;
 use App\Filament\Components\BackButtonAction;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewEvent extends ViewRecord
 {
@@ -18,7 +19,8 @@ class ViewEvent extends ViewRecord
                 Actions\Action::make('back')
             ),
             Actions\EditAction::make('editEvent')
-                ->icon('heroicon-o-pencil'),
+                ->icon('heroicon-m-pencil-square')
+                ->color(Color::Orange),
             EventResource::EditSeatsButton(
                 Actions\Action::make('editSeats')
             ),
