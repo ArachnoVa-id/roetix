@@ -16,6 +16,8 @@ use Filament\Support\Facades\FilamentView;
 use App\Models\EventCategoryTimeboundPrice;
 use App\Filament\Admin\Resources\EventResource;
 use App\Filament\Components\BackButtonAction;
+use Illuminate\Support\Facades\Crypt;
+use Mews\Purifier\Facades\Purifier;
 
 class EditEvent extends EditRecord
 {
@@ -198,6 +200,27 @@ class EditEvent extends EditRecord
                 if (isset($this->data[$column]) && !empty($this->data[$column])) {
                     $this->data[$column] = array_values($this->data[$column])[0];
                 }
+            }
+
+            // Sanitize html content
+            $this->data['terms_and_conditions'] = Purifier::clean($this->data['terms_and_conditions']);
+            $this->data['privacy_policy'] = Purifier::clean($this->data['privacy_policy']);
+
+            // Crypt midtrans keys
+            if (isset($this->data['midtrans_client_key']) && !empty($this->data['midtrans_client_key'])) {
+                $this->data['midtrans_client_key'] = Crypt::encryptString($this->data['midtrans_client_key']);
+            }
+
+            if (isset($this->data['midtrans_server_key']) && !empty($this->data['midtrans_server_key'])) {
+                $this->data['midtrans_server_key'] = Crypt::encryptString($this->data['midtrans_server_key']);
+            }
+
+            if (isset($this->data['midtrans_client_key_sb']) && !empty($this->data['midtrans_client_key_sb'])) {
+                $this->data['midtrans_client_key_sb'] = Crypt::encryptString($this->data['midtrans_client_key_sb']);
+            }
+
+            if (isset($this->data['midtrans_server_key_sb']) && !empty($this->data['midtrans_server_key_sb'])) {
+                $this->data['midtrans_server_key_sb'] = Crypt::encryptString($this->data['midtrans_server_key_sb']);
             }
 
             $eventVariables->fill($this->data);

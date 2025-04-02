@@ -38,6 +38,7 @@ class AuthenticatedSessionController extends Controller
 
             $props['logo'] = '/images/novatix-logo-white/android-chrome-512x512.png';
             $props['logo_alt'] = 'Novatix Logo';
+            $props['texture'] = '/images/default-texture/Texturelabs_Sky_152S.jpg';
         }
 
         return Inertia::render('Auth/Login', [

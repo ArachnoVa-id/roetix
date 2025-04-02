@@ -149,6 +149,9 @@ Route::domain('{client}.' . config('app.domain'))
                             Route::post('payment/cancel', 'cancelPendingTransactions')
                                 ->name('payment.cancel');
 
+                            Route::get('payment/get-client', 'fetchMidtransClientKey')
+                                ->name('payment.get-client');
+
                             // Ticket
                             Route::post('payment/charge', 'charge')
                                 ->name('payment.charge');

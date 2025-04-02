@@ -1,14 +1,14 @@
 // EditModal.tsx
+import { SeatStatus } from '@/types/seatmap';
 import React, { useState } from 'react';
-import { Category, SeatStatus } from '../types';
 
 interface Props {
     mode: 'single' | 'bulk';
     selectedSeats: string[];
-    onUpdate: (updates: { status: SeatStatus; category?: Category }) => void;
+    onUpdate: (updates: { status: SeatStatus; category?: string }) => void;
     onClose: () => void;
     currentStatus: SeatStatus;
-    currentCategory?: Category;
+    currentCategory?: string;
 }
 
 const statusOptions = [

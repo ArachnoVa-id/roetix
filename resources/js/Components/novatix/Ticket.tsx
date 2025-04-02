@@ -180,7 +180,7 @@ export default function Ticket({
 
             <div
                 onClick={popupClickable ? toggleModal : undefined}
-                className={`relative flex h-fit grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? popupClickable && 'cursor-pointer hover:scale-[1.02] hover:shadow-xl' : 'cursor-not-allowed'}`}
+                className={`relative flex h-fit grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? popupClickable && 'cursor-pointer hover:scale-[1.02] hover:shadow-xl' : 'cursor-not-allowed'} ${popupClickable && 'md:max-w-[45%]'}`}
                 style={{
                     opacity: status === 'scanned' ? 0.6 : 1,
                     position: 'relative',

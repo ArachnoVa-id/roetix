@@ -24,14 +24,14 @@ use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
 {
-    public function __construct()
-    {
-        // Set up Midtrans configuration from a single place
-        Config::$serverKey = config('midtrans.server_key');
-        Config::$isProduction = config('midtrans.is_production', false);
-        Config::$isSanitized = config('midtrans.is_sanitized', true);
-        Config::$is3ds = config('midtrans.is_3ds', true);
-    }
+    // public function __construct()
+    // {
+    // Set up Midtrans configuration from a single place
+    // Config::$serverKey = config('midtrans.server_key');
+    // Config::$isProduction = config('midtrans.is_production', false);
+    // Config::$isSanitized = config('midtrans.is_sanitized', true);
+    // Config::$is3ds = config('midtrans.is_3ds', true);
+    // }
 
     /**
      * Handle payment charge requests from the frontend
@@ -39,72 +39,87 @@ class PaymentController extends Controller
     // disini nanti taro eventnya
     public function charge(Request $request, string $client = "")
     {
+        // Check if there's too much orders frequently, reject
+        $timeSpan = now()->subHour();
+        $orderCount = Order::where('user_id', Auth::id())
+            ->where('order_date', '>=', $timeSpan)
+            ->count();
+        $limitPerTimeSpan = 5;
+
+        if ($orderCount >= $limitPerTimeSpan) {
+            return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 hour to do the next transaction.'], 429);
+        }
+
+        $secondTimeSpan = now()->subDay();
+        $orderCountSecond = Order::where('user_id', Auth::id())
+            ->where('order_date', '>=', $secondTimeSpan)
+            ->count();
+        $limitPerTimeSpanSecond = 10;
+
+        if ($orderCountSecond >= $limitPerTimeSpanSecond) {
+            return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 day to do the next transaction.'], 429);
+        }
+
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'amount' => 'required|numeric|min:0',
+            'grouped_items' => 'required',
+            'tax_amount' => 'numeric',
+            'total_with_tax' => 'numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Ensure user is authenticated
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $event = Event::where('slug', $client)->first();
+        if (!$event) {
+            return response()->json(['message' => 'Event not found'], 404);
+        }
+
+        // Check if there's still existing order
+        $existingOrders = User::find(Auth::id())
+            ->orders()
+            ->where('event_id', $event->event_id)
+            ->where('status', OrderStatus::PENDING)
+            ->get();
+
+        if ($existingOrders->isNotEmpty()) {
+            return response()->json(['message' => 'There is an existing pending order'], 400);
+        }
+
+        // Check Array
+        $groupedItems = $request->grouped_items;
+        if (!is_array($groupedItems)) {
+            return response()->json(['message' => 'Invalid grouped_items format'], 422);
+        }
+
+        // Get seats
+        $seats = collect();
+        foreach ($groupedItems as $category => $item) {
+            if (!empty($item['seatNumbers'])) {
+                $seats = $seats->merge(
+                    Seat::whereIn('seat_number', $item['seatNumbers'])
+                        ->where('venue_id', $event->venue->venue_id)
+                        ->get()
+                );
+            }
+        }
+        if ($seats->isEmpty()) {
+            return response()->json(['message' => 'No seats available'], 400);
+        }
+
         DB::beginTransaction();
         try {
-            // Validate the request
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'amount' => 'required|numeric|min:0',
-                'grouped_items' => 'required',
-                'tax_amount' => 'numeric',
-                'total_with_tax' => 'numeric',
-            ]);
-
-            if ($validator->fails()) {
-                DB::rollBack();
-                return response()->json([
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Ensure user is authenticated
-            if (!Auth::check()) {
-                DB::rollBack();
-                return response()->json(['message' => 'Unauthorized'], 401);
-            }
-
-            $event = Event::where('slug', $client)->first();
-            if (!$event) {
-                DB::rollBack();
-                return response()->json(['message' => 'Event not found'], 404);
-            }
-
-            // Check if there's still existing order
-            $existingOrders = User::find(Auth::id())
-                ->orders()
-                ->where('event_id', $event->event_id)
-                ->where('status', OrderStatus::PENDING)
-                ->get();
-
-            if ($existingOrders->isNotEmpty()) {
-                DB::rollBack();
-                return response()->json(['message' => 'There is an existing pending order'], 400);
-            }
-
-            // Check Array
-            $groupedItems = $request->grouped_items;
-            if (!is_array($groupedItems)) {
-                DB::rollBack();
-                return response()->json(['message' => 'Invalid grouped_items format'], 422);
-            }
-
-            // Get seats
-            $seats = collect();
-            foreach ($groupedItems as $category => $item) {
-                if (!empty($item['seatNumbers'])) {
-                    $seats = $seats->merge(
-                        Seat::whereIn('seat_number', $item['seatNumbers'])
-                            ->where('venue_id', $event->venue->venue_id)
-                            ->get()
-                    );
-                }
-            }
-            if ($seats->isEmpty()) {
-                DB::rollBack();
-                return response()->json(['message' => 'No seats available'], 400);
-            }
-
             $seatIds = $seats->pluck('seat_id')->toArray();
             $tickets = Ticket::whereIn('seat_id', $seatIds)
                 ->where('event_id', $event->event_id)
@@ -192,6 +207,7 @@ class PaymentController extends Controller
             }
 
             // Get Midtrans Snap Token
+            Config::$serverKey = $event->eventVariables->getKey('server');
             $snapToken = Snap::getSnapToken([
                 'transaction_details' => ['order_id' => $orderCode, 'gross_amount' => $totalWithTax],
                 'credit_card' => ['secure' => true],
@@ -212,7 +228,10 @@ class PaymentController extends Controller
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'System failed to process payment!'], 500);
+            $responseString = $e->getMessage();
+            preg_match('/"error_messages":\["(.*?)"/', $responseString, $matches);
+            $firstErrorMessage = $matches[1] ?? null;
+            return response()->json(['message' => 'System failed to process payment! ' . $firstErrorMessage . '.'], 500);
         }
     }
 
@@ -428,6 +447,22 @@ class PaymentController extends Controller
                 'success' => false,
                 'message' => 'Failed to cancel orders: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function fetchMidtransClientKey(string $client = '')
+    {
+        try {
+            $event = Event::where('slug', $client)->first();
+            if (!$event) {
+                return response()->json(['error' => 'Event not found'], 404);
+            }
+
+            $clientKey = $event->eventVariables->getKey();
+
+            return response()->json(['client_key' => $clientKey]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch client key'], 500);
         }
     }
 }

@@ -9,6 +9,8 @@ return [
         env('MIDTRANS_IS_PRODUCTION', false) ? 'MIDTRANS_CLIENT_KEY' : 'MIDTRANS_CLIENT_KEY_SB',
         null
     ),
+    'server_key_sb' => env('MIDTRANS_SERVER_KEY_SB', null),
+    'client_key_sb' => env('MIDTRANS_CLIENT_KEY_SB', null),
     'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
     'is_sanitized' => true,
     'is_3ds' => true,

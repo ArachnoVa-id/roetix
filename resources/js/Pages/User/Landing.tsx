@@ -82,6 +82,77 @@ export default function Landing({
         fetchPendingTransactions();
     }, [client]);
 
+    const [snapInitialized, setSnapInitialized] = useState<boolean>(false);
+    // Initialize Midtrans Snap on component mount
+    const showErrorRef = useRef(showError);
+    const showSuccessRef = useRef(showSuccess);
+
+    useEffect(() => {
+        const fetchAndInitializeSnap = async () => {
+            let clientKey = null;
+
+            try {
+                const response = await axios.get('api/payment/get-client');
+                clientKey = response.data.client_key;
+                console.log('Client Key Fetched:', clientKey);
+            } catch (error) {
+                console.error('Failed to fetch client key:', error);
+                showErrorRef.current(
+                    'Failed to fetch client key. Please try again later.',
+                );
+                return;
+            }
+
+            if (!clientKey) {
+                showErrorRef.current(
+                    'System payment is not yet activated. Please contact admin.',
+                );
+                return;
+            }
+
+            showSuccessRef.current(
+                'System payment has been activated. You may purchase your tickets.',
+            );
+
+            // Check if Snap.js is already loaded
+            if (window.snap) {
+                console.log('Snap.js already loaded.');
+                setSnapInitialized(true);
+                return;
+            }
+
+            // Load Snap.js
+            const snapScript = document.createElement('script');
+            snapScript.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+            snapScript.setAttribute('data-client-key', clientKey);
+            snapScript.onload = () => {
+                console.log('Snap.js successfully loaded.');
+                setSnapInitialized(true);
+            };
+            snapScript.onerror = () => {
+                console.error('Failed to load Midtrans Snap');
+                showErrorRef.current(
+                    'Payment system could not be loaded. Please try again later.',
+                );
+            };
+
+            document.head.appendChild(snapScript);
+
+            // Cleanup on unmount
+            return () => {
+                console.log('Cleaning up Snap.js...');
+                if (snapScript) {
+                    document.head.removeChild(snapScript);
+                }
+                if (window.snap) {
+                    delete window.snap; // Remove Snap from the global scope
+                }
+            };
+        };
+
+        fetchAndInitializeSnap();
+    }, []); // Only run once when the component mounts
+
     const createCallbacks = (): MidtransCallbacks => {
         return {
             onSuccess: () => {
@@ -102,7 +173,7 @@ export default function Landing({
             },
             onClose: () => {
                 // console.log('Snap payment closed');
-                showError(
+                showSuccess(
                     'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
                 );
             },
@@ -1108,6 +1179,7 @@ export default function Landing({
                                         showError,
                                         hideToaster,
                                     }}
+                                    snapInitialized={snapInitialized}
                                 />
                             )}
                     </div>

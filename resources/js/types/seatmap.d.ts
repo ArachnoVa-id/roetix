@@ -101,6 +101,7 @@ export interface ProceedTransactionButtonProps {
     total?: number;
     onTransactionStarted?: (seats: SeatItem[]) => void;
     toasterFunction: Toaster;
+    snapInitialized: boolean;
 }
 
 export interface GroupedItem {

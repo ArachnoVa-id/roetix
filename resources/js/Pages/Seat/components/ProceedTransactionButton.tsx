@@ -1,12 +1,12 @@
-import { usePage } from '@inertiajs/react';
-import axios from 'axios';
-import React, { useEffect, useState } from 'react';
 import {
     MidtransCallbacks,
     PaymentRequestGroupedItems,
     ProceedTransactionButtonProps,
     SeatItem,
-} from '../types';
+} from '@/types/seatmap';
+import { usePage } from '@inertiajs/react';
+import axios from 'axios';
+import React, { useState } from 'react';
 
 const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     client,
@@ -16,44 +16,10 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     total,
     onTransactionStarted,
     toasterFunction,
+    snapInitialized,
 }) => {
     const user = usePage().props?.auth.user;
-    const [snapInitialized, setSnapInitialized] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
-
-    // Initialize Midtrans Snap on component mount
-    useEffect(() => {
-        // Check if Snap is already loaded
-        if (window.snap) {
-            setSnapInitialized(true);
-            return;
-        }
-
-        // Load Snap.js
-        const snapScript = document.createElement('script');
-        snapScript.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
-        snapScript.setAttribute(
-            'data-client-key',
-            process.env.MIDTRANS_CLIENT_KEY || '',
-        );
-        snapScript.onload = () => {
-            // console.log('Midtrans Snap loaded successfully');
-            setSnapInitialized(true);
-        };
-        snapScript.onerror = () => {
-            console.error('Failed to load Midtrans Snap');
-            toasterFunction.showError(
-                'Payment system could not be loaded. Please try again later.',
-            );
-        };
-
-        document.head.appendChild(snapScript);
-
-        // Cleanup
-        return () => {
-            document.head.removeChild(snapScript);
-        };
-    }, [toasterFunction]);
 
     // Function to safely parse price
     const getSafePrice = (price: string | number | undefined): number => {
@@ -134,7 +100,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 setIsLoading(false);
             },
             onClose: () => {
-                toasterFunction.showError(
+                toasterFunction.showSuccess(
                     'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
                 );
                 setIsLoading(false);
@@ -253,7 +219,8 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
             {!snapInitialized && (
                 <div className="mt-2 text-sm text-gray-600">
-                    Initializing payment system...
+                    Initializing payment system taking longer than usual. Plese
+                    contact admin.
                 </div>
             )}
         </div>

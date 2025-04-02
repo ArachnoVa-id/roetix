@@ -37,6 +37,16 @@ return new class extends Migration
             $table->string('text_primary_color')->default('');
             $table->string('text_secondary_color')->default('');
 
+            $table->text('terms_and_conditions')->nullable();
+            $table->text('privacy_policy')->nullable();
+
+            $table->text('midtrans_client_key_sb')->nullable();
+            $table->text('midtrans_server_key_sb')->nullable();
+            $table->text('midtrans_client_key')->nullable();
+            $table->text('midtrans_server_key')->nullable();
+            $table->boolean('midtrans_is_production')->default(false);
+            $table->boolean('midtrans_use_novatix')->default(false);
+
             $table->timestamps();
         });
     }

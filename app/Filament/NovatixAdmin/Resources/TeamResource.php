@@ -157,7 +157,6 @@ class TeamResource extends Resource
                             ->helperText('Remaining quota for events in this group. Will be reduced each usage.')
                             ->default(0)
                             ->minValue(0)
-                            ->numeric()
                             ->maxLength(255)
                             ->reactive()
                             ->afterStateUpdated(function (Forms\Set $set, $state) {

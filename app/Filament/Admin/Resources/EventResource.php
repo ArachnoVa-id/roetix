@@ -25,7 +25,10 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use Filament\Infolists\Infolist;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Crypt;
+use Mews\Purifier\Facades\Purifier;
 
 class EventResource extends Resource
 {
@@ -281,7 +284,52 @@ class EventResource extends Resource
 
                                         Infolists\Components\ColorEntry::make('text_secondary_color')
                                             ->label('Text Secondary Color'),
-                                    ])
+                                    ]),
+                            ]),
+                        Infolists\Components\Tabs\Tab::make('Terms and Conditions')
+                            ->schema([
+                                Infolists\Components\Group::make([
+                                    Infolists\Components\TextEntry::make('terms_and_conditions')
+                                        ->label(''),
+                                ])->relationship('eventVariables')
+                            ]),
+
+                        Infolists\Components\Tabs\Tab::make('Privacy Policy')
+                            ->schema([
+                                Infolists\Components\Group::make([
+                                    Infolists\Components\TextEntry::make('privacy_policy')
+                                        ->label(''),
+                                ])->relationship('eventVariables')
+                            ]),
+
+                        Infolists\Components\Tabs\Tab::make('Midtrans')
+                            ->hidden(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]))
+                            ->schema([
+                                Infolists\Components\Group::make([
+                                    Infolists\Components\TextEntry::make('midtrans_client_key_sb')
+                                        ->label('Client Key SB')
+                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
+                                    Infolists\Components\TextEntry::make('midtrans_server_key_sb')
+                                        ->label('Server Key SB')
+                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
+                                    Infolists\Components\TextEntry::make('midtrans_client_key')
+                                        ->label('Client Key')
+                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
+                                    Infolists\Components\TextEntry::make('midtrans_server_key')
+                                        ->label('Server Key')
+                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
+                                    Infolists\Components\TextEntry::make('midtrans_is_production')
+                                        ->label('Production')
+                                        ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+
+                                    Infolists\Components\TextEntry::make('midtrans_use_novatix')
+                                        ->label('Using NovaTix Midtrans')
+                                        ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+                                ])->relationship('eventVariables')->columns(2)
                             ]),
                         Infolists\Components\Tabs\Tab::make('Orders')
                             ->hidden(!$showOrders)
@@ -522,6 +570,8 @@ class EventResource extends Resource
                                     }
                                 )
                                 ->preload()
+                                ->disabled(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]) && $modelExists)
+                                ->helperText(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]) && $modelExists ? 'You can\'t change the selected venue.' : 'Note: You can only set this once!')
                                 ->label('Venue')
                                 ->placeholder('Select Venue')
                                 ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
@@ -1443,6 +1493,89 @@ class EventResource extends Resource
                                 ->acceptedFileTypes(['image/x-icon', 'image/vnd.microsoft.icon', 'image/ico']) // Allowing all possible ICO mime types
                                 ->rule('mimes:ico') // Explicitly enforcing .ico file validation
                                 ->preserveFilenames(),
+                        ]),
+                    Forms\Components\Wizard\Step::make('Terms and Condition')
+                        ->hidden(!$modelExists)
+                        ->schema([
+                            Forms\Components\RichEditor::make('terms_and_conditions')
+                                ->label('')
+                                ->placeholder('Terms and Condition')
+                                ->maxLength(65535)
+                                ->validationAttribute('Terms and Condition')
+                                ->validationMessages([
+                                    'max' => 'Terms and Condition must not exceed 65535 characters',
+                                ])
+                                ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                    $state = Purifier::clean($state); // Use HTML purifier if you want to sanitize
+                                    $set('terms_and_conditions', $state);
+                                }),
+                        ]),
+                    Forms\Components\Wizard\Step::make('Privacy Policy')
+                        ->hidden(!$modelExists)
+                        ->schema([
+                            Forms\Components\RichEditor::make('privacy_policy')
+                                ->label('')
+                                ->placeholder('Privacy Policy')
+                                ->maxLength(65535)
+                                ->validationAttribute('Privacy Policy')
+                                ->validationMessages([
+                                    'max' => 'Privacy Policy must not exceed 65535 characters',
+                                ])
+                                ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                    $state = Purifier::clean($state); // Use HTML purifier if you want to sanitize
+                                    $set('privacy_policy', $state);
+                                }),
+                        ]),
+                    Forms\Components\Wizard\Step::make('Midtrans')
+                        ->hidden(!User::find(Auth::id())->isAdmin())
+                        ->schema([
+                            Forms\Components\Group::make([
+                                Forms\Components\TextInput::make('midtrans_client_key_sb')
+                                    ->label('Client Key Sandbox')
+                                    ->placeholder('Client Key Sandbox')
+                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->maxLength(65535)
+                                    ->validationAttribute('Client Key Sandbox')
+                                    ->validationMessages([
+                                        'max' => 'Client Key Sandbox must not exceed 255 characters',
+                                    ]),
+                                Forms\Components\TextInput::make('midtrans_server_key_sb')
+                                    ->label('Server Key Sandbox')
+                                    ->placeholder('Server Key Sandbox')
+                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->maxLength(65535)
+                                    ->validationAttribute('Server Key Sandbox')
+                                    ->validationMessages([
+                                        'max' => 'Server Key Sandbox must not exceed 255 characters',
+                                    ]),
+                                Forms\Components\TextInput::make('midtrans_client_key')
+                                    ->label('Client Key')
+                                    ->placeholder('Client Key')
+                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->maxLength(65535)
+                                    ->validationAttribute('Client Key')
+                                    ->validationMessages([
+                                        'max' => 'Client Key must not exceed 255 characters',
+                                    ]),
+                                Forms\Components\TextInput::make('midtrans_server_key')
+                                    ->label('Server Key')
+                                    ->placeholder('Server Key')
+                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->maxLength(65535)
+                                    ->validationAttribute('Server Key')
+                                    ->validationMessages([
+                                        'max' => 'Server Key must not exceed 255 characters',
+                                    ]),
+                                Forms\Components\Toggle::make('midtrans_is_production')
+                                    ->label('Is Production'),
+                                Forms\Components\Toggle::make('midtrans_use_novatix')
+                                    ->label('Use NovaTix Central Midtrans')
+                            ])
+                                ->columns([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ])
                         ])
 
                 ])

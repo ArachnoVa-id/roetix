@@ -20,6 +20,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.18",
         "laravel/tinker": "^2.9",
+        "mews/purifier": "^3.4",
         "midtrans/midtrans-php": "^2.6",
         "njxqlus/filament-relation-manager-component": "*",
         "predis/predis": "^2.3",

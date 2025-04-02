@@ -285,6 +285,8 @@ class UserPageController extends Controller
             $event = $request->get('event');
             $props = $request->get('props');
 
+            $dbContent = $props->privacy_policy ?? null;
+
             return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
                 'client' => $client,
                 'props' => $props,
@@ -293,7 +295,8 @@ class UserPageController extends Controller
                     'name' => $event->name,
                     'slug' => $event->slug,
                 ],
-                'user' => Auth::user()
+                'user' => Auth::user(),
+                'dbContent' => $dbContent,
             ]);
         } catch (\Exception $e) {
             // Log the error for debugging
@@ -311,6 +314,8 @@ class UserPageController extends Controller
             $event = $request->get('event');
             $props = $request->get('props');
 
+            $dbContent = $props->terms_and_conditions ?? null;
+
             return Inertia::render('Legality/termcondition/TermCondition', [
                 'client' => $client,
                 'props' => $props,
@@ -320,6 +325,7 @@ class UserPageController extends Controller
                     'slug' => $event->slug,
                 ],
                 'user' => Auth::user(),
+                'dbContent' => $dbContent,
             ]);
         } catch (\Exception $e) {
             // Log the error for debugging

@@ -82,19 +82,22 @@ export default function MyTickets({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title={'My Tickets | ' + event.name} />
-            <div className="py-8">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+            <div className="w-full py-8">
+                <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="overflow-hidden shadow-sm sm:rounded-lg"
+                        className="w-full overflow-hidden shadow-sm sm:rounded-lg"
                         style={containerStyle}
                     >
-                        <div className="p-6">
+                        <div className="w-full p-6">
                             <div className="mb-6 flex items-center justify-between">
                                 <h2
                                     className="text-xl font-semibold"
                                     style={titleStyle}
                                 >
-                                    {event?.name || client} - My Tickets
+                                    {event?.name || client}{' '}
+                                    <br className="md:hidden" />
+                                    <span className="max-md:hidden">-</span> My
+                                    Tickets
                                 </h2>
 
                                 {tickets && tickets.length > 0 && (

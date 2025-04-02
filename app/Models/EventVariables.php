@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Crypt;
 
 class EventVariables extends Model
 {
@@ -36,7 +37,16 @@ class EventVariables extends Model
         'text_primary_color',
         'text_secondary_color',
         'ticket_limit',
+        'terms_and_conditions',
+        'privacy_policy',
+        'midtrans_client_key_sb',
+        'midtrans_server_key_sb',
+        'midtrans_client_key',
+        'midtrans_server_key',
+        'midtrans_is_production',
+        'midtrans_use_novatix'
     ];
+
     public static function getDefaultValue()
     {
         $defaultValues = [
@@ -55,9 +65,18 @@ class EventVariables extends Model
             'texture' => null,
             'favicon' => '/images/novatix-logo/favicon.ico',
             'ticket_limit' => 5,
+            'terms_and_conditions' => '',
+            'privacy_policy' => '',
+            'midtrans_client_key_sb' => '',
+            'midtrans_server_key_sb' => '',
+            'midtrans_client_key' => '',
+            'midtrans_server_key' => '',
+            'midtrans_is_production' => false,
+            'midtrans_use_novatix' => false
         ];
         return $defaultValues;
     }
+
     protected static function boot()
     {
         parent::boot();
@@ -68,11 +87,28 @@ class EventVariables extends Model
         });
     }
 
+    public function getKey(string $requestType = 'client')
+    {
+        $isProduction = $this->midtrans_is_production;
+        $useNovatix = $this->midtrans_use_novatix;
+
+        $clientKey = Crypt::decryptString($isProduction ? $this->midtrans_client_key : $this->midtrans_client_key_sb);
+        $serverKey = Crypt::decryptString($isProduction ? $this->midtrans_server_key : $this->midtrans_server_key_sb);
+
+        $configKey = $isProduction
+            ? config('midtrans.' . ($requestType === 'client' ? 'client_key' : 'server_key'))
+            : config('midtrans.' . ($requestType === 'client' ? 'client_key_sb' : 'server_key_sb'));
+
+        return $requestType === 'client'
+            ? ($clientKey ?? ($useNovatix ? $configKey : null))
+            : ($serverKey ?? ($useNovatix ? $configKey : null));
+    }
+
     public function reconstructImgLinks()
     {
         $columns = ['logo', 'texture', 'favicon'];
         foreach ($columns as $column) {
-            if (isset($this->{$column}) && !empty($this->{$column})) {
+            if (isset($this->{$column}) && !empty($this->{$column}) && !Str::startsWith($this->{$column}, '/')) {
                 $this->{$column} = '/storage/' . $this->{$column};
             }
         }
