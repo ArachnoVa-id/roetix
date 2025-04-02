@@ -149,9 +149,14 @@ export default function Ticket({
     return (
         <>
             {/* Modal */}
-            {isModalOpen && (
+            {popupClickable && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-12"
+                    className={
+                        'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-12 duration-200 ' +
+                        (isModalOpen
+                            ? 'opcaity=100'
+                            : 'pointer-events-none opacity-0')
+                    }
                     onClick={toggleModal}
                 >
                     <div

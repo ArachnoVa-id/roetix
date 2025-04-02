@@ -147,7 +147,7 @@ class UserPageController extends Controller
                     'event_id' => $event->event_id,
                     'name' => $event->name,
                     'date' => $event->date,
-                    'event_date' => $event->event_date ?? $event->date, // Use event_date or fall back to date
+                    'event_date' => $event->event_date ?? $event->date,
                     'venue_id' => $event->venue_id,
                     'status' => $event->status,
                     'slug' => $event->slug

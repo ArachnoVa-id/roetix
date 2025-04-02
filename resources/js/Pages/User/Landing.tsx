@@ -232,8 +232,23 @@ export default function Landing({
     };
 
     const handleSeatClick = (seat: SeatItem) => {
+        const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
+        if (exists) {
+            setSelectedSeats(
+                selectedSeats.filter((s) => s.seat_id !== seat.seat_id),
+            );
+            showSuccess(`Seat ${seat.seat_number} removed from selection`);
+
+            return;
+        }
+
         if (!isBookingAllowed) {
             showError('Booking is not allowed at this time');
+            return;
+        }
+
+        if (seat.status !== 'available') {
+            showError('This seat is not available');
             return;
         }
 
@@ -253,26 +268,18 @@ export default function Landing({
             return;
         }
 
-        if (seat.status !== 'available') {
-            showError('This seat is not available');
-            return;
-        }
+        // Calculate correct price based on category and timeline
+        const updatedSeat = {
+            ...seat,
+            price: getSeatPrice(seat),
+        };
+        setSelectedSeats([...selectedSeats, updatedSeat]);
+        showSuccess(`Seat ${seat.seat_number} added to selection`);
+    };
 
-        const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
-        if (exists) {
-            setSelectedSeats(
-                selectedSeats.filter((s) => s.seat_id !== seat.seat_id),
-            );
-            showSuccess(`Seat ${seat.seat_number} removed from selection`);
-        } else {
-            // Calculate correct price based on category and timeline
-            const updatedSeat = {
-                ...seat,
-                price: getSeatPrice(seat),
-            };
-            setSelectedSeats([...selectedSeats, updatedSeat]);
-            showSuccess(`Seat ${seat.seat_number} added to selection`);
-        }
+    const deselectAllSeats = () => {
+        setSelectedSeats([]);
+        showSuccess('All selected seats have been deselected');
     };
 
     // Fixed price conversion function that preserves decimal places correctly
@@ -410,7 +417,7 @@ export default function Landing({
                                     <>
                                         <div className="flex items-center justify-between">
                                             <h2
-                                                className="text-lg font-bold"
+                                                className="text-xl font-bold"
                                                 style={{
                                                     color: props.text_primary_color,
                                                 }}
@@ -451,7 +458,7 @@ export default function Landing({
                                                             } mr-2 animate-pulse`}
                                                         ></div>
                                                         <span
-                                                            className="text-xs font-medium"
+                                                            className="text-sm font-medium"
                                                             style={{
                                                                 color:
                                                                     event.status ===
@@ -482,11 +489,11 @@ export default function Landing({
                                             </div>
                                         </div>
                                         <div className="flex grow items-start">
-                                            <div className="flex w-full items-center justify-between gap-4">
-                                                <div className="flex flex-col justify-center gap-1 text-xs">
-                                                    <div className="flex items-center">
+                                            <div className="flex w-full flex-col items-stretch gap-4">
+                                                <div className="flex w-full justify-between gap-1 text-sm">
+                                                    <div className="flex">
                                                         <svg
-                                                            className="mr-1 h-4 w-4"
+                                                            className="mr-1 mt-[2px] h-4 w-4"
                                                             fill="none"
                                                             stroke="currentColor"
                                                             viewBox="0 0 24 24"
@@ -508,20 +515,59 @@ export default function Landing({
                                                                 d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                                                             />
                                                         </svg>
-                                                        <p
-                                                            style={{
-                                                                color: props.text_secondary_color,
-                                                            }}
-                                                        >
-                                                            <span className="font-medium">
-                                                                Venue:
-                                                            </span>{' '}
-                                                            {venue.name}
-                                                        </p>
+                                                        <div className="flex flex-col">
+                                                            <p
+                                                                className="font-bold"
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                Venue
+                                                            </p>
+                                                            <p
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                {venue.name}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center">
+                                                    <div className="flex justify-end text-end">
+                                                        <div className="flex flex-col">
+                                                            <p
+                                                                className="font-bold"
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                D-Day
+                                                            </p>
+                                                            <p
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                {new Date(
+                                                                    event.event_date,
+                                                                ).toLocaleString(
+                                                                    'en-US',
+                                                                    {
+                                                                        weekday:
+                                                                            'short',
+                                                                        day: 'numeric',
+                                                                        month: 'long',
+                                                                        year: 'numeric',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit',
+                                                                        hour12: false,
+                                                                    },
+                                                                )}{' '}
+                                                                WIB
+                                                            </p>
+                                                        </div>
                                                         <svg
-                                                            className="mr-1 h-4 w-4"
+                                                            className="ml-1 mt-[2px] h-4 w-4"
                                                             fill="none"
                                                             stroke="currentColor"
                                                             viewBox="0 0 24 24"
@@ -537,74 +583,78 @@ export default function Landing({
                                                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                                                             />
                                                         </svg>
-                                                        <p
-                                                            style={{
-                                                                color: props.text_secondary_color,
-                                                            }}
-                                                        >
-                                                            <span className="font-medium">
-                                                                D-Day:
-                                                            </span>{' '}
-                                                            {new Date(
-                                                                event.event_date,
-                                                            ).toLocaleDateString(
-                                                                'en-US',
-                                                                {
-                                                                    weekday:
-                                                                        'long',
-                                                                    year: 'numeric',
-                                                                    month: 'short',
-                                                                    day: 'numeric',
-                                                                },
-                                                            )}
-                                                        </p>
                                                     </div>
                                                 </div>
                                                 {/* Timeline section */}
                                                 {currentTimeline && (
-                                                    <div className="flex w-fit items-center justify-center">
-                                                        <div
-                                                            className="w-fit rounded-lg p-1 px-3"
-                                                            style={{
-                                                                backgroundColor:
-                                                                    'rgba(59, 130, 246, 0.1)',
-                                                            }}
-                                                        >
-                                                            <div className="text-right text-sm font-semibold text-blue-600">
+                                                    <div
+                                                        className="w-full rounded-lg p-1 px-3"
+                                                        style={{
+                                                            backgroundColor:
+                                                                'rgba(59, 130, 246, 0.1)',
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center justify-end text-sm font-semibold text-blue-600">
+                                                            <p>
                                                                 {
                                                                     currentTimeline.name
                                                                 }
-                                                            </div>
-                                                            <div
-                                                                className="flex items-center justify-center text-right text-xs text-blue-500"
-                                                                style={{
-                                                                    color: props.text_secondary_color,
-                                                                }}
+                                                            </p>
+                                                            <svg
+                                                                className="ml-2 h-4 w-4"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                                xmlns="http://www.w3.org/2000/svg"
                                                             >
-                                                                {new Date(
-                                                                    currentTimeline.start_date,
-                                                                ).toLocaleDateString()}{' '}
-                                                                -{' '}
-                                                                {new Date(
-                                                                    currentTimeline.end_date,
-                                                                ).toLocaleDateString()}
-                                                                <svg
-                                                                    className="ml-2 h-4 w-4"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    viewBox="0 0 24 24"
-                                                                    xmlns="http://www.w3.org/2000/svg"
-                                                                >
-                                                                    <path
-                                                                        strokeLinecap="round"
-                                                                        strokeLinejoin="round"
-                                                                        strokeWidth={
-                                                                            2
-                                                                        }
-                                                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                                    />
-                                                                </svg>
-                                                            </div>
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={
+                                                                        2
+                                                                    }
+                                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                                />
+                                                            </svg>
+                                                        </div>
+                                                        <div
+                                                            className="flex w-full items-center justify-end text-xs text-blue-500"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            {new Date(
+                                                                currentTimeline.start_date,
+                                                            ).toLocaleString(
+                                                                'en-US',
+                                                                {
+                                                                    weekday:
+                                                                        'short',
+                                                                    day: 'numeric',
+                                                                    month: 'long',
+                                                                    year: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    hour12: false,
+                                                                },
+                                                            )}{' '}
+                                                            WIB -{' '}
+                                                            {new Date(
+                                                                currentTimeline.end_date,
+                                                            ).toLocaleString(
+                                                                'en-US',
+                                                                {
+                                                                    weekday:
+                                                                        'short',
+                                                                    day: 'numeric',
+                                                                    month: 'long',
+                                                                    year: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    hour12: false,
+                                                                },
+                                                            )}{' '}
+                                                            WIB
                                                         </div>
                                                     </div>
                                                 )}
@@ -807,15 +857,31 @@ export default function Landing({
                         </div>
                         {/* Seat Map Section - takes up more vertical space */}
                         <div
-                            className="borde flex flex-col items-center justify-center gap-2 rounded-lg p-3"
+                            className="flex flex-col items-center justify-center gap-2 rounded-lg p-3"
                             style={{
                                 backgroundColor: props.secondary_color,
                                 height: '80vh',
                             }}
                         >
-                            <h3 className="h-fit text-center text-lg font-bold">
-                                Seat Map
-                            </h3>
+                            <div className="relative flex w-full items-center justify-center">
+                                {/* make deselect all seats button if seat exist */}
+                                {
+                                    <button
+                                        className={
+                                            'absolute left-0 top-0 rounded-lg bg-red-500 px-4 text-lg text-white duration-200 hover:bg-red-600 ' +
+                                            (selectedSeats.length > 0
+                                                ? 'opacity-100'
+                                                : 'pointer-events-none opacity-0')
+                                        }
+                                        onClick={deselectAllSeats}
+                                    >
+                                        Deselect All Seats
+                                    </button>
+                                }
+                                <h3 className="h-fit text-center text-lg font-bold">
+                                    Seat Map
+                                </h3>
+                            </div>
                             <div className="flex h-[92%] w-full overflow-clip">
                                 <div className="flex w-full justify-center overflow-auto">
                                     <SeatMapDisplay
