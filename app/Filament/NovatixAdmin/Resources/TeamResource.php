@@ -10,7 +10,9 @@ use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\VenuesRela
 use App\Models\Team;
 use Filament\Forms;
 use Filament\Infolists;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Colors\Color;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 
@@ -84,11 +86,22 @@ class TeamResource extends Resource
                     ->columns(2)
                     ->schema([
                         Forms\Components\TextInput::make('name')
+                            ->placeholder('Team name')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->validationAttribute('Team Name')
+                            ->validationMessages([
+                                'required' => 'The Team Name field is required.',
+                                'max' => 'The Team Nmae field must not exceed :max characters.',
+                            ]),
                         Forms\Components\TextInput::make('code')
                             ->required()
                             ->maxLength(255)
+                            ->validationAttribute('Team Code')
+                            ->validationMessages([
+                                'required' => 'The Team Code field is required.',
+                                'max' => 'The Team Code field must not exceed :max characters.',
+                            ])
                             ->reactive()
                             ->unique('teams', 'code', ignoreRecord: true)
                             ->afterStateUpdated(function (Forms\Set $set, $state) use ($form) {
@@ -105,16 +118,75 @@ class TeamResource extends Resource
                             }),
                         Forms\Components\TextInput::make('vendor_quota')
                             ->label('Venue Quota')
+                            ->placeholder('Venue Quota')
+                            ->helperText('Remaining quota for vendors in this group. Will be reduced each usage.')
                             ->default(0)
                             ->minValue(0)
-                            ->numeric()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->reactive()
+                            ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                if (!is_numeric($state)) {
+                                    $set('vendor_quota', 0);
+
+                                    Notification::make()
+                                        ->title('Vendor Quota Rejected')
+                                        ->body('Vendor Quota must be a number')
+                                        ->info()
+                                        ->send();
+                                }
+
+                                if ($state < 0) {
+                                    $set('vendor_quota', 0);
+
+                                    Notification::make()
+                                        ->title('Vendor Quota Rejected')
+                                        ->body('Vendor Quota must be a positive number')
+                                        ->info()
+                                        ->send();
+                                }
+                            })
+                            ->validationAttribute('Venue Quota')
+                            ->validationMessages([
+                                'required' => 'The Venue Quota field is required.',
+                                'max' => 'The Venue Quota field must not exceed :max characters.',
+                                'min' => 'The Venue Quota field must be at least :min characters.',
+                            ]),
                         Forms\Components\TextInput::make('event_quota')
                             ->label('Event Quota')
+                            ->placeholder('Event Quota')
+                            ->helperText('Remaining quota for events in this group. Will be reduced each usage.')
                             ->default(0)
                             ->minValue(0)
                             ->numeric()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->reactive()
+                            ->afterStateUpdated(function (Forms\Set $set, $state) {
+                                if (!is_numeric($state)) {
+                                    $set('event_quota', 0);
+
+                                    Notification::make()
+                                        ->title('Event Quota Rejected')
+                                        ->body('Event Quota must be a number')
+                                        ->info()
+                                        ->send();
+                                }
+
+                                if ($state < 0) {
+                                    $set('event_quota', 0);
+
+                                    Notification::make()
+                                        ->title('Event Quota Rejected')
+                                        ->body('Event Quota must be a positive number')
+                                        ->info()
+                                        ->send();
+                                }
+                            })
+                            ->validationAttribute('Event Quota')
+                            ->validationMessages([
+                                'required' => 'The Event Quota field is required.',
+                                'max' => 'The Event Quota field must not exceed :max characters.',
+                                'min' => 'The Event Quota field must be at least :min characters.',
+                            ]),
                     ])
             ]);
     }
@@ -149,7 +221,8 @@ class TeamResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->modalHeading('View Team'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     Tables\Actions\DeleteAction::make(),
                 ]),
             ])

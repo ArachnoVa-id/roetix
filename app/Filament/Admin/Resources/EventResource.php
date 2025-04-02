@@ -24,6 +24,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use Filament\Support\Colors\Color;
 
 class EventResource extends Resource
 {
@@ -70,7 +71,7 @@ class EventResource extends Resource
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this event.')
@@ -81,6 +82,10 @@ class EventResource extends Resource
                     ->default(fn($record) => $record->status)
                     ->searchable()
                     ->preload()
+                    ->validationAttribute('Status')
+                    ->validationMessages([
+                        'required' => 'Status is required',
+                    ])
                     ->required(),
             ])
             ->action(function ($record, array $data) {
@@ -108,7 +113,7 @@ class EventResource extends Resource
         return $action
             ->label('Seating')
             ->icon('heroicon-o-adjustments-horizontal')
-            ->color('info')
+            ->color(Color::Indigo)
             ->url(fn($record) => "/seats/edit?event_id={$record->event_id}");
     }
 
@@ -312,8 +317,14 @@ class EventResource extends Resource
                         ->columns(2)
                         ->schema([
                             Forms\Components\TextInput::make('name')
+                                ->placeholder('Event Name')
                                 ->required()
                                 ->maxLength(255)
+                                ->validationAttribute('Name')
+                                ->validationMessages([
+                                    'required' => 'Name is required',
+                                    'max' => 'Name must not exceed 255 characters',
+                                ])
                                 ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
                                     // reject if name already used
                                     $event_id = $get('event_id');
@@ -348,6 +359,13 @@ class EventResource extends Resource
                                 ->debounce(1000),
                             Forms\Components\TextInput::make('slug')
                                 ->required()
+                                ->placeholder('Event Slug')
+                                ->maxLength(255)
+                                ->validationAttribute('Slug')
+                                ->validationMessages([
+                                    'required' => 'Slug is required',
+                                    'max' => 'Slug must not exceed 255 characters',
+                                ])
                                 ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
                                     // incrementing slug if exist same slug
                                     $increment = 0;
@@ -370,13 +388,19 @@ class EventResource extends Resource
                                 ->reactive(),
                             Forms\Components\DateTimePicker::make('start_date')
                                 ->label('Start Date')
+                                ->helperText('The date when the event starts. Must be not earlier than the current time.')
+                                ->required()
+                                ->validationAttribute('Start Date')
+                                ->validationMessages([
+                                    'required' => 'Start date is required',
+                                    'after_or_equal' => 'Start date must be not earlier than current time',
+                                ])
                                 ->minDate(
                                     fn() => $modelExists
                                         ? min(now(), optional($currentModel->start_date) ?? now())
                                         : now()
                                 )
                                 ->reactive()
-                                ->required()
                                 ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
                                     $carbonifiedStart = Carbon::parse($get('start_date'));
                                     $carbonifiedEnd = Carbon::parse($get('event_date'));
@@ -425,12 +449,18 @@ class EventResource extends Resource
                                 }),
                             Forms\Components\DateTimePicker::make('event_date')
                                 ->label('Event Date')
+                                ->required()
+                                ->validationAttribute('End Date')
+                                ->validationMessages([
+                                    'required' => 'End date is required',
+                                    'after_or_equal' => 'End date must be after or equal to start date',
+                                ])
                                 ->minDate(
                                     fn(Forms\Get $get) => Carbon::parse($get('start_date'))
                                 )
                                 ->disabled(fn(Forms\Get $get) => $get('start_date') == null)
                                 ->reactive()
-                                ->required()
+                                ->helperText(fn(Forms\Get $get) => $get('start_date') ? 'Event execution date. Will be the limit for all timeline.' : 'Select start date first')
                                 ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
                                     $copyTimeline = $get('event_timeline');
 
@@ -477,6 +507,11 @@ class EventResource extends Resource
                                     $set('event_timeline', $copyTimeline);
                                 }),
                             Forms\Components\Select::make('venue_id')
+                                ->required()
+                                ->validationAttribute('Venue')
+                                ->validationMessages([
+                                    'required' => 'Venue is required',
+                                ])
                                 ->searchable()
                                 ->optionsLimit(5)
                                 ->options(
@@ -486,7 +521,6 @@ class EventResource extends Resource
                                     }
                                 )
                                 ->preload()
-                                ->required()
                                 ->label('Venue')
                                 ->placeholder('Select Venue')
                                 ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
@@ -497,7 +531,14 @@ class EventResource extends Resource
                                 })
                                 ->reactive(),
                             Forms\Components\TextInput::make('location')
-                                ->required(),
+                                ->required()
+                                ->placeholder('Event Location')
+                                ->maxLength(255)
+                                ->validationAttribute('Location')
+                                ->validationMessages([
+                                    'required' => 'Location is required',
+                                    'max' => 'Location must not exceed 255 characters',
+                                ]),
                         ]),
                     Forms\Components\Wizard\Step::make('Timeline')
                         ->schema([
@@ -509,6 +550,10 @@ class EventResource extends Resource
                                     'md' => 5,
                                 ])
                                 ->minItems(1)
+                                ->validationAttribute('Event Timeline')
+                                ->validationMessages([
+                                    'min' => 'At least one timeline is required',
+                                ])
                                 ->live(debounce: 500)
                                 ->reorderable(false)
                                 ->defaultItems(0)
@@ -605,13 +650,20 @@ class EventResource extends Resource
                                 ->schema([
                                     Forms\Components\TextInput::make('name')
                                         ->label('Name')
+                                        ->placeholder('Timeline Name')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->validationAttribute('Timeline Name')
+                                        ->validationMessages([
+                                            'required' => 'Timeline Name is required',
+                                            'max' => 'Timeline Name must not exceed 255 characters',
+                                        ])
                                         ->columnSpan([
                                             'default' => 1,
                                             'sm' => 1,
                                             'md' => 1,
                                         ])
                                         ->default(null)
-                                        ->required()
                                         ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
                                             // calculate how many names that is the same
                                             $array = $get('../');
@@ -634,6 +686,13 @@ class EventResource extends Resource
                                         }),
                                     Forms\Components\DateTimePicker::make('start_date')
                                         ->label('Start Date')
+                                        ->required()
+                                        ->validationAttribute('Timeline Start Date')
+                                        ->validationMessages([
+                                            'required' => 'Timeline Start Date is required',
+                                            'after_or_equal' => 'Timeline Start Date must be after or equal to the previous end date',
+                                            'before_or_equal' => 'Timeline Start Date must be before or equal to the event date',
+                                        ])
                                         ->default(null)
                                         ->reactive()
                                         ->columnSpan([
@@ -641,7 +700,6 @@ class EventResource extends Resource
                                             'sm' => 1,
                                             'md' => 2,
                                         ])
-                                        ->required()
                                         ->minDate(function (Forms\Get $get) {
                                             $array = $get('../'); // Get all sibling entries
                                             $current_body = [
@@ -802,6 +860,12 @@ class EventResource extends Resource
                                         ),
                                     Forms\Components\DateTimePicker::make('end_date')
                                         ->label('End Date')
+                                        ->validationAttribute('Timeline End Date')
+                                        ->validationMessages([
+                                            'required' => 'Timeline End Date is required',
+                                            'after_or_equal' => 'Timeline End Date must be after the start date',
+                                            'before_or_equal' => 'Timeline End Date must be before the event date',
+                                        ])
                                         ->disabled(fn(Forms\Get $get) => $get('start_date') == null)
                                         ->minDate(
                                             fn(Forms\Get $get) =>
@@ -894,21 +958,17 @@ class EventResource extends Resource
 
                     Forms\Components\Wizard\Step::make('Ticket Prices')
                         ->schema([
-                            // add a text info
-                            Forms\Components\Placeholder::make('empty_message')
-                                ->label('')
-                                ->content('No timeline has set. Please set the timeline first!')
-                                ->hidden(
-                                    fn(Forms\Get $get) =>
-                                    $get('event_timeline') && count($get('event_timeline')) > 0
-                                ),
                             Forms\Components\Repeater::make('ticket_categories')
                                 ->relationship('ticketCategories')
                                 ->minItems(1)
                                 ->columns([
                                     'default' => 1,
                                     'sm' => 1,
-                                    'md' => 5,
+                                    'md' => 9,
+                                ])
+                                ->validationAttribute('Event Category')
+                                ->validationMessages([
+                                    'min' => 'At least one category is required',
                                 ])
                                 ->defaultItems(0)
                                 ->reorderable(false)
@@ -1030,13 +1090,21 @@ class EventResource extends Resource
                                         ->columnSpan([
                                             'default' => 1,
                                             'sm' => 1,
-                                            'md' => 1,
+                                            'md' => 2,
                                         ])
                                         ->schema([
                                             Forms\Components\Hidden::make('ticket_category_id')
                                                 ->default('-'),
                                             Forms\Components\TextInput::make('name')
                                                 ->default('')
+                                                ->placeholder('Category Name')
+                                                ->maxLength(255)
+                                                ->required()
+                                                ->validationAttribute('Category Name')
+                                                ->validationMessages([
+                                                    'required' => 'Category Name is required',
+                                                    'max' => 'Category Name must not exceed 255 characters',
+                                                ])
                                                 ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
                                                     // calculate how many names that is the same
                                                     $array = $get('../');
@@ -1056,11 +1124,28 @@ class EventResource extends Resource
                                                             ->info()
                                                             ->send();
                                                     }
-                                                })
-                                                ->required(),
+                                                }),
                                             Forms\Components\ColorPicker::make('color')
                                                 ->default('')
+                                                ->placeholder('Category Color')
+                                                ->validationAttribute('Category Color')
+                                                ->validationMessages([
+                                                    'required' => 'Category Color is required',
+                                                ])
                                                 ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set, $state) {
+                                                    // If the input is not color, reject
+                                                    if (!preg_match('/^#[0-9A-F]{3,8}$/i', $state)) {
+                                                        $set('color', null);
+
+                                                        Notification::make()
+                                                            ->title('Category Color Rejected')
+                                                            ->body('Category Color must be a valid hex color')
+                                                            ->info()
+                                                            ->send();
+
+                                                        return;
+                                                    }
+
                                                     // calculate how many names that is the same
                                                     $array = $get('../');
 
@@ -1087,7 +1172,7 @@ class EventResource extends Resource
                                         ->columnSpan([
                                             'default' => 1,
                                             'sm' => 1,
-                                            'md' => 4,
+                                            'md' => 7,
                                         ])
                                         ->schema([
                                             Forms\Components\Repeater::make('event_category_timebound_prices')
@@ -1110,6 +1195,7 @@ class EventResource extends Resource
                                                         'sm' => 1,
                                                         'md' => 2,
                                                     ]),
+
                                                     Forms\Components\Hidden::make('name')
                                                         ->default('')
                                                         ->formatStateUsing(function (Forms\Get $get) {
@@ -1125,11 +1211,19 @@ class EventResource extends Resource
 
                                                     Forms\Components\TextInput::make('price')
                                                         ->default(1)
+                                                        ->placeholder('Timeline Price')
                                                         ->hidden(fn(Forms\Get $get) => !$get('is_active'))
                                                         ->prefix('Rp')
                                                         ->inputMode('decimal')
                                                         ->numeric()
                                                         ->required()
+                                                        ->validationAttribute('Timeline Price')
+                                                        ->validationMessages([
+                                                            'required' => 'Timeline Price is required',
+                                                            'numeric' => 'Timeline Price must be a number',
+                                                            'min' => 'Timeline Price must be greater than 0',
+                                                        ])
+                                                        ->minValue(1)
                                                         ->reactive()
                                                         ->afterStateUpdated(function (Forms\Set $set, $state) {
                                                             $numericValue = (float) preg_replace('/[^\d]/', '', $state);
@@ -1173,7 +1267,14 @@ class EventResource extends Resource
                                         ->label('Is Locked')
                                 ]),
                             Forms\Components\TextInput::make('locked_password')
+                                ->placeholder('Password')
                                 ->required(fn(Forms\Get $get) => $get('is_locked'))
+                                ->maxLength(255)
+                                ->validationAttribute('Password')
+                                ->validationMessages([
+                                    'required' => 'Password is required',
+                                    'max' => 'Password must not exceed 255 characters',
+                                ])
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -1197,18 +1298,38 @@ class EventResource extends Resource
                                 ])
                                 ->schema([
                                     Forms\Components\Toggle::make('is_maintenance')
+                                        ->reactive()
                                         ->label('Is Maintenance')
                                 ]),
                             Forms\Components\TextInput::make('maintenance_title')
+                                ->placeholder('Title')
+                                ->maxLength(255)
+                                ->validationAttribute('Title')
+                                ->validationMessages([
+                                    'max' => 'Title must not exceed 255 characters',
+                                ])
+                                ->disabled(fn(Forms\Get $get) => !$get('is_maintenance'))
                                 ->label('Title'),
                             Forms\Components\DateTimePicker::make('maintenance_expected_finish')
                                 ->label('Expected Finish')
+                                ->validationAttribute('Expected Finish')
+                                ->validationMessages([
+                                    'after_or_equal' => 'Expected Finish must be after or equal to now',
+                                ])
+                                ->disabled(fn(Forms\Get $get) => !$get('is_maintenance'))
                                 ->minDate(
                                     fn() => $modelExists
                                         ? min(now(), optional($currentModel->eventVariables->maintenance_expected_finish) ? Carbon::parse($currentModel->eventVariables->maintenance_expected_finish) : now())
                                         : now()
                                 ),
                             Forms\Components\TextInput::make('maintenance_message')
+                                ->placeholder('Message')
+                                ->maxLength(255)
+                                ->validationAttribute('Message')
+                                ->validationMessages([
+                                    'max' => 'Message must not exceed 255 characters',
+                                ])
+                                ->disabled(fn(Forms\Get $get) => !$get('is_maintenance'))
                                 ->label('Message'),
                         ]),
                     Forms\Components\Wizard\Step::make('Limits')
@@ -1219,13 +1340,33 @@ class EventResource extends Resource
                         ])
                         ->schema([
                             Forms\Components\TextInput::make('ticket_limit')
-                                ->numeric()
-                                ->default(5)
+                                ->placeholder('Ticket Purchase Limit')
+                                ->default(1)
                                 ->minValue(1)
                                 ->maxValue(20)
                                 ->required()
+                                ->validationAttribute('Ticket Purchase Limit')
+                                ->validationMessages([
+                                    'required' => 'Ticket Purchase Limit is required',
+                                    'numeric' => 'Ticket Purchase Limit must be a number',
+                                    'min' => 'Ticket Purchase Limit must be at least 1',
+                                    'max' => 'Ticket Purchase Limit must not exceed 20',
+                                ])
                                 ->label('Ticket Purchase Limit')
-                                ->helperText('Maximum number of tickets a customer can purchase at once'),
+                                ->helperText('Maximum number of tickets a customer can purchase at once')
+                                ->afterStateUpdated(
+                                    function (Forms\Set $set, $state) {
+                                        if (!is_numeric($state)) {
+                                            $set('ticket_limit', 1);
+
+                                            Notification::make()
+                                                ->title('Ticket Purchase Limit Rejected')
+                                                ->body('Ticket Purchase Limit must be a number')
+                                                ->info()
+                                                ->send();
+                                        }
+                                    }
+                                ),
                         ]),
                     Forms\Components\Wizard\Step::make('Colors')
                         ->schema(fn($record) => [
@@ -1239,14 +1380,40 @@ class EventResource extends Resource
                         ])
                         ->schema([
                             Forms\Components\TextInput::make('logo')
+                                ->placeholder('Event Logo')
+                                ->maxLength(2048)
+                                ->validationAttribute('Logo')
+                                ->validationMessages([
+                                    'max' => 'Logo must not exceed 2048 characters',
+                                ])
                                 ->label('Logo'),
                             Forms\Components\TextInput::make('logo_alt')
+                                ->placeholder('Event Logo Alt')
+                                ->helperText('Alternative text for the logo if it fails to load')
+                                ->maxLength(255)
+                                ->validationAttribute('Logo Alt')
+                                ->validationMessages([
+                                    'max' => 'Logo Alt must not exceed 255 characters',
+                                ])
                                 ->label('Logo Alt'),
                             Forms\Components\TextInput::make('favicon')
+                                ->placeholder('Event Icon')
                                 ->rule('regex:/\.ico$/i')
+                                ->maxLength(2048)
+                                ->validationAttribute('Favicon')
+                                ->validationMessages([
+                                    'regex' => 'Favicon must be a .ico file',
+                                    'max' => 'Favicon must not exceed 2048 characters',
+                                ])
                                 ->helperText('Must be a .ico file only.')
                                 ->label('Favicon'),
                             Forms\Components\TextInput::make('texture')
+                                ->placeholder('Event Texture')
+                                ->maxLength(2048)
+                                ->validationAttribute('Texture')
+                                ->validationMessages([
+                                    'max' => 'Texture must not exceed 2048 characters',
+                                ])
                                 ->label('Texture'),
                         ])
                 ])
@@ -1260,8 +1427,10 @@ class EventResource extends Resource
         $user = User::find(Auth::id());
 
         $defaultActions = [
-            Tables\Actions\ViewAction::make()->modalHeading('View Event'),
-            Tables\Actions\EditAction::make(),
+            Tables\Actions\ViewAction::make()
+                ->modalHeading('View Event'),
+            Tables\Actions\EditAction::make()
+                ->color(Color::Orange),
         ];
 
         if ($user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER])) {

@@ -2,20 +2,18 @@
 
 namespace App\Enums;
 
+use App\Enums\Traits\BaseEnumTrait;
 use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
 enum VenueStatus: string implements HasLabel, HasColor
 {
+    use BaseEnumTrait;
+
     case ACTIVE = 'active';
     case INACTIVE = 'inactive';
     case UNDER_MAINTENANCE = 'under_maintenance';
-
-    public static function values(): array
-    {
-        return array_map(fn($case) => $case->value, self::cases());
-    }
 
     public function getLabel(): string
     {
@@ -31,24 +29,8 @@ enum VenueStatus: string implements HasLabel, HasColor
         return match ($this) {
             self::ACTIVE => Color::Green,
             self::INACTIVE => Color::Red,
-            self::UNDER_MAINTENANCE => Color::Gray
+            self::UNDER_MAINTENANCE => Color::Slate
         };
-    }
-
-    public static function fromLabel(string $label): self
-    {
-        foreach (self::cases() as $case) {
-            if ($case->getLabel() === $label) {
-                return $case;
-            }
-        }
-
-        throw new \ValueError("\"$label\" is not a valid label for enum " . self::class);
-    }
-
-    public static function toArray(): array
-    {
-        return array_map(fn($case) => $case->getLabel(), self::cases());
     }
 
     public static function editableOptions()
@@ -58,15 +40,6 @@ enum VenueStatus: string implements HasLabel, HasColor
             self::INACTIVE->value => self::INACTIVE->getLabel(),
             self::UNDER_MAINTENANCE->value => self::UNDER_MAINTENANCE->getLabel()
         ];
-    }
-
-    public static function allOptions(): array
-    {
-        $options = [];
-        foreach (self::cases() as $case) {
-            $options[$case->value] = $case->getLabel();
-        }
-        return $options;
     }
 
     public static function getEditableOptionsValues()

@@ -2,12 +2,15 @@
 
 namespace App\Enums;
 
+use App\Enums\Traits\BaseEnumTrait;
 use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
 enum OrderStatus: string implements HasLabel, HasColor
 {
+    use BaseEnumTrait;
+
     case PENDING = 'pending';
     case COMPLETED = 'completed';
     case CANCELLED = 'cancelled';
@@ -24,40 +27,10 @@ enum OrderStatus: string implements HasLabel, HasColor
     public function getColor(): string|array|null
     {
         return match ($this) {
-            self::PENDING => Color::Green,
-            self::COMPLETED => Color::Red,
-            self::CANCELLED => Color::Gray
+            self::PENDING => Color::Blue,
+            self::COMPLETED => Color::Green,
+            self::CANCELLED => Color::Red
         };
-    }
-
-    public static function fromLabel(string $label): self
-    {
-        foreach (self::cases() as $case) {
-            if ($case->getLabel() === $label) {
-                return $case;
-            }
-        }
-
-        throw new \ValueError("\"$label\" is not a valid label for enum " . self::class);
-    }
-
-    public static function toArray(): array
-    {
-        return array_map(fn($case) => $case->getLabel(), self::cases());
-    }
-
-    public static function values(): array
-    {
-        return array_map(fn($case) => $case->value, self::cases());
-    }
-
-    public static function allOptions(): array
-    {
-        $options = [];
-        foreach (self::cases() as $case) {
-            $options[$case->value] = $case->getLabel();
-        }
-        return $options;
     }
 
     public static function editableOptions(OrderStatus $currentStatus)

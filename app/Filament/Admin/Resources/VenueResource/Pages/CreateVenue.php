@@ -56,7 +56,7 @@ class CreateVenue extends CreateRecord
         try {
             DB::beginTransaction();
             $tenant_id = Filament::getTenant()->team_id;
-            $team = Team::where('team_id', $tenant_id)->first();
+            $team = Team::where('team_id', $tenant_id)->lockForUpdate()->first();
 
             if (!$team || $team->vendor_quota <= 0) {
                 throw new \Exception('Venue Quota tidak mencukupi untuk membuat venue baru.');

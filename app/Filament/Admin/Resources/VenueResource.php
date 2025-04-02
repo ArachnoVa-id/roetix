@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
+use Filament\Support\Colors\Color;
 
 class VenueResource extends Resources\Resource
 {
@@ -63,7 +64,7 @@ class VenueResource extends Resources\Resource
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this venue.')
@@ -73,6 +74,11 @@ class VenueResource extends Resources\Resource
                     ->options(VenueStatus::editableOptions())
                     ->preload()
                     ->default(fn($record) => $record->status) // Set the current value as default
+                    ->validationAttribute('Status')
+                    ->validationMessages([
+                        'required' => 'The Status field is required',
+                    ])
+                    ->searchable()
                     ->required(),
             ])
             ->action(function ($record, array $data) {
@@ -100,7 +106,7 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Edit Venue')
             ->icon('heroicon-m-map')
-            ->color('info')
+            ->color(Color::Indigo)
             ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}");
     }
 
@@ -109,7 +115,7 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Export Venue')
             ->icon('heroicon-o-arrow-down-tray')
-            ->color('info')
+            ->color(Color::Emerald)
             ->action(function ($record) {
                 try {
                     $record->exportSeats();
@@ -133,7 +139,7 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Import Venue')
             ->icon('heroicon-o-arrow-up-tray')
-            ->color('info')
+            ->color(Color::Teal)
             ->requiresConfirmation()
             ->form([
                 \Filament\Forms\Components\FileUpload::make('venue_json')
@@ -283,9 +289,23 @@ class VenueResource extends Resources\Resource
                     ->columns(2)
                     ->schema([
                         Forms\Components\TextInput::make('name')
+                            ->maxLength(255)
+                            ->placeholder('Venue Name')
+                            ->validationAttribute('Name')
+                            ->validationMessages([
+                                'required' => 'The name field is required.',
+                                'max' => 'The name may not be greater than 255 characters.',
+                            ])
                             ->label('Name')
                             ->required(),
                         Forms\Components\TextInput::make('location')
+                            ->maxLength(255)
+                            ->placeholder('Location')
+                            ->validationAttribute('Location')
+                            ->validationMessages([
+                                'required' => 'The location field is required.',
+                                'max' => 'The location may not be greater than 255 characters.',
+                            ])
                             ->label('Location')
                             ->required(),
                     ]),
@@ -294,20 +314,48 @@ class VenueResource extends Resources\Resource
                     ->columns(2)
                     ->schema([
                         Forms\Components\TextInput::make('phone_number')
+                            ->maxLength(24)
+                            ->validationAttribute('Phone Number')
+                            ->validationMessages([
+                                'required' => 'The phone number field is required.',
+                                'max' => 'The phone number may not be greater than 24 characters.',
+                            ])
+                            ->placeholder('e.g. 089919991999')
                             ->label('Phone Number')
                             ->tel()
                             ->required(),
 
                         Forms\Components\TextInput::make('email')
+                            ->maxLength(255)
+                            ->validationAttribute('Email')
+                            ->validationMessages([
+                                'required' => 'The email field is required.',
+                                'max' => 'The email may not be greater than 255 characters.',
+                            ])
+                            ->placeholder('e.g. username@example.com')
                             ->label('Email')
                             ->email()
                             ->required(),
 
                         Forms\Components\TextInput::make('whatsapp_number')
+                            ->maxLength(24)
+                            ->validationAttribute('WhatsApp Number')
+                            ->validationMessages([
+                                'required' => 'The WhatsApp number field is required.',
+                                'max' => 'The WhatsApp number may not be greater than 24 characters.',
+                            ])
+                            ->placeholder('e.g. 089919991999')
                             ->label('WhatsApp Number')
                             ->tel(),
 
                         Forms\Components\TextInput::make('instagram')
+                            ->maxLength(256)
+                            ->validationAttribute('Instagram Handle')
+                            ->validationMessages([
+                                'required' => 'The Instagram handle field is required.',
+                                'max' => 'The Instagram handle may not be greater than 256 characters.',
+                            ])
+                            ->placeholder('e.g. novatix.id')
                             ->label('Instagram Handle')
                             ->prefix('@'),
                     ])
@@ -396,8 +444,10 @@ class VenueResource extends Resources\Resource
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->modalHeading('View Venue'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View Venue'),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
                     ),

@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\OrderResource;
 use App\Filament\Components\BackButtonAction;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewOrder extends ViewRecord
 {
@@ -18,7 +19,8 @@ class ViewOrder extends ViewRecord
                 Actions\Action::make('back')
             ),
             Actions\EditAction::make('Edit Order')
-                ->icon('heroicon-o-pencil'),
+                ->icon('heroicon-m-pencil-square')
+                ->color(Color::Orange),
             OrderResource::ChangeStatusButton(
                 Actions\Action::make('changeStatus')
             )

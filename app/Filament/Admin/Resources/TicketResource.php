@@ -27,6 +27,7 @@ use App\Models\Order;
 use App\Models\Team;
 use App\Models\User;
 use Filament\Notifications\Notification;
+use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\DB;
 
 class TicketResource extends Resource
@@ -87,7 +88,7 @@ class TicketResource extends Resource
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this ticket.')
@@ -98,6 +99,10 @@ class TicketResource extends Resource
                     ->preload()
                     ->searchable()
                     ->default(fn($record) => $record->status) // Set the current value as default
+                    ->validationAttribute('Status')
+                    ->validationMessages([
+                        'required' => 'Please select a status for the ticket.'
+                    ])
                     ->required(),
             ])
             ->action(function ($record, array $data) {
@@ -159,6 +164,10 @@ class TicketResource extends Resource
                     })
                     ->getOptionLabelUsing(fn($value) => User::find($value)?->email ?? '')
                     ->optionsLimit(5)
+                    ->validationAttribute('User')
+                    ->validationMessages([
+                        'required' => 'Please select a user to transfer the ticket to.'
+                    ])
                     ->required(),
             ])
             ->action(function (array $data) {

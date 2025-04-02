@@ -3,6 +3,7 @@
 namespace App\Filament\Components;
 
 use Filament\Actions\Action;
+use Filament\Support\Colors\Color;
 
 class BackButtonAction
 {
@@ -12,7 +13,7 @@ class BackButtonAction
             ->label('Back')
             ->action(fn() => self::popAndRedirectUrlStack())
             ->icon('heroicon-o-arrow-left')
-            ->color('info');
+            ->color(Color::Zinc);
     }
 
     protected static function popAndRedirectUrlStack(string $defaultRoute = 'home')

@@ -1,11 +1,8 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SeatController;
-
-use App\Http\Controllers\EoTiketController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserPageController;
@@ -21,7 +18,7 @@ Route::middleware('guest')->group(function () {
     Route::domain(config('app.domain'))
         ->middleware('verify.maindomain')
         ->group(function () {
-            Route::get('login', [AuthenticatedSessionController::class, 'create'])
+            Route::get('login', [AuthenticatedSessionController::class, 'login'])
                 ->name('login');
         });
 
@@ -29,7 +26,7 @@ Route::middleware('guest')->group(function () {
     Route::domain('{client}.' . config('app.domain'))
         ->middleware('verify.subdomain')
         ->group(function () {
-            Route::get('login', [AuthenticatedSessionController::class, 'create'])
+            Route::get('login', [AuthenticatedSessionController::class, 'login'])
                 ->name('client.login');
         });
 });
@@ -158,15 +155,6 @@ Route::domain('{client}.' . config('app.domain'))
                         });
                 });
             });
-
-            // Event Tickets
-            Route::controller(EoTiketController::class)
-                ->group(function () {
-                    Route::get('/events/{eventId}/tickets', 'show')
-                        ->name('events.tickets.show');
-                    Route::get('/events/tickets', 'index')
-                        ->name('events.tickets.index');
-                });
 
             // Profile
             Route::controller(ProfileController::class)

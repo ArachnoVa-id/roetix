@@ -2,12 +2,15 @@
 
 namespace App\Enums;
 
+use App\Enums\Traits\BaseEnumTrait;
 use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
 enum UserRole: string implements HasLabel, HasColor
 {
+    use BaseEnumTrait;
+
     case USER = 'user';
     case ADMIN = 'admin';
     case VENDOR = 'vendor';
@@ -27,31 +30,10 @@ enum UserRole: string implements HasLabel, HasColor
     {
         return match ($this) {
             self::USER => Color::Green,
-            self::ADMIN => Color::Red,
-            self::VENDOR => Color::Gray,
+            self::ADMIN => Color::Purple,
+            self::VENDOR => Color::Blue,
             self::EVENT_ORGANIZER => Color::Yellow
         };
-    }
-
-    public static function fromLabel(string $label): self
-    {
-        foreach (self::cases() as $case) {
-            if ($case->getLabel() === $label) {
-                return $case;
-            }
-        }
-
-        throw new \ValueError("\"$label\" is not a valid label for enum " . self::class);
-    }
-
-    public static function toArray(): array
-    {
-        return array_map(fn($case) => $case->getLabel(), self::cases());
-    }
-
-    public static function values(): array
-    {
-        return array_map(fn($case) => $case->value, self::cases());
     }
 
     public static function editableOptions()

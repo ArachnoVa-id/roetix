@@ -27,6 +27,7 @@ use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
 use App\Models\Team;
 use Filament\Notifications\Notification;
+use Filament\Support\Colors\Color;
 
 class OrderResource extends Resource
 {
@@ -51,7 +52,7 @@ class OrderResource extends Resource
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this order.')
@@ -63,6 +64,10 @@ class OrderResource extends Resource
                     ->preload()
                     ->searchable()
                     ->default(fn($record) => $record->status) // Set the current value as default
+                    ->validationAttribute('Status')
+                    ->validationMessages([
+                        'required' => 'The Status field is required',
+                    ])
                     ->required(),
             ])
             ->action(function ($record, array $data) {
@@ -103,6 +108,10 @@ class OrderResource extends Resource
                         // define the user
                         Forms\Components\Select::make('user_id')
                             ->label('User')
+                            ->validationAttribute('User')
+                            ->validationMessages([
+                                'required' => 'The User field is required',
+                            ])
                             ->searchable()
                             ->options(fn() => User::pluck('email', 'id'))
                             ->optionsLimit(5)
@@ -112,6 +121,10 @@ class OrderResource extends Resource
                         // define the event
                         Forms\Components\Select::make('event_id')
                             ->label('Event')
+                            ->validationAttribute('Event')
+                            ->validationMessages([
+                                'required' => 'The Event field is required',
+                            ])
                             ->searchable()
                             ->reactive()
                             ->optionsLimit(5)
@@ -137,6 +150,10 @@ class OrderResource extends Resource
                         // define the repeater of tickets on that event
                         Forms\Components\Repeater::make('tickets')
                             ->hidden(fn(Forms\Get $get) => $get('event_id') == null)
+                            ->validationAttribute('Tickets')
+                            ->validationMessages([
+                                'min' => 'The Tickets field must have at least one item',
+                            ])
                             ->minItems(1)
                             ->grid(3)
                             ->columns([
@@ -145,7 +162,7 @@ class OrderResource extends Resource
                                 'md' => 5,
                             ])
                             ->label('')
-                            ->deletable(!$modelExists)
+                            ->deletable(fn(Forms\Get $get) => !$modelExists && count($get('tickets')) > 1)
                             ->addable(!$modelExists)
                             ->afterStateHydrated(function ($set, $record) {
                                 if ($record) {
@@ -170,6 +187,10 @@ class OrderResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('ticket_id')
                                     ->label('Ticket')
+                                    ->validationAttribute('Ticket')
+                                    ->validationMessages([
+                                        'required' => 'The Ticket field is required',
+                                    ])
                                     ->searchable()
                                     ->optionsLimit(5)
                                     ->disabled($modelExists)
@@ -215,6 +236,10 @@ class OrderResource extends Resource
                                     ->placeholder('Choose')
                                     ->preload()
                                     ->hidden(!$modelExists)
+                                    ->validationAttribute('Ticket Order Status')
+                                    ->validationMessages([
+                                        'required' => 'The Ticket Order Status field is required',
+                                    ])
                                     ->required(),
                             ]),
                     ])
@@ -414,7 +439,8 @@ class OrderResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->modalHeading('View Order'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
                     )

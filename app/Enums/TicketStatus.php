@@ -2,21 +2,19 @@
 
 namespace App\Enums;
 
+use App\Enums\Traits\BaseEnumTrait;
 use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
 enum TicketStatus: string implements HasLabel, HasColor
 {
+    use BaseEnumTrait;
+
     case AVAILABLE = 'available';
     case BOOKED = 'booked';
     case RESERVED = 'reserved';
     case IN_TRANSACTION = 'in_transaction';
-
-    public static function values(): array
-    {
-        return array_map(fn($case) => $case->value, self::cases());
-    }
 
     public function getLabel(): string
     {
@@ -31,29 +29,12 @@ enum TicketStatus: string implements HasLabel, HasColor
     public function getColor(): string|array|null
     {
         return match ($this) {
-            self::AVAILABLE => Color::Green,
-            self::BOOKED => Color::Red,
-            self::RESERVED => Color::Gray,
-            self::IN_TRANSACTION => Color::Yellow
+            self::AVAILABLE => Color::Emerald,
+            self::BOOKED => Color::Cyan,
+            self::RESERVED => Color::Stone,
+            self::IN_TRANSACTION => Color::Rose
         };
     }
-
-    public static function fromLabel(string $label): self
-    {
-        foreach (self::cases() as $case) {
-            if ($case->getLabel() === $label) {
-                return $case;
-            }
-        }
-
-        throw new \ValueError("\"$label\" is not a valid label for enum " . self::class);
-    }
-
-    public static function toArray(): array
-    {
-        return array_map(fn($case) => $case->getLabel(), self::cases());
-    }
-
 
     public static function editableOptions()
     {
