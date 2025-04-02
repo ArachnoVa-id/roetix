@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TicketOrderStatus;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Ticket;
@@ -63,6 +64,7 @@ class TicketController extends Controller
                 ->whereHas('ticketOrders', function ($query) use ($userOrderIds) {
                     $query->whereIn('order_id', $userOrderIds);
                 })
+                ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED]) // Filter ticket order status
                 ->select('tickets.*', 'orders.order_id') // Include 'orders.order_date' in the result
                 ->get();
 

@@ -1,27 +1,8 @@
 import { Button } from '@/Components/ui/button';
+import { GridCell, GridDimensions, GridSeatEditorProps } from '@/types/editor';
+import { Layout, LayoutItem, SeatItem, SeatStatus } from '@/types/seatmap';
 import { MousePointer, Plus, Square, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Layout, LayoutItem, SeatItem, SeatStatus } from './types';
-
-interface Props {
-    initialLayout?: Layout;
-    onSave?: (layout: Layout) => void;
-    venueId: string;
-    isDisabled?: boolean;
-}
-
-interface GridCell {
-    type: 'empty' | 'seat' | 'label';
-    item?: SeatItem;
-    isBlocked?: boolean;
-}
-
-interface GridDimensions {
-    top: number;
-    bottom: number;
-    left: number;
-    right: number;
-}
 
 // Helper function to convert Excel-style column label to number
 const getRowNumber = (label: string): number => {
@@ -35,7 +16,7 @@ const getRowNumber = (label: string): number => {
 
 type EditorMode = 'add' | 'delete' | 'block';
 
-const GridSeatEditor: React.FC<Props> = ({
+const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
     initialLayout,
     onSave,
     isDisabled,
@@ -102,13 +83,13 @@ const GridSeatEditor: React.FC<Props> = ({
     const findHighestRow = (items: LayoutItem[]): number => {
         let maxRow = 0;
         items.forEach((item) => {
-            if (item.type === 'seat') {
-                const rowNum =
-                    typeof item.row === 'string'
-                        ? getRowNumber(item.row) - 1
-                        : item.row;
-                maxRow = Math.max(maxRow, rowNum);
-            }
+            // if (item.type === 'seat') {
+            const rowNum =
+                typeof item.row === 'string'
+                    ? getRowNumber(item.row) - 1
+                    : item.row;
+            maxRow = Math.max(maxRow, rowNum);
+            // }
         });
         return maxRow;
     };
@@ -117,9 +98,9 @@ const GridSeatEditor: React.FC<Props> = ({
     const findHighestColumn = (items: LayoutItem[]): number => {
         let maxCol = 0;
         items.forEach((item) => {
-            if (item.type === 'seat') {
-                maxCol = Math.max(maxCol, item.column);
-            }
+            // if (item.type === 'seat') {
+            maxCol = Math.max(maxCol, item.column);
+            // }
         });
         return maxCol;
     };
@@ -134,27 +115,27 @@ const GridSeatEditor: React.FC<Props> = ({
             );
 
         if (initialLayout) {
-            initialLayout.items.forEach((item) => {
-                if (item.type === 'seat') {
-                    const seatItem = item as SeatItem;
-                    const rowIndex =
-                        typeof seatItem.row === 'string'
-                            ? getRowNumber(seatItem.row) - 1 + dimensions.top
-                            : seatItem.row + dimensions.top;
-                    const colIndex = seatItem.column - 1 + dimensions.left;
+            initialLayout.items.forEach((item: SeatItem) => {
+                // if (item.type === 'seat') {
+                const seatItem = item;
+                const rowIndex =
+                    typeof seatItem.row === 'string'
+                        ? getRowNumber(seatItem.row) - 1 + dimensions.top
+                        : seatItem.row + dimensions.top;
+                const colIndex = seatItem.column - 1 + dimensions.left;
 
-                    if (
-                        rowIndex >= 0 &&
-                        rowIndex < totalRows &&
-                        colIndex >= 0 &&
-                        colIndex < totalColumns
-                    ) {
-                        newGrid[rowIndex][colIndex] = {
-                            type: 'seat',
-                            item: seatItem,
-                        };
-                    }
+                if (
+                    rowIndex >= 0 &&
+                    rowIndex < totalRows &&
+                    colIndex >= 0 &&
+                    colIndex < totalColumns
+                ) {
+                    newGrid[rowIndex][colIndex] = {
+                        type: 'seat',
+                        item: seatItem,
+                    };
                 }
+                // }
             });
         }
 
@@ -318,7 +299,7 @@ const GridSeatEditor: React.FC<Props> = ({
         const adjustedColumn = colIndex + 1;
 
         const newSeat: SeatItem = {
-            type: 'seat',
+            // type: 'seat',
             seat_id: '', // Kosongkan seat_id, akan dibuat di backend
             seat_number: `${rowLabel}${adjustedColumn}`,
             row: rowLabel,
@@ -369,7 +350,7 @@ const GridSeatEditor: React.FC<Props> = ({
                     const adjustedColumn = j + 1;
 
                     const newSeat: SeatItem = {
-                        type: 'seat',
+                        // type: 'seat',
                         seat_id: '', // Kosongkan seat_id, akan dibuat di backend
                         seat_number: `${rowLabel}${adjustedColumn}`,
                         row: rowLabel,

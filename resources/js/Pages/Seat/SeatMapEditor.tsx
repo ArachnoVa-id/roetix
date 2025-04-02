@@ -1,31 +1,12 @@
+import {
+    LayoutItem,
+    SeatItem,
+    SeatMapEditorProps,
+    SelectionMode,
+} from '@/types/seatmap';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Layout, LayoutItem, SeatItem } from './types';
 
-export interface UpdatedSeats {
-    seat_id: string;
-    status: string;
-    ticket_type: string;
-    price: number;
-}
-
-interface Props {
-    layout: Layout;
-    onSave: (updatedSeats: UpdatedSeats[]) => void;
-    ticketTypes: string[];
-    categoryColors?: Record<string, string>;
-    currentTimeline?: {
-        timeline_id: string;
-        name: string;
-        start_date: string;
-        end_date: string;
-    };
-    // Add categoryPrices prop
-    categoryPrices?: Record<string, number>;
-}
-
-type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
-
-const SeatMapEditor: React.FC<Props> = ({
+const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
     layout,
     onSave,
     ticketTypes,
@@ -93,7 +74,7 @@ const SeatMapEditor: React.FC<Props> = ({
 
         // Default colors jika tidak disediakan (gunakan hex)
         const defaultColors: Record<string, string> = {
-            unset: '#FFFFFF',
+            unset: '#FFF',
         };
 
         return defaultColors[category] || '#E0E0E0'; // default abu-abu
@@ -175,6 +156,8 @@ const SeatMapEditor: React.FC<Props> = ({
                 case 'reserved':
                     baseColor = '#9E9E9E'; // Abu-abu
                     break;
+                default:
+                    baseColor = '#FFF'; // Putih
             }
         } else {
             // Jika available, tampilkan warna tipe tiket
@@ -253,7 +236,10 @@ const SeatMapEditor: React.FC<Props> = ({
 
         // Check each seat to see if it's in the selection box
         layout.items.forEach((item) => {
-            if (item.type === 'seat' && isSeatEditable(item as SeatItem)) {
+            if (
+                // item.type === 'seat' &&
+                isSeatEditable(item as SeatItem)
+            ) {
                 const seatId = getSeatId(item as SeatItem);
                 const seatRef = seatRefs.current.get(seatId);
 
@@ -344,7 +330,7 @@ const SeatMapEditor: React.FC<Props> = ({
                     next.clear();
                     layout.items.forEach((item) => {
                         if (
-                            item.type === 'seat' &&
+                            // item.type === 'seat' &&
                             (item as SeatItem).ticket_type ===
                                 seat.ticket_type &&
                             isSeatEditable(item as SeatItem)
@@ -368,7 +354,7 @@ const SeatMapEditor: React.FC<Props> = ({
         const seatsInCategory = layout.items
             .filter(
                 (item) =>
-                    item.type === 'seat' &&
+                    // item.type === 'seat' &&
                     (item as SeatItem).ticket_type === category &&
                     isSeatEditable(item as SeatItem),
             )
@@ -379,7 +365,10 @@ const SeatMapEditor: React.FC<Props> = ({
     };
 
     const renderCell = (item: LayoutItem | null, colIndex: number) => {
-        if (item && item.type === 'seat') {
+        if (
+            item
+            // && item.type === 'seat'
+        ) {
             const seat = item as SeatItem;
             const isEditable = isSeatEditable(seat);
             const seatId = getSeatId(seat);
@@ -434,7 +423,7 @@ const SeatMapEditor: React.FC<Props> = ({
         const updatedSeats = layout.items
             .filter(
                 (item) =>
-                    item.type === 'seat' &&
+                    // item.type === 'seat' &&
                     selectedSeats.has(getSeatId(item as SeatItem)) &&
                     isSeatEditable(item as SeatItem),
             )

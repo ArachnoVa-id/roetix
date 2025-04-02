@@ -1,4 +1,3 @@
-// types/ticket.ts
 export interface TicketData {
     date: string;
     type: string;
@@ -12,6 +11,7 @@ export interface TicketProps {
     code: string;
     qrStr: string;
     status: string;
+    categoryColor?: string; // Add optional categoryColor property
     data: TicketData;
 }
 
@@ -55,6 +55,7 @@ export interface TicketInterface {
     seat?: SeatInterface;
     order?: OrderInterface;
     ticketCategory?: TicketCategoryInterface;
+    category_color?: string; // Add optional category_color property
 }
 
 export interface EventInterface {
@@ -66,10 +67,39 @@ export interface EventInterface {
     event_variables_id: string;
 }
 
+export interface TicketActionEvent extends Event {
+    detail: {
+        action: string;
+        ticketId: string;
+        ticketType?: string;
+        error?: string;
+    };
+}
+
 // Add additional interfaces for use in the MyTickets component
 export interface MyTicketsPageProps {
     client: string;
     props: import('@/types/front-end').EventProps;
     tickets: TicketProps[];
     event: EventInterface;
+}
+
+export interface RowComponentProps {
+    idtf: string;
+    content: string;
+}
+
+export interface TicketComponentProps extends TicketProps {
+    popupClickable?: boolean;
+    eventId: string;
+    categoryColor?: string;
+    userData?: {
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
+    eventInfo?: {
+        location: string;
+        eventDate: string;
+    };
 }

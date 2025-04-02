@@ -82,6 +82,12 @@ class Ticket extends Model
         return $qrCode;
     }
 
+    public function getColor()
+    {
+        $category = $this->ticketCategory;
+        return $category->color;
+    }
+
     public function getTicketPDFTitle(): string
     {
         $event = $this->event;

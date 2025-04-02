@@ -1,20 +1,18 @@
 // GridEdit.tsx
 import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
+import { GridEditorProps } from '@/types/editor';
+import { Layout, SeatItem } from '@/types/seatmap';
 import { Head, router } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
 import GridSeatEditor from './GridSeatEditor';
-import { LabelItem, Layout, SeatItem } from './types';
 
-interface Props {
-    layout?: Layout;
-    venue_id: string;
-    errors?: { [key: string]: string };
-    flash?: { success?: string };
-    isDisabled?: boolean;
-}
-
-const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
+const GridEdit: React.FC<GridEditorProps> = ({
+    layout,
+    venue_id,
+    errors,
+    flash,
+}) => {
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -33,34 +31,34 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
 
         try {
             const convertedItems = updatedLayout.items.map((item) => {
-                if (item.type === 'seat') {
-                    const seatItem = item as SeatItem;
-                    const rowStr =
-                        typeof seatItem.row === 'string'
-                            ? seatItem.row
-                            : String.fromCharCode(65 + seatItem.row);
+                // if (item.type === 'seat') {
 
-                    return {
-                        type: 'seat',
-                        seat_id: seatItem.seat_id,
-                        seat_number: seatItem.seat_number,
-                        row: rowStr,
-                        column: seatItem.column,
-                        position: `${rowStr}${seatItem.column}`,
-                    };
-                }
-
-                const labelItem = item as LabelItem;
+                const seatItem = item as SeatItem;
                 const rowStr =
-                    typeof labelItem.row === 'string'
-                        ? labelItem.row
-                        : String.fromCharCode(65 + labelItem.row);
+                    typeof seatItem.row === 'string'
+                        ? seatItem.row
+                        : String.fromCharCode(65 + seatItem.row);
+
                 return {
-                    type: 'label',
+                    type: 'seat',
+                    seat_id: seatItem.seat_id,
+                    seat_number: seatItem.seat_number,
                     row: rowStr,
-                    column: labelItem.column,
-                    text: labelItem.text,
+                    column: seatItem.column,
+                    position: `${rowStr}${seatItem.column}`,
                 };
+
+                // const labelItem = item as LabelItem;
+                // const rowStr =
+                //     typeof labelItem.row === 'string'
+                //         ? labelItem.row
+                //         : String.fromCharCode(65 + labelItem.row);
+                // return {
+                //     type: 'label',
+                //     row: rowStr,
+                //     column: labelItem.column,
+                //     text: labelItem.text,
+                // };
             });
 
             const payload = {

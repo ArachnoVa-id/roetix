@@ -1,25 +1,7 @@
-import { EventProps } from '@/types/front-end';
+import { SeatItem, SeatMapDisplayProps } from '@/types/seatmap';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Layout, SeatItem } from './types';
 
-interface Timeline {
-    timeline_id: string;
-    name: string;
-    start_date: string;
-    end_date: string;
-}
-
-interface Props {
-    config: Layout;
-    onSeatClick?: (seat: SeatItem) => void;
-    selectedSeats?: SeatItem[];
-    ticketTypeColors?: Record<string, string>;
-    props: EventProps;
-    currentTimeline?: Timeline;
-    eventStatus?: string; // Tambahkan ini
-}
-
-const SeatMapDisplay: React.FC<Props> = ({
+const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
     config,
     onSeatClick,
     selectedSeats = [],
@@ -114,7 +96,7 @@ const SeatMapDisplay: React.FC<Props> = ({
 
         // Gunakan warna dari ticket type jika tersedia
         // Ubah format jika perlu - jika ticketTypeColors sudah berisi nilai hex
-        return ticketTypeColors[ticketType] || '#FFFFFF';
+        return ticketTypeColors[ticketType] || '#FFF';
     };
 
     // Function to determine if a seat is selectable

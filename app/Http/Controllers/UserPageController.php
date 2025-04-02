@@ -147,7 +147,7 @@ class UserPageController extends Controller
                     'event_id' => $event->event_id,
                     'name' => $event->name,
                     'date' => $event->date,
-                    'event_date' => $event->event_date ?? $event->date, // Use event_date or fall back to date
+                    'event_date' => $event->event_date ?? $event->date,
                     'venue_id' => $event->venue_id,
                     'status' => $event->status,
                     'slug' => $event->slug
@@ -174,25 +174,32 @@ class UserPageController extends Controller
             $event = $request->get('event');
             $props = $request->get('props');
 
-            // Dapatkan order_id untuk user yang sedang login
+            // Get order_ids for the logged-in user
             $userOrderIds = Order::where('user_id', Auth::id())
                 ->where('event_id', $event->event_id)
                 ->pluck('order_id')->toArray();
 
-            // Struktur query join berdasarkan struktur database Anda
-            // Ini adalah contoh struktur, sesuaikan dengan struktur database yang sebenarnya
+            // Get all ticket categories for this event
+            $ticketCategories = TicketCategory::where('event_id', $event->event_id)
+                ->get()
+                ->keyBy('ticket_category_id'); // Create a map of categories by ID for lookup
+
+            // Query user tickets with status filtering
             $userTickets = Ticket::select(
                 'tickets.*',
                 'orders.order_date',
                 'orders.status as order_status',
-                'ticket_order.status as ticket_order_status'
+                'ticket_order.status as ticket_order_status',
+                'ticket_categories.color as category_color' // Add the category color to the query
             )
                 ->join('ticket_order', 'tickets.ticket_id', '=', 'ticket_order.ticket_id')
                 ->join('orders', 'ticket_order.order_id', '=', 'orders.order_id')
+                ->leftJoin('ticket_categories', 'tickets.ticket_category_id', '=', 'ticket_categories.ticket_category_id') // Left join to get category colors
                 ->where('tickets.event_id', $event->event_id)
                 ->whereIn('orders.status', [OrderStatus::COMPLETED])
                 ->whereIn('ticket_order.order_id', $userOrderIds)
                 ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED, TicketOrderStatus::SCANNED])
+                ->orderBy('ticket_categories.created_at', 'desc')
                 ->get();
 
             // Load seat data for each ticket
@@ -201,9 +208,15 @@ class UserPageController extends Controller
                 $ticket = Ticket::with('seat')->find($ticketData->ticket_id);
                 if ($ticket) {
                     $tickets[] = $ticket;
-                    // Attach order_date and ticket_order_status to ticket object
+                    // Attach order_date, ticket_order_status, and category color to ticket object
                     $ticket->order_date = $ticketData->order_date;
-                    $ticket->ticket_order_status = $ticketData->ticket_order_status; // Add this line
+                    $ticket->ticket_order_status = $ticketData->ticket_order_status;
+                    $ticket->category_color = $ticketData->category_color; // Add the category color
+
+                    // If category color is not available from the join, try to get it from our categories map
+                    if (empty($ticket->category_color) && $ticket->ticket_category_id && isset($ticketCategories[$ticket->ticket_category_id])) {
+                        $ticket->category_color = $ticketCategories[$ticket->ticket_category_id]->color;
+                    }
                 }
             }
 
@@ -226,6 +239,7 @@ class UserPageController extends Controller
                     'code' => $ticket->ticket_code,
                     'qrStr' => $ticket->getQRCode(),
                     'status' => $ticketStatus, // Include the status
+                    'categoryColor' => $ticket->category_color ?? null, // Include the category color
                     'data' => [
                         'date' => $ticketDate->format('d F Y, H:i'),
                         'type' => $typeName,
@@ -235,10 +249,21 @@ class UserPageController extends Controller
                 ];
             });
 
+            // Get ticket categories for this specific event
+            $ticketCategories = TicketCategory::where('event_id', $event->event_id)->get();
+
+            // If no ticket categories found, create default ones
+            if ($ticketCategories->isEmpty()) {
+                $ticketCategories = collect([
+                    (object)['ticket_category_id' => 'unset', 'name' => 'Unset', 'color' => '#FFFFFF'],
+                ]);
+            }
+
             return Inertia::render('User/MyTickets', [
                 'client' => $client,
                 'props' => $props,
                 'tickets' => $formattedTickets,
+                'ticketCategories' => $ticketCategories,
                 'event' => [
                     'event_id' => $event->event_id,
                     'name' => $event->name,

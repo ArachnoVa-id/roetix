@@ -3,19 +3,13 @@ import Ticket from '@/Components/novatix/Ticket';
 import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { MyTicketsPageProps, TicketProps } from '@/types/ticket';
+import {
+    MyTicketsPageProps,
+    TicketActionEvent,
+    TicketProps,
+} from '@/types/ticket';
 import { Head } from '@inertiajs/react';
 import React, { useCallback, useEffect } from 'react';
-
-// Define the type for the custom event
-interface TicketActionEvent extends Event {
-    detail: {
-        action: string;
-        ticketId: string;
-        ticketType?: string;
-        error?: string;
-    };
-}
 
 export default function MyTickets({
     client,
@@ -120,25 +114,32 @@ export default function MyTickets({
                                                 clipRule="evenodd"
                                             />
                                         </svg>
-                                        Unduh Semua Tiket
+                                        Download All Tickets
                                     </button>
                                 )}
                             </div>
 
                             {tickets && tickets.length > 0 ? (
                                 <div className="flex w-full flex-wrap gap-6">
-                                    {tickets.map((ticket: TicketProps) => (
-                                        <Ticket
-                                            key={ticket.id}
-                                            id={ticket.id}
-                                            type={ticket.type}
-                                            code={ticket.code}
-                                            qrStr={ticket.qrStr}
-                                            data={ticket.data}
-                                            eventId={event.event_id}
-                                            status={ticket.status}
-                                        />
-                                    ))}
+                                    {tickets
+                                        .sort((a: TicketProps) =>
+                                            a.status === 'scanned' ? 1 : -1,
+                                        )
+                                        .map((ticket: TicketProps) => (
+                                            <Ticket
+                                                key={ticket.id}
+                                                id={ticket.id}
+                                                type={ticket.type}
+                                                code={ticket.code}
+                                                qrStr={ticket.qrStr}
+                                                data={ticket.data}
+                                                eventId={event.event_id}
+                                                status={ticket.status}
+                                                categoryColor={
+                                                    ticket.categoryColor
+                                                }
+                                            />
+                                        ))}
                                 </div>
                             ) : (
                                 <EmptyState

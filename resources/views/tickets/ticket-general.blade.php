@@ -83,7 +83,7 @@
         <!-- Ticket Type and Seat -->
         <div
           style="
-        background-color: {{ $eventVars->secondary_color }};
+        background-color: {{ $ticket->getColor() }};
         color: {{ $eventVars->text_primary_color }};
         padding: 4px 12px;
         margin-bottom: 8px;
@@ -124,7 +124,8 @@
 
               <!-- QR Code Section -->
               <td style="vertical-align: top; text-align: right;">
-                <img src="data:image/svg+xml;base64,{{ $ticket->getQRCode() }}" alt="QR Code" style="width: 160px;">
+                <img src="data:image/svg+xml;base64,{{ $ticket->getQRCode() }}" alt="QR Code"
+                  style="width: 155px; border: 5px solid {{ $ticket->getColor() }};">
               </td>
             </tr>
           </table>
