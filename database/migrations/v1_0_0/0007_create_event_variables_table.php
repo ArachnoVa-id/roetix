@@ -29,8 +29,8 @@ return new class extends Migration
 
             $table->string('logo', 2048)->nullable();
             $table->string('logo_alt')->default('')->nullable();
-            $table->string('favicon')->default('')->nullable();
-            $table->string('texture')->default('')->nullable();
+            $table->string('favicon', 2048)->default('')->nullable();
+            $table->string('texture', 2048)->default('')->nullable();
 
             $table->string('primary_color')->default('');
             $table->string('secondary_color')->default('');

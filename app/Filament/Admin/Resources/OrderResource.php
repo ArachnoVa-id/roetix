@@ -63,6 +63,10 @@ class OrderResource extends Resource
                     ->preload()
                     ->searchable()
                     ->default(fn($record) => $record->status) // Set the current value as default
+                    ->validationAttribute('Status')
+                    ->validationMessages([
+                        'required' => 'The Status field is required',
+                    ])
                     ->required(),
             ])
             ->action(function ($record, array $data) {
@@ -103,6 +107,10 @@ class OrderResource extends Resource
                         // define the user
                         Forms\Components\Select::make('user_id')
                             ->label('User')
+                            ->validationAttribute('User')
+                            ->validationMessages([
+                                'required' => 'The User field is required',
+                            ])
                             ->searchable()
                             ->options(fn() => User::pluck('email', 'id'))
                             ->optionsLimit(5)
@@ -112,6 +120,10 @@ class OrderResource extends Resource
                         // define the event
                         Forms\Components\Select::make('event_id')
                             ->label('Event')
+                            ->validationAttribute('Event')
+                            ->validationMessages([
+                                'required' => 'The Event field is required',
+                            ])
                             ->searchable()
                             ->reactive()
                             ->optionsLimit(5)
@@ -137,6 +149,10 @@ class OrderResource extends Resource
                         // define the repeater of tickets on that event
                         Forms\Components\Repeater::make('tickets')
                             ->hidden(fn(Forms\Get $get) => $get('event_id') == null)
+                            ->validationAttribute('Tickets')
+                            ->validationMessages([
+                                'min' => 'The Tickets field must have at least one item',
+                            ])
                             ->minItems(1)
                             ->grid(3)
                             ->columns([
@@ -145,7 +161,7 @@ class OrderResource extends Resource
                                 'md' => 5,
                             ])
                             ->label('')
-                            ->deletable(!$modelExists)
+                            ->deletable(fn(Forms\Get $get) => !$modelExists && count($get('tickets')) > 1)
                             ->addable(!$modelExists)
                             ->afterStateHydrated(function ($set, $record) {
                                 if ($record) {
@@ -170,6 +186,10 @@ class OrderResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('ticket_id')
                                     ->label('Ticket')
+                                    ->validationAttribute('Ticket')
+                                    ->validationMessages([
+                                        'required' => 'The Ticket field is required',
+                                    ])
                                     ->searchable()
                                     ->optionsLimit(5)
                                     ->disabled($modelExists)
@@ -215,6 +235,10 @@ class OrderResource extends Resource
                                     ->placeholder('Choose')
                                     ->preload()
                                     ->hidden(!$modelExists)
+                                    ->validationAttribute('Ticket Order Status')
+                                    ->validationMessages([
+                                        'required' => 'The Ticket Order Status field is required',
+                                    ])
                                     ->required(),
                             ]),
                     ])

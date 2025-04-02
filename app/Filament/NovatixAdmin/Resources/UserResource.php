@@ -110,22 +110,44 @@ class UserResource extends Resources\Resource
                         Forms\Components\Group::make([
                             Forms\Components\TextInput::make('first_name')
                                 ->label('First Name')
+                                ->placeholder('First Name')
                                 ->required()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->validationAttribute('First Name')
+                                ->validationMessages([
+                                    'required' => 'The First Name field is required.',
+                                    'max' => 'The First Name may not be greater than 255 characters.',
+                                ]),
                             Forms\Components\TextInput::make('last_name')
                                 ->label('Last Name')
+                                ->placeholder('Last Name')
                                 ->required()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->validationAttribute('Last Name')
+                                ->validationMessages([
+                                    'required' => 'The Last Name field is required.',
+                                    'max' => 'The Last Name may not be greater than 255 characters.',
+                                ]),
                             Forms\Components\Select::make('role')
                                 ->options(UserRole::editableOptions())
                                 ->preload()
+                                ->reactive()
                                 ->searchable()
+                                ->validationAttribute('Role')
+                                ->validationMessages([
+                                    'required' => 'The Role field is required.',
+                                ])
                                 ->required(),
                             Forms\Components\TextInput::make('email')
                                 ->label('Personal Email')
                                 ->required()
                                 ->email()
                                 ->live(debounce: 500)
+                                ->validationAttribute('Email')
+                                ->validationMessages([
+                                    'required' => 'The Email field is required.',
+                                    'email' => 'The Email must be a valid email address.',
+                                ])
                                 ->afterStateUpdated(function ($state, $record, Forms\Set $set) {
                                     $find = User::where('email', $state)->first();
                                     if ($record && $record->id === $find->id) return;
@@ -150,7 +172,15 @@ class UserResource extends Resources\Resource
                                 ->hidden(fn(Forms\Get $get) => !$get('change_password'))
                                 ->required(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord)
                                 ->password()
-                                ->maxLength(255),
+                                ->placeholder('Password')
+                                ->validationAttribute('Password')
+                                ->validationMessages([
+                                    'required' => 'The Password field is required.',
+                                    'min' => 'The Password must be at least 8 characters.',
+                                    'max' => 'The Password may not be greater than 255 characters.',
+                                ])
+                                ->maxLength(255)
+                                ->minLength(8),
                         ]),
                     ]),
                 Forms\Components\Section::make('User Contact')
@@ -162,22 +192,50 @@ class UserResource extends Resources\Resource
                     ->relationship('contactInfo', 'venue_id')
                     ->schema([
                         Forms\Components\TextInput::make('phone_number')
+                            ->maxLength(24)
+                            ->validationAttribute('Phone Number')
+                            ->validationMessages([
+                                'max' => 'The phone number may not be greater than 24 characters.',
+                            ])
+                            ->placeholder('e.g. 089919991999')
                             ->label('Phone Number')
                             ->tel(),
 
                         Forms\Components\TextInput::make('email')
                             ->label('Professional Email')
+                            ->maxLength(255)
+                            ->validationAttribute('Email')
+                            ->validationMessages([
+                                'max' => 'The email may not be greater than 255 characters.',
+                            ])
+                            ->placeholder('e.g. username@example.com')
+                            ->label('Email')
                             ->email(),
 
                         Forms\Components\TextInput::make('whatsapp_number')
+                            ->maxLength(24)
+                            ->validationAttribute('WhatsApp Number')
+                            ->validationMessages([
+                                'required' => 'The WhatsApp number field is required.',
+                                'max' => 'The WhatsApp number may not be greater than 24 characters.',
+                            ])
+                            ->placeholder('e.g. 089919991999')
                             ->label('WhatsApp Number')
                             ->tel(),
 
                         Forms\Components\TextInput::make('instagram')
+                            ->maxLength(256)
+                            ->validationAttribute('Instagram Handle')
+                            ->validationMessages([
+                                'required' => 'The Instagram handle field is required.',
+                                'max' => 'The Instagram handle may not be greater than 256 characters.',
+                            ])
+                            ->placeholder('e.g. novatix.id')
                             ->label('Instagram Handle')
                             ->prefix('@'),
                     ]),
                 Forms\Components\Section::make('Teams')
+                    ->hidden(fn(Forms\Get $get) => in_array($get('role'), [UserRole::USER->value, UserRole::ADMIN->value]) ? 1 : 0)
                     ->columnSpan([
                         'default' => 1,
                         'sm' => 1,
@@ -187,7 +245,12 @@ class UserResource extends Resources\Resource
                         Forms\Components\Repeater::make('teams')
                             ->grid(4)
                             ->live()
-                            ->minItems(1)
+                            ->minItems(fn(Forms\Get $get) => in_array($get('role'), [UserRole::USER->value, UserRole::ADMIN->value]) ? 0 : 1)
+                            ->validationAttribute('Teams')
+                            ->validationMessages([
+                                'required' => 'The Teams field is required.',
+                                'min' => 'The Teams field must have at least 1 team.',
+                            ])
                             ->addable(function ($get) {
                                 // overall team size
                                 $teamSize = Team::count();
@@ -236,6 +299,10 @@ class UserResource extends Resources\Resource
                                     ->preload()
                                     ->searchable()
                                     ->optionsLimit(5)
+                                    ->validationAttribute('Team Name')
+                                    ->validationMessages([
+                                        'required' => 'The Team Name field is required.',
+                                    ])
                                     ->required()
                             ])
                             ->afterStateHydrated(function ($set, $record) {

@@ -98,6 +98,10 @@ class TicketResource extends Resource
                     ->preload()
                     ->searchable()
                     ->default(fn($record) => $record->status) // Set the current value as default
+                    ->validationAttribute('Status')
+                    ->validationMessages([
+                        'required' => 'Please select a status for the ticket.'
+                    ])
                     ->required(),
             ])
             ->action(function ($record, array $data) {
@@ -159,6 +163,10 @@ class TicketResource extends Resource
                     })
                     ->getOptionLabelUsing(fn($value) => User::find($value)?->email ?? '')
                     ->optionsLimit(5)
+                    ->validationAttribute('User')
+                    ->validationMessages([
+                        'required' => 'Please select a user to transfer the ticket to.'
+                    ])
                     ->required(),
             ])
             ->action(function (array $data) {
