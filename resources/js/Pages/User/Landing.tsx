@@ -13,6 +13,17 @@ import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
 
+interface Ticket {
+    ticket_id: string;
+    status: string;
+    seat_id: string;
+    event_id: string;
+}
+
+interface TicketPurchasedEvent {
+    tickets: Ticket;
+}
+
 export default function Landing({
     client,
     layout,
@@ -356,6 +367,24 @@ export default function Landing({
     ];
 
     // If we have an error, show it
+
+    useEffect(() => {
+
+        window.Echo.channel('tickets')
+            .listen('.ticket-purchased', (e: TicketPurchasedEvent) => {
+                console.log('Ticket purchased:', e.tickets);
+            });
+        const channel = window.Echo.channel('.tickets');
+        console.log(window.Echo)
+
+        window.Echo.connector.socket.on('.tickets', () => console.log('WebSocket Connected'));
+
+        channel.subscribed(() => {
+            console.log("Terhubung ke channel: tickets");
+        });
+
+    }, []);
+
     if (error) {
         return (
             <AuthenticatedLayout client={client} props={props}>
@@ -432,57 +461,56 @@ export default function Landing({
                                                         style={{
                                                             backgroundColor:
                                                                 event.status ===
-                                                                'active'
+                                                                    'active'
                                                                     ? 'rgba(34, 197, 94, 0.1)'
                                                                     : event.status ===
                                                                         'planned'
-                                                                      ? 'rgba(59, 130, 246, 0.1)'
-                                                                      : event.status ===
-                                                                          'completed'
-                                                                        ? 'rgba(107, 114, 128, 0.1)'
-                                                                        : 'rgba(239, 68, 68, 0.1)',
+                                                                        ? 'rgba(59, 130, 246, 0.1)'
+                                                                        : event.status ===
+                                                                            'completed'
+                                                                            ? 'rgba(107, 114, 128, 0.1)'
+                                                                            : 'rgba(239, 68, 68, 0.1)',
                                                         }}
                                                     >
                                                         <div
-                                                            className={`h-2 w-2 rounded-full ${
-                                                                event.status ===
+                                                            className={`h-2 w-2 rounded-full ${event.status ===
                                                                 'active'
-                                                                    ? 'bg-green-500'
+                                                                ? 'bg-green-500'
+                                                                : event.status ===
+                                                                    'planned'
+                                                                    ? 'bg-blue-500'
                                                                     : event.status ===
-                                                                        'planned'
-                                                                      ? 'bg-blue-500'
-                                                                      : event.status ===
-                                                                          'completed'
+                                                                        'completed'
                                                                         ? 'bg-gray-500'
                                                                         : 'bg-red-500'
-                                                            } mr-2 animate-pulse`}
+                                                                } mr-2 animate-pulse`}
                                                         ></div>
                                                         <span
                                                             className="text-sm font-medium"
                                                             style={{
                                                                 color:
                                                                     event.status ===
-                                                                    'active'
+                                                                        'active'
                                                                         ? '#16a34a'
                                                                         : event.status ===
                                                                             'planned'
-                                                                          ? '#2563eb'
-                                                                          : event.status ===
-                                                                              'completed'
-                                                                            ? '#4b5563'
-                                                                            : '#dc2626',
+                                                                            ? '#2563eb'
+                                                                            : event.status ===
+                                                                                'completed'
+                                                                                ? '#4b5563'
+                                                                                : '#dc2626',
                                                             }}
                                                         >
                                                             {event.status ===
-                                                            'active'
+                                                                'active'
                                                                 ? 'Active'
                                                                 : event.status ===
                                                                     'planned'
-                                                                  ? 'Planned'
-                                                                  : event.status ===
-                                                                      'completed'
-                                                                    ? 'Completed'
-                                                                    : 'Cancelled'}
+                                                                    ? 'Planned'
+                                                                    : event.status ===
+                                                                        'completed'
+                                                                        ? 'Completed'
+                                                                        : 'Cancelled'}
                                                         </span>
                                                     </div>
                                                 )}
@@ -771,9 +799,9 @@ export default function Landing({
                                                 categoryPrices.find(
                                                     (p) =>
                                                         p.ticket_category_id ===
-                                                            category.ticket_category_id &&
+                                                        category.ticket_category_id &&
                                                         p.timeline_id ===
-                                                            currentTimeline.timeline_id,
+                                                        currentTimeline.timeline_id,
                                                 );
                                             if (priceEntry) {
                                                 price = priceEntry.price;
@@ -794,7 +822,7 @@ export default function Landing({
                                                     style={{
                                                         backgroundColor:
                                                             ticketTypeColors[
-                                                                type
+                                                            type
                                                             ],
                                                     }}
                                                 />

@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
+use App\Events\TicketPurchased;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Seat;
@@ -35,6 +36,7 @@ class PaymentController extends Controller
     /**
      * Handle payment charge requests from the frontend
      */
+    // disini nanti taro eventnya
     public function charge(Request $request, string $client = "")
     {
         DB::beginTransaction();

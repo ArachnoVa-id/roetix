@@ -22,6 +22,7 @@
         "laravel/tinker": "^2.9",
         "midtrans/midtrans-php": "^2.6",
         "njxqlus/filament-relation-manager-component": "*",
+        "predis/predis": "^2.3",
         "ramsey/uuid": "*",
         "tightenco/ziggy": "^2.0"
     },

@@ -236,7 +236,7 @@ class UserPageController extends Controller
                 return [
                     'id' => $ticket->ticket_id,
                     'type' => $typeName,
-                    'code' => $ticket->ticket_id,
+                    'code' => $ticket->ticket_code,
                     'qrStr' => $ticket->getQRCode(),
                     'status' => $ticketStatus, // Include the status
                     'categoryColor' => $ticket->category_color ?? null, // Include the category color

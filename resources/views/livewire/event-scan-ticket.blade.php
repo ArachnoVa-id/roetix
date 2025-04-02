@@ -5,6 +5,10 @@
   <div class="w-full flex justify-center items-center">
     <div class="w-1/2 rounded-md">
       <video id="videoElement" width="100%" height="auto" autoplay class="rounded-md"></video>
+      <div class="flex justify-center mt-2 gap-x-5">
+        <x-filament::button color="primary" wire:click="javascript:startCamera()">Activate Camera</x-filament::button>
+        <x-filament::button color="success" wire:click="javascript:toggleCamera()">Flip Camera</x-filament::button>
+      </div>
     </div>
   </div>
 
@@ -16,22 +20,35 @@
     {{ $this->table }}
   </div>
 
-
   {{-- JavaScript untuk mengakses kamera --}}
   <script>
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({
-          video: true
-        })
-        .then(function(stream) {
-          var videoElement = document.getElementById('videoElement');
-          videoElement.srcObject = stream;
-        })
-        .catch(function(error) {
-          // console.log('Terjadi kesalahan dalam mengakses kamera: ', error);
-        });
-    } else {
-      // console.log('Browser tidak mendukung akses ke kamera.');
+    let useFrontCamera = true;
+    let videoElement = document.getElementById('videoElement');
+    let currentStream;
+
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? "user" : "environment"
+        }
+      };
+
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoElement.srcObject = currentStream;
+        console.log('Kamera berhasil diakses.');
+      } catch (error) {
+        console.log('Terjadi kesalahan dalam mengakses kamera: ', error.message);
+      }
+    }
+
+    function toggleCamera() {
+      useFrontCamera = !useFrontCamera;
+      startCamera();
     }
   </script>
 </div>
