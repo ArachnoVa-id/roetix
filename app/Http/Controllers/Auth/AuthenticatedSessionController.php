@@ -11,7 +11,6 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,7 +21,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(string $client = ''): Response
+    public function login(string $client = ''): Response
     {
         if ($client) {
             // Get the event and associated venue
@@ -31,7 +30,6 @@ class AuthenticatedSessionController extends Controller
 
             $props = $event->eventVariables;
         } else {
-            // dd('nonclient');
             $event = [
                 'name' => 'Admin NovaTix'
             ];

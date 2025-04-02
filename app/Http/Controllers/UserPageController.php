@@ -336,6 +336,21 @@ class UserPageController extends Controller
         $event = $request->get('event');
         $props = $request->get('props');
 
+        // Validator
+        $validator = validator($request->all(), [
+            'event_password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return Inertia::render('User/LockedEvent', [
+                'client' => $client,
+                'event' => $event,
+                'props' => $props,
+            ])->with([
+                'errors' => $validator->errors()->toArray()
+            ]);
+        }
+
         // Check if event is locked
         if ($props->is_locked) {
             if ($request->has('event_password')) {
