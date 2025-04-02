@@ -155,6 +155,14 @@ class CreateEvent extends CreateRecord
                 'favicon' => $data['favicon'] ?? '',
             ];
 
+            // Parse all the image based to get values only (because it is in array)
+            $columns = ['logo', 'texture', 'favicon'];
+            foreach ($columns as $column) {
+                if (isset($eventVariables[$column]) && !empty($eventVariables[$column])) {
+                    $eventVariables[$column] = array_values($eventVariables[$column])[0];
+                }
+            }
+
             $eventVariables = array_merge($eventVariables, $colors);
 
             $newEventVariables = EventVariables::create($eventVariables);

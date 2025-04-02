@@ -54,7 +54,7 @@ export default function Login({
 
     return (
         <GuestLayout props={props} client={client}>
-            <Head title="Log in" />
+            <Head title={'Log In | ' + event.name} />
 
             {status && (
                 <div className="text-sm font-medium text-green-600 shadow-md">

@@ -18,13 +18,14 @@ use Filament\Tables\Table;
 use Illuminate\Support\Str;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
+use Filament\Support\Colors\Color;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
-use Filament\Support\Colors\Color;
+use Illuminate\Http\UploadedFile;
 
 class EventResource extends Resource
 {
@@ -397,7 +398,7 @@ class EventResource extends Resource
                                 ])
                                 ->minDate(
                                     fn() => $modelExists
-                                        ? min(now(), optional($currentModel->start_date) ?? now())
+                                        ? min(now(), $currentModel?->start_date ?? now())
                                         : now()
                                 )
                                 ->reactive()
@@ -700,7 +701,7 @@ class EventResource extends Resource
                                             'sm' => 1,
                                             'md' => 2,
                                         ])
-                                        ->minDate(function (Forms\Get $get) {
+                                        ->minDate(function (Forms\Get $get) use ($modelExists) {
                                             $array = $get('../'); // Get all sibling entries
                                             $current_body = [
                                                 'name' => $get('name'),
@@ -738,6 +739,14 @@ class EventResource extends Resource
 
                                                 if ($minDate) {
                                                     $minDate = Carbon::parse($minDate);
+
+                                                    // If model exists, compare with the current start_date
+                                                    if ($modelExists) {
+                                                        $currentStartDate = Carbon::parse($get('start_date'));
+
+                                                        return $minDate->greaterThan($currentStartDate) ? $minDate : $currentStartDate;
+                                                    }
+
                                                     return $minDate->greaterThan($now) ? $minDate : $now;
                                                 }
 
@@ -1379,14 +1388,36 @@ class EventResource extends Resource
                             'md' => 2,
                         ])
                         ->schema([
-                            Forms\Components\TextInput::make('logo')
+                            Forms\Components\FileUpload::make('logo')
                                 ->placeholder('Event Logo')
-                                ->maxLength(2048)
+                                ->label('Logo')
+                                ->directory('logos')
+                                ->maxSize(2048) // Max size in kilobytes (2MB)
+                                ->helperText('Click or drag to upload. Max file size is 2MB. PNG, JPEG, JPG, and SVG only.')
                                 ->validationAttribute('Logo')
                                 ->validationMessages([
-                                    'max' => 'Logo must not exceed 2048 characters',
+                                    'max' => 'The :attribute file size must not exceed 2MB.',
+                                    'mimes' => 'Only PNG, JPEG, JPG, and SVG files are allowed.',
+                                    'upload' => 'Failed to upload the logo. Please try again.',
                                 ])
-                                ->label('Logo'),
+                                ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml']) // Accept only images
+                                ->preserveFilenames(),
+
+                            Forms\Components\FileUpload::make('texture')
+                                ->placeholder('Event Texture')
+                                ->label('Texture')
+                                ->directory('textures')
+                                ->maxSize(2048) // Max size in kilobytes (2MB)
+                                ->helperText('Click or drag to upload. Max file size is 2MB. PNG, JPEG, JPG, and SVG only.')
+                                ->validationAttribute('Texture')
+                                ->validationMessages([
+                                    'max' => 'The :attribute file size must not exceed 2MB.',
+                                    'mimes' => 'Only PNG, JPEG, JPG, and SVG files are allowed.',
+                                    'upload' => 'Failed to upload the logo. Please try again.',
+                                ])
+                                ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml']) // Accept only images
+                                ->preserveFilenames(),
+
                             Forms\Components\TextInput::make('logo_alt')
                                 ->placeholder('Event Logo Alt')
                                 ->helperText('Alternative text for the logo if it fails to load')
@@ -1396,26 +1427,24 @@ class EventResource extends Resource
                                     'max' => 'Logo Alt must not exceed 255 characters',
                                 ])
                                 ->label('Logo Alt'),
-                            Forms\Components\TextInput::make('favicon')
+
+                            Forms\Components\FileUpload::make('favicon')
                                 ->placeholder('Event Icon')
-                                ->rule('regex:/\.ico$/i')
-                                ->maxLength(2048)
+                                ->label('Favicon')
+                                ->directory('favicons')
+                                ->maxSize(2048) // Max size in kilobytes (2MB)
+                                ->helperText('Click or drag to upload. Max file size is 2MB. ICO only.')
                                 ->validationAttribute('Favicon')
                                 ->validationMessages([
-                                    'regex' => 'Favicon must be a .ico file',
-                                    'max' => 'Favicon must not exceed 2048 characters',
+                                    'max' => 'The :attribute file size must not exceed 2MB.',
+                                    'mimes' => 'Only ICO files are allowed.',
+                                    'upload' => 'Failed to upload the logo. Please try again.',
                                 ])
-                                ->helperText('Must be a .ico file only.')
-                                ->label('Favicon'),
-                            Forms\Components\TextInput::make('texture')
-                                ->placeholder('Event Texture')
-                                ->maxLength(2048)
-                                ->validationAttribute('Texture')
-                                ->validationMessages([
-                                    'max' => 'Texture must not exceed 2048 characters',
-                                ])
-                                ->label('Texture'),
+                                ->acceptedFileTypes(['image/x-icon', 'image/vnd.microsoft.icon', 'image/ico']) // Allowing all possible ICO mime types
+                                ->rule('mimes:ico') // Explicitly enforcing .ico file validation
+                                ->preserveFilenames(),
                         ])
+
                 ])
                     ->skippable($modelExists)
                     ->columnSpan('full'),

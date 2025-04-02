@@ -81,7 +81,7 @@ export default function MyTickets({
 
     return (
         <AuthenticatedLayout client={client} props={props}>
-            <Head title="My Tickets" />
+            <Head title={'My Tickets | ' + event.name} />
             <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div

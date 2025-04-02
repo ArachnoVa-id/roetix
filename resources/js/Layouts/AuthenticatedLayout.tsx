@@ -24,6 +24,18 @@ const StyledButton = styled.button<{ $props: EventColorProps }>`
     }`}
 `;
 
+const changeFavicon = (faviconUrl: string) => {
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (link) {
+        link.href = faviconUrl;
+    } else {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.href = faviconUrl;
+        document.head.appendChild(newLink);
+    }
+};
+
 export default function Authenticated({
     header,
     children,
@@ -41,6 +53,10 @@ export default function Authenticated({
     const [eventColorProps, setEventColorProps] = useState<EventColorProps>(
         {} as EventColorProps,
     );
+
+    useEffect(() => {
+        changeFavicon(props.favicon);
+    }, [props.favicon]);
 
     useEffect(() => {
         if (props) setEventColorProps(deconstructEventColorProps(props));

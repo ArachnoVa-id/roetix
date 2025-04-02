@@ -29,6 +29,7 @@ class AuthenticatedSessionController extends Controller
                 ->first();
 
             $props = $event->eventVariables;
+            $props->reconstructImgLinks();
         } else {
             $event = [
                 'name' => 'Admin NovaTix'

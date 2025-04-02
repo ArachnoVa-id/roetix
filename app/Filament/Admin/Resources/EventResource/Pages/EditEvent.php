@@ -192,6 +192,14 @@ class EditEvent extends EditRecord
             // Update all the event variables
             $eventVariables = EventVariables::where('event_id', $eventId)->first();
 
+            // Parse all the image based to get values only (because it is in array)
+            $columns = ['logo', 'texture', 'favicon'];
+            foreach ($columns as $column) {
+                if (isset($this->data[$column]) && !empty($this->data[$column])) {
+                    $this->data[$column] = array_values($this->data[$column])[0];
+                }
+            }
+
             $eventVariables->fill($this->data);
             $colors = Cache::get('color_preview_' . $user->id);
             if (!$colors) {

@@ -67,6 +67,17 @@ class EventVariables extends Model
             }
         });
     }
+
+    public function reconstructImgLinks()
+    {
+        $columns = ['logo', 'texture', 'favicon'];
+        foreach ($columns as $column) {
+            if (isset($this->{$column}) && !empty($this->{$column})) {
+                $this->{$column} = '/storage/' . $this->{$column};
+            }
+        }
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id', 'event_id');

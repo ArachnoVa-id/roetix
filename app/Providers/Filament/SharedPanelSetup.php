@@ -44,6 +44,7 @@ class SharedPanelSetup
     public static function commonSetup(Panel $panel): Panel
     {
         return $panel
+            ->favicon('/images/novatix-logo-white/favicon.ico')
             ->sidebarCollapsibleOnDesktop()
             ->middleware(self::getMiddlewares())
             ->authMiddleware(self::getAuthMiddlewares())

@@ -38,6 +38,8 @@ class LoadEventProps
             ]);
         }
 
+        $props->reconstructImgLinks();
+
         $request->merge([
             'event' => $event,
             'props' => $props,

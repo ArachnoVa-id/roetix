@@ -121,4 +121,6 @@ jobs:
 
           # Run database migrations
           php artisan migrate --force
+          php artisan storage:link
+
           EOF
