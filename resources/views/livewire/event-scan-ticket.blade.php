@@ -81,6 +81,9 @@
                         console.log("QR Code ditemukan:", code.data);
                         alert('QR Code: ' + code.data); // Atau lakukan sesuatu dengan data QR
                         clearInterval(scanInterval); // Berhenti setelah QR Code ditemukan
+
+                        @this.set('ticket_code', code.data)
+                        @this.call('submit')
                     }
                 }
             }, 300); // Set interval untuk memindai setiap 300ms
