@@ -90,6 +90,7 @@ export interface RowComponentProps {
 }
 
 export interface TicketComponentProps extends TicketProps {
+    popupClickable?: boolean;
     eventId: string;
     categoryColor?: string;
     userData?: {

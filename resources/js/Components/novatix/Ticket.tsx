@@ -8,13 +8,16 @@ function RowComponent({
 }: RowComponentProps): React.ReactElement {
     return (
         <div className="flex w-full items-center py-1">
-            <p className="w-[30%] font-medium text-gray-600">{idtf}</p>
-            <p className="w-[70%] font-semibold">{content}</p>
+            <p className="w-[25%] font-medium text-gray-600 md:w-[30%]">
+                {idtf}
+            </p>
+            <p className="w-[75%] font-semibold md:w-[70%]">{content}</p>
         </div>
     );
 }
 
 export default function Ticket({
+    popupClickable = true,
     id,
     type,
     code,
@@ -137,118 +140,152 @@ export default function Ticket({
           }
         : null;
 
-    return (
-        <div
-            className={`relative flex h-fit grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? 'hover:scale-[1.02] hover:shadow-xl' : 'cursor-not-allowed'}`}
-            style={{
-                opacity: status === 'scanned' ? 0.6 : 1,
-                position: 'relative',
-                ...(inlineStyles
-                    ? { borderColor: inlineStyles.border.borderColor }
-                    : {}),
-            }}
-        >
-            {/* Ticket header with type */}
-            <div
-                className={`${colors.accent} flex items-center justify-between px-4 py-2`}
-                style={inlineStyles ? inlineStyles.accent : {}}
-            >
-                <h3 className="flex items-center text-lg font-bold text-white">
-                    {type}
-                </h3>
-                <Button
-                    onClick={handleDownload}
-                    className={`rounded-full border border-white bg-white px-3 py-1 text-sm font-medium text-gray-800 ${status !== 'scanned' ? 'hover:bg-opacity-90 hover:text-black' : 'cursor-not-allowed opacity-50'}`}
-                    disabled={status === 'scanned'}
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="mr-1 inline h-4 w-4"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                    >
-                        <path
-                            fillRule="evenodd"
-                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                        />
-                    </svg>
-                    Download
-                </Button>
-            </div>
+    const [isModalOpen, setIsModalOpen] = useState(false); // State for modal visibility
 
-            {/* Show a watermark for scanned tickets */}
-            {status === 'scanned' && (
-                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                    <div className="rotate-45 transform rounded-xl bg-red-500 px-2 text-6xl font-extrabold text-white opacity-30">
-                        SCANNED
+    const toggleModal = () => {
+        setIsModalOpen(!isModalOpen);
+    };
+
+    return (
+        <>
+            {/* Modal */}
+            {isModalOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-12"
+                    onClick={toggleModal}
+                >
+                    <div
+                        className="relative flex h-fit w-full max-w-4xl flex-col rounded-lg border-2 bg-white p-4 shadow-lg"
+                        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+                    >
+                        <Ticket
+                            popupClickable={false}
+                            id={id}
+                            type={type}
+                            code={code}
+                            data={data}
+                            qrStr={qrStr}
+                            eventId={eventId}
+                            status={status}
+                            categoryColor={categoryColor}
+                        />
                     </div>
                 </div>
             )}
 
-            <div className="flex flex-row">
-                {/* Left side with QR code */}
+            <div
+                onClick={popupClickable ? toggleModal : undefined}
+                className={`relative flex h-fit grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? popupClickable && 'cursor-pointer hover:scale-[1.02] hover:shadow-xl' : 'cursor-not-allowed'}`}
+                style={{
+                    opacity: status === 'scanned' ? 0.6 : 1,
+                    position: 'relative',
+                    ...(inlineStyles
+                        ? { borderColor: inlineStyles.border.borderColor }
+                        : {}),
+                }}
+            >
+                {/* Ticket header with type */}
                 <div
-                    className={`flex w-[40%] items-center justify-center ${colors.light} border-r px-3 py-6 ${colors.border}`}
+                    className={`${colors.accent} flex items-center justify-between px-4 py-2`}
+                    style={inlineStyles ? inlineStyles.accent : {}}
+                >
+                    <h3 className="flex items-center text-lg font-bold text-white">
+                        {type}
+                    </h3>
+                    <Button
+                        onClick={handleDownload}
+                        className={`rounded-full border border-white bg-white px-3 py-1 text-sm font-medium text-gray-800 ${status !== 'scanned' ? 'hover:bg-opacity-90 hover:text-black' : 'cursor-not-allowed opacity-50'}`}
+                        disabled={status === 'scanned'}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="mr-1 inline h-4 w-4"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fillRule="evenodd"
+                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                clipRule="evenodd"
+                            />
+                        </svg>
+                        Download
+                    </Button>
+                </div>
+
+                {/* Show a watermark for scanned tickets */}
+                {status === 'scanned' && (
+                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                        <div className="rotate-45 transform rounded-xl bg-red-500 px-2 text-6xl font-extrabold text-white opacity-30">
+                            SCANNED
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex flex-col md:flex-row">
+                    {/* Left side with QR code */}
+                    <div
+                        className={`flex w-full items-center justify-center md:w-[40%] ${colors.light} border-r px-3 py-6 ${colors.border}`}
+                        style={
+                            inlineStyles
+                                ? {
+                                      ...inlineStyles.light,
+                                      borderRight: `1px solid ${inlineStyles.border.borderColor}`,
+                                  }
+                                : {}
+                        }
+                    >
+                        <div className="rounded-lg bg-white p-2 shadow-md">
+                            <img
+                                src={`data:image/svg+xml;base64,${qrStr}`}
+                                alt="QR Code"
+                                className="aspect-[1/1] max-h-40"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Right side with ticket info */}
+                    <div className="flex w-full flex-col justify-between bg-white p-4 text-black md:w-[60%]">
+                        <div className="flex w-full flex-col">
+                            <RowComponent
+                                idtf="Code"
+                                content={code.substring(0, 16)}
+                            />
+                            <RowComponent
+                                idtf="Date"
+                                content={data.date + ' WIB'}
+                            />
+                            <RowComponent idtf="Type" content={data.type} />
+                            <RowComponent idtf="Seat" content={data.seat} />
+                            <div className="my-2 border-t-2 border-dashed border-t-black pt-2">
+                                <RowComponent
+                                    idtf="Subtotal"
+                                    content={data.price}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Ticket footer with info */}
+                <div
+                    className={`${colors.light} px-4 py-2 text-center text-xs ${colors.text} flex items-center justify-between bg-black font-medium`}
                     style={
                         inlineStyles
                             ? {
-                                  ...inlineStyles.light,
-                                  borderRight: `1px solid ${inlineStyles.border.borderColor}`,
+                                  color: inlineStyles.text.color,
                               }
                             : {}
                     }
                 >
-                    <div className="rounded-lg bg-white p-2 shadow-md">
-                        <img
-                            src={`data:image/svg+xml;base64,${qrStr}`}
-                            alt="QR Code"
-                            className="aspect-[1/1] max-h-40"
-                        />
-                    </div>
-                </div>
+                    <span>Scan QR code for verification</span>
 
-                {/* Right side with ticket info */}
-                <div className="flex w-[60%] flex-col justify-between bg-white p-4 text-black">
-                    <div className="flex w-full flex-col">
-                        <RowComponent
-                            idtf="Code"
-                            content={code.substring(0, 16)}
-                        />
-                        <RowComponent
-                            idtf="Date"
-                            content={data.date + ' WIB'}
-                        />
-                        <RowComponent idtf="Type" content={data.type} />
-                        <RowComponent idtf="Seat" content={data.seat} />
-                        <div className="my-2 border-t-2 border-dashed border-t-black pt-2">
-                            <RowComponent
-                                idtf="Subtotal"
-                                content={data.price}
-                            />
-                        </div>
-                    </div>
+                    <span>
+                        Novatix ID:{' '}
+                        {code.substring(code.length - 8, code.length)}
+                    </span>
                 </div>
             </div>
-
-            {/* Ticket footer with info */}
-            <div
-                className={`${colors.light} px-4 py-2 text-center text-xs ${colors.text} flex items-center justify-between font-medium`}
-                style={
-                    inlineStyles
-                        ? {
-                              ...inlineStyles.light,
-                              color: inlineStyles.text.color,
-                          }
-                        : {}
-                }
-            >
-                <span>Scan QR code for verification</span>
-
-                <span>
-                    Novatix ID: {code.substring(code.length - 8, code.length)}
-                </span>
-            </div>
-        </div>
+        </>
     );
 }

@@ -184,16 +184,18 @@ class EventResource extends Resource
                                                     ->label('Timeline')
                                                     ->grid(3)
                                                     ->columnSpan(2)
-                                                    ->columns(3)
+                                                    ->columns(2)
                                                     ->schema([
-                                                        Infolists\Components\TextEntry::make('price'),
+                                                        Infolists\Components\TextEntry::make('timelineSession.name')
+                                                            ->label('Timeline')
+                                                            ->columnSpan(2),
+                                                        Infolists\Components\TextEntry::make('price')
+                                                            ->money('IDR'),
                                                         Infolists\Components\TextEntry::make('is_active')
                                                             ->label('Status')
                                                             ->formatStateUsing(fn($state) => $state ? 'Active' : 'Inactive')
                                                             ->color(fn($state) => $state ? 'success' : 'danger')
                                                             ->badge(),
-                                                        Infolists\Components\TextEntry::make('timelineSession.name')
-                                                            ->label('Timeline')
                                                     ])
                                             ])
                                     ]),
