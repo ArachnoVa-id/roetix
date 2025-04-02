@@ -199,6 +199,7 @@ class UserPageController extends Controller
                 ->whereIn('orders.status', [OrderStatus::COMPLETED])
                 ->whereIn('ticket_order.order_id', $userOrderIds)
                 ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED, TicketOrderStatus::SCANNED])
+                ->orderBy('ticket_categories.created_at', 'desc')
                 ->get();
 
             // Load seat data for each ticket

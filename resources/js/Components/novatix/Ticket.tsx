@@ -139,7 +139,7 @@ export default function Ticket({
 
     return (
         <div
-            className={`relative flex grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? 'hover:scale-[1.02] hover:shadow-xl' : ''}`}
+            className={`relative flex h-fit grow flex-col rounded-lg ${colors.border} transform overflow-hidden border-2 shadow-lg transition-transform ${status !== 'scanned' ? 'hover:scale-[1.02] hover:shadow-xl' : 'cursor-not-allowed'}`}
             style={{
                 opacity: status === 'scanned' ? 0.6 : 1,
                 position: 'relative',
@@ -154,18 +154,6 @@ export default function Ticket({
                 style={inlineStyles ? inlineStyles.accent : {}}
             >
                 <h3 className="flex items-center text-lg font-bold text-white">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="mr-2 h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                    >
-                        <path
-                            fillRule="evenodd"
-                            d="M5 2a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm7 2a1 1 0 00-1 1v10a1 1 0 102 0V5a1 1 0 00-1-1zM5 5a1 1 0 00-1 1v8a1 1 0 002 0V6a1 1 0 00-1-1zm0 10a1 1 0 100 2h8a1 1 0 100-2H5z"
-                            clipRule="evenodd"
-                        />
-                    </svg>
                     {type}
                 </h3>
                 <Button
@@ -185,14 +173,14 @@ export default function Ticket({
                             clipRule="evenodd"
                         />
                     </svg>
-                    Unduh
+                    Download
                 </Button>
             </div>
 
             {/* Show a watermark for scanned tickets */}
             {status === 'scanned' && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                    <div className="rotate-45 transform text-6xl font-extrabold text-red-500 opacity-30">
+                    <div className="rotate-45 transform rounded-xl bg-red-500 px-2 text-6xl font-extrabold text-white opacity-30">
                         SCANNED
                     </div>
                 </div>
@@ -215,19 +203,25 @@ export default function Ticket({
                         <img
                             src={`data:image/svg+xml;base64,${qrStr}`}
                             alt="QR Code"
-                            className="max-h-32 max-w-32"
+                            className="aspect-[1/1] max-h-40"
                         />
                     </div>
                 </div>
 
                 {/* Right side with ticket info */}
                 <div className="flex w-[60%] flex-col justify-between bg-white p-4 text-black">
-                    <div className="space-y-1">
-                        <RowComponent idtf="ID" content={code} />
-                        <RowComponent idtf="Tanggal" content={data.date} />
-                        <RowComponent idtf="Tipe" content={data.type} />
-                        <RowComponent idtf="Kursi" content={data.seat} />
-                        <div className="my-2 border-t border-dashed pt-2">
+                    <div className="flex w-full flex-col">
+                        <RowComponent
+                            idtf="Code"
+                            content={code.substring(0, 16)}
+                        />
+                        <RowComponent
+                            idtf="Date"
+                            content={data.date + ' WIB'}
+                        />
+                        <RowComponent idtf="Type" content={data.type} />
+                        <RowComponent idtf="Seat" content={data.seat} />
+                        <div className="my-2 border-t-2 border-dashed border-t-black pt-2">
                             <RowComponent
                                 idtf="Subtotal"
                                 content={data.price}
@@ -250,12 +244,10 @@ export default function Ticket({
                 }
             >
                 <span>Scan QR code for verification</span>
-                <span>Novatix ID: {code.substring(0, 8)}</span>
-                {status === 'scanned' && (
-                    <span className="rounded bg-red-500 px-2 py-1 text-xs text-white">
-                        SCANNED
-                    </span>
-                )}
+
+                <span>
+                    Novatix ID: {code.substring(code.length - 8, code.length)}
+                </span>
             </div>
         </div>
     );

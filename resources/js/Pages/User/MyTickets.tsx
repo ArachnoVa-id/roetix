@@ -15,7 +15,6 @@ export default function MyTickets({
     client,
     props,
     tickets,
-
     event,
 }: MyTicketsPageProps): React.ReactElement {
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
@@ -115,28 +114,32 @@ export default function MyTickets({
                                                 clipRule="evenodd"
                                             />
                                         </svg>
-                                        Unduh Semua Tiket
+                                        Download All Tickets
                                     </button>
                                 )}
                             </div>
 
                             {tickets && tickets.length > 0 ? (
                                 <div className="flex w-full flex-wrap gap-6">
-                                    {tickets.map((ticket: TicketProps) => (
-                                        <Ticket
-                                            key={ticket.id}
-                                            id={ticket.id}
-                                            type={ticket.type}
-                                            code={ticket.code}
-                                            qrStr={ticket.qrStr}
-                                            data={ticket.data}
-                                            eventId={event.event_id}
-                                            status={ticket.status}
-                                            categoryColor={
-                                                (ticket as any).categoryColor
-                                            } // Pass the category color to the Ticket component
-                                        />
-                                    ))}
+                                    {tickets
+                                        .sort((a: TicketProps) =>
+                                            a.status === 'scanned' ? 1 : -1,
+                                        )
+                                        .map((ticket: TicketProps) => (
+                                            <Ticket
+                                                key={ticket.id}
+                                                id={ticket.id}
+                                                type={ticket.type}
+                                                code={ticket.code}
+                                                qrStr={ticket.qrStr}
+                                                data={ticket.data}
+                                                eventId={event.event_id}
+                                                status={ticket.status}
+                                                categoryColor={
+                                                    ticket.categoryColor
+                                                }
+                                            />
+                                        ))}
                                 </div>
                             ) : (
                                 <EmptyState

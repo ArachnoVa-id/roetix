@@ -83,7 +83,7 @@
         <!-- Ticket Type and Seat -->
         <div
           style="
-        background-color: {{ $eventVars->secondary_color }};
+        background-color: {{ $ticket->getColor() }};
         color: {{ $eventVars->text_primary_color }};
         padding: 4px 12px;
         margin-bottom: 8px;
@@ -111,7 +111,7 @@
                 <div><strong>Tanggal:</strong> {{ $event->getEventDate() ?? 'N/A' }}</div>
                 <div><strong>Waktu:</strong> {{ $event->getEventTime() ?? 'N/A' }}</div>
                 <div><strong>Ticket Code:</strong> {{ $ticket->ticket_id ?? 'N\A' }}</div>
-                <div style="padding: 16px 0px 0px 0px;"><strong>Syarat dan Ketentuan:</strong></div>
+                <div style="padding: 20px 0px 0px 0px;"><strong>Syarat dan Ketentuan:</strong></div>
                 <!-- Terms and Conditions -->
                 <div style="font-size: 0.65rem;">1. E-tiket ini adalah bukti sah kepemilikan tiket untuk menghadiri
                   acara
@@ -124,7 +124,8 @@
 
               <!-- QR Code Section -->
               <td style="vertical-align: top; text-align: right;">
-                <img src="data:image/svg+xml;base64,{{ $ticket->getQRCode() }}" alt="QR Code" style="width: 160px;">
+                <img src="data:image/svg+xml;base64,{{ $ticket->getQRCode() }}" alt="QR Code"
+                  style="width: 155px; border: 5px solid {{ $ticket->getColor() }};">
               </td>
             </tr>
           </table>
