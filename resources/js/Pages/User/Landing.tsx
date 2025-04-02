@@ -94,7 +94,6 @@ export default function Landing({
             try {
                 const response = await axios.get('api/payment/get-client');
                 clientKey = response.data.client_key;
-                console.log('Client Key Fetched:', clientKey);
             } catch (error) {
                 console.error('Failed to fetch client key:', error);
                 showErrorRef.current(
@@ -116,7 +115,6 @@ export default function Landing({
 
             // Check if Snap.js is already loaded
             if (window.snap) {
-                console.log('Snap.js already loaded.');
                 setSnapInitialized(true);
                 return;
             }
@@ -126,7 +124,6 @@ export default function Landing({
             snapScript.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
             snapScript.setAttribute('data-client-key', clientKey);
             snapScript.onload = () => {
-                console.log('Snap.js successfully loaded.');
                 setSnapInitialized(true);
             };
             snapScript.onerror = () => {
@@ -140,7 +137,6 @@ export default function Landing({
 
             // Cleanup on unmount
             return () => {
-                console.log('Cleaning up Snap.js...');
                 if (snapScript) {
                     document.head.removeChild(snapScript);
                 }
@@ -156,23 +152,19 @@ export default function Landing({
     const createCallbacks = (): MidtransCallbacks => {
         return {
             onSuccess: () => {
-                // console.log('Payment success:', result);
                 showSuccess('Payment successful!');
                 // clearTransaction(); // Clear the transaction data
                 window.location.reload();
             },
             onPending: () => {
-                // console.log('Payment pending:', result);
                 showSuccess(
                     'Your payment is pending. Please complete the payment.',
                 );
             },
             onError: () => {
-                // console.error('Payment error:', result);
                 showError('Payment failed. Please try again.');
             },
             onClose: () => {
-                // console.log('Snap payment closed');
                 showSuccess(
                     'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
                 );
@@ -965,19 +957,19 @@ export default function Landing({
                                 height: '80vh',
                             }}
                         >
-                            <div className="relative flex w-full items-center justify-center">
+                            <div className="relative flex w-full flex-col items-center justify-center">
                                 {/* make deselect all seats button if seat exist */}
                                 {
                                     <button
                                         className={
-                                            'absolute left-0 top-0 rounded-lg bg-red-500 px-4 text-lg text-white duration-200 hover:bg-red-600 ' +
+                                            'left-0 top-0 rounded-lg bg-red-500 px-4 text-lg text-white duration-200 hover:bg-red-600 max-md:mt-4 md:absolute ' +
                                             (selectedSeats.length > 0
                                                 ? 'opacity-100'
                                                 : 'pointer-events-none opacity-0')
                                         }
                                         onClick={deselectAllSeats}
                                     >
-                                        Deselect All Seats
+                                        Clear Selection
                                     </button>
                                 }
                                 <h3 className="h-fit text-center text-lg font-bold">

@@ -6,9 +6,8 @@ import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Event, EventProps } from '@/types/front-end';
 import { Head, Link, useForm } from '@inertiajs/react';
-import axios from 'axios';
 import { MailIcon } from 'lucide-react';
-import { FormEventHandler, useEffect } from 'react';
+import { FormEventHandler } from 'react';
 
 export default function Login({
     status,
@@ -35,14 +34,8 @@ export default function Login({
         client: client,
     });
 
-    useEffect(() => {
-        axios.get('/sanctum/csrf-cookie', { withCredentials: true });
-    }, []);
-
     const submit: FormEventHandler = async (e) => {
         e.preventDefault();
-
-        await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
 
         post(route('post.login'), {
             onSuccess: () => {

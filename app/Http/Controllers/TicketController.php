@@ -16,21 +16,6 @@ use Illuminate\Support\Facades\Auth;
 
 class TicketController extends Controller
 {
-    // public function test()
-    // {
-    //     // get first ticket in db
-    //     $ticket = Ticket::first();
-    //     $event = $ticket->event; // Assuming you have a relationship defined in your Ticket model
-    //     // get first user in db
-    //     $user = User::first();
-
-    //     $generatedAt = Carbon::now()->format('Y-m-d H:i:s');
-
-    //     $tickets = [$ticket];
-
-    //     return view('tickets.ticket-general', compact('tickets', 'event', 'user', 'generatedAt'));
-    // }
-
     /**
      * Download a single ticket as PDF using query parameters instead of path parameters
      */

@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\PaymentController;
@@ -31,8 +30,6 @@ Route::middleware('guest')->group(function () {
         });
 });
 
-// Route::get('/testticket', [TicketController::class, 'test'])->name('ticket.test');
-
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
@@ -42,14 +39,6 @@ Route::domain(config('app.domain'))
                 ->name('auth.google');
             Route::get('/auth/google-callback', 'googleAuthentication')
                 ->name('auth.google-authentication');
-        });
-
-        // Session Debugging Route
-        Route::get('/check-session', function () {
-            return response()->json([
-                'user' => Auth::user(),
-                'session' => session()->all(),
-            ]);
         });
 
         // Redirect Home to Tenant Dashboard
