@@ -5,8 +5,9 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Event, EventProps } from '@/types/front-end';
+import { faGoogle } from '@fortawesome/free-brands-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { MailIcon } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 export default function Login({
@@ -129,6 +130,19 @@ export default function Login({
                             Log in
                         </PrimaryButton>
                     </div>
+                    <div className="mt-2 flex flex-col items-center justify-center gap-0">
+                        <p className="text-sm text-gray-700">or</p>
+                        <a
+                            href={route(
+                                client ? 'client-auth.google' : 'auth.google',
+                                client,
+                            )}
+                            className="flex w-full items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-1 text-center font-bold text-white"
+                        >
+                            <FontAwesomeIcon icon={faGoogle} size="lg" />
+                            <span>Login With Google</span>
+                        </a>
+                    </div>
                 </form>
             ) : (
                 <div className="flex">
@@ -137,9 +151,9 @@ export default function Login({
                             client ? 'client-auth.google' : 'auth.google',
                             client,
                         )}
-                        className="mt-2 flex w-full justify-center space-x-4 rounded-md bg-red-700 p-[1vw] text-center font-bold text-white"
+                        className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-1 text-center font-bold text-white"
                     >
-                        <MailIcon />
+                        <FontAwesomeIcon icon={faGoogle} size="lg" />
                         <span>Login With Google</span>
                     </a>
                 </div>

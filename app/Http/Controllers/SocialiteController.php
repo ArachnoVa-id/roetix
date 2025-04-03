@@ -39,7 +39,7 @@ class SocialiteController extends Controller
             if ($userHasCorrectGoogleId) {
                 Auth::login($user);
 
-                return redirect()->route('client.home', ['client' => $client]);
+                return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
                 DB::beginTransaction();
                 // Socialite resp structure: (var: $google_resp)
@@ -134,8 +134,7 @@ class SocialiteController extends Controller
                 DB::commit();
 
                 Auth::login($userData);
-                return redirect()
-                    ->route('client.home', ['client' => $client]);
+                return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             }
         } catch (Exception $e) {
             DB::rollBack();
