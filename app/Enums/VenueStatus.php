@@ -41,9 +41,4 @@ enum VenueStatus: string implements HasLabel, HasColor
             self::UNDER_MAINTENANCE->value => self::UNDER_MAINTENANCE->getLabel()
         ];
     }
-
-    public static function getEditableOptionsValues()
-    {
-        return array_keys(self::editableOptions());
-    }
 }

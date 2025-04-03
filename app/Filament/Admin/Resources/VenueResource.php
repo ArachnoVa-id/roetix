@@ -98,6 +98,7 @@ class VenueResource extends Resources\Resource
                         ->send();
                 }
             })
+            ->modalWidth('sm')
             ->modal(true);
     }
 

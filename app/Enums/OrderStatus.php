@@ -35,28 +35,26 @@ enum OrderStatus: string implements HasLabel, HasColor
 
     public static function editableOptions(OrderStatus $currentStatus)
     {
+        $returnStatuses = [];
+
+        $returnStatuses[$currentStatus->value] = $currentStatus->getLabel();
+
         switch ($currentStatus) {
             case self::PENDING:
-                return [
-                    self::PENDING->value => self::PENDING->getLabel(),
-                    self::COMPLETED->value => self::COMPLETED->getLabel(),
-                    self::CANCELLED->value => self::CANCELLED->getLabel(),
-                ];
-            case self::COMPLETED:
-                return [
-                    self::COMPLETED->value => self::COMPLETED->getLabel(),
-                ];
-            case self::CANCELLED:
-                return [
-                    self::CANCELLED->value => self::CANCELLED->getLabel(),
-                ];
-            default:
-                return [];
-        }
-    }
+                $returnStatuses[self::PENDING->value] = self::PENDING->getLabel();
+                $returnStatuses[self::COMPLETED->value] = self::COMPLETED->getLabel();
+                $returnStatuses[self::CANCELLED->value] = self::CANCELLED->getLabel();
+                break;
 
-    public static function getEditableOptionsValues()
-    {
-        return array_keys(self::allOptions());
+            case self::COMPLETED:
+                $returnStatuses[self::COMPLETED->value] = self::COMPLETED->getLabel();
+                break;
+
+            case self::CANCELLED:
+                $returnStatuses[self::CANCELLED->value] = self::CANCELLED->getLabel();
+                break;
+        }
+
+        return $returnStatuses;
     }
 }

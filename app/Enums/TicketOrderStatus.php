@@ -33,16 +33,15 @@ enum TicketOrderStatus: string implements HasLabel, HasColor
         };
     }
 
-    public static function editableOptions()
+    public static function editableOptions(TicketOrderStatus $currentStatus)
     {
-        return [
+        $returnStatuses = [
             self::ENABLED->value => self::ENABLED->getLabel(),
             self::DEACTIVATED->value => self::DEACTIVATED->getLabel(),
         ];
-    }
 
-    public static function getEditableOptionsValues()
-    {
-        return array_keys(self::editableOptions());
+        $returnStatuses[$currentStatus->value] = $currentStatus->getLabel();
+
+        return $returnStatuses;
     }
 }

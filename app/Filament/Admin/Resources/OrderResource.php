@@ -89,11 +89,14 @@ class OrderResource extends Resource
                         ->send();
                 }
             })
+            ->modalWidth('sm')
             ->modal(true);
     }
 
     public static function form(Forms\Form $form): Forms\Form
     {
+        $user = User::find(Auth::id());
+
         // get current form values
         $currentModel = $form->model;
         $modelExists = !is_string($currentModel);
@@ -227,7 +230,10 @@ class OrderResource extends Resource
                                     ->required(),
 
                                 Forms\Components\Select::make('status')
-                                    ->options(TicketOrderStatus::editableOptions())
+                                    ->options(
+                                        fn($state) =>
+                                        $user->isAdmin() ? TicketOrderStatus::allOptions() : TicketOrderStatus::editableOptions(TicketOrderStatus::tryFrom($state))
+                                    )
                                     ->searchable()
                                     ->columnSpan([
                                         'default' => 1,

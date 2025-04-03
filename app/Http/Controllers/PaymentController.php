@@ -289,7 +289,7 @@ class PaymentController extends Controller
             }
 
             $currentStatus = $order->status;
-            if ($currentStatus === $status) {
+            if ($currentStatus === $status || $currentStatus === OrderStatus::CANCELLED || $currentStatus === OrderStatus::COMPLETED) {
                 // No need to update if status is the same
                 DB::commit();
                 return;

@@ -36,17 +36,16 @@ enum TicketStatus: string implements HasLabel, HasColor
         };
     }
 
-    public static function editableOptions()
+    public static function editableOptions(TicketStatus $currentStatus)
     {
-        return [
+        $returnStatuses = [
             self::AVAILABLE->value => self::AVAILABLE->getLabel(),
             self::BOOKED->value => self::BOOKED->getLabel(),
             self::RESERVED->value => self::RESERVED->getLabel(),
         ];
-    }
 
-    public static function getEditableOptionsValues()
-    {
-        return array_keys(self::editableOptions());
+        $returnStatuses[$currentStatus->value] = $currentStatus->getLabel();
+
+        return $returnStatuses;
     }
 }

@@ -38,30 +38,33 @@ enum EventStatus: string implements HasLabel, HasColor
 
     public static function editableOptions(EventStatus $currentStatus)
     {
+        $returnStatuses = [];
+
+        $returnStatuses[$currentStatus->value] = $currentStatus->getLabel();
+
         switch ($currentStatus) {
             case self::PLANNED:
-                return [
-                    self::PLANNED->value => self::PLANNED->getLabel(),
-                    self::ACTIVE->value => self::ACTIVE->getLabel(),
-                    self::CANCELLED->value => self::CANCELLED->getLabel(),
-                ];
+                $returnStatuses[self::PLANNED->value] = self::PLANNED->getLabel();
+                $returnStatuses[self::ACTIVE->value] = self::ACTIVE->getLabel();
+                $returnStatuses[self::CANCELLED->value] = self::CANCELLED->getLabel();
+                break;
+
             case self::ACTIVE:
-                return [
-                    self::ACTIVE->value => self::ACTIVE->getLabel(),
-                    self::COMPLETED->value => self::COMPLETED->getLabel(),
-                    self::CANCELLED->value => self::CANCELLED->getLabel(),
-                ];
+                $returnStatuses[self::ACTIVE->value] = self::ACTIVE->getLabel();
+                $returnStatuses[self::COMPLETED->value] = self::COMPLETED->getLabel();
+                $returnStatuses[self::CANCELLED->value] = self::CANCELLED->getLabel();
+                break;
+
             case self::COMPLETED:
-                return [
-                    self::COMPLETED->value => self::COMPLETED->getLabel(),
-                ];
+                $returnStatuses[self::COMPLETED->value] = self::COMPLETED->getLabel();
+                break;
+
             case self::CANCELLED:
-                return [
-                    self::CANCELLED->value => self::CANCELLED->getLabel(),
-                ];
-            default:
-                return [];
+                $returnStatuses[self::CANCELLED->value] = self::CANCELLED->getLabel();
+                break;
         }
+
+        return $returnStatuses;
     }
 
     public static function getFilterOptions()

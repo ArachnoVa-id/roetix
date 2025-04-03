@@ -109,6 +109,7 @@ class EventResource extends Resource
                         ->send();
                 }
             })
+            ->modalWidth('sm')
             ->modal(true);
     }
 
@@ -1642,7 +1643,7 @@ class EventResource extends Resource
             ->filters(
                 [
                     Tables\Filters\SelectFilter::make('status')
-                        ->options(EventStatus::toArray())
+                        ->options(EventStatus::allOptions())
                         ->searchable()
                         ->multiple()
                         ->preload()

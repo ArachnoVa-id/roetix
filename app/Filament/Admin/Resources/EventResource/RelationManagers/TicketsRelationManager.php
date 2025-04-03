@@ -11,6 +11,11 @@ class TicketsRelationManager extends RelationManager
 {
     protected static string $relationship = 'tickets';
 
+    public function infolist(Infolist $infolist): Infolist
+    {
+        return TicketResource::infolist($infolist, showBuyer: false, showOrders: false);
+    }
+
     public function table(Table $table): Table
     {
         return TicketResource::table($table, showEvent: false, showTraceButton: true, filterStatus: true, filterEvent: false)

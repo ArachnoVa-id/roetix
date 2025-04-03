@@ -45,9 +45,4 @@ enum UserRole: string implements HasLabel, HasColor
             self::EVENT_ORGANIZER->value => self::EVENT_ORGANIZER->getLabel(),
         ];
     }
-
-    public static function getEditableOptionsValues()
-    {
-        return array_keys(self::editableOptions());
-    }
 }

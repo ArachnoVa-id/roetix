@@ -6,11 +6,8 @@ use App\Enums\TicketOrderStatus;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Ticket;
-use App\Models\TicketOrder;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 

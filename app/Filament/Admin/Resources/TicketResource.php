@@ -86,16 +86,17 @@ class TicketResource extends Resource
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
+        $user = User::find(Auth::id());
+
         return $action
             ->label('Change Status')
             ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
-            ->modalDescription('Select a new status for this ticket.')
             ->form([
                 Forms\Components\Select::make('status')
                     ->label('Status')
-                    ->options(TicketStatus::editableOptions())
+                    ->options(fn($record) => $user->isAdmin() ? TicketStatus::allOptions() : TicketStatus::editableOptions(TicketStatus::tryFrom($record->status)))
                     ->preload()
                     ->searchable()
                     ->default(fn($record) => $record->status) // Set the current value as default
@@ -122,6 +123,9 @@ class TicketResource extends Resource
                         ->send();
                 }
             })
+            ->requiresConfirmation(fn($record) => $record->status === TicketStatus::IN_TRANSACTION->value)
+            ->modalDescription(fn($record) => $record->status === TicketStatus::IN_TRANSACTION->value ? 'Ticket is in an ongoing transaction. Are you sure to change the status?' : 'Select a new status for this ticket.')
+            ->modalWidth('sm')
             ->modal(true);
     }
 
@@ -133,7 +137,6 @@ class TicketResource extends Resource
             ->color('warning')
             ->icon('heroicon-o-paper-airplane')
             ->modalHeading('Transfer Ownership')
-            ->modalDescription('Select a new user for this ticket.')
             ->form([
                 Forms\Components\Hidden::make('ticket_id')
                     ->default(fn($record) => $record->ticket_id),
@@ -240,6 +243,9 @@ class TicketResource extends Resource
                         ->send();
                 }
             })
+            ->requiresConfirmation(fn($record) => $record->status === TicketStatus::IN_TRANSACTION->value)
+            ->modalDescription(fn($record) => $record->status === TicketStatus::IN_TRANSACTION->value ? 'Ticket is in an ongoing transaction. Are you sure to change the owner?' : 'Select a new user for this ticket.')
+            ->modalWidth('sm')
             ->modal(true);
     }
 
@@ -291,7 +297,7 @@ class TicketResource extends Resource
                                 ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
                                 ->badge(),
                             Infolists\Components\TextEntry::make('ticket_order_status')
-                                ->label('Ownership')
+                                ->label('Latest Validity')
                                 ->default(function ($record) {
                                     $ticket_id = $record->ticket_id;
                                     $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
@@ -417,7 +423,7 @@ class TicketResource extends Resource
         $user = User::find(Auth::id());
 
         $ownership = Tables\Columns\TextColumn::make('ticket_order_status')
-            ->label('Ownership')
+            ->label('Latest Validity')
             ->default(function ($record) use ($dataSource) {
                 $ticketOrder = null;
                 $ticket_id = $record->ticket_id;
@@ -520,26 +526,35 @@ class TicketResource extends Resource
 
                     SelectFilter::make('status')
                         ->label('Filter by Status')
-                        ->options(TicketStatus::editableOptions())
+                        ->options(TicketStatus::allOptions())
                         ->searchable()
                         ->multiple()
                         ->preload()
                         ->hidden(!$filterStatus),
 
                     SelectFilter::make('ticket_order_status')
-                        ->label('Filter by Ownership')
-                        ->options(TicketOrderStatus::editableOptions())
+                        ->label('Filter by Validity')
+                        ->options(TicketOrderStatus::allOptions())
                         ->searchable()
                         ->preload()
                         ->multiple()
-                        ->query(function ($query, array $data) {
+                        ->query(function ($query, $data) {
                             if (!empty($data['values'])) {
-                                $query->whereHas('ticketOrders', function ($subQuery) use ($data) {
-                                    $subQuery->whereIn('status', $data['values'])
-                                        ->orderByDesc('created_at');
+                                $query->whereHas('ticketOrders', function ($query) use ($data) {
+                                    $query->joinSub(function ($subquery) {
+                                        // Subquery to get the latest ticket order for each ticket_id
+                                        $subquery->from('ticket_order')
+                                            ->selectRaw('ticket_id, MAX(created_at) as latest_created_at')
+                                            ->groupBy('ticket_id');
+                                    }, 'latest_ticket_orders', function ($join) {
+                                        // Join with the tickets based on ticket_id and the latest created_at
+                                        $join->on('ticket_order.ticket_id', '=', 'latest_ticket_orders.ticket_id')
+                                            ->on('ticket_order.created_at', '=', 'latest_ticket_orders.latest_created_at');
+                                    })
+                                        ->whereIn('ticket_order.status', $data['values']); // Filter by ticket order status
                                 });
                             }
-                        }),
+                        })
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
