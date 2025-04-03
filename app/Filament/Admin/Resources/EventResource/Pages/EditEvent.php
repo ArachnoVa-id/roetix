@@ -34,7 +34,10 @@ class EditEvent extends EditRecord
             ),
             EventResource::EditSeatsButton(
                 Actions\Action::make('editSeats')
-            )->button(),
+            ),
+            EventResource::ExportOrdersButton(
+                Actions\Action::make('export')
+            ),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
         ];

@@ -122,6 +122,22 @@ class EventResource extends Resource
             ->url(fn($record) => "/seats/edit?event_id={$record->event_id}");
     }
 
+    public static function ExportOrdersButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Export Orders')
+            ->color(Color::Green)
+            ->icon('heroicon-o-arrow-down-tray')
+            ->url(
+                fn($record) =>
+                route(
+                    'orders.export',
+                    ['id' => $record?->event_id]
+                )
+            )
+        ;
+    }
+
     public static function infolist(Infolists\Infolist $infolist, bool $showOrders = true, bool $showTickets = true): Infolists\Infolist
     {
         return $infolist->schema(
@@ -1609,6 +1625,7 @@ class EventResource extends Resource
         if ($user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER])) {
             $defaultActions[] = self::ChangeStatusButton(Tables\Actions\Action::make('changeStatus'));
             $defaultActions[] = self::EditSeatsButton(Tables\Actions\Action::make('editSeats'));
+            $defaultActions[] = self::ExportOrdersButton(Actions\Action::make('export'));
         }
 
         $defaultActions[] = Tables\Actions\DeleteAction::make()

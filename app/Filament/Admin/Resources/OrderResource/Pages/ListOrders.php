@@ -3,13 +3,16 @@
 namespace App\Filament\Admin\Resources\OrderResource\Pages;
 
 use App\Enums\OrderStatus;
+use App\Filament\Admin\Resources\EventResource;
 use App\Filament\Admin\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\User;
 use Filament\Actions;
 use Filament\Facades\Filament;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class ListOrders extends ListRecords
 {
@@ -17,10 +20,15 @@ class ListOrders extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        $user = User::find(Auth::id());
+
         return [
             Actions\CreateAction::make()
                 ->label('Create Order')
                 ->icon('heroicon-o-plus'),
+            EventResource::ExportOrdersButton(
+                Actions\Action::make('export')
+            )->hidden(!$user->isAdmin())
         ];
     }
 

@@ -82,6 +82,12 @@ Route::domain(config('app.domain'))
                 Route::post('/seats/save-grid-layout', 'saveGridLayout')
                     ->name('seats.save-grid-layout');
             });
+
+            // Download Orders
+            Route::controller(PaymentController::class)->group(function () {
+                Route::get('/orders/download/{id?}', 'ordersDownload')
+                    ->name('orders.export');
+            });
         });
 
         // Any unregistered route will be redirected to the main domain

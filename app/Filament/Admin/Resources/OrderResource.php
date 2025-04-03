@@ -463,7 +463,7 @@ class OrderResource extends Resource
                         ->color(Color::Orange),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
-                    )
+                    ),
                 ])
             ]);
     }

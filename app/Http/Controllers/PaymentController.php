@@ -7,6 +7,7 @@ use App\Enums\OrderType;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Events\TicketPurchased;
+use App\Exports\OrdersExport;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Seat;
@@ -21,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PaymentController extends Controller
 {
@@ -463,6 +465,25 @@ class PaymentController extends Controller
             return response()->json(['client_key' => $clientKey]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch client key'], 500);
+        }
+    }
+
+    /**
+     * Download orders as an Excel file
+     */
+    public function ordersDownload($id = null)
+    {
+        try {
+            $user = Auth::user();
+
+            $orderExport = new OrdersExport($id, $user);
+
+            return Excel::download(
+                $orderExport,
+                $orderExport->title() . '.csv',
+            );
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to download orders: ' . $e->getMessage()], 500);
         }
     }
 }
