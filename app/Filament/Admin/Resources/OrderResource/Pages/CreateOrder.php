@@ -64,6 +64,7 @@ class CreateOrder extends CreateRecord
             $event = Event::where('event_id', $event_id)->first();
             $tenant_id = $event->team_id;
             $user_id = $data['user_id'];
+            $expired = $data['expired_at'] ?? now()->addHour();
 
             // Lock all tickets
             foreach ($data['tickets'] as $ticket) {
@@ -87,6 +88,7 @@ class CreateOrder extends CreateRecord
                 'order_date' => now(),
                 'total_price' => 0,
                 'status' => OrderStatus::COMPLETED,
+                'expired_at' => $expired,
             ]);
 
             // Calculate tickets selected

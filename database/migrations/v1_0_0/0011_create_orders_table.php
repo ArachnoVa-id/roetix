@@ -23,6 +23,8 @@ return new class extends Migration
             $table->dateTime('order_date');
             $table->decimal('total_price', 9, 2);
             $table->enum('status', OrderStatus::values())->default(OrderStatus::PENDING);
+            $table->dateTime('expired_at');
+
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');

@@ -52,6 +52,7 @@ class OrderFactory extends Factory
             'order_date' => $this->faker->dateTimeBetween('-1 year', 'now'),
             'total_price' => $this->faker->randomFloat(2, 100000, 1000000),
             'status' => $this->faker->randomElement(OrderStatus::values()),
+            'expired_at' => $this->faker->dateTimeBetween('now', '+1 hour'),
         ];
     }
 

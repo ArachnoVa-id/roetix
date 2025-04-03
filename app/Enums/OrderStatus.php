@@ -14,13 +14,15 @@ enum OrderStatus: string implements HasLabel, HasColor
     case PENDING = 'pending';
     case COMPLETED = 'completed';
     case CANCELLED = 'cancelled';
+    case EXPIRED = 'expired';
 
     public function getLabel(): string
     {
         return match ($this) {
             self::PENDING => 'Pending',
             self::COMPLETED => 'Completed',
-            self::CANCELLED => 'Cancelled'
+            self::CANCELLED => 'Cancelled',
+            self::EXPIRED => 'Expired'
         };
     }
 
@@ -29,7 +31,8 @@ enum OrderStatus: string implements HasLabel, HasColor
         return match ($this) {
             self::PENDING => Color::Blue,
             self::COMPLETED => Color::Green,
-            self::CANCELLED => Color::Red
+            self::CANCELLED => Color::Red,
+            self::EXPIRED => Color::Gray
         };
     }
 
@@ -38,7 +41,8 @@ enum OrderStatus: string implements HasLabel, HasColor
         return match ($this) {
             self::PENDING => 'heroicon-o-clock',
             self::COMPLETED => 'heroicon-o-check-circle',
-            self::CANCELLED => 'heroicon-o-x-circle'
+            self::CANCELLED => 'heroicon-o-x-circle',
+            self::EXPIRED => 'heroicon-o-exclamation-triangle'
         };
     }
 
@@ -61,6 +65,10 @@ enum OrderStatus: string implements HasLabel, HasColor
 
             case self::CANCELLED:
                 $returnStatuses[self::CANCELLED->value] = self::CANCELLED->getLabel();
+                break;
+
+            case self::EXPIRED:
+                $returnStatuses[self::EXPIRED->value] = self::EXPIRED->getLabel();
                 break;
         }
 

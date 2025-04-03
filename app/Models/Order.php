@@ -30,7 +30,8 @@ class Order extends Model
         'team_id',
         'order_date',
         'total_price',
-        'status'
+        'status',
+        'expired_at',
     ];
 
     protected static function boot()

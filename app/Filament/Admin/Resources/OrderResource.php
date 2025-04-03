@@ -144,6 +144,16 @@ class OrderResource extends Resource
                             ->required()
                             ->preload()
                             ->disabled($modelExists),
+                        Forms\Components\DatePicker::make('expired_at')
+                            ->label('Expired At')
+                            ->format('Y-m-d H:i:s')
+                            ->default(now()->addHours(1))
+                            ->disabled($modelExists)
+                            ->required()
+                            ->validationAttribute('Expired At')
+                            ->validationMessages([
+                                'required' => 'The Expired At field is required',
+                            ]),
                     ]),
                 Forms\Components\Section::make('Tickets')
                     ->columnSpanFull()
@@ -288,6 +298,12 @@ class OrderResource extends Resource
                             ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
                             ->icon(fn($state) => OrderStatus::tryFrom($state)->getIcon())
                             ->badge(),
+                        Infolists\Components\TextEntry::make('expired_at')
+                            ->icon('heroicon-o-clock')
+                            ->label('Expired At'),
+                        Infolists\Components\TextEntry::make('order_code')
+                            ->icon('heroicon-o-key')
+                            ->label('Order Code'),
                     ]),
                 Infolists\Components\Section::make('Buyer')
                     ->columnSpan([
@@ -399,6 +415,10 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('order_date')
                     ->label('Date')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('expired_at')
+                    ->label('Expired At')
+                    ->sortable()
+                    ->dateTime('Y-m-d H:i:s'),
                 Tables\Columns\TextColumn::make('total_price')
                     ->label('Total')
                     ->money('IDR')

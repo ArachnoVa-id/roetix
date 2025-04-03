@@ -137,10 +137,10 @@ export default function Login({
                                 client ? 'client-auth.google' : 'auth.google',
                                 client,
                             )}
-                            className="flex w-full items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-1 text-center font-bold text-white"
+                            className="flex w-full items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-2 text-center font-bold text-white"
                         >
-                            <FontAwesomeIcon icon={faGoogle} size="lg" />
-                            <span>Login With Google</span>
+                            <FontAwesomeIcon icon={faGoogle} size="sm" />
+                            <span className="text-xs">Login With Google</span>
                         </a>
                     </div>
                 </form>
@@ -151,10 +151,10 @@ export default function Login({
                             client ? 'client-auth.google' : 'auth.google',
                             client,
                         )}
-                        className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-1 text-center font-bold text-white"
+                        className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-2 text-center font-bold text-white"
                     >
-                        <FontAwesomeIcon icon={faGoogle} size="lg" />
-                        <span>Login With Google</span>
+                        <FontAwesomeIcon icon={faGoogle} size="sm" />
+                        <span className="text-xs">Login With Google</span>
                     </a>
                 </div>
             )}
