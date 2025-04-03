@@ -29,6 +29,8 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         right: 15,
     });
 
+    const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+    const [hasChanges, setHasChanges] = useState(false);
     const [grid, setGrid] = useState<GridCell[][]>([]);
     const [mode, setMode] = useState<EditorMode>('add');
     const [isMouseDown, setIsMouseDown] = useState(false);
@@ -230,14 +232,26 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         const firstCell = newGrid[startCell.row][startCell.col];
         const isBlocking = !firstCell.isBlocked;
 
+        // Flag to determine if any change occurred
+        let changesMade = false;
+
         for (let i = minRow; i <= maxRow; i++) {
             for (let j = minCol; j <= maxCol; j++) {
-                // Toggle isBlocked flag instead of changing the cell type
-                newGrid[i][j] = {
-                    ...newGrid[i][j],
-                    isBlocked: isBlocking,
-                };
+                // Check if the isBlocked status will actually change
+                if (newGrid[i][j].isBlocked !== isBlocking) {
+                    changesMade = true;
+                    // Toggle isBlocked flag
+                    newGrid[i][j] = {
+                        ...newGrid[i][j],
+                        isBlocked: isBlocking,
+                    };
+                }
             }
+        }
+
+        // Only update hasChanges if actual changes were made
+        if (changesMade) {
+            setHasChanges(true);
         }
 
         // Save the blocked area so we can highlight it
@@ -272,6 +286,15 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         };
 
         setGrid(newGrid);
+        setHasChanges(true);
+
+        // Update blockedArea to highlight this single cell
+        setBlockedArea({
+            minRow: rowIndex,
+            maxRow: rowIndex,
+            minCol: colIndex,
+            maxCol: colIndex,
+        });
     };
 
     // Function to get row label from bottom-up position
@@ -320,6 +343,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
         setGrid(newGrid);
         reorderSeatNumbers();
+        setHasChanges(true);
     };
 
     const deleteSeat = (rowIndex: number, colIndex: number) => {
@@ -334,6 +358,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
         setGrid(newGrid);
         reorderSeatNumbers();
+        setHasChanges(true);
     };
 
     // Function to add seats to all empty cells in the blocked area
@@ -371,6 +396,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
         setGrid(newGrid);
         reorderSeatNumbers();
+        setHasChanges(true);
     };
 
     // Function to delete all seats in the blocked area
@@ -393,6 +419,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
         setGrid(newGrid);
         reorderSeatNumbers();
+        setHasChanges(true);
     };
 
     const reorderSeatNumbers = () => {
@@ -475,6 +502,15 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         };
 
         onSave?.(layout);
+        setHasChanges(false);
+        setBlockedArea(null);
+        // Show success notification
+        setShowSaveSuccess(true);
+
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+            setShowSaveSuccess(false);
+        }, 3000);
     };
 
     const getCellColor = (cell: GridCell): string => {
@@ -964,7 +1000,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                     <button
                         onClick={handleSave}
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 font-medium text-white shadow-sm transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={isDisabled}
+                        disabled={isDisabled || !hasChanges}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -981,7 +1017,11 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                             <polyline points="17 21 17 13 7 13 7 21"></polyline>
                             <polyline points="7 3 7 8 15 8"></polyline>
                         </svg>
-                        {isDisabled ? 'Saving...' : 'Save Layout'}
+                        {isDisabled
+                            ? 'Saving...'
+                            : hasChanges
+                              ? 'Save Layout'
+                              : 'No Changes'}
                     </button>
                 </div>
             </div>
@@ -1164,6 +1204,27 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
             </div> */
     }
     //{' '}
+    {
+        showSaveSuccess && (
+            <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-md bg-green-100 px-4 py-2 text-green-800 shadow-lg">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                Layout saved successfully!
+            </div>
+        );
+    }
 };
 
 export default GridSeatEditor;
