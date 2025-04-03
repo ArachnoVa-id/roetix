@@ -43,13 +43,15 @@ class OrderResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = User::find(Auth::id());
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
+        $user = User::find(Auth::id());
+
         return $action
             ->label('Change Status')
             ->color(Color::Fuchsia)
@@ -59,7 +61,7 @@ class OrderResource extends Resource
             ->form([
                 Forms\Components\Select::make('status')
                     ->label('Status')
-                    ->options(fn($record) => Auth::user()->role == UserRole::ADMIN->value ? OrderStatus::allOptions() : OrderStatus::editableOptions(OrderStatus::tryFrom($record->status)))
+                    ->options(fn($record) => $user->isAdmin() ? OrderStatus::allOptions() : OrderStatus::editableOptions(OrderStatus::tryFrom($record->status)))
                     ->default(fn($record) => $record->status)
                     ->preload()
                     ->searchable()

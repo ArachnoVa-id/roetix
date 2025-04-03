@@ -25,9 +25,9 @@ class UserResource extends Resources\Resource
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = User::find(Auth::id());
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTeams = true): Infolists\Infolist

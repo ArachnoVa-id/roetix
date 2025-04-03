@@ -54,9 +54,9 @@ class TicketResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = User::find(Auth::id());
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
 
     public static function TraceTicketOrderButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action

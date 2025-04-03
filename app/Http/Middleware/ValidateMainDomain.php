@@ -40,7 +40,7 @@ class ValidateMainDomain
 
         $user = User::find($user->id);
 
-        if ($user->role === UserRole::USER->value) {
+        if ($user->isUser()) {
             Auth::logout();
             return redirect()->route('login');
         }
@@ -52,7 +52,7 @@ class ValidateMainDomain
         }
 
         if ($request->route()->getName() === 'login' || $request->route()->getName() === 'home') {
-            if ($user->role == UserRole::ADMIN->value) {
+            if ($user->isAdmin()) {
                 return redirect()->route('filament.novatix-admin.pages.dashboard');
             }
             return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]);

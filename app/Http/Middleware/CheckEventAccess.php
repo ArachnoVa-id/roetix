@@ -19,8 +19,8 @@ class CheckEventAccess
      */
     public function handle(Request $request, Closure $next)
     {
-        $user = Auth::user();
-        if ($user->role == UserRole::ADMIN->value) return $next($request);
+        $user = User::find(Auth::id());
+        if ($user->isAdmin()) return $next($request);
 
         $userId = $user->id;
 

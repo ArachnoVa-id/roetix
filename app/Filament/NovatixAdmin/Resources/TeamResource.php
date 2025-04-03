@@ -8,6 +8,7 @@ use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\EventsRela
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\UsersRelationManager;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\VenuesRelationManager;
 use App\Models\Team;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
@@ -26,9 +27,9 @@ class TeamResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = User::find(Auth::id());
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showMembers = true, bool $showEvents = true, bool $showVenues = true): Infolists\Infolist

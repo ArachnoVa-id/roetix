@@ -41,7 +41,7 @@ class ColorPreview extends Component implements HasForms
             'text_secondary_color' => $this->text_secondary_color,
         ]);
 
-        Cache::put('color_preview_' . Auth::user()->id, [
+        Cache::put('color_preview_' . Auth::id(), [
             'primary_color' => $this->primary_color,
             'secondary_color' => $this->secondary_color,
             'text_primary_color' => $this->text_primary_color,

@@ -183,7 +183,7 @@ class CreateEvent extends CreateRecord
                 ->send();
 
             // Clear cache for colors
-            Cache::forget('color_preview_' . Auth::user()->id);
+            Cache::forget('color_preview_' . Auth::id());
 
             // Get the redirect URL (like getRedirectUrl)
             $redirectUrl = $this->getResource()::getUrl('view', ['record' => $event_id]);

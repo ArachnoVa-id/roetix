@@ -25,8 +25,6 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
-use Filament\Infolists\Infolist;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
 use Mews\Purifier\Facades\Purifier;
 
@@ -73,6 +71,8 @@ class EventResource extends Resource
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
+        $user = User::find(Auth::id());
+
         return $action
             ->label('Change Status')
             ->color(Color::Fuchsia)
@@ -82,7 +82,7 @@ class EventResource extends Resource
             ->form([
                 Forms\Components\Select::make('status')
                     ->label('Status')
-                    ->options(fn($record) => Auth::user()->role == UserRole::ADMIN->value ? EventStatus::allOptions() : EventStatus::editableOptions(EventStatus::tryFrom($record->status)))
+                    ->options(fn($record) => $user->isAdmin() ? EventStatus::allOptions() : EventStatus::editableOptions(EventStatus::tryFrom($record->status)))
                     ->default(fn($record) => $record->status)
                     ->searchable()
                     ->preload()

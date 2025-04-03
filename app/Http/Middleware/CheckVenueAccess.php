@@ -2,12 +2,10 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\UserRole;
 use Closure;
 use App\Models\User;
 use App\Models\Venue;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 class CheckVenueAccess
@@ -19,8 +17,8 @@ class CheckVenueAccess
      */
     public function handle(Request $request, Closure $next)
     {
-        $user = Auth::user();
-        if ($user->role == UserRole::ADMIN->value) return $next($request);
+        $user = User::find(Auth::id());
+        if ($user->isAdmin()) return $next($request);
 
         $userId = $user->id;
 
