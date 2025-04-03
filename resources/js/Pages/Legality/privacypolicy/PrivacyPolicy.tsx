@@ -64,6 +64,21 @@ export default function PrivacyPolicy({
                         backgroundColor: props.secondary_color,
                     }}
                 >
+                    {/* Back button */}
+                    <div className="mt-4 flex items-center justify-center">
+                        <a
+                            href={route(client ? 'client.home' : 'home', {
+                                client: client,
+                            })}
+                            className="rounded-lg px-4 py-2 font-bold hover:opacity-80"
+                            style={{
+                                backgroundColor: props.primary_color,
+                                color: props.text_secondary_color,
+                            }}
+                        >
+                            Kembali ke Beranda
+                        </a>
+                    </div>
                     {dbContent ? (
                         <>
                             <div
