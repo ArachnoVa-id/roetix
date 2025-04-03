@@ -193,6 +193,28 @@ export default function Landing({
         }
     };
 
+    interface CancellingStack {
+        order_id: string;
+        cancelling: boolean;
+    }
+    const [cancellingStack, setCancellingStack] = useState<CancellingStack[]>(
+        [],
+    );
+
+    const addItemToStack = (orderId: string) => {
+        const newItem = {
+            order_id: orderId,
+            cancelling: true,
+        };
+        setCancellingStack((prevStack) => [...prevStack, newItem]);
+    };
+
+    const removeItemFromStack = (orderId: string) => {
+        setCancellingStack((prevStack) =>
+            prevStack.filter((item) => item.order_id !== orderId),
+        );
+    };
+
     const cancelPayment = async (order_ids: string[]) => {
         if (!order_ids) return;
 
@@ -1014,79 +1036,164 @@ export default function Landing({
                         {pendingTransactions.length > 0 ? (
                             <div className="space-y-4">
                                 {pendingTransactions.map(
-                                    (transaction, transactionIndex) => (
-                                        <div
-                                            key={transactionIndex}
-                                            className="space-y-4"
-                                        >
-                                            <h4 className="text-base font-semibold">
-                                                {'Transaction: ' +
-                                                    transaction.order_code}
-                                            </h4>
-                                            {transaction.seats.map((seat) => (
-                                                <div
-                                                    key={seat.seat_id}
-                                                    className="flex items-center justify-between rounded-lg p-3"
-                                                    style={{
-                                                        backgroundColor:
-                                                            props.secondary_color,
-                                                        color: props.text_secondary_color,
-                                                    }}
-                                                >
-                                                    <div>
-                                                        <p className="font-semibold">
-                                                            Ticket Type:{' '}
-                                                            {seat.ticket_type ||
-                                                                seat.category ||
-                                                                'Unset'}
-                                                        </p>
-                                                        <p className="text-sm">
-                                                            Seat:{' '}
-                                                            {seat.seat_number}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold">
-                                                            Price:{' '}
-                                                            {formatRupiah(
-                                                                getSafePrice(
-                                                                    seat.price,
-                                                                ),
-                                                            )}
-                                                        </p>
-                                                    </div>
+                                    (transaction, transactionIndex) => {
+                                        return (
+                                            <div
+                                                key={transactionIndex}
+                                                className="space-y-4"
+                                            >
+                                                <h4 className="text-base font-semibold">
+                                                    {'Transaction: ' +
+                                                        transaction.order_code}
+                                                </h4>
+                                                {transaction.seats.map(
+                                                    (seat) => (
+                                                        <div
+                                                            key={seat.seat_id}
+                                                            className="flex items-center justify-between rounded-lg p-3"
+                                                            style={{
+                                                                backgroundColor:
+                                                                    props.secondary_color,
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            <div>
+                                                                <p className="font-semibold">
+                                                                    Ticket Type:{' '}
+                                                                    {seat.ticket_type ||
+                                                                        seat.category ||
+                                                                        'Unset'}
+                                                                </p>
+                                                                <p className="text-sm">
+                                                                    Seat:{' '}
+                                                                    {
+                                                                        seat.seat_number
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-semibold">
+                                                                    Price:{' '}
+                                                                    {formatRupiah(
+                                                                        getSafePrice(
+                                                                            seat.price,
+                                                                        ),
+                                                                    )}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ),
+                                                )}
+                                                <div className="mt-4 flex gap-2">
+                                                    {/* Resume Button */}
+                                                    {isBookingAllowed && (
+                                                        <button
+                                                            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                                            onClick={() =>
+                                                                resumePayment(
+                                                                    transaction.snap_token,
+                                                                )
+                                                            }
+                                                        >
+                                                            Resume Payment
+                                                        </button>
+                                                    )}
+                                                    {/* Cancel Button */}
+                                                    {isBookingAllowed && (
+                                                        <div className="flex gap-2">
+                                                            {
+                                                                //                     const currentCancellingStack:
+                                                                //     | CancellingStack
+                                                                //     | undefined = cancellingStack.find(
+                                                                //     (item: CancellingStack) =>
+                                                                //         item.order_id !==
+                                                                //         transaction.order_id,
+                                                                // );
+                                                                //                     return true
+                                                                // ? (
+                                                                //     currentCancellingStack.cancelling && (
+                                                                //         <button
+                                                                //             className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                                //             onClick={() =>
+                                                                //                 cancelPayment(
+                                                                //                     [
+                                                                //                         transaction.order_id,
+                                                                //                     ],
+                                                                //                 )
+                                                                //             }
+                                                                //         >
+                                                                //             Confirm
+                                                                //             Cancel
+                                                                //         </button>
+                                                                //     )
+                                                                // ) : (
+                                                                //     <button
+                                                                //         className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                                //         onClick={() =>
+                                                                //             addItemToStack(
+                                                                //                 transaction.order_id,
+                                                                //             )
+                                                                //         }
+                                                                //     >
+                                                                //         Cancel
+                                                                //         Payment
+                                                                //     </button>
+                                                                // )
+
+                                                                // check if the order_id is in the cancellingStack
+                                                                cancellingStack.some(
+                                                                    (item) =>
+                                                                        item.order_id ===
+                                                                        transaction.order_id,
+                                                                ) ? (
+                                                                    <>
+                                                                        <button
+                                                                            className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                                            onClick={() =>
+                                                                                cancelPayment(
+                                                                                    [
+                                                                                        transaction.order_id,
+                                                                                    ],
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            Confirm
+                                                                            Cancel
+                                                                        </button>
+                                                                        <button
+                                                                            className="rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
+                                                                            onClick={() =>
+                                                                                removeItemFromStack(
+                                                                                    transaction.order_id,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            Abort
+                                                                            Cancellation
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <button
+                                                                            className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                                            onClick={() =>
+                                                                                addItemToStack(
+                                                                                    transaction.order_id,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            Cancel
+                                                                            Payment
+                                                                        </button>
+                                                                    </>
+                                                                )
+                                                            }
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            ))}
-                                            <div className="mt-4 flex gap-2">
-                                                {/* Resume Button */}
-                                                {isBookingAllowed && (
-                                                    <button
-                                                        className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-                                                        onClick={() =>
-                                                            resumePayment(
-                                                                transaction.snap_token,
-                                                            )
-                                                        }
-                                                    >
-                                                        Resume Payment
-                                                    </button>
-                                                )}
-                                                {/* Cancel Button */}
-                                                {isBookingAllowed && (
-                                                    <button
-                                                        className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-                                                        onClick={() =>
-                                                            cancelPayment([
-                                                                transaction.order_id,
-                                                            ])
-                                                        }
-                                                    >
-                                                        Cancel Payment
-                                                    </button>
-                                                )}
                                             </div>
-                                        </div>
-                                    ),
+                                        );
+                                    },
                                 )}
                             </div>
                         ) : selectedSeats.length === 0 ? (
