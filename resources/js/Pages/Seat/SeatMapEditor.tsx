@@ -453,15 +453,61 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
         setSelectionBox(null);
     };
 
+    const [droppedDown, setDroppedDown] = useState(false);
+    const handleToggle = () => {
+        setDroppedDown((prev) => !prev);
+    };
+
     return (
-        <div className="flex h-screen flex-col">
+        <div className="flex h-screen max-md:flex-col">
             {/* Left Panel - Fixed position with constant width */}
-            <div className="fixed left-0 top-0 z-20 flex h-full w-72 flex-col border-r border-gray-200 bg-white shadow-lg">
+            <div
+                className={`flex h-fit w-72 flex-col border-r border-gray-200 bg-white shadow-lg max-md:order-2 max-md:w-full md:h-full`}
+            >
                 {/* Header */}
-                <div className="flex w-full gap-2 border-b border-gray-200 bg-blue-600 p-4 text-white">
+                <div className="flex w-full justify-between border-b border-gray-200 bg-blue-600 p-4 text-white">
+                    <div className="flex w-fit gap-2">
+                        <button
+                            className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
+                            onClick={() => window.history.back()}
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <h2 className="flex items-center gap-2 text-xl font-bold">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="rotate-90 transform"
+                            >
+                                <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
+                                <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
+                                <path d="M12 12v5"></path>
+                            </svg>
+                            Seat Map Editor
+                        </h2>
+                    </div>
                     <button
-                        className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
-                        onClick={() => window.history.back()}
+                        className={`h-full w-fit rotate-90 rounded-full bg-blue-500 px-1 font-bold text-white duration-500 hover:bg-blue-700 md:hidden ${droppedDown ? 'rotate-90' : '-rotate-90'}`}
+                        onClick={handleToggle}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -477,29 +523,11 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                     </button>
-                    <h2 className="flex items-center gap-2 text-xl font-bold">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
-                            <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
-                            <path d="M12 12v5"></path>
-                        </svg>
-                        Seat Map Editor
-                    </h2>
                 </div>
 
                 {/* Scrollable Content */}
                 <div
-                    className="flex-1 overflow-y-auto p-5"
+                    className={`flex-l overflow-y-auto duration-500 md:h-full md:p-5 ${droppedDown ? 'max-md:h-0' : 'h-[35vh] p-5'}`}
                     ref={sidebarContentRef}
                 >
                     {/* Mode Selection */}
@@ -1031,7 +1059,9 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                 </div>
 
                 {/* Save Button */}
-                <div className="border-t border-gray-200 bg-gray-50 p-4">
+                <div
+                    className={`overflow-hidden border-gray-200 bg-gray-50 duration-500 md:border-t md:p-4 ${droppedDown ? 'max-md:h-0' : 'border-t p-4'}`}
+                >
                     <button
                         onClick={handleUpdateSelectedSeats}
                         className={`flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-blue-700 ${selectedSeats.size === 0 ? 'cursor-not-allowed opacity-50' : 'hover:shadow'}`}
@@ -1056,14 +1086,8 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
             </div>
 
             {/* Main Content - Seat Map */}
-            <div
-                className="flex-1 overflow-auto bg-gray-50"
-                style={{
-                    marginLeft: '18rem',
-                    padding: '2rem',
-                }}
-            >
-                <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white p-4 shadow-md">
+            <div className="flex-1 overflow-auto bg-gray-50 max-md:order-1">
+                <div className="flex h-full items-center justify-center">
                     {/* Scrollable Seat Map Container - Just one scrollable area */}
                     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-auto rounded-lg border border-gray-300 bg-gray-100">
                         {/* Grid container */}

@@ -505,193 +505,62 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         }
     };
 
-    // const getModeButtonVariant = (buttonMode: EditorMode) => {
-    //     return mode === buttonMode ? 'default' : 'outline';
-    // };
-    // const DimensionControl = () => (
-    //     <div className="mb-6 space-y-4">
-    //         <div className="flex items-center gap-4">
-    //             <div>
-    //                 <label className="block text-sm font-medium text-gray-700">
-    //                     Bottom Rows
-    //                 </label>
-    //                 <div className="flex items-center gap-2">
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 top: Math.max(0, d.top - 1),
-    //                             }))
-    //                         }
-    //                     >
-    //                         -
-    //                     </Button>
-    //                     <span className="w-8 text-center">
-    //                         {dimensions.top}
-    //                     </span>
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({ ...d, top: d.top + 1 }))
-    //                         }
-    //                     >
-    //                         +
-    //                     </Button>
-    //                 </div>
-    //             </div>
-
-    //             <div>
-    //                 <label className="block text-sm font-medium text-gray-700">
-    //                     Top Rows
-    //                 </label>
-    //                 <div className="flex items-center gap-2">
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 bottom: Math.max(1, d.bottom - 1),
-    //                             }))
-    //                         }
-    //                     >
-    //                         -
-    //                     </Button>
-    //                     <span className="w-8 text-center">
-    //                         {dimensions.bottom}
-    //                     </span>
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 bottom: d.bottom + 1,
-    //                             }))
-    //                         }
-    //                     >
-    //                         +
-    //                     </Button>
-    //                 </div>
-    //             </div>
-    //         </div>
-
-    //         <div className="flex items-center gap-4">
-    //             <div>
-    //                 <label className="block text-sm font-medium text-gray-700">
-    //                     Left Columns
-    //                 </label>
-    //                 <div className="flex items-center gap-2">
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 left: Math.max(0, d.left - 1),
-    //                             }))
-    //                         }
-    //                     >
-    //                         -
-    //                     </Button>
-    //                     <span className="w-8 text-center">
-    //                         {dimensions.left}
-    //                     </span>
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 left: d.left + 1,
-    //                             }))
-    //                         }
-    //                     >
-    //                         +
-    //                     </Button>
-    //                 </div>
-    //             </div>
-
-    //             <div>
-    //                 <label className="block text-sm font-medium text-gray-700">
-    //                     Right Columns
-    //                 </label>
-    //                 <div className="flex items-center gap-2">
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 right: Math.max(1, d.right - 1),
-    //                             }))
-    //                         }
-    //                     >
-    //                         -
-    //                     </Button>
-    //                     <span className="w-8 text-center">
-    //                         {dimensions.right}
-    //                     </span>
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 right: d.right + 1,
-    //                             }))
-    //                         }
-    //                     >
-    //                         +
-    //                     </Button>
-    //                 </div>
-    //             </div>
-    //         </div>
-    //     </div>
-    // );
-
-    // Block area action buttons component
-    // const BlockAreaActions = () => {
-    //     if (mode !== 'block' || !blockedArea) return null;
-
-    //     return (
-    //         <div className="mb-4 rounded border border-blue-300 bg-blue-50 p-2">
-    //             <div className="mb-2 text-sm font-medium">Area Selected:</div>
-    //             <div className="flex gap-2">
-    //                 <Button
-    //                     variant="outline"
-    //                     onClick={addSeatsToBlockedArea}
-    //                     className="flex items-center gap-2 border-green-300 bg-white text-green-600 hover:bg-green-50"
-    //                 >
-    //                     <Plus size={16} />
-    //                     Add Seats
-    //                 </Button>
-    //                 <Button
-    //                     variant="outline"
-    //                     onClick={deleteSeatsFromBlockedArea}
-    //                     className="flex items-center gap-2 border-red-300 bg-white text-red-600 hover:bg-red-50"
-    //                 >
-    //                     <Trash2 size={16} />
-    //                     Delete Seats
-    //                 </Button>
-    //                 <Button
-    //                     variant="outline"
-    //                     onClick={() => setBlockedArea(null)}
-    //                     className="bg-white"
-    //                 >
-    //                     Cancel
-    //                 </Button>
-    //             </div>
-    //         </div>
-    //     );
-    // };
+    const [droppedDown, setDroppedDown] = useState(false);
+    const handleToggle = () => {
+        setDroppedDown((prev) => !prev);
+    };
 
     return (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen max-md:flex-col">
             {/* Panel Kontrol - Posisi absolut dengan lebar tetap di atas */}
-            <div className="fixed left-0 top-0 z-20 flex h-full w-72 flex-col border-r border-gray-200 bg-white shadow-lg">
+            <div
+                className={`flex h-fit w-72 flex-col border-r border-gray-200 bg-white shadow-lg max-md:order-2 max-md:w-full md:h-full`}
+            >
                 {/* Header */}
-                <div className="flex w-full gap-2 border-b border-gray-200 bg-blue-600 p-4 text-white">
+                <div className="flex w-full justify-between border-b border-gray-200 bg-blue-600 p-4 text-white">
+                    <div className="flex w-fit gap-2">
+                        <button
+                            className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
+                            onClick={() => window.history.back()}
+                        >
+                            {/* back icon */}
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <h2 className="flex items-center gap-2 text-xl font-bold">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
+                                <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
+                                <path d="M12 12v5"></path>
+                            </svg>
+                            Grid Seat Editor
+                        </h2>
+                    </div>
                     <button
-                        className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
-                        onClick={() => window.history.back()}
+                        className={`h-full w-fit rotate-90 rounded-full bg-blue-500 px-1 font-bold text-white duration-500 hover:bg-blue-700 md:hidden ${droppedDown ? 'rotate-90' : '-rotate-90'}`}
+                        onClick={handleToggle}
                     >
-                        {/* back icon */}
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="20"
@@ -706,29 +575,11 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                     </button>
-                    <h2 className="flex items-center gap-2 text-xl font-bold">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
-                            <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
-                            <path d="M12 12v5"></path>
-                        </svg>
-                        Grid Seat Editor
-                    </h2>
                 </div>
 
                 {/* Content Scrollable */}
                 <div
-                    className="flex-1 overflow-y-auto p-5"
+                    className={`flex-l overflow-y-auto duration-500 md:h-full md:p-5 ${droppedDown ? 'max-md:h-0' : 'h-[35vh] p-5'}`}
                     ref={sidebarContentRef}
                 >
                     {/* Dimensi Layout Card */}
@@ -761,7 +612,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                             Dimensi Layout
                         </h3>
 
-                        <div className="space-y-5">
+                        <div className="max-md:grid max-md:grid-cols-2 max-md:gap-2 md:space-y-5">
                             <div className="rounded-lg bg-blue-50 p-3">
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Bottom Rows
@@ -1107,7 +958,9 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                 </div>
 
                 {/* Save Button */}
-                <div className="border-t border-gray-200 bg-gray-50 p-4">
+                <div
+                    className={`overflow-hidden border-gray-200 bg-gray-50 duration-500 md:border-t md:p-4 ${droppedDown ? 'max-md:h-0' : 'border-t p-4'}`}
+                >
                     <button
                         onClick={handleSave}
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 font-medium text-white shadow-sm transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
@@ -1132,11 +985,9 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                     </button>
                 </div>
             </div>
+
             {/* Main content area */}
-            <div
-                className="flex-1 overflow-hidden bg-gray-50"
-                style={{ marginLeft: '18rem' }}
-            >
+            <div className="h-screen flex-1 overflow-auto bg-gray-50 max-md:order-1">
                 {/* Use a flex container to properly center and expand the content */}
                 <div className="flex h-full items-center justify-center">
                     <div className="h-full w-full p-4">
