@@ -132,6 +132,7 @@ class EventResource extends Resource
                         ->icon('heroicon-o-identification'),
                     Infolists\Components\TextEntry::make('status')
                         ->label('Status')
+                        ->icon(fn($state) => EventStatus::tryFrom($state)->getIcon())
                         ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
                         ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
                         ->badge(),
@@ -174,9 +175,14 @@ class EventResource extends Resource
                                             ->columns(3)
                                             ->grid(2)
                                             ->schema([
-                                                Infolists\Components\TextEntry::make('name'),
-                                                Infolists\Components\TextEntry::make('start_date')->label('Start Date'),
-                                                Infolists\Components\TextEntry::make('end_date')->label('End Date'),
+                                                Infolists\Components\TextEntry::make('name')
+                                                    ->icon('heroicon-o-tag'),
+                                                Infolists\Components\TextEntry::make('start_date')
+                                                    ->icon('heroicon-o-clock')
+                                                    ->label('Start Date'),
+                                                Infolists\Components\TextEntry::make('end_date')
+                                                    ->icon('heroicon-o-clock')
+                                                    ->label('End Date'),
                                             ])
                                     ]),
                                 Infolists\Components\Section::make('Categories')
@@ -187,6 +193,7 @@ class EventResource extends Resource
                                             ->columns(2)
                                             ->schema([
                                                 Infolists\Components\TextEntry::make('name')
+                                                    ->icon('heroicon-o-tag')
                                                     ->columnSpan(1),
                                                 Infolists\Components\ColorEntry::make('color')
                                                     ->columnSpan(1),
@@ -198,13 +205,16 @@ class EventResource extends Resource
                                                     ->schema([
                                                         Infolists\Components\TextEntry::make('timelineSession.name')
                                                             ->label('Timeline')
+                                                            ->icon('heroicon-o-tag')
                                                             ->columnSpan(2),
                                                         Infolists\Components\TextEntry::make('price')
+                                                            ->icon('heroicon-o-banknotes')
                                                             ->money('IDR'),
                                                         Infolists\Components\TextEntry::make('is_active')
                                                             ->label('Status')
                                                             ->formatStateUsing(fn($state) => $state ? 'Active' : 'Inactive')
                                                             ->color(fn($state) => $state ? 'success' : 'danger')
+                                                            ->icon(fn($state) => $state ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
                                                             ->badge(),
                                                     ])
                                             ])
@@ -1636,6 +1646,7 @@ class EventResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => EventStatus::tryFrom($state)->getIcon())
                     ->badge()
                     ->sortable()
                     ->searchable(),

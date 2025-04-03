@@ -25,7 +25,7 @@ class UserContactFactory extends Factory
             'phone_number' => $this->faker->phoneNumber,
             'email' => $this->faker->unique()->safeEmail,
             'whatsapp_number' => $this->faker->phoneNumber,
-            'instagram' => '@' . $this->faker->userName,
+            'instagram' => $this->faker->userName,
             'birth_date' => $this->faker->date,
             'gender' => $this->faker->randomElement(['M', 'F']),
             'address' => $this->faker->address,

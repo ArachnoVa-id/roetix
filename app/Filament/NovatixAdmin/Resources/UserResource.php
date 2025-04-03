@@ -48,13 +48,18 @@ class UserResource extends Resources\Resource
                     ])
                     ->schema([
                         Infolists\Components\TextEntry::make('first_name')
+                            ->icon('heroicon-o-user')
                             ->label('First Name'),
                         Infolists\Components\TextEntry::make('last_name')
+                            ->icon('heroicon-o-user')
                             ->label('Last Name'),
-                        Infolists\Components\TextEntry::make('email'),
+                        Infolists\Components\TextEntry::make('email')
+                            ->icon('heroicon-o-at-symbol')
+                            ->label('Email'),
                         Infolists\Components\TextEntry::make('role')
                             ->formatStateUsing(fn($state) => UserRole::tryFrom($state)->getLabel())
                             ->color(fn($state) => UserRole::tryFrom($state)->getColor())
+                            ->icon(fn($state) => UserRole::tryFrom($state)->getIcon())
                             ->badge(),
                     ]),
                 Infolists\Components\Section::make('User Contact')
@@ -71,11 +76,16 @@ class UserResource extends Resources\Resource
                     ->relationship('contactInfo')
                     ->schema([
                         Infolists\Components\TextEntry::make('phone_number')
+                            ->icon('heroicon-o-phone')
                             ->label('Phone Number'),
-                        Infolists\Components\TextEntry::make('email'),
+                        Infolists\Components\TextEntry::make('email')
+                            ->icon('heroicon-o-at-symbol')
+                            ->label('Email'),
                         Infolists\Components\TextEntry::make('whatsapp_number')
+                            ->icon('heroicon-o-phone')
                             ->label('WhatsApp Number'),
                         Infolists\Components\TextEntry::make('instagram')
+                            ->icon('heroicon-o-share')
                             ->label('Instagram Handle')
                             ->prefix('@'),
                     ]),
@@ -346,6 +356,7 @@ class UserResource extends Resources\Resource
                 Tables\Columns\TextColumn::make('role')
                     ->formatStateUsing(fn($state) => UserRole::tryFrom($state)->getLabel())
                     ->color(fn($state) => UserRole::tryFrom($state)->getColor())
+                    ->icon(fn($state) => UserRole::tryFrom($state)->getIcon())
                     ->badge(),
                 Tables\Columns\TextColumn::make('teams.name')
                     ->label('Teams')

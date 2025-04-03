@@ -36,6 +36,16 @@ enum EventStatus: string implements HasLabel, HasColor
         };
     }
 
+    public function getIcon(): string
+    {
+        return match ($this) {
+            self::PLANNED => 'heroicon-o-calendar',
+            self::ACTIVE => 'heroicon-o-play',
+            self::COMPLETED => 'heroicon-o-check-circle',
+            self::CANCELLED => 'heroicon-o-x-circle'
+        };
+    }
+
     public static function editableOptions(EventStatus $currentStatus)
     {
         $returnStatuses = [];

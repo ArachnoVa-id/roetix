@@ -41,14 +41,16 @@ class TeamResource extends Resource
                         ->columns(2)
                         ->columnSpanFull()
                         ->schema([
-                            Infolists\Components\TextEntry::make('name'),
-                            Infolists\Components\TextEntry::make('code'),
-
+                            Infolists\Components\TextEntry::make('name')
+                                ->icon('heroicon-o-users'),
+                            Infolists\Components\TextEntry::make('code')
+                                ->icon('heroicon-o-key'),
                             Infolists\Components\TextEntry::make('vendor_quota')
+                                ->icon('heroicon-o-ticket')
                                 ->label('Venue Quota')
                                 ->formatStateUsing(fn($state) => max(0, $state)),
-
                             Infolists\Components\TextEntry::make('event_quota')
+                                ->icon('heroicon-o-ticket')
                                 ->label('Event Quota')
                                 ->formatStateUsing(fn($state) => max(0, $state)),
                         ]),

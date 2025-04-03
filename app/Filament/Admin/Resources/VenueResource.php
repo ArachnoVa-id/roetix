@@ -216,20 +216,25 @@ class VenueResource extends Resources\Resource
                         ])
                         ->schema([
                             Infolists\Components\TextEntry::make('venue_id')
+                                ->icon('heroicon-o-hashtag')
                                 ->label('Venue ID')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
                                     'md' => 2,
                                 ]),
-                            Infolists\Components\TextEntry::make('name'),
-                            Infolists\Components\TextEntry::make('location'),
+                            Infolists\Components\TextEntry::make('name')
+                                ->icon('heroicon-o-map-pin'),
+                            Infolists\Components\TextEntry::make('location')
+                                ->icon('heroicon-o-map'),
                             Infolists\Components\TextEntry::make('capacity_qty')
+                                ->icon('heroicon-o-users')
                                 ->label('Capacity')
                                 ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
                             Infolists\Components\TextEntry::make('status')
                                 ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
+                                ->icon(fn($state) => VenueStatus::tryFrom($state)->getIcon())
                                 ->badge(),
                         ]),
                     Infolists\Components\Group::make([
@@ -246,10 +251,19 @@ class VenueResource extends Resources\Resource
                                 'md' => 2,
                             ])
                             ->schema([
-                                Infolists\Components\TextEntry::make('phone_number'),
-                                Infolists\Components\TextEntry::make('email'),
-                                Infolists\Components\TextEntry::make('whatsapp_number'),
-                                Infolists\Components\TextEntry::make('instagram'),
+                                Infolists\Components\TextEntry::make('phone_number')
+                                    ->icon('heroicon-o-phone')
+                                    ->label('Phone Number'),
+                                Infolists\Components\TextEntry::make('email')
+                                    ->icon('heroicon-o-at-symbol')
+                                    ->label('Email'),
+                                Infolists\Components\TextEntry::make('whatsapp_number')
+                                    ->icon('heroicon-o-phone')
+                                    ->label('WhatsApp Number'),
+                                Infolists\Components\TextEntry::make('instagram')
+                                    ->icon('heroicon-o-share')
+                                    ->label('Instagram Handle')
+                                    ->prefix('@'),
                             ]),
                         Infolists\Components\Section::make('Venue Owner')
                             ->columnSpan([
@@ -264,8 +278,10 @@ class VenueResource extends Resources\Resource
                                 'md' => 2,
                             ])
                             ->schema([
-                                Infolists\Components\TextEntry::make('name'),
-                                Infolists\Components\TextEntry::make('code'),
+                                Infolists\Components\TextEntry::make('name')
+                                    ->icon('heroicon-o-users'),
+                                Infolists\Components\TextEntry::make('code')
+                                    ->icon('heroicon-o-key'),
                             ]),
                     ]),
                     Infolists\Components\Tabs::make()
@@ -391,6 +407,7 @@ class VenueResource extends Resources\Resource
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => VenueStatus::tryFrom($state)->getIcon())
                     ->badge(),
             ])
             ->filters(

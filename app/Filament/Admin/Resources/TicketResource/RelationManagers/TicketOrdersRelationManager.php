@@ -28,6 +28,7 @@ class TicketOrdersRelationManager extends RelationManager
                     ->label('Status')
                     ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
                     ->badge(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created At'),

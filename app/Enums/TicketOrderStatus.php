@@ -33,6 +33,15 @@ enum TicketOrderStatus: string implements HasLabel, HasColor
         };
     }
 
+    public function getIcon(): string
+    {
+        return match ($this) {
+            self::ENABLED => 'heroicon-o-check-circle',
+            self::SCANNED => 'heroicon-o-check-circle',
+            self::DEACTIVATED => 'heroicon-o-x-circle',
+        };
+    }
+
     public static function editableOptions(TicketOrderStatus $currentStatus)
     {
         $returnStatuses = [

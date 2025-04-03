@@ -274,15 +274,19 @@ class OrderResource extends Resource
                     ])
                     ->schema([
                         Infolists\Components\TextEntry::make('order_id')
-                            ->label('ID'),
+                            ->icon('heroicon-o-shopping-cart')
+                            ->label('Order ID'),
                         Infolists\Components\TextEntry::make('order_date')
+                            ->icon('heroicon-o-calendar')
                             ->label('Date'),
                         Infolists\Components\TextEntry::make('total_price')
+                            ->icon('heroicon-o-banknotes')
                             ->label('Total')
                             ->money('IDR'),
                         Infolists\Components\TextEntry::make('status')
                             ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
                             ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
+                            ->icon(fn($state) => OrderStatus::tryFrom($state)->getIcon())
                             ->badge(),
                     ]),
                 Infolists\Components\Section::make('Buyer')
@@ -299,6 +303,7 @@ class OrderResource extends Resource
                     ->relationship('user', 'id')
                     ->schema([
                         Infolists\Components\TextEntry::make('first_name')
+                            ->icon('heroicon-o-user')
                             ->columnSpan([
                                 'default' => 1,
                                 'sm' => 1,
@@ -306,6 +311,7 @@ class OrderResource extends Resource
                             ])
                             ->label('First Name'),
                         Infolists\Components\TextEntry::make('last_name')
+                            ->icon('heroicon-o-user')
                             ->columnSpan([
                                 'default' => 1,
                                 'sm' => 1,
@@ -313,6 +319,7 @@ class OrderResource extends Resource
                             ])
                             ->label('Last Name'),
                         Infolists\Components\TextEntry::make('email')
+                            ->icon('heroicon-o-at-symbol')
                             ->columnSpan([
                                 'default' => 1,
                                 'sm' => 1,
@@ -332,15 +339,19 @@ class OrderResource extends Resource
                     ])
                     ->schema([
                         Infolists\Components\TextEntry::make('name')
+                            ->icon('heroicon-o-ticket')
                             ->default(fn() => $firstEvent->name),
                         Infolists\Components\TextEntry::make('location')
+                            ->icon('heroicon-o-map')
                             ->default(fn() => $firstEvent->location),
                         Infolists\Components\TextEntry::make('event_date')
+                            ->icon('heroicon-o-calendar')
                             ->label('D-Day')
                             ->default(fn() => $firstEvent->event_date),
                         Infolists\Components\TextEntry::make('status')
                             ->formatStateUsing(fn() => EventStatus::tryFrom($firstEvent->status)->getLabel())
                             ->color(fn() => EventStatus::tryFrom($firstEvent->status)->getColor())
+                            ->icon(fn() => EventStatus::tryFrom($firstEvent->status)->getIcon())
                             ->badge(),
                     ]),
                 Infolists\Components\Tabs::make()
@@ -395,6 +406,7 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => OrderStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => OrderStatus::tryFrom($state)->getIcon())
                     ->badge(),
                 Tables\Columns\TextColumn::make('events.name')
                     ->label('Event')

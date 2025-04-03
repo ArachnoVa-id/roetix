@@ -33,6 +33,15 @@ enum OrderStatus: string implements HasLabel, HasColor
         };
     }
 
+    public function getIcon(): string
+    {
+        return match ($this) {
+            self::PENDING => 'heroicon-o-clock',
+            self::COMPLETED => 'heroicon-o-check-circle',
+            self::CANCELLED => 'heroicon-o-x-circle'
+        };
+    }
+
     public static function editableOptions(OrderStatus $currentStatus)
     {
         $returnStatuses = [];

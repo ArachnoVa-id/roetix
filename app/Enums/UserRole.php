@@ -36,6 +36,16 @@ enum UserRole: string implements HasLabel, HasColor
         };
     }
 
+    public function getIcon(): string
+    {
+        return match ($this) {
+            self::USER => 'heroicon-o-user',
+            self::ADMIN => 'heroicon-o-check-badge',
+            self::VENDOR => 'heroicon-o-building-library',
+            self::EVENT_ORGANIZER => 'heroicon-o-calendar-days'
+        };
+    }
+
     public static function editableOptions()
     {
         return [

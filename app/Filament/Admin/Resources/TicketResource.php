@@ -282,6 +282,7 @@ class TicketResource extends Resource
                         ])
                         ->schema([
                             Infolists\Components\TextEntry::make('ticket_id')
+                                ->icon('heroicon-o-ticket')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -289,12 +290,15 @@ class TicketResource extends Resource
                                 ])
                                 ->label('ID'),
                             Infolists\Components\TextEntry::make('ticket_type')
+                                ->icon('heroicon-o-ticket')
                                 ->label('Type'),
                             Infolists\Components\TextEntry::make('price')
+                                ->icon('heroicon-o-banknotes')
                                 ->money('IDR'),
                             Infolists\Components\TextEntry::make('status')
                                 ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                                ->icon(fn($state) => TicketStatus::tryFrom($state)->getIcon())
                                 ->badge(),
                             Infolists\Components\TextEntry::make('ticket_order_status')
                                 ->label('Latest Validity')
@@ -312,6 +316,7 @@ class TicketResource extends Resource
                                 })
                                 ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
+                                ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
                                 ->badge(),
                         ]),
                     Infolists\Components\Section::make('Latest Buyer')
@@ -328,6 +333,7 @@ class TicketResource extends Resource
                         ])
                         ->schema([
                             Infolists\Components\TextEntry::make('order_code')
+                                ->icon('heroicon-o-document-text')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -336,6 +342,7 @@ class TicketResource extends Resource
                                 ->default(fn() => $ticketOrder?->order?->order_code)
                                 ->label('Order Code'),
                             Infolists\Components\TextEntry::make('first_name')
+                                ->icon('heroicon-o-user')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -344,6 +351,7 @@ class TicketResource extends Resource
                                 ->default(fn() => $buyer?->first_name)
                                 ->label('First Name'),
                             Infolists\Components\TextEntry::make('last_name')
+                                ->icon('heroicon-o-user')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -352,6 +360,7 @@ class TicketResource extends Resource
                                 ->default(fn() => $buyer?->last_name)
                                 ->label('Last Name'),
                             Infolists\Components\TextEntry::make('email')
+                                ->icon('heroicon-o-at-symbol')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -373,15 +382,19 @@ class TicketResource extends Resource
                         ])
                         ->schema([
                             Infolists\Components\TextEntry::make('name')
+                                ->icon('heroicon-o-ticket')
                                 ->default(fn() => $event->name),
                             Infolists\Components\TextEntry::make('location')
+                                ->icon('heroicon-o-map')
                                 ->default(fn() => $event->location),
                             Infolists\Components\TextEntry::make('event_date')
+                                ->icon('heroicon-o-calendar')
                                 ->label('D-Day')
                                 ->default(fn() => $event->event_date),
                             Infolists\Components\TextEntry::make('status')
                                 ->formatStateUsing(fn() => EventStatus::tryFrom($event->status)->getLabel())
                                 ->color(fn() => EventStatus::tryFrom($event->status)->getColor())
+                                ->icon(fn() => EventStatus::tryFrom($event->status)->getIcon())
                                 ->badge(),
                         ]),
                     Infolists\Components\Section::make("Seat")
@@ -445,6 +458,7 @@ class TicketResource extends Resource
             })
             ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
             ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
+            ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
             ->badge();
 
         $latestOwner = Tables\Columns\TextColumn::make('ticket_owner')
@@ -491,6 +505,7 @@ class TicketResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => TicketStatus::tryFrom($state)->getIcon())
                     ->badge(),
                 $ownership,
                 $latestOwner,

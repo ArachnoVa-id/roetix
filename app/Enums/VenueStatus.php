@@ -33,6 +33,15 @@ enum VenueStatus: string implements HasLabel, HasColor
         };
     }
 
+    public function getIcon(): string
+    {
+        return match ($this) {
+            self::ACTIVE => 'heroicon-o-check-circle',
+            self::INACTIVE => 'heroicon-o-x-circle',
+            self::UNDER_MAINTENANCE => 'heroicon-o-wrench'
+        };
+    }
+
     public static function editableOptions()
     {
         return [
