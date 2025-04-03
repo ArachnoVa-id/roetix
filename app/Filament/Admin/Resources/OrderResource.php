@@ -43,14 +43,14 @@ class OrderResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $action
             ->label('Change Status')
@@ -95,7 +95,7 @@ class OrderResource extends Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         // get current form values
         $currentModel = $form->model;
@@ -266,7 +266,7 @@ class OrderResource extends Resource
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTickets = true): Infolists\Infolist
     {
-        $order = Order::find($infolist->record->order_id);
+        $order = $infolist->record;
         $firstEvent = $order->getSingleEvent();
         return $infolist
             ->columns([
@@ -383,9 +383,10 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function table(Table $table, bool $filterStatus = false, bool $filterEvent = true): Table
+    public static function table(Table $table, array $dataSource = [], bool $filterStatus = false, bool $filterEvent = true, bool $filterTeam = true): Table
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
+        $dataSourceExists = isset($dataSource);
 
         return $table
             ->defaultSort('order_date', 'desc')
@@ -394,7 +395,7 @@ class OrderResource extends Resource
                     ->label('Team Name')
                     ->searchable()
                     ->sortable()
-                    ->hidden(!($user->isAdmin()))
+                    ->hidden(!($user->isAdmin()) || !$filterTeam)
                     ->limit(50),
                 Tables\Columns\TextColumn::make('order_code')
                     ->label('Code')
@@ -411,7 +412,7 @@ class OrderResource extends Resource
                         });
                     })
                     ->sortable()
-                    ->formatStateUsing(fn($state) => $state->getUserName()),
+                    ->formatStateUsing(fn($record) => $record->user?->getUserName() ?? 'N/A'),
                 Tables\Columns\TextColumn::make('order_date')
                     ->label('Date')
                     ->sortable(),
@@ -442,12 +443,24 @@ class OrderResource extends Resource
                 [
                     Tables\Filters\SelectFilter::make('team_id')
                         ->label('Filter by Team')
-                        ->relationship('team', 'name')
+                        ->relationship($dataSourceExists ? '' : 'team', $dataSourceExists ? '' : 'name')
                         ->searchable()
                         ->preload()
                         ->optionsLimit(5)
                         ->multiple()
-                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->options(function () use ($dataSourceExists) {
+                            if ($dataSourceExists) {
+                                if (!session()->has('teams_options')) {
+                                    $teams = Team::pluck('name', 'team_id')->toArray();
+                                    session(['teams_options' => $teams]);
+                                }
+
+                                return session('teams_options');
+                            }
+
+                            $teamQuery = Team::query();
+                            return $teamQuery->pluck('name', 'team_id')->toArray();
+                        })
                         ->hidden(!($user->isAdmin())),
 
                     Tables\Filters\SelectFilter::make('event_id')

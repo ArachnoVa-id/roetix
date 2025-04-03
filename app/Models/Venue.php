@@ -27,6 +27,14 @@ class Venue extends Model
         'status'
     ];
 
+    protected $with = [
+        'seats',
+        'events',
+        'events.ticketCategories',
+        'events.ticketCategories.eventCategoryTimeboundPrices',
+        'events.ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+    ];
+
     protected static function boot()
     {
         parent::boot();
@@ -87,11 +95,6 @@ class Venue extends Model
             'Content-Type' => 'application/json',
             'Content-Disposition' => "attachment; filename={$fileName}",
         ]);
-    }
-
-    public function capacity(): int
-    {
-        return $this->seats()->count();
     }
 
     public function seats(): HasMany

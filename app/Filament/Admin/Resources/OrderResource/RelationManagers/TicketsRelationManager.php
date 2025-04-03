@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\TicketResource;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TicketsRelationManager extends RelationManager
 {
@@ -13,12 +14,15 @@ class TicketsRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return TicketResource::infolist($infolist, showBuyer: false, showOrders: false);
+        $buyer = $this->ownerRecord->user;
+
+        return TicketResource::infolist($infolist, buyer: $buyer, showBuyer: false, showOrders: false);
     }
 
     public function table(Table $table): Table
     {
         $ownerRecordArray = $this->ownerRecord->toArray();
+
         return TicketResource::table($table, dataSource: $ownerRecordArray, showEvent: false, showTraceButton: true, filterStatus: true)
             ->heading('');
     }

@@ -18,7 +18,9 @@ class OrdersRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return OrderResource::table($table, filterStatus: true, filterEvent: false)
+        $dataSource = $this->ownerRecord->toArray();
+
+        return OrderResource::table($table, dataSource: $dataSource, filterStatus: true, filterEvent: false, filterTeam: false)
             ->heading('');
     }
 }

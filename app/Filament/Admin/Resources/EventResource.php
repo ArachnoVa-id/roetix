@@ -25,6 +25,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Crypt;
 use Mews\Purifier\Facades\Purifier;
 
@@ -38,19 +39,17 @@ class EventResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
 
     public static function canCreate(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
         if (!$user || !$user->isAllowedInRoles([UserRole::EVENT_ORGANIZER])) {
             return false;
         }
-
-        $user = User::find($user->id);
 
         $tenant_id = Filament::getTenant()->team_id;
 
@@ -65,13 +64,14 @@ class EventResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
+
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $action
             ->label('Change Status')
@@ -138,48 +138,86 @@ class EventResource extends Resource
         ;
     }
 
-    public static function infolist(Infolists\Infolist $infolist, bool $showOrders = true, bool $showTickets = true): Infolists\Infolist
+    public static function getEloquentQuery(): Builder
     {
+        $query = parent::getEloquentQuery();
+        return $query->with([
+            'timelineSessions',
+            'orders',
+            // 'ticketCategories',
+            // 'ticketCategories.eventCategoryTimeboundPrices',
+            // 'ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+            'tickets',
+            'tickets.latestTicketOrder',
+            'tickets.latestTicketOrder.order',
+            'tickets.latestTicketOrder.order.user',
+        ]);
+    }
+
+    public static function infolist(Infolists\Infolist $infolist, array $dataSource = [], bool $showOrders = true, bool $showTickets = true): Infolists\Infolist
+    {
+        $dataSourceExists = isset($dataSource);
+
+        $timelineSessionPart =
+            $dataSourceExists ?
+            Infolists\Components\TextEntry::make('timelineSession_name')
+            ->label('Timeline')
+            ->icon('heroicon-o-tag')
+            ->columnSpan(2) :
+            Infolists\Components\TextEntry::make('timelineSession.name')
+            ->label('Timeline')
+            ->icon('heroicon-o-tag')
+            ->columnSpan(2);
+
+        $venuePart = $dataSourceExists ? Infolists\Components\TextEntry::make('name')
+            ->label('Venue')
+            ->icon('heroicon-m-map') : Infolists\Components\TextEntry::make('venue.name')
+            ->label('Venue')
+            ->icon('heroicon-m-map');
+
         return $infolist->schema(
             [
-                Infolists\Components\Section::make()->schema([
-                    Infolists\Components\TextEntry::make('event_id')
-                        ->label('Event ID')
-                        ->icon('heroicon-o-identification'),
-                    Infolists\Components\TextEntry::make('status')
-                        ->label('Status')
-                        ->icon(fn($state) => EventStatus::tryFrom($state)->getIcon())
-                        ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
-                        ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
-                        ->badge(),
-                    Infolists\Components\TextEntry::make('name')
-                        ->label('Name')
-                        ->icon('heroicon-m-film'),
-                    Infolists\Components\TextEntry::make('slug')
-                        ->label('Slug (click to open site)')
-                        ->action(
-                            Infolists\Components\Actions\Action::make('actionSlug')
-                                ->action(function ($record) {
-                                    $protocol = config('session.secure') ? 'https://' : 'http://';
-                                    $url = $protocol . $record->slug . '.' . config('app.domain');
+                Infolists\Components\Section::make()
+                    ->state($dataSourceExists ? $dataSource : [])
+                    ->schema([
+                        Infolists\Components\TextEntry::make('event_id')
+                            ->label('Event ID')
+                            ->icon('heroicon-o-identification'),
+                        Infolists\Components\TextEntry::make('status')
+                            ->label('Status')
+                            ->icon(fn($state) => EventStatus::tryFrom($state)->getIcon())
+                            ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
+                            ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
+                            ->badge(),
+                        Infolists\Components\TextEntry::make('name')
+                            ->label('Name')
+                            ->icon('heroicon-m-film'),
+                        Infolists\Components\TextEntry::make('slug')
+                            ->label('Slug (click to open site)')
+                            ->action(
+                                Infolists\Components\Actions\Action::make('actionSlug')
+                                    ->action(function ($record) {
+                                        $protocol = config('session.secure') ? 'https://' : 'http://';
+                                        $url = $protocol . $record->slug . '.' . config('app.domain');
 
-                                    // redirect new page to url
-                                    return redirect()->to($url);
-                                })
-                        )
-                        ->icon('heroicon-m-magnifying-glass-plus'),
-                    Infolists\Components\TextEntry::make('start_date')
-                        ->label('Start Serving')
-                        ->icon('heroicon-m-calendar-date-range')
-                        ->dateTime(),
-                    Infolists\Components\TextEntry::make('event_date')
-                        ->label('D-Day')
-                        ->icon('heroicon-m-calendar-date-range')
-                        ->dateTime(),
-                    Infolists\Components\TextEntry::make('location')
-                        ->label('Location')
-                        ->icon('heroicon-m-map-pin'),
-                ])->columns(2),
+                                        // redirect new page to url
+                                        return redirect()->to($url);
+                                    })
+                            )
+                            ->icon('heroicon-m-magnifying-glass-plus'),
+                        Infolists\Components\TextEntry::make('start_date')
+                            ->label('Start Serving')
+                            ->icon('heroicon-m-calendar-date-range')
+                            ->dateTime(),
+                        Infolists\Components\TextEntry::make('event_date')
+                            ->label('D-Day')
+                            ->icon('heroicon-m-calendar-date-range')
+                            ->dateTime(),
+                        $venuePart,
+                        Infolists\Components\TextEntry::make('location')
+                            ->label('Location')
+                            ->icon('heroicon-m-map-pin'),
+                    ])->columns(2),
                 Infolists\Components\Tabs::make('Tabs')
                     ->tabs([
                         Infolists\Components\Tabs\Tab::make('Timeline and Categories')
@@ -219,10 +257,7 @@ class EventResource extends Resource
                                                     ->columnSpan(2)
                                                     ->columns(2)
                                                     ->schema([
-                                                        Infolists\Components\TextEntry::make('timelineSession.name')
-                                                            ->label('Timeline')
-                                                            ->icon('heroicon-o-tag')
-                                                            ->columnSpan(2),
+                                                        $timelineSessionPart,
                                                         Infolists\Components\TextEntry::make('price')
                                                             ->icon('heroicon-o-banknotes')
                                                             ->money('IDR'),
@@ -330,24 +365,24 @@ class EventResource extends Resource
                             ]),
 
                         Infolists\Components\Tabs\Tab::make('Midtrans')
-                            ->hidden(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]))
+                            ->hidden(!session('userProps')->isAllowedInRoles([UserRole::ADMIN]))
                             ->schema([
                                 Infolists\Components\Group::make([
                                     Infolists\Components\TextEntry::make('midtrans_client_key_sb')
                                         ->label('Client Key SB')
-                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+                                        ->formatStateUsing(fn($state) => $state ? Crypt::decryptString($state) : null),
 
                                     Infolists\Components\TextEntry::make('midtrans_server_key_sb')
                                         ->label('Server Key SB')
-                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+                                        ->formatStateUsing(fn($state) => $state ? Crypt::decryptString($state) : null),
 
                                     Infolists\Components\TextEntry::make('midtrans_client_key')
                                         ->label('Client Key')
-                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+                                        ->formatStateUsing(fn($state) => $state ? Crypt::decryptString($state) : null),
 
                                     Infolists\Components\TextEntry::make('midtrans_server_key')
                                         ->label('Server Key')
-                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+                                        ->formatStateUsing(fn($state) => $state ? Crypt::decryptString($state) : null),
 
                                     Infolists\Components\TextEntry::make('midtrans_is_production')
                                         ->label('Production')
@@ -372,7 +407,7 @@ class EventResource extends Resource
                             ]),
                         Infolists\Components\Tabs\Tab::make('Scan Tickets')
                             ->schema([
-                                Infolists\Components\Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
+                                Infolists\Components\Livewire::make('event-scan-ticket', ['event' => $infolist->record])
                             ])
                     ])
                     ->columnSpan('full'),
@@ -597,8 +632,8 @@ class EventResource extends Resource
                                     }
                                 )
                                 ->preload()
-                                ->disabled(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]) && $modelExists)
-                                ->helperText(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]) && $modelExists ? 'You can\'t change the selected venue.' : 'Note: You can only set this once!')
+                                ->disabled(!session('userProps')->isAllowedInRoles([UserRole::ADMIN]) && $modelExists)
+                                ->helperText(!session('userProps')->isAllowedInRoles([UserRole::ADMIN]) && $modelExists ? 'You can\'t change the selected venue.' : 'Note: You can only set this once!')
                                 ->label('Venue')
                                 ->placeholder('Select Venue')
                                 ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
@@ -1554,44 +1589,44 @@ class EventResource extends Resource
                                 }),
                         ]),
                     Forms\Components\Wizard\Step::make('Midtrans')
-                        ->hidden(!User::find(Auth::id())->isAdmin())
+                        ->hidden(!session('userProps')->isAdmin())
                         ->schema([
                             Forms\Components\Group::make([
                                 Forms\Components\TextInput::make('midtrans_client_key_sb')
                                     ->label('Client Key Sandbox')
                                     ->placeholder('Client Key Sandbox')
-                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                     ->maxLength(65535)
                                     ->validationAttribute('Client Key Sandbox')
                                     ->validationMessages([
-                                        'max' => 'Client Key Sandbox must not exceed 255 characters',
+                                        'max' => 'Client Key Sandbox must not exceed 65535 characters',
                                     ]),
                                 Forms\Components\TextInput::make('midtrans_server_key_sb')
                                     ->label('Server Key Sandbox')
                                     ->placeholder('Server Key Sandbox')
-                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                     ->maxLength(65535)
                                     ->validationAttribute('Server Key Sandbox')
                                     ->validationMessages([
-                                        'max' => 'Server Key Sandbox must not exceed 255 characters',
+                                        'max' => 'Server Key Sandbox must not exceed 65535 characters',
                                     ]),
                                 Forms\Components\TextInput::make('midtrans_client_key')
                                     ->label('Client Key')
                                     ->placeholder('Client Key')
-                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                     ->maxLength(65535)
                                     ->validationAttribute('Client Key')
                                     ->validationMessages([
-                                        'max' => 'Client Key must not exceed 255 characters',
+                                        'max' => 'Client Key must not exceed 65535 characters',
                                     ]),
                                 Forms\Components\TextInput::make('midtrans_server_key')
                                     ->label('Server Key')
                                     ->placeholder('Server Key')
-                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                     ->maxLength(65535)
                                     ->validationAttribute('Server Key')
                                     ->validationMessages([
-                                        'max' => 'Server Key must not exceed 255 characters',
+                                        'max' => 'Server Key must not exceed 65535 characters',
                                     ]),
                                 Forms\Components\Toggle::make('midtrans_is_production')
                                     ->label('Is Production'),
@@ -1611,9 +1646,9 @@ class EventResource extends Resource
             ]);
     }
 
-    public static function table(Table $table, bool $filterStatus = false): Table
+    public static function table(Table $table, bool $showTeamName = true, bool $filterStatus = false): Table
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         $defaultActions = [
             Tables\Actions\ViewAction::make()
@@ -1642,7 +1677,7 @@ class EventResource extends Resource
                     ->label('Team Name')
                     ->searchable()
                     ->sortable()
-                    ->hidden(!($user->isAdmin()))
+                    ->hidden(!($user->isAdmin()) || !$showTeamName)
                     ->limit(20),
                 Tables\Columns\TextColumn::make('slug')
                     ->limit(20)

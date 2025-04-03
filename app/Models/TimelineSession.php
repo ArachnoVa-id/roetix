@@ -35,6 +35,8 @@ class TimelineSession extends Model
         'end_date' => 'datetime',
     ];
 
+    protected $with = [];
+
     /**
      * Boot the model.
      */

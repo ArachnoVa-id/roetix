@@ -76,7 +76,7 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
 
     public function title(): string
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         if ($user->isAdmin() && empty($this->eventId)) {
             return 'NovaTix: All Orders';

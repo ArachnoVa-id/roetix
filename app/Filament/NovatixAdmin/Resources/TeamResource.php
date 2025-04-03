@@ -27,7 +27,7 @@ class TeamResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }

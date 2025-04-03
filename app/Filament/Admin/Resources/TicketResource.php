@@ -28,6 +28,7 @@ use App\Models\Team;
 use App\Models\User;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class TicketResource extends Resource
@@ -54,7 +55,7 @@ class TicketResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
@@ -86,7 +87,7 @@ class TicketResource extends Resource
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $action
             ->label('Change Status')
@@ -249,18 +250,29 @@ class TicketResource extends Resource
             ->modal(true);
     }
 
-    public static function infolist(Infolists\Infolist $infolist, bool $showBuyer = true, bool $showOrders = true): Infolists\Infolist
+    public static function getEloquentQuery(): Builder
     {
-        $ticket_id = $infolist->record->ticket_id;
-        $ticket = Ticket::find($ticket_id);
-        $event = $ticket->event;
+        // Start with the base query
+        $query = parent::getEloquentQuery(); // Preserve original query
+
+        // Eager load the necessary relationships
+        return $query->with([
+            'latestTicketOrder',
+            'latestTicketOrder.order',
+            'latestTicketOrder.order.user',
+            'event'
+        ]);
+    }
+
+    public static function infolist(Infolists\Infolist $infolist, $event = null, $buyer = null, bool $showBuyer = true, bool $showOrders = true): Infolists\Infolist
+    {
+        $ticket = $infolist->record;
+        if (!$event) $event = $ticket->event;
 
         // get latest buyer
-        $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-            ->latest()
-            ->first();
+        $ticketOrder = $infolist->record->ticketOrders->first();
 
-        $buyer = $ticketOrder?->order?->user;
+        if (!$buyer) $buyer = $ticket->latestTicketOrder?->order?->user ?? null;
         return $infolist
             ->columns([
                 'default' => 1,
@@ -433,55 +445,8 @@ class TicketResource extends Resource
 
     public static function table(Table $table, array $dataSource = [], bool $showEvent = true, bool $showTraceButton = false, bool $filterStatus = false, bool $filterEvent = true): Table
     {
-        $user = User::find(Auth::id());
-
-        $ownership = Tables\Columns\TextColumn::make('ticket_order_status')
-            ->label('Latest Validity')
-            ->default(function ($record) use ($dataSource) {
-                $ticketOrder = null;
-                $ticket_id = $record->ticket_id;
-                if (empty($dataSource)) {
-                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-                        ->latest()
-                        ->first();
-                } else {
-                    $order_id = $dataSource['order_id'];
-                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-                        ->where('order_id', $order_id)
-                        ->first();
-                }
-                if (!$ticketOrder) {
-                    return TicketOrderStatus::ENABLED->value;
-                }
-
-                return $ticketOrder->status;
-            })
-            ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
-            ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
-            ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
-            ->badge();
-
-        $latestOwner = Tables\Columns\TextColumn::make('ticket_owner')
-            ->label('Latest Owner')
-            ->default(function ($record) use ($dataSource) {
-                $ticketOrder = null;
-                $ticket_id = $record->ticket_id;
-                if (empty($dataSource)) {
-                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-                        ->latest()
-                        ->first();
-                } else {
-                    $order_id = $dataSource['order_id'];
-                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-                        ->where('order_id', $order_id)
-                        ->first();
-                }
-                if (!$ticketOrder) {
-                    return 'N/A';
-                }
-
-                return $ticketOrder->order->user->email;
-            });
+        $user = session('userProps');
+        $dataSourceExists = isset($dataSource);
 
         return $table
             ->columns([
@@ -507,31 +472,54 @@ class TicketResource extends Resource
                     ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
                     ->icon(fn($state) => TicketStatus::tryFrom($state)->getIcon())
                     ->badge(),
-                $ownership,
-                $latestOwner,
+                Tables\Columns\TextColumn::make('ticket_order_status')
+                    ->label('Latest Validity')
+                    ->default(fn($record) => $record->latestTicketOrder?->status ?? TicketOrderStatus::ENABLED->value)
+                    ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
+                    ->badge(),
+                Tables\Columns\TextColumn::make('ticket_owner')
+                    ->label('Latest Owner')
+                    ->default(fn($record) => $record->getLatestOwner() ?? 'N/A'),
             ])
             ->defaultSort('seat.seat_number', 'asc')
             ->filters(
                 [
                     Tables\Filters\SelectFilter::make('team_id')
                         ->label('Filter by Team')
-                        ->relationship('team', 'name')
+                        ->relationship($dataSourceExists ? '' : 'team', $dataSourceExists ? '' : 'name')
                         ->searchable()
                         ->preload()
                         ->optionsLimit(5)
                         ->multiple()
-                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->options(function () use ($dataSourceExists) {
+                            if ($dataSourceExists) {
+                                if (!session()->has('teams_options')) {
+                                    $teams = Team::pluck('name', 'team_id')->toArray();
+                                    session(['teams_options' => $teams]);
+                                }
+
+                                return session('teams_options');
+                            }
+
+                            $teamQuery = Team::query();
+                            return $teamQuery->pluck('name', 'team_id')->toArray();
+                        })
                         ->hidden(!($user->isAdmin())),
 
                     SelectFilter::make('event_id')
                         ->label('Filter by Event')
                         ->options(function () {
                             $tenant_id = Filament::getTenant()?->team_id ?? null;
-                            $query = Event::query();
-                            if ($tenant_id) {
-                                $query->where('team_id', $tenant_id);
-                            }
-                            return $query->pluck('name', 'event_id');
+
+                            // Eager load the 'team' relationship and filter by team_id if available
+                            $events = Event::query()
+                                ->when($tenant_id, fn($query) => $query->where('team_id', $tenant_id)) // Condition to filter by team_id
+                                ->with('team')  // Eager load 'team' relationship
+                                ->get();
+
+                            return $events->pluck('name', 'event_id');
                         })
                         ->searchable()
                         ->preload()

@@ -20,6 +20,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
 use Filament\Support\Colors\Color;
+use Illuminate\Database\Eloquent\Builder;
 
 class VenueResource extends Resources\Resource
 {
@@ -29,19 +30,17 @@ class VenueResource extends Resources\Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::VENDOR]);
     }
 
     public static function canCreate(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
         if (!$user || !$user->isAllowedInRoles([UserRole::VENDOR])) {
             return false;
         }
-
-        $user = User::find($user->id);
 
         $tenant_id = Filament::getTenant()->team_id;
 
@@ -56,7 +55,7 @@ class VenueResource extends Resources\Resource
 
     public static function canDelete(Model $record): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
         return $user->isAdmin();
     }
 
@@ -193,6 +192,18 @@ class VenueResource extends Resources\Resource
             });
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        return $query->with([
+            // 'seats',
+            // 'events',
+            // 'events.ticketCategories',
+            // 'events.ticketCategories.eventCategoryTimeboundPrices',
+            // 'events.ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+        ]);
+    }
+
     public static function infolist(Infolists\Infolist $infolist, bool $showEvents = true): Infolists\Infolist
     {
         return $infolist
@@ -230,7 +241,7 @@ class VenueResource extends Resources\Resource
                             Infolists\Components\TextEntry::make('capacity_qty')
                                 ->icon('heroicon-o-users')
                                 ->label('Capacity')
-                                ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
+                                ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A'),
                             Infolists\Components\TextEntry::make('status')
                                 ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
@@ -381,7 +392,7 @@ class VenueResource extends Resources\Resource
 
     public static function table(Tables\Table $table, bool $filterStatus = false): Tables\Table
     {
-        $user = User::find(Auth::id());
+        $user = session('userProps');
 
         return $table
             ->columns([
@@ -402,7 +413,7 @@ class VenueResource extends Resources\Resource
                     ->limit(50),
                 Tables\Columns\TextColumn::make('capacity')
                     ->label('Capacity')
-                    ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A')
+                    ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())

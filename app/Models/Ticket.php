@@ -6,11 +6,11 @@ use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 
@@ -94,6 +94,22 @@ class Ticket extends Model
         return strtoupper($event->slug) . '-' . $event->eventYear() . '-' . strtoupper($this->ticket_id) . '-TICKET' . '.pdf';
     }
 
+    public function getLatestOwner()
+    {
+        $latestTicketOrder = $this->latestTicketOrder;
+
+        if ($latestTicketOrder && $latestTicketOrder->relationLoaded('order') && $latestTicketOrder->order->relationLoaded('user')) {
+            return $latestTicketOrder->order->user->email ?? null;
+        }
+
+        return null;
+    }
+
+    public function latestTicketOrder(): HasOne
+    {
+        return $this->hasOne(TicketOrder::class, 'ticket_id', 'ticket_id')->latestOfMany();
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id', 'event_id');
@@ -117,6 +133,11 @@ class Ticket extends Model
     public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'ticket_order', 'ticket_id', 'order_id');
+    }
+
+    public function timelineSessions(): HasMany
+    {
+        return $this->hasMany(TimelineSession::class, 'event_id', 'event_id');
     }
 
     public function ticketCategory(): BelongsTo
