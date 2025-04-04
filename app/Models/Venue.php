@@ -27,6 +27,10 @@ class Venue extends Model
         'status'
     ];
 
+    protected $with = [
+        'team'
+    ];
+
     protected static function boot()
     {
         parent::boot();
@@ -87,11 +91,6 @@ class Venue extends Model
             'Content-Type' => 'application/json',
             'Content-Disposition' => "attachment; filename={$fileName}",
         ]);
-    }
-
-    public function capacity(): int
-    {
-        return $this->seats()->count();
     }
 
     public function seats(): HasMany

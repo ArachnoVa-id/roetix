@@ -13,7 +13,7 @@ use App\Models\Team;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resources\Resource
 {
@@ -25,9 +25,15 @@ class UserResource extends Resources\Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTeams = true): Infolists\Infolist

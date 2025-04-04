@@ -26,11 +26,17 @@ class Event extends Model
         'status',
         'team_id',
     ];
+
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'event_date' => 'datetime', // Added datetime cast for event_date
     ];
+
+    protected $with = [
+        'team'
+    ];
+
     protected static function boot()
     {
         parent::boot();

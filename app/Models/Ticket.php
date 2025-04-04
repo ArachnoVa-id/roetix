@@ -6,7 +6,6 @@ use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -31,6 +30,13 @@ class Ticket extends Model
         'ticket_category_id', // Add this if it's missing
         'price',
         'team_id'
+    ];
+
+    protected $with = [
+        'team',
+        'ticketOrders',
+        'ticketOrders.order',
+        'ticketOrders.order.user',
     ];
 
     protected static function boot()

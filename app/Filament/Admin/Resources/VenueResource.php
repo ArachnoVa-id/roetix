@@ -20,6 +20,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
 use Filament\Support\Colors\Color;
+use Illuminate\Database\Eloquent\Builder;
 
 class VenueResource extends Resources\Resource
 {
@@ -29,19 +30,17 @@ class VenueResource extends Resources\Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::VENDOR]);
     }
 
     public static function canCreate(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
         if (!$user || !$user->isAllowedInRoles([UserRole::VENDOR])) {
             return false;
         }
-
-        $user = User::find($user->id);
 
         $tenant_id = Filament::getTenant()->team_id;
 
@@ -56,7 +55,7 @@ class VenueResource extends Resources\Resource
 
     public static function canDelete(Model $record): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
         return $user->isAdmin();
     }
 
@@ -193,9 +192,22 @@ class VenueResource extends Resources\Resource
             });
     }
 
-    public static function infolist(Infolists\Infolist $infolist, bool $showEvents = true): Infolists\Infolist
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'events',
+                'events.team',
+                'events.ticketCategories',
+                'events.ticketCategories.eventCategoryTimeboundPrices',
+                'events.ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+            ]);
+    }
+
+    public static function infolist(Infolists\Infolist $infolist, $record = null, bool $showEvents = true): Infolists\Infolist
     {
         return $infolist
+            ->record($record ?? $infolist->record)
             ->columns([
                 'default' => 1,
                 'sm' => 1,
@@ -230,7 +242,7 @@ class VenueResource extends Resources\Resource
                             Infolists\Components\TextEntry::make('capacity_qty')
                                 ->icon('heroicon-o-users')
                                 ->label('Capacity')
-                                ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
+                                ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A'),
                             Infolists\Components\TextEntry::make('status')
                                 ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
@@ -379,9 +391,9 @@ class VenueResource extends Resources\Resource
             ]);
     }
 
-    public static function table(Tables\Table $table, bool $filterStatus = false): Tables\Table
+    public static function table(Tables\Table $table, bool $filterStatus = false, bool $filterCapacity = true): Tables\Table
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         return $table
             ->columns([
@@ -402,7 +414,7 @@ class VenueResource extends Resources\Resource
                     ->limit(50),
                 Tables\Columns\TextColumn::make('capacity')
                     ->label('Capacity')
-                    ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A')
+                    ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
@@ -412,8 +424,18 @@ class VenueResource extends Resources\Resource
             ])
             ->filters(
                 [
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship('team', 'name')
+                        ->searchable()
+                        ->optionsLimit(5)
+                        ->preload()
+                        ->multiple()
+                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->hidden(!($user->isAdmin())),
                     Tables\Filters\Filter::make('capacity')
                         ->columns(2)
+                        ->hidden(!$filterCapacity)
                         ->form([
                             Forms\Components\TextInput::make('min')
                                 ->placeholder('Min')
@@ -433,14 +455,15 @@ class VenueResource extends Resources\Resource
                                 ->columnSpan(1),
                         ])
                         ->query(function ($query, array $data) {
-                            return $query->whereIn('venue_id', function ($subquery) use ($data) {
-                                $subquery->select('venues.venue_id')
-                                    ->from('venues')
-                                    ->leftJoin('seats', 'venues.venue_id', '=', 'seats.venue_id')
-                                    ->groupBy('venues.venue_id')
-                                    ->havingRaw('COUNT(seats.venue_id) >= ?', [(int) (empty($data['min']) ? 0 : $data['min'])])
-                                    ->havingRaw('COUNT(seats.venue_id) <= ?', [(int) (empty($data['max']) ? PHP_INT_MAX : $data['max'])]);
-                            });
+                            return $query
+                                ->whereIn('venue_id', function ($subquery) use ($data) {
+                                    $subquery->select('venues.venue_id')
+                                        ->from('venues')
+                                        ->leftJoin('seats', 'venues.venue_id', '=', 'seats.venue_id')
+                                        ->groupBy('venues.venue_id')
+                                        ->havingRaw('COUNT(seats.venue_id) >= ?', [(int) (empty($data['min']) ? 0 : $data['min'])])
+                                        ->havingRaw('COUNT(seats.venue_id) <= ?', [(int) (empty($data['max']) ? PHP_INT_MAX : $data['max'])]);
+                                });
                         }),
                     Tables\Filters\SelectFilter::make('status')
                         ->options(VenueStatus::editableOptions())
@@ -448,15 +471,6 @@ class VenueResource extends Resources\Resource
                         ->multiple()
                         ->preload()
                         ->hidden(!$filterStatus),
-                    Tables\Filters\SelectFilter::make('team_id')
-                        ->label('Filter by Team')
-                        ->relationship('team', 'name')
-                        ->searchable()
-                        ->optionsLimit(5)
-                        ->preload()
-                        ->multiple()
-                        ->options(Team::pluck('name', 'team_id')->toArray())
-                        ->hidden(!($user->isAdmin())),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

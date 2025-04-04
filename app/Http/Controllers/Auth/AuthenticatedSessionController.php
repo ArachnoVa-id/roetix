@@ -59,8 +59,13 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
+        $userModel = User::find($user->id);
 
         if ($request->client) {
+            session([
+                'auth_user' => $userModel,
+            ]);
+
             // redirecting to
             $redirectProps = [
                 'route' => ($user ? 'client.home' : 'client.login'),
@@ -70,10 +75,13 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route($redirectProps['route'], $redirectProps['client']);
         }
 
-        $userModel = User::find($user->id);
         $firstTeam = $userModel->teams()->first();
 
         if ($userModel->isAdmin()) {
+            session([
+                'auth_user' => $userModel,
+            ]);
+
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
         } else if ($userModel->isUser()) {
             Auth::logout();
@@ -82,6 +90,10 @@ class AuthenticatedSessionController extends Controller
             Auth::logout();
             abort(404, 'No team found for user. Please contact admin.');
         }
+
+        session([
+            'auth_user' => $userModel,
+        ]);
 
         return Inertia::location(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]));
     }

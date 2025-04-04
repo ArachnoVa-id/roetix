@@ -43,14 +43,14 @@ class OrderResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         return $action
             ->label('Change Status')
@@ -93,9 +93,15 @@ class OrderResource extends Resource
             ->modal(true);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([]);
+    }
+
     public static function form(Forms\Form $form): Forms\Form
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         // get current form values
         $currentModel = $form->model;
@@ -266,7 +272,7 @@ class OrderResource extends Resource
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTickets = true): Infolists\Infolist
     {
-        $order = Order::find($infolist->record->order_id);
+        $order = $infolist->record;
         $firstEvent = $order->getSingleEvent();
         return $infolist
             ->columns([
@@ -385,7 +391,7 @@ class OrderResource extends Resource
 
     public static function table(Table $table, bool $filterStatus = false, bool $filterEvent = true): Table
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         return $table
             ->defaultSort('order_date', 'desc')
@@ -447,19 +453,10 @@ class OrderResource extends Resource
                         ->preload()
                         ->optionsLimit(5)
                         ->multiple()
-                        ->options(Team::pluck('name', 'team_id')->toArray())
                         ->hidden(!($user->isAdmin())),
-
                     Tables\Filters\SelectFilter::make('event_id')
                         ->label('Filter by Event')
-                        ->options(function () {
-                            $tenant_id = Filament::getTenant()?->team_id ?? null;
-                            $query = Event::query();
-                            if ($tenant_id) {
-                                $query->where('team_id', $tenant_id);
-                            }
-                            return $query->pluck('name', 'event_id');
-                        })
+                        ->relationship('events', 'name')
                         ->searchable()
                         ->preload()
                         ->optionsLimit(5)

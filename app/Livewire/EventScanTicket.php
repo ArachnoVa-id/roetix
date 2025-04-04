@@ -56,7 +56,18 @@ class EventScanTicket extends Component implements HasForms, HasTable
             ->query(Ticket::query()->where('event_id', $this->event->event_id))
             ->columns([
                 TextColumn::make('ticket_code')->label('Ticket Code')->searchable(),
-                TextColumn::make('status')->label('Status')->searchable(),
+                TextColumn::make('ticket_order_status')
+                    ->label('Status')
+                    ->default(function ($record) {
+                        $ticketOrder = collect($record->ticketOrders)->sortByDesc('created_at')->first();
+                        return $ticketOrder ? TicketOrderStatus::from($ticketOrder->status)->getLabel() : TicketOrderStatus::ENABLED->getLabel();
+                    })
+                    ->color(function ($record) {
+                        $ticketOrder = collect($record->ticketOrders)->sortByDesc('created_at')->first();
+                        return $ticketOrder ? TicketOrderStatus::from($ticketOrder->status)->getColor() : TicketOrderStatus::ENABLED->getColor();
+                    })
+                    ->badge()
+                    ->searchable(),
                 TextColumn::make('created_at')->label('Created At')->dateTime()->sortable()->searchable(),
             ]);
     }

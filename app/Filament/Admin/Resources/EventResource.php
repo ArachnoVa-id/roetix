@@ -25,6 +25,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Crypt;
 use Mews\Purifier\Facades\Purifier;
 
@@ -38,19 +39,17 @@ class EventResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
 
     public static function canCreate(): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
         if (!$user || !$user->isAllowedInRoles([UserRole::EVENT_ORGANIZER])) {
             return false;
         }
-
-        $user = User::find($user->id);
 
         $tenant_id = Filament::getTenant()->team_id;
 
@@ -65,13 +64,13 @@ class EventResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         return $action
             ->label('Change Status')
@@ -138,246 +137,267 @@ class EventResource extends Resource
         ;
     }
 
-    public static function infolist(Infolists\Infolist $infolist, bool $showOrders = true, bool $showTickets = true): Infolists\Infolist
+    public static function getEloquentQuery(): Builder
     {
-        return $infolist->schema(
-            [
-                Infolists\Components\Section::make()->schema([
-                    Infolists\Components\TextEntry::make('event_id')
-                        ->label('Event ID')
-                        ->icon('heroicon-o-identification'),
-                    Infolists\Components\TextEntry::make('status')
-                        ->label('Status')
-                        ->icon(fn($state) => EventStatus::tryFrom($state)->getIcon())
-                        ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
-                        ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
-                        ->badge(),
-                    Infolists\Components\TextEntry::make('name')
-                        ->label('Name')
-                        ->icon('heroicon-m-film'),
-                    Infolists\Components\TextEntry::make('slug')
-                        ->label('Slug (click to open site)')
-                        ->action(
-                            Infolists\Components\Actions\Action::make('actionSlug')
-                                ->action(function ($record) {
-                                    $protocol = config('session.secure') ? 'https://' : 'http://';
-                                    $url = $protocol . $record->slug . '.' . config('app.domain');
+        return parent::getEloquentQuery()
+            ->with([
+                'tickets',
+                'tickets.team',
+                'tickets.seat',
+                'tickets.ticketOrders',
+                'tickets.ticketOrders.order',
+                'tickets.ticketOrders.order.user',
+                'ticketCategories',
+                'ticketCategories.eventCategoryTimeboundPrices',
+                'ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+                'orders',
+                'orders.user',
+                'orders.team'
+            ]);
+    }
 
-                                    // redirect new page to url
-                                    return redirect()->to($url);
-                                })
-                        )
-                        ->icon('heroicon-m-magnifying-glass-plus'),
-                    Infolists\Components\TextEntry::make('start_date')
-                        ->label('Start Serving')
-                        ->icon('heroicon-m-calendar-date-range')
-                        ->dateTime(),
-                    Infolists\Components\TextEntry::make('event_date')
-                        ->label('D-Day')
-                        ->icon('heroicon-m-calendar-date-range')
-                        ->dateTime(),
-                    Infolists\Components\TextEntry::make('location')
-                        ->label('Location')
-                        ->icon('heroicon-m-map-pin'),
-                ])->columns(2),
-                Infolists\Components\Tabs::make('Tabs')
-                    ->tabs([
-                        Infolists\Components\Tabs\Tab::make('Timeline and Categories')
-                            ->schema([
-                                Infolists\Components\Section::make('Timeline')
-                                    ->schema([
-                                        Infolists\Components\RepeatableEntry::make('timelineSessions')
-                                            ->label('')
-                                            ->columns(3)
-                                            ->grid(2)
-                                            ->schema([
-                                                Infolists\Components\TextEntry::make('name')
-                                                    ->icon('heroicon-o-tag'),
-                                                Infolists\Components\TextEntry::make('start_date')
-                                                    ->icon('heroicon-o-clock')
-                                                    ->label('Start Date'),
-                                                Infolists\Components\TextEntry::make('end_date')
-                                                    ->icon('heroicon-o-clock')
-                                                    ->label('End Date'),
-                                            ])
-                                    ]),
-                                Infolists\Components\Section::make('Categories')
-                                    ->columnSpan(1)
-                                    ->schema([
-                                        Infolists\Components\RepeatableEntry::make('ticketCategories')
-                                            ->label('')
-                                            ->columns(2)
-                                            ->schema([
-                                                Infolists\Components\TextEntry::make('name')
-                                                    ->icon('heroicon-o-tag')
-                                                    ->columnSpan(1),
-                                                Infolists\Components\ColorEntry::make('color')
-                                                    ->columnSpan(1),
-                                                Infolists\Components\RepeatableEntry::make('eventCategoryTimeboundPrices')
-                                                    ->label('Timeline')
-                                                    ->grid(3)
-                                                    ->columnSpan(2)
-                                                    ->columns(2)
-                                                    ->schema([
-                                                        Infolists\Components\TextEntry::make('timelineSession.name')
-                                                            ->label('Timeline')
-                                                            ->icon('heroicon-o-tag')
-                                                            ->columnSpan(2),
-                                                        Infolists\Components\TextEntry::make('price')
-                                                            ->icon('heroicon-o-banknotes')
-                                                            ->money('IDR'),
-                                                        Infolists\Components\TextEntry::make('is_active')
-                                                            ->label('Status')
-                                                            ->formatStateUsing(fn($state) => $state ? 'Active' : 'Inactive')
-                                                            ->color(fn($state) => $state ? 'success' : 'danger')
-                                                            ->icon(fn($state) => $state ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
-                                                            ->badge(),
-                                                    ])
-                                            ])
-                                    ]),
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Event Variables')
-                            ->columns(4)
-                            ->schema([
-                                Infolists\Components\Group::make([
-                                    Infolists\Components\Section::make('Lock')
-                                        ->relationship('eventVariables')
+    public static function infolist(Infolists\Infolist $infolist, $record = null, bool $showOrders = true, bool $showTickets = true): Infolists\Infolist
+    {
+        return $infolist
+            ->record($record ?? $infolist->record)
+            ->schema(
+                [
+                    Infolists\Components\Section::make()->schema([
+                        Infolists\Components\TextEntry::make('event_id')
+                            ->label('Event ID')
+                            ->icon('heroicon-o-identification'),
+                        Infolists\Components\TextEntry::make('status')
+                            ->label('Status')
+                            ->icon(fn($state) => EventStatus::tryFrom($state)->getIcon())
+                            ->formatStateUsing(fn($state) => EventStatus::tryFrom($state)->getLabel())
+                            ->color(fn($state) => EventStatus::tryFrom($state)->getColor())
+                            ->badge(),
+                        Infolists\Components\TextEntry::make('name')
+                            ->label('Name')
+                            ->icon('heroicon-m-film'),
+                        Infolists\Components\TextEntry::make('slug')
+                            ->label('Slug (click to open site)')
+                            ->action(
+                                Infolists\Components\Actions\Action::make('actionSlug')
+                                    ->action(function ($record) {
+                                        $protocol = config('session.secure') ? 'https://' : 'http://';
+                                        $url = $protocol . $record->slug . '.' . config('app.domain');
+
+                                        // redirect new page to url
+                                        return redirect()->to($url);
+                                    })
+                            )
+                            ->icon('heroicon-m-magnifying-glass-plus'),
+                        Infolists\Components\TextEntry::make('start_date')
+                            ->label('Start Serving')
+                            ->icon('heroicon-m-calendar-date-range')
+                            ->dateTime(),
+                        Infolists\Components\TextEntry::make('event_date')
+                            ->label('D-Day')
+                            ->icon('heroicon-m-calendar-date-range')
+                            ->dateTime(),
+                        Infolists\Components\TextEntry::make('location')
+                            ->label('Location')
+                            ->icon('heroicon-m-map-pin'),
+                    ])->columns(2),
+                    Infolists\Components\Tabs::make('Tabs')
+                        ->tabs([
+                            Infolists\Components\Tabs\Tab::make('Scan Tickets')
+                                ->schema([
+                                    Infolists\Components\Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Timeline and Categories')
+                                ->schema([
+                                    Infolists\Components\Section::make('Timeline')
                                         ->schema([
-                                            Infolists\Components\TextEntry::make('is_locked')
-                                                ->label('Is Locked')
+                                            Infolists\Components\RepeatableEntry::make('timelineSessions')
+                                                ->label('')
+                                                ->columns(3)
+                                                ->grid(2)
+                                                ->schema([
+                                                    Infolists\Components\TextEntry::make('name')
+                                                        ->icon('heroicon-o-tag'),
+                                                    Infolists\Components\TextEntry::make('start_date')
+                                                        ->icon('heroicon-o-clock')
+                                                        ->label('Start Date'),
+                                                    Infolists\Components\TextEntry::make('end_date')
+                                                        ->icon('heroicon-o-clock')
+                                                        ->label('End Date'),
+                                                ])
+                                        ]),
+                                    Infolists\Components\Section::make('Categories')
+                                        ->columnSpan(1)
+                                        ->schema([
+                                            Infolists\Components\RepeatableEntry::make('ticketCategories')
+                                                ->label('')
+                                                ->columns(2)
+                                                ->schema([
+                                                    Infolists\Components\TextEntry::make('name')
+                                                        ->icon('heroicon-o-tag')
+                                                        ->columnSpan(1),
+                                                    Infolists\Components\ColorEntry::make('color')
+                                                        ->columnSpan(1),
+                                                    Infolists\Components\RepeatableEntry::make('eventCategoryTimeboundPrices')
+                                                        ->label('Timeline')
+                                                        ->grid(3)
+                                                        ->columnSpan(2)
+                                                        ->columns(2)
+                                                        ->schema([
+                                                            Infolists\Components\TextEntry::make('timelineSession.name')
+                                                                ->label('Timeline')
+                                                                ->icon('heroicon-o-tag')
+                                                                ->columnSpan(2),
+                                                            Infolists\Components\TextEntry::make('price')
+                                                                ->icon('heroicon-o-banknotes')
+                                                                ->money('IDR'),
+                                                            Infolists\Components\TextEntry::make('is_active')
+                                                                ->label('Status')
+                                                                ->formatStateUsing(fn($state) => $state ? 'Active' : 'Inactive')
+                                                                ->color(fn($state) => $state ? 'success' : 'danger')
+                                                                ->icon(fn($state) => $state ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
+                                                                ->badge(),
+                                                        ])
+                                                ])
+                                        ]),
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Event Variables')
+                                ->columns(4)
+                                ->schema([
+                                    Infolists\Components\Group::make([
+                                        Infolists\Components\Section::make('Lock')
+                                            ->relationship('eventVariables')
+                                            ->schema([
+                                                Infolists\Components\TextEntry::make('is_locked')
+                                                    ->label('Is Locked')
+                                                    ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+
+                                                Infolists\Components\TextEntry::make('locked_password')
+                                                    ->label('Locked Password'),
+                                            ]),
+                                        Infolists\Components\Section::make('Etc')
+                                            ->relationship('eventVariables')
+                                            ->schema([
+                                                Infolists\Components\TextEntry::make('ticket_limit')
+                                                    ->label('Purchase Limit'),
+                                            ]),
+                                    ])
+                                        ->columnSpan(1),
+                                    Infolists\Components\Section::make('Maintenance')
+                                        ->relationship('eventVariables')
+                                        ->columnSpan(1)
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('is_maintenance')
+                                                ->label('Is Maintenance')
                                                 ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
 
-                                            Infolists\Components\TextEntry::make('locked_password')
-                                                ->label('Locked Password'),
+                                            Infolists\Components\TextEntry::make('maintenance_title')
+                                                ->label('Title')
+                                                ->formatStateUsing(fn($state) => $state ?? 'Not Set'),
+
+                                            Infolists\Components\TextEntry::make('maintenance_message')
+                                                ->label('Message')
+                                                ->formatStateUsing(fn($state) => $state ?? 'Not Set'),
+
+                                            Infolists\Components\TextEntry::make('maintenance_expected_finish')
+                                                ->label('Expected Finish'),
                                         ]),
-                                    Infolists\Components\Section::make('Etc')
+
+                                    Infolists\Components\Section::make('Logo')
                                         ->relationship('eventVariables')
+                                        ->columnSpan(1)
                                         ->schema([
-                                            Infolists\Components\TextEntry::make('ticket_limit')
-                                                ->label('Purchase Limit'),
+                                            Infolists\Components\TextEntry::make('logo')
+                                                ->label('Logo'),
+
+                                            Infolists\Components\TextEntry::make('logo_alt')
+                                                ->label('Logo Alt'),
+
+                                            Infolists\Components\TextEntry::make('favicon')
+                                                ->label('Favicon'),
+
+                                            Infolists\Components\TextEntry::make('texture')
+                                                ->label('Texture'),
+
                                         ]),
-                                ])
-                                    ->columnSpan(1),
-                                Infolists\Components\Section::make('Maintenance')
-                                    ->relationship('eventVariables')
-                                    ->columnSpan(1)
-                                    ->schema([
-                                        Infolists\Components\TextEntry::make('is_maintenance')
-                                            ->label('Is Maintenance')
+
+                                    Infolists\Components\Section::make('Colors')
+                                        ->relationship('eventVariables')
+                                        ->columnSpan(1)
+                                        ->schema([
+                                            Infolists\Components\ColorEntry::make('primary_color')
+                                                ->label('Primary Color'),
+
+                                            Infolists\Components\ColorEntry::make('secondary_color')
+                                                ->label('Secondary Color'),
+
+                                            Infolists\Components\ColorEntry::make('text_primary_color')
+                                                ->label('Text Primary Color'),
+
+                                            Infolists\Components\ColorEntry::make('text_secondary_color')
+                                                ->label('Text Secondary Color'),
+                                        ]),
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Terms and Conditions')
+                                ->schema([
+                                    Infolists\Components\Group::make([
+                                        Infolists\Components\TextEntry::make('terms_and_conditions')
+                                            ->label(''),
+                                    ])->relationship('eventVariables')
+                                ]),
+
+                            Infolists\Components\Tabs\Tab::make('Privacy Policy')
+                                ->schema([
+                                    Infolists\Components\Group::make([
+                                        Infolists\Components\TextEntry::make('privacy_policy')
+                                            ->label(''),
+                                    ])->relationship('eventVariables')
+                                ]),
+
+                            Infolists\Components\Tabs\Tab::make('Midtrans')
+                                ->hidden(!session('auth_user')->isAllowedInRoles([UserRole::ADMIN]))
+                                ->schema([
+                                    Infolists\Components\Group::make([
+                                        Infolists\Components\TextEntry::make('midtrans_client_key_sb')
+                                            ->label('Client Key SB')
+                                            ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
+                                        Infolists\Components\TextEntry::make('midtrans_server_key_sb')
+                                            ->label('Server Key SB')
+                                            ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
+                                        Infolists\Components\TextEntry::make('midtrans_client_key')
+                                            ->label('Client Key')
+                                            ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
+                                        Infolists\Components\TextEntry::make('midtrans_server_key')
+                                            ->label('Server Key')
+                                            ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
+                                        Infolists\Components\TextEntry::make('midtrans_is_production')
+                                            ->label('Production')
                                             ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
 
-                                        Infolists\Components\TextEntry::make('maintenance_title')
-                                            ->label('Title')
-                                            ->formatStateUsing(fn($state) => $state ?? 'Not Set'),
-
-                                        Infolists\Components\TextEntry::make('maintenance_message')
-                                            ->label('Message')
-                                            ->formatStateUsing(fn($state) => $state ?? 'Not Set'),
-
-                                        Infolists\Components\TextEntry::make('maintenance_expected_finish')
-                                            ->label('Expected Finish'),
-                                    ]),
-
-                                Infolists\Components\Section::make('Logo')
-                                    ->relationship('eventVariables')
-                                    ->columnSpan(1)
-                                    ->schema([
-                                        Infolists\Components\TextEntry::make('logo')
-                                            ->label('Logo'),
-
-                                        Infolists\Components\TextEntry::make('logo_alt')
-                                            ->label('Logo Alt'),
-
-                                        Infolists\Components\TextEntry::make('favicon')
-                                            ->label('Favicon'),
-
-                                        Infolists\Components\TextEntry::make('texture')
-                                            ->label('Texture'),
-
-                                    ]),
-
-                                Infolists\Components\Section::make('Colors')
-                                    ->relationship('eventVariables')
-                                    ->columnSpan(1)
-                                    ->schema([
-                                        Infolists\Components\ColorEntry::make('primary_color')
-                                            ->label('Primary Color'),
-
-                                        Infolists\Components\ColorEntry::make('secondary_color')
-                                            ->label('Secondary Color'),
-
-                                        Infolists\Components\ColorEntry::make('text_primary_color')
-                                            ->label('Text Primary Color'),
-
-                                        Infolists\Components\ColorEntry::make('text_secondary_color')
-                                            ->label('Text Secondary Color'),
-                                    ]),
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Terms and Conditions')
-                            ->schema([
-                                Infolists\Components\Group::make([
-                                    Infolists\Components\TextEntry::make('terms_and_conditions')
-                                        ->label(''),
-                                ])->relationship('eventVariables')
-                            ]),
-
-                        Infolists\Components\Tabs\Tab::make('Privacy Policy')
-                            ->schema([
-                                Infolists\Components\Group::make([
-                                    Infolists\Components\TextEntry::make('privacy_policy')
-                                        ->label(''),
-                                ])->relationship('eventVariables')
-                            ]),
-
-                        Infolists\Components\Tabs\Tab::make('Midtrans')
-                            ->hidden(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]))
-                            ->schema([
-                                Infolists\Components\Group::make([
-                                    Infolists\Components\TextEntry::make('midtrans_client_key_sb')
-                                        ->label('Client Key SB')
-                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
-
-                                    Infolists\Components\TextEntry::make('midtrans_server_key_sb')
-                                        ->label('Server Key SB')
-                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
-
-                                    Infolists\Components\TextEntry::make('midtrans_client_key')
-                                        ->label('Client Key')
-                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
-
-                                    Infolists\Components\TextEntry::make('midtrans_server_key')
-                                        ->label('Server Key')
-                                        ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
-
-                                    Infolists\Components\TextEntry::make('midtrans_is_production')
-                                        ->label('Production')
-                                        ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
-
-                                    Infolists\Components\TextEntry::make('midtrans_use_novatix')
-                                        ->label('Using NovaTix Midtrans')
-                                        ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
-                                ])->relationship('eventVariables')->columns(2)
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Orders')
-                            ->hidden(!$showOrders)
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(OrdersRelationManager::class)
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Tickets')
-                            ->hidden(!$showTickets)
-                            ->schema([
-                                \Njxqlus\Filament\Components\Infolists\RelationManager::make()
-                                    ->manager(TicketsRelationManager::class)
-                            ]),
-                        Infolists\Components\Tabs\Tab::make('Scan Tickets')
-                            ->schema([
-                                Infolists\Components\Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
-                            ])
-                    ])
-                    ->columnSpan('full'),
-            ]
-        );
+                                        Infolists\Components\TextEntry::make('midtrans_use_novatix')
+                                            ->label('Using NovaTix Midtrans')
+                                            ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+                                    ])->relationship('eventVariables')->columns(2)
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Orders')
+                                ->hidden(!$showOrders)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(OrdersRelationManager::class)
+                                ]),
+                            Infolists\Components\Tabs\Tab::make('Tickets')
+                                ->hidden(!$showTickets)
+                                ->schema([
+                                    \Njxqlus\Filament\Components\Infolists\RelationManager::make()
+                                        ->manager(TicketsRelationManager::class)
+                                ]),
+                        ])
+                        ->columnSpan('full'),
+                ]
+            );
     }
 
     public static function form(Forms\Form $form): Forms\Form
@@ -597,8 +617,8 @@ class EventResource extends Resource
                                     }
                                 )
                                 ->preload()
-                                ->disabled(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]) && $modelExists)
-                                ->helperText(!User::find(Auth::id())->isAllowedInRoles([UserRole::ADMIN]) && $modelExists ? 'You can\'t change the selected venue.' : 'Note: You can only set this once!')
+                                ->disabled(!session('auth_user')->isAllowedInRoles([UserRole::ADMIN]) && $modelExists)
+                                ->helperText(!session('auth_user')->isAllowedInRoles([UserRole::ADMIN]) && $modelExists ? 'You can\'t change the selected venue.' : 'Note: You can only set this once!')
                                 ->label('Venue')
                                 ->placeholder('Select Venue')
                                 ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
@@ -1554,7 +1574,7 @@ class EventResource extends Resource
                                 }),
                         ]),
                     Forms\Components\Wizard\Step::make('Midtrans')
-                        ->hidden(!User::find(Auth::id())->isAdmin())
+                        ->hidden(!session('auth_user')->isAdmin())
                         ->schema([
                             Forms\Components\Group::make([
                                 Forms\Components\TextInput::make('midtrans_client_key_sb')
@@ -1613,7 +1633,7 @@ class EventResource extends Resource
 
     public static function table(Table $table, bool $filterStatus = false): Table
     {
-        $user = User::find(Auth::id());
+        $user = session('auth_user');
 
         $defaultActions = [
             Tables\Actions\ViewAction::make()
@@ -1683,7 +1703,6 @@ class EventResource extends Resource
                         ->preload()
                         ->optionsLimit(5)
                         ->multiple()
-                        ->options(Team::pluck('name', 'team_id')->toArray())
                         ->hidden(!($user->isAdmin())),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
