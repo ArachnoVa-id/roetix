@@ -1,4 +1,4 @@
-import { Position, SeatMapSection } from '../types';
+import { Position, SeatMapSection } from '@/types/seatmap';
 
 export const updateSeatPositions = (
     sections: SeatMapSection[],
