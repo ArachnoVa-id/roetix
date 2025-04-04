@@ -11,7 +11,6 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,7 +21,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(string $client = ''): Response
+    public function login(string $client = ''): Response
     {
         if ($client) {
             // Get the event and associated venue
@@ -30,8 +29,8 @@ class AuthenticatedSessionController extends Controller
                 ->first();
 
             $props = $event->eventVariables;
+            $props->reconstructImgLinks();
         } else {
-            // dd('nonclient');
             $event = [
                 'name' => 'Admin NovaTix'
             ];
@@ -39,6 +38,7 @@ class AuthenticatedSessionController extends Controller
 
             $props['logo'] = '/images/novatix-logo-white/android-chrome-512x512.png';
             $props['logo_alt'] = 'Novatix Logo';
+            $props['texture'] = '/images/default-texture/Texturelabs_Sky_152S.jpg';
         }
 
         return Inertia::render('Auth/Login', [
@@ -59,8 +59,13 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
+        $userModel = User::find($user->id);
 
         if ($request->client) {
+            session([
+                'auth_user' => $userModel,
+            ]);
+
             // redirecting to
             $redirectProps = [
                 'route' => ($user ? 'client.home' : 'client.login'),
@@ -70,18 +75,25 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route($redirectProps['route'], $redirectProps['client']);
         }
 
-        $userModel = User::find($user->id);
         $firstTeam = $userModel->teams()->first();
 
-        if ($userModel->role === UserRole::ADMIN->value) {
+        if ($userModel->isAdmin()) {
+            session([
+                'auth_user' => $userModel,
+            ]);
+
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
-        } else if ($userModel->role === 'user') {
+        } else if ($userModel->isUser()) {
             Auth::logout();
             abort(403, 'User role not allowed.');
         } else if (!$firstTeam) {
             Auth::logout();
             abort(404, 'No team found for user. Please contact admin.');
         }
+
+        session([
+            'auth_user' => $userModel,
+        ]);
 
         return Inertia::location(route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]));
     }

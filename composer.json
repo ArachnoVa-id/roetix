@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "bacon/bacon-qr-code": "^3.0",
         "barryvdh/laravel-dompdf": "^3.1",
         "blade-ui-kit/blade-icons": "^1.8",
         "filament/filament": "^3.2",
@@ -19,13 +20,16 @@
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.18",
         "laravel/tinker": "^2.9",
+        "maatwebsite/excel": "^3.1",
+        "mews/purifier": "^3.4",
         "midtrans/midtrans-php": "^2.6",
         "njxqlus/filament-relation-manager-component": "*",
+        "predis/predis": "^2.3",
         "ramsey/uuid": "*",
-        "simplesoftwareio/simple-qrcode": "^4.2",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
+        "barryvdh/laravel-debugbar": "^3.15",
         "fakerphp/faker": "^1.23",
         "laravel/breeze": "^2.3",
         "laravel/pail": "^1.1",

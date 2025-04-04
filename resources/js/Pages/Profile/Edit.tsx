@@ -1,13 +1,16 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
 import { EventProps } from '@/types/front-end';
+import { EventInterface } from '@/types/ticket';
 import { Head } from '@inertiajs/react';
 import UpdateContactForm from './Partials/UpdateContactForm';
 
 export default function Edit({
+    event,
     client,
     props,
 }: PageProps<{
+    event: EventInterface;
     mustVerifyEmail: boolean;
     status?: string;
     client: string;
@@ -15,8 +18,7 @@ export default function Edit({
 }>) {
     return (
         <AuthenticatedLayout props={props} client={client}>
-            <Head title="Profile" />
-
+            <Head title={'Profile | ' + event.name} />
             <div className="py-12">
                 <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-8 sm:px-6 md:flex-row lg:px-8">
                     {/* <div

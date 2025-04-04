@@ -2,9 +2,11 @@
 
 namespace App\Filament\NovatixAdmin\Resources\UserResource\Pages;
 
+use App\Filament\Components\BackButtonAction;
 use App\Filament\NovatixAdmin\Resources\UserResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewUser extends ViewRecord
 {
@@ -13,16 +15,12 @@ class ViewUser extends ViewRecord
     public function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('Back')
-                ->url(
-                    fn() => request()->headers->get('referer') !== url()->current()
-                        ? url()->previous()
-                        : $this->getResource()::getUrl()
-                )
-                ->icon('heroicon-o-arrow-left')
-                ->color('info'),
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            ),
             Actions\EditAction::make('Edit Event')
-                ->icon('heroicon-o-pencil'),
+                ->icon('heroicon-m-pencil-square')
+                ->color(Color::Orange),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
         ];

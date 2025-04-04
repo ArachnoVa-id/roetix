@@ -40,7 +40,7 @@ class TeamFactory extends Factory
 
             // Make sure the role of the user is not admin and user
             $usingUsers = $allUsers->filter(function (User $user) {
-                return !in_array($user->role, [UserRole::ADMIN->value, UserRole::USER->value]);
+                return !$user->isAllowedInRoles([UserRole::ADMIN, UserRole::USER]);
             });
 
             // Count how many users existing

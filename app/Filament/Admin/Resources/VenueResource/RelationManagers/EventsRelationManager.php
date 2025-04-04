@@ -3,29 +3,45 @@
 namespace App\Filament\Admin\Resources\VenueResource\RelationManagers;
 
 use App\Filament\Admin\Resources\EventResource;
-use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class EventsRelationManager extends RelationManager
 {
+
+
     protected static string $relationship = 'events';
+
+    public function getTableRecords(): Collection
+    {
+        $events = $this->ownerRecord->events;
+
+        return new Collection($events);
+    }
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return EventResource::infolist($infolist, showOrders: false, showTickets: false);
-    }
+        $eventId = $infolist->record->event_id;
 
-    public function form(Form $form): Form
-    {
-        return EventResource::form($form);
+        $record = $this->ownerRecord->events()
+            ->where('event_id', $eventId)
+            ->with([
+                'team',
+                'ticketCategories',
+                'ticketCategories.eventCategoryTimeboundPrices',
+                'ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+            ])
+            ->first();
+
+        return EventResource::infolist($infolist, record: $record, showOrders: false, showTickets: false);
     }
 
     public function table(Table $table): Table
     {
-        return EventResource::table($table)
+        return EventResource::table($table, showTeamName: false, filterStatus: true)
             ->modifyQueryUsing(fn(Builder $query) => $query->withoutGlobalScopes())
             ->heading('');
     }

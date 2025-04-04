@@ -3,8 +3,11 @@
 namespace App\Filament\Admin\Resources\OrderResource\Pages;
 
 use App\Filament\Admin\Resources\OrderResource;
+use App\Filament\Components\BackButtonAction;
+use App\Models\Order;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Colors\Color;
 
 class ViewOrder extends ViewRecord
 {
@@ -13,16 +16,15 @@ class ViewOrder extends ViewRecord
     public function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('Back')
-                ->url(
-                    fn() => request()->headers->get('referer') !== url()->current()
-                        ? url()->previous()
-                        : $this->getResource()::getUrl()
-                )
-                ->icon('heroicon-o-arrow-left')
-                ->color('info'),
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            ),
             Actions\EditAction::make('Edit Order')
-                ->icon('heroicon-o-pencil'),
+                ->icon('heroicon-m-pencil-square')
+                ->color(Color::Orange),
+            OrderResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
         ];
     }
 }

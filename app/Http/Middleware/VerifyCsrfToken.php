@@ -23,13 +23,6 @@ class VerifyCsrfToken extends Middleware
      */
     protected function tokensMatch($request)
     {
-        // For debugging only - remove in production
-        Log::debug('CSRF check', [
-            'token' => $request->input('_token'),
-            'header' => $request->header('X-CSRF-TOKEN'),
-            'xsrf' => $request->header('X-XSRF-TOKEN'),
-        ]);
-
         return parent::tokensMatch($request);
     }
 }

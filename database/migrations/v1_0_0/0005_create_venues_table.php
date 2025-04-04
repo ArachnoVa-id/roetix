@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
 
             $table->string('name');
-            $table->string('location');
+            $table->longText('location');
             $table->string('contact_info', 36);
             $table->enum('status', VenueStatus::values())->default(VenueStatus::INACTIVE);
             $table->timestamps();

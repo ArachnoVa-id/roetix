@@ -2,22 +2,23 @@
 
 namespace App\Filament\Admin\Resources;
 
-use App\Enums\UserRole;
-use App\Enums\VenueStatus;
 use Filament\Forms;
+use App\Models\Team;
 use Filament\Tables;
 use App\Models\Venue;
+use Filament\Actions;
+use App\Enums\UserRole;
 use Filament\Infolists;
 use Filament\Resources;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Admin\Resources\VenueResource\Pages;
-use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
-use App\Models\User;
-use Filament\Actions;
+use App\Enums\VenueStatus;
 use Filament\Facades\Filament;
-use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Filament\Notifications\Notification;
+use App\Filament\Admin\Resources\VenueResource\Pages;
+use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
+use Filament\Support\Colors\Color;
+use Illuminate\Database\Eloquent\Builder;
 
 class VenueResource extends Resources\Resource
 {
@@ -27,19 +28,18 @@ class VenueResource extends Resources\Resource
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = session('auth_user');
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::VENDOR->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::VENDOR]);
     }
 
     public static function canCreate(): bool
     {
-        $user = Auth::user();
-        if (!$user) {
+        $user = session('auth_user');
+
+        if (!$user || !$user->isAllowedInRoles([UserRole::VENDOR])) {
             return false;
         }
-
-        $user = User::find($user->id);
 
         $tenant_id = Filament::getTenant()->team_id;
 
@@ -49,19 +49,21 @@ class VenueResource extends Resources\Resource
             return false;
         }
 
-        return $team->vendor_quota > $team->venues->count();
+        return $team->vendor_quota > 0;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return false;
+        $user = session('auth_user');
+      
+        return $user->isAdmin();
     }
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
             ->modalDescription('Select a new status for this venue.')
@@ -69,12 +71,33 @@ class VenueResource extends Resources\Resource
                 Forms\Components\Select::make('status')
                     ->label('Status')
                     ->options(VenueStatus::editableOptions())
+                    ->preload()
                     ->default(fn($record) => $record->status) // Set the current value as default
+                    ->validationAttribute('Status')
+                    ->validationMessages([
+                        'required' => 'The Status field is required',
+                    ])
+                    ->searchable()
                     ->required(),
             ])
             ->action(function ($record, array $data) {
-                $record->update(['status' => $data['status']]);
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Success')
+                        ->body("Venue {$record->name} status has been changed to " . VenueStatus::tryFrom($data['status'])->getLabel())
+                        ->success()
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed')
+                        ->body("Failed to change venue {$record->name} status: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
+                }
             })
+            ->modalWidth('sm')
             ->modal(true);
     }
 
@@ -83,7 +106,7 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Edit Venue')
             ->icon('heroicon-m-map')
-            ->color('info')
+            ->color(Color::Indigo)
             ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}");
     }
 
@@ -92,8 +115,23 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Export Venue')
             ->icon('heroicon-o-arrow-down-tray')
-            ->color('info')
-            ->action(fn($record) => $record->exportSeats());
+            ->color(Color::Emerald)
+            ->action(function ($record) {
+                try {
+                    $record->exportSeats();
+                    Notification::make()
+                        ->title('Success')
+                        ->body("Venue {$record->name} seats have been exported.")
+                        ->success()
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed')
+                        ->body("Failed to export venue {$record->name} seats: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
+                }
+            });
     }
 
     public static function ImportVenueButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -101,7 +139,7 @@ class VenueResource extends Resources\Resource
         return $action
             ->label('Import Venue')
             ->icon('heroicon-o-arrow-up-tray')
-            ->color('info')
+            ->color(Color::Teal)
             ->requiresConfirmation()
             ->form([
                 \Filament\Forms\Components\FileUpload::make('venue_json')
@@ -111,36 +149,65 @@ class VenueResource extends Resources\Resource
                     ->disk('local'),
             ])
             ->action(function ($record, array $data) {
-                // Get the uploaded file path
-                $filePath = $data['venue_json'];
+                try {
+                    // Get the uploaded file path
+                    $filePath = $data['venue_json'];
 
-                if (!$filePath) {
-                    return;
+                    if (!$filePath) {
+                        return;
+                    }
+
+                    // Read the file content
+                    $jsonContent = file_get_contents(storage_path('app/private/' . $filePath));
+
+                    // Decode the JSON content
+                    $config = json_decode($jsonContent, true);
+
+                    // Optionally delete the original temporary file
+                    Storage::disk('local')->delete($filePath);
+
+                    // Call the import function
+                    [$res, $message] = $record->importSeats(
+                        config: $config,
+                    );
+
+                    if ($res)
+                        Notification::make()
+                            ->success()
+                            ->title('Success')
+                            ->body($message)
+                            ->send();
+                    else Notification::make()
+                        ->danger()
+                        ->title('Failed')
+                        ->body($message)
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed')
+                        ->body("Failed to import venue {$record->name} seats: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
                 }
-
-                // Read the file content
-                $jsonContent = file_get_contents(storage_path('app/private/' . $filePath));
-
-                // Decode the JSON content
-                $config = json_decode($jsonContent, true);
-
-                // Optionally delete the original temporary file
-                Storage::disk('local')->delete($filePath);
-
-                // Call the import function
-                $res = $record->importSeats(
-                    config: $config,
-                );
-
-                if ($res)
-                    Notification::make()->success()->title('Success')->body('Seats successfully imported!')->send();
-                else Notification::make()->danger()->title('Failed')->body('Seats failed to be imported!')->send();
             });
     }
 
-    public static function infolist(Infolists\Infolist $infolist, bool $showEvents = true): Infolists\Infolist
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'events',
+                'events.team',
+                'events.ticketCategories',
+                'events.ticketCategories.eventCategoryTimeboundPrices',
+                'events.ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+            ]);
+    }
+
+    public static function infolist(Infolists\Infolist $infolist, $record = null, bool $showEvents = true): Infolists\Infolist
     {
         return $infolist
+            ->record($record ?? $infolist->record)
             ->columns([
                 'default' => 1,
                 'sm' => 1,
@@ -161,20 +228,25 @@ class VenueResource extends Resources\Resource
                         ])
                         ->schema([
                             Infolists\Components\TextEntry::make('venue_id')
+                                ->icon('heroicon-o-hashtag')
                                 ->label('Venue ID')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
                                     'md' => 2,
                                 ]),
-                            Infolists\Components\TextEntry::make('name'),
-                            Infolists\Components\TextEntry::make('location'),
+                            Infolists\Components\TextEntry::make('name')
+                                ->icon('heroicon-o-map-pin'),
+                            Infolists\Components\TextEntry::make('location')
+                                ->icon('heroicon-o-map'),
                             Infolists\Components\TextEntry::make('capacity_qty')
+                                ->icon('heroicon-o-users')
                                 ->label('Capacity')
-                                ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A'),
+                                ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A'),
                             Infolists\Components\TextEntry::make('status')
                                 ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
+                                ->icon(fn($state) => VenueStatus::tryFrom($state)->getIcon())
                                 ->badge(),
                         ]),
                     Infolists\Components\Group::make([
@@ -191,10 +263,19 @@ class VenueResource extends Resources\Resource
                                 'md' => 2,
                             ])
                             ->schema([
-                                Infolists\Components\TextEntry::make('phone_number'),
-                                Infolists\Components\TextEntry::make('email'),
-                                Infolists\Components\TextEntry::make('whatsapp_number'),
-                                Infolists\Components\TextEntry::make('instagram'),
+                                Infolists\Components\TextEntry::make('phone_number')
+                                    ->icon('heroicon-o-phone')
+                                    ->label('Phone Number'),
+                                Infolists\Components\TextEntry::make('email')
+                                    ->icon('heroicon-o-at-symbol')
+                                    ->label('Email'),
+                                Infolists\Components\TextEntry::make('whatsapp_number')
+                                    ->icon('heroicon-o-phone')
+                                    ->label('WhatsApp Number'),
+                                Infolists\Components\TextEntry::make('instagram')
+                                    ->icon('heroicon-o-share')
+                                    ->label('Instagram Handle')
+                                    ->prefix('@'),
                             ]),
                         Infolists\Components\Section::make('Venue Owner')
                             ->columnSpan([
@@ -209,8 +290,10 @@ class VenueResource extends Resources\Resource
                                 'md' => 2,
                             ])
                             ->schema([
-                                Infolists\Components\TextEntry::make('name'),
-                                Infolists\Components\TextEntry::make('code'),
+                                Infolists\Components\TextEntry::make('name')
+                                    ->icon('heroicon-o-users'),
+                                Infolists\Components\TextEntry::make('code')
+                                    ->icon('heroicon-o-key'),
                             ]),
                     ]),
                     Infolists\Components\Tabs::make()
@@ -235,9 +318,23 @@ class VenueResource extends Resources\Resource
                     ->columns(2)
                     ->schema([
                         Forms\Components\TextInput::make('name')
+                            ->maxLength(255)
+                            ->placeholder('Venue Name')
+                            ->validationAttribute('Name')
+                            ->validationMessages([
+                                'required' => 'The name field is required.',
+                                'max' => 'The name may not be greater than 255 characters.',
+                            ])
                             ->label('Name')
                             ->required(),
                         Forms\Components\TextInput::make('location')
+                            ->maxLength(255)
+                            ->placeholder('Location')
+                            ->validationAttribute('Location')
+                            ->validationMessages([
+                                'required' => 'The location field is required.',
+                                'max' => 'The location may not be greater than 255 characters.',
+                            ])
                             ->label('Location')
                             ->required(),
                     ]),
@@ -246,28 +343,58 @@ class VenueResource extends Resources\Resource
                     ->columns(2)
                     ->schema([
                         Forms\Components\TextInput::make('phone_number')
+                            ->maxLength(24)
+                            ->validationAttribute('Phone Number')
+                            ->validationMessages([
+                                'required' => 'The phone number field is required.',
+                                'max' => 'The phone number may not be greater than 24 characters.',
+                            ])
+                            ->placeholder('e.g. 089919991999')
                             ->label('Phone Number')
                             ->tel()
                             ->required(),
 
                         Forms\Components\TextInput::make('email')
+                            ->maxLength(255)
+                            ->validationAttribute('Email')
+                            ->validationMessages([
+                                'required' => 'The email field is required.',
+                                'max' => 'The email may not be greater than 255 characters.',
+                            ])
+                            ->placeholder('e.g. username@example.com')
                             ->label('Email')
                             ->email()
                             ->required(),
 
                         Forms\Components\TextInput::make('whatsapp_number')
+                            ->maxLength(24)
+                            ->validationAttribute('WhatsApp Number')
+                            ->validationMessages([
+                                'required' => 'The WhatsApp number field is required.',
+                                'max' => 'The WhatsApp number may not be greater than 24 characters.',
+                            ])
+                            ->placeholder('e.g. 089919991999')
                             ->label('WhatsApp Number')
                             ->tel(),
 
                         Forms\Components\TextInput::make('instagram')
+                            ->maxLength(256)
+                            ->validationAttribute('Instagram Handle')
+                            ->validationMessages([
+                                'required' => 'The Instagram handle field is required.',
+                                'max' => 'The Instagram handle may not be greater than 256 characters.',
+                            ])
+                            ->placeholder('e.g. novatix.id')
                             ->label('Instagram Handle')
                             ->prefix('@'),
                     ])
             ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Tables\Table $table, bool $filterStatus = false, bool $filterCapacity = true): Tables\Table
     {
+        $user = session('auth_user');
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -275,23 +402,40 @@ class VenueResource extends Resources\Resource
                     ->searchable()
                     ->sortable()
                     ->limit(50),
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Team Name')
+                    ->searchable()
+                    ->sortable()
+                    ->hidden(!($user->isAdmin()))
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('location')
                     ->searchable()
                     ->sortable()
                     ->limit(50),
                 Tables\Columns\TextColumn::make('capacity')
                     ->label('Capacity')
-                    ->getStateUsing(fn($record) => $record->capacity() ?? 'N/A')
+                    ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => VenueStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => VenueStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => VenueStatus::tryFrom($state)->getIcon())
                     ->badge(),
             ])
             ->filters(
                 [
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship('team', 'name')
+                        ->searchable()
+                        ->optionsLimit(5)
+                        ->preload()
+                        ->multiple()
+                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->hidden(!($user->isAdmin())),
                     Tables\Filters\Filter::make('capacity')
                         ->columns(2)
+                        ->hidden(!$filterCapacity)
                         ->form([
                             Forms\Components\TextInput::make('min')
                                 ->placeholder('Min')
@@ -311,25 +455,31 @@ class VenueResource extends Resources\Resource
                                 ->columnSpan(1),
                         ])
                         ->query(function ($query, array $data) {
-                            return $query->whereIn('venue_id', function ($subquery) use ($data) {
-                                $subquery->select('venues.venue_id')
-                                    ->from('venues')
-                                    ->leftJoin('seats', 'venues.venue_id', '=', 'seats.venue_id')
-                                    ->groupBy('venues.venue_id')
-                                    ->havingRaw('COUNT(seats.venue_id) >= ?', [(int) (empty($data['min']) ? 0 : $data['min'])])
-                                    ->havingRaw('COUNT(seats.venue_id) <= ?', [(int) (empty($data['max']) ? PHP_INT_MAX : $data['max'])]);
-                            });
+                            return $query
+                                ->whereIn('venue_id', function ($subquery) use ($data) {
+                                    $subquery->select('venues.venue_id')
+                                        ->from('venues')
+                                        ->leftJoin('seats', 'venues.venue_id', '=', 'seats.venue_id')
+                                        ->groupBy('venues.venue_id')
+                                        ->havingRaw('COUNT(seats.venue_id) >= ?', [(int) (empty($data['min']) ? 0 : $data['min'])])
+                                        ->havingRaw('COUNT(seats.venue_id) <= ?', [(int) (empty($data['max']) ? PHP_INT_MAX : $data['max'])]);
+                                });
                         }),
                     Tables\Filters\SelectFilter::make('status')
                         ->options(VenueStatus::editableOptions())
-                        ->multiple(),
+                        ->searchable()
+                        ->multiple()
+                        ->preload()
+                        ->hidden(!$filterStatus),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->modalHeading('View Venue'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View Venue'),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
                     ),
@@ -341,16 +491,11 @@ class VenueResource extends Resources\Resource
                     ),
                     self::ImportVenueButton(
                         Tables\Actions\Action::make('importVenue')
-                    )
+                    ),
+                    Tables\Actions\DeleteAction::make()
+                        ->icon('heroicon-o-trash'),
                 ]),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
     }
 
     public static function getPages(): array

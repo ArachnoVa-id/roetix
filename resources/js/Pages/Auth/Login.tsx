@@ -5,10 +5,10 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Event, EventProps } from '@/types/front-end';
+import { faGoogle } from '@fortawesome/free-brands-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Head, Link, useForm } from '@inertiajs/react';
-import axios from 'axios';
-import { MailIcon } from 'lucide-react';
-import { FormEventHandler, useEffect } from 'react';
+import { FormEventHandler } from 'react';
 
 export default function Login({
     status,
@@ -35,14 +35,8 @@ export default function Login({
         client: client,
     });
 
-    useEffect(() => {
-        axios.get('/sanctum/csrf-cookie', { withCredentials: true });
-    }, []);
-
     const submit: FormEventHandler = async (e) => {
         e.preventDefault();
-
-        await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
 
         post(route('post.login'), {
             onSuccess: () => {
@@ -54,7 +48,7 @@ export default function Login({
 
     return (
         <GuestLayout props={props} client={client}>
-            <Head title="Log in" />
+            <Head title={'Log In | ' + event.name} />
 
             {status && (
                 <div className="text-sm font-medium text-green-600 shadow-md">
@@ -136,6 +130,19 @@ export default function Login({
                             Log in
                         </PrimaryButton>
                     </div>
+                    <div className="mt-2 flex flex-col items-center justify-center gap-0">
+                        <p className="text-sm text-gray-700">or</p>
+                        <a
+                            href={route(
+                                client ? 'client-auth.google' : 'auth.google',
+                                client,
+                            )}
+                            className="flex w-full items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-2 text-center font-bold text-white"
+                        >
+                            <FontAwesomeIcon icon={faGoogle} size="sm" />
+                            <span className="text-xs">Login With Google</span>
+                        </a>
+                    </div>
                 </form>
             ) : (
                 <div className="flex">
@@ -144,10 +151,10 @@ export default function Login({
                             client ? 'client-auth.google' : 'auth.google',
                             client,
                         )}
-                        className="mt-2 flex w-full justify-center space-x-4 rounded-md bg-red-700 p-[1vw] text-center font-bold text-white"
+                        className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-2 text-center font-bold text-white"
                     >
-                        <MailIcon />
-                        <span>Login With Google</span>
+                        <FontAwesomeIcon icon={faGoogle} size="sm" />
+                        <span className="text-xs">Login With Google</span>
                     </a>
                 </div>
             )}

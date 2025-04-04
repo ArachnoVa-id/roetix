@@ -24,6 +24,18 @@ const StyledButton = styled.button<{ $props: EventColorProps }>`
     }`}
 `;
 
+const changeFavicon = (faviconUrl: string) => {
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (link) {
+        link.href = faviconUrl;
+    } else {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.href = faviconUrl;
+        document.head.appendChild(newLink);
+    }
+};
+
 export default function Authenticated({
     header,
     children,
@@ -36,10 +48,15 @@ export default function Authenticated({
     client: string;
     props: EventProps;
 }>) {
-    const user = usePage().props?.auth.user;
+    const user = usePage().props.auth.user;
+
     const [eventColorProps, setEventColorProps] = useState<EventColorProps>(
         {} as EventColorProps,
     );
+
+    useEffect(() => {
+        changeFavicon(props.favicon);
+    }, [props.favicon]);
 
     useEffect(() => {
         if (props) setEventColorProps(deconstructEventColorProps(props));
@@ -89,7 +106,7 @@ export default function Authenticated({
                                     }
                                     active={route().current('client.home')}
                                 >
-                                    Beli Tiket
+                                    Buy Ticket
                                 </NavLink>
                                 <NavLink
                                     eventProps={props}
@@ -102,7 +119,7 @@ export default function Authenticated({
                                         'client.my_tickets',
                                     )}
                                 >
-                                    Tiket Saya
+                                    My Tickets
                                 </NavLink>
                             </div>
                         </div>
@@ -117,8 +134,18 @@ export default function Authenticated({
                                             : ''
                                     }
                                     active={route().current('profile.edit')}
+                                    className="flex gap-3"
                                 >
-                                    Profile
+                                    <img
+                                        src={
+                                            user.contact_info.avatar ??
+                                            'images/default-avatar/default-avatar.png'
+                                        }
+                                        alt={'Avatar'}
+                                        className="h-8 rounded-lg"
+                                        loading="eager"
+                                    />
+                                    {user.first_name + ' ' + user.last_name}
                                 </NavLink>
                                 <NavLink
                                     className={
@@ -139,14 +166,6 @@ export default function Authenticated({
                                     href={route('logout')}
                                     target="_blank"
                                     active={false}
-                                    headers={{
-                                        'X-CSRF-TOKEN':
-                                            (
-                                                document.querySelector(
-                                                    'meta[name="csrf-token"]',
-                                                ) as HTMLMetaElement
-                                            )?.content || '',
-                                    }}
                                 >
                                     Log Out
                                 </NavLink>
@@ -206,18 +225,20 @@ export default function Authenticated({
                 >
                     <div className="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink
+                            eventProps={props}
                             href={client ? route('client.home', client) : ''}
                             active={route().current('client.home')}
                         >
-                            Beli Tiket
+                            Buy Ticket
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
+                            eventProps={props}
                             href={
                                 client ? route('client.my_tickets', client) : ''
                             }
                             active={route().current('client.my_tickets')}
                         >
-                            Tiket Saya
+                            My Tickets
                         </ResponsiveNavLink>
                     </div>
 
@@ -229,25 +250,27 @@ export default function Authenticated({
                     >
                         <div className="px-4">
                             <div
-                                className="text-base font-medium"
+                                className="flex items-center gap-4 text-base font-medium"
                                 style={{
                                     color: props?.text_primary_color,
                                 }}
                             >
+                                <img
+                                    src={
+                                        user.contact_info.avatar ??
+                                        'images/default-avatar/default-avatar.png'
+                                    }
+                                    alt={'Avatar'}
+                                    className="h-8 rounded-lg"
+                                    loading="eager"
+                                />
                                 {user.first_name + ' ' + user.last_name}
                             </div>
-                            {/* <div
-                                className="text-sm font-medium"
-                                style={{
-                                    color: props?.text_secondary_color,
-                                }}
-                            >
-                                {user.email}
-                            </div> */}
                         </div>
 
                         <div className="mt-3 space-y-1">
                             <ResponsiveNavLink
+                                eventProps={props}
                                 href={
                                     client ? route('profile.edit', client) : ''
                                 }
@@ -255,6 +278,7 @@ export default function Authenticated({
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
+                                eventProps={props}
                                 className={user.role === 'user' ? 'hidden' : ''}
                                 href="#"
                                 onClick={() => {
@@ -264,6 +288,7 @@ export default function Authenticated({
                                 Admin Dashboard
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
+                                eventProps={props}
                                 method="post"
                                 href={route('logout')}
                                 as="button"
@@ -317,12 +342,14 @@ export default function Authenticated({
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                         <div className="flex flex-col">
                             <div className="relative flex flex-col items-center justify-between md:flex-row">
-                                <img
-                                    src={props?.logo}
-                                    alt={props?.logo_alt}
-                                    className="h-32 max-md:mb-4 md:h-8"
-                                />
-                                <div className="flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
+                                <Link href="/">
+                                    <img
+                                        src={props?.logo}
+                                        alt={props?.logo_alt}
+                                        className="h-8 rounded-lg"
+                                    />
+                                </Link>
+                                <div className="z-0 flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
                                     <Link
                                         href={route(
                                             'client.privacy_policy',
@@ -357,7 +384,7 @@ export default function Authenticated({
                                     </Link>
                                 </div>
                                 <p
-                                    className="text-sm"
+                                    className="z-10 text-sm"
                                     style={{
                                         color: props?.text_primary_color,
                                     }}

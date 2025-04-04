@@ -1,3 +1,5 @@
+import NavLink from '@/Components/NavLink';
+import { EventProps } from '@/types/front-end';
 import { Head, useForm } from '@inertiajs/react';
 import React, { FormEvent } from 'react';
 
@@ -9,14 +11,7 @@ interface LockedEventProps {
     };
     hasAttemptedLogin: boolean;
     loginError: string | null;
-    props: {
-        logo?: string;
-        logo_alt?: string;
-        primary_color?: string;
-        secondary_color?: string;
-        text_primary_color?: string;
-        text_secondary_color?: string;
-    };
+    props: EventProps;
 }
 
 // Define a properly typed interface for the form
@@ -44,35 +39,41 @@ export default function LockedEvent({
     };
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-            <Head title={`${event.name} - Protected Event`} />
+        <div
+            className="flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8"
+            style={{
+                backgroundColor: props.primary_color,
+                backgroundImage: `url(${props.texture})`,
+                backgroundRepeat: 'repeat',
+                backgroundSize: 'auto',
+            }}
+        >
+            <Head title={'Protected:  ' + event.name} />
 
             <div
-                className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-md"
+                className="flex w-full max-w-md flex-col items-center justify-center gap-4 rounded-lg p-8 shadow-md"
                 style={{
-                    backgroundColor: props.secondary_color || '#ffffff',
-                    color: props.text_primary_color || '#000000',
+                    backgroundColor: props.secondary_color,
+                    color: props.text_primary_color,
                 }}
             >
                 {props.logo && (
-                    <div className="flex justify-center">
-                        <img
-                            src={props.logo}
-                            alt={props.logo_alt || 'Logo'}
-                            className="h-16 w-auto"
-                        />
-                    </div>
+                    <img
+                        src={props.logo}
+                        alt={props.logo_alt || 'Logo'}
+                        className="h-32 w-auto rounded-lg"
+                    />
                 )}
 
                 <div className="text-center">
                     <h2
-                        className="mt-6 text-3xl font-extrabold"
+                        className="text-3xl font-extrabold"
                         style={{ color: props.text_primary_color || '#1f2937' }}
                     >
                         {event.name}
                     </h2>
                     <p
-                        className="mt-2 text-sm"
+                        className="text-sm"
                         style={{
                             color: props.text_secondary_color || '#4b5563',
                         }}
@@ -81,7 +82,7 @@ export default function LockedEvent({
                     </p>
                 </div>
 
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
                     <div className="rounded-md shadow-sm">
                         <div>
                             <label htmlFor="event_password" className="sr-only">
@@ -117,21 +118,33 @@ export default function LockedEvent({
                         </div>
                     )}
 
-                    <div>
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className="group relative flex w-full justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2"
-                            style={{
-                                backgroundColor:
-                                    props.primary_color || '#4F46E5',
-                                color: '#ffffff',
-                                borderRadius: '0.375rem',
-                            }}
-                        >
-                            {processing ? 'Verifying...' : 'Enter Event'}
-                        </button>
-                    </div>
+                    <button
+                        type="submit"
+                        disabled={processing}
+                        className="inline-flex w-full items-center justify-center rounded-lg border-b-2 border-b-transparent px-6 pb-2 pt-2 text-center text-sm font-medium leading-5 transition duration-150 ease-in-out hover:border-b-white focus:outline-none"
+                        style={{
+                            backgroundColor: props.primary_color || '#4F46E5',
+                            color: '#FFFFFF',
+                            borderRadius: '0.375rem',
+                        }}
+                    >
+                        {processing ? 'Verifying...' : 'Enter Event'}
+                    </button>
+
+                    <NavLink
+                        eventProps={props}
+                        method="post"
+                        href={route('logout')}
+                        target="_blank"
+                        active={false}
+                        className="flex w-full items-center justify-center rounded-lg px-6 pb-2 pt-2 text-center"
+                        style={{
+                            backgroundColor: props.primary_color,
+                            color: props.text_primary_color,
+                        }}
+                    >
+                        Log Out
+                    </NavLink>
                 </form>
             </div>
         </div>

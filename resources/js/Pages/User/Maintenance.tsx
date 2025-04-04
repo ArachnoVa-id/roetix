@@ -1,3 +1,5 @@
+import NavLink from '@/Components/NavLink';
+import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
 import React from 'react';
 
@@ -12,14 +14,7 @@ interface MaintenanceProps {
         message: string;
         expected_finish: string | null;
     };
-    props: {
-        logo?: string;
-        logo_alt?: string;
-        primary_color?: string;
-        secondary_color?: string;
-        text_primary_color?: string;
-        text_secondary_color?: string;
-    };
+    props: EventProps;
 }
 
 export default function Maintenance({
@@ -29,35 +24,46 @@ export default function Maintenance({
     props,
 }: MaintenanceProps): React.ReactElement {
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-            <Head title={maintenance.title} />
+        <div
+            className="flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8"
+            style={{
+                backgroundColor: props.primary_color,
+                backgroundImage: `url(${props.texture})`,
+                backgroundRepeat: 'repeat',
+                backgroundSize: 'auto',
+            }}
+        >
+            <Head title={'Maintenance:  ' + maintenance.title} />
 
             <div
-                className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-md"
+                className="flex w-full max-w-md flex-col items-center justify-center gap-4 rounded-lg p-8 shadow-md"
                 style={{
-                    backgroundColor: props.secondary_color || '#ffffff',
-                    color: props.text_primary_color || '#000000',
+                    backgroundColor: props.secondary_color,
+                    color: props.text_primary_color,
                 }}
             >
                 {props.logo && (
-                    <div className="flex justify-center">
-                        <img
-                            src={props.logo}
-                            alt={props.logo_alt || 'Logo'}
-                            className="h-16 w-auto"
-                        />
-                    </div>
+                    <img
+                        src={props.logo}
+                        alt={props.logo_alt || 'Logo'}
+                        className="h-32 w-auto rounded-lg"
+                    />
                 )}
-
-                <div className="text-center">
+                <h2
+                    className="text-2xl font-extrabold"
+                    style={{ color: props.text_primary_color || '#1f2937' }}
+                >
+                    Event is Under Maintenance
+                </h2>
+                <div className="flex flex-col text-center">
                     <h2
-                        className="mt-6 text-3xl font-extrabold"
+                        className="text-xl font-extrabold"
                         style={{ color: props.text_primary_color || '#1f2937' }}
                     >
                         {maintenance.title}
                     </h2>
                     <p
-                        className="mt-2 text-sm"
+                        className="text-sm"
                         style={{
                             color: props.text_secondary_color || '#4b5563',
                         }}
@@ -67,61 +73,55 @@ export default function Maintenance({
 
                     {maintenance.expected_finish && (
                         <div
-                            className="mt-4 rounded-md p-4"
+                            className="mt-2 rounded-md p-4"
                             style={{
                                 backgroundColor: `${props.primary_color || '#fef3c7'}20`,
                                 borderColor: props.primary_color || '#fcd34d',
                             }}
                         >
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <svg
-                                        className="h-5 w-5"
-                                        style={{
-                                            color:
-                                                props.primary_color ||
-                                                '#f59e0b',
-                                        }}
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fillRule="evenodd"
-                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                                            clipRule="evenodd"
-                                        />
-                                    </svg>
-                                </div>
-                                <div className="ml-3">
-                                    <h3
-                                        className="text-sm font-medium"
-                                        style={{
-                                            color:
-                                                props.text_primary_color ||
-                                                '#92400e',
-                                        }}
-                                    >
-                                        Expected completion
-                                    </h3>
-                                    <div
-                                        className="mt-2 text-sm"
-                                        style={{
-                                            color:
-                                                props.text_secondary_color ||
-                                                '#b45309',
-                                        }}
-                                    >
-                                        <p>{maintenance.expected_finish}</p>
-                                    </div>
+                            <div className="flex flex-col items-center px-4">
+                                <h3
+                                    className="text-sm font-medium"
+                                    style={{
+                                        color:
+                                            props.text_primary_color ||
+                                            '#92400e',
+                                    }}
+                                >
+                                    Expected completion
+                                </h3>
+                                <div
+                                    className="text-sm"
+                                    style={{
+                                        color:
+                                            props.text_secondary_color ||
+                                            '#b45309',
+                                    }}
+                                >
+                                    <p>{maintenance.expected_finish}</p>
                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
 
+                <NavLink
+                    eventProps={props}
+                    method="post"
+                    href={route('logout')}
+                    target="_blank"
+                    active={false}
+                    className="flex items-center justify-center rounded-lg px-6 pb-2 pt-2 text-center"
+                    style={{
+                        backgroundColor: props.primary_color,
+                        color: props.text_primary_color,
+                    }}
+                >
+                    Log Out
+                </NavLink>
+
                 <div
-                    className="mt-6 text-center text-sm"
+                    className="text-center text-sm"
                     style={{ color: props.text_secondary_color || '#6b7280' }}
                 >
                     <p>

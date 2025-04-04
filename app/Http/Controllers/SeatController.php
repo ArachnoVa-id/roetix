@@ -196,13 +196,13 @@ class SeatController extends Controller
                             }
                         } else {
                             // Fallback to stored ticket type
-                            $seatData['ticket_type'] = $ticket->ticket_type ?? 'standard';
+                            $seatData['ticket_type'] = $ticket->ticket_type ?? 'unset';
                             $seatData['price'] = $ticket->price ?? 0;
                         }
                     } else {
                         // Default values for seats without tickets
-                        $seatData['status'] = 'reserved';
-                        $seatData['ticket_type'] = 'standard';
+                        $seatData['status'] = 'unset';
+                        $seatData['ticket_type'] = 'unset';
                         $seatData['price'] = 0;
                     }
 
@@ -223,7 +223,7 @@ class SeatController extends Controller
 
             // If no categories are defined, use default
             if (empty($ticketTypes)) {
-                $ticketTypes = ['standard', 'VIP'];
+                $ticketTypes = ['unset'];
             }
 
             // Category colors for UI
@@ -337,7 +337,6 @@ class SeatController extends Controller
         }
     }
 
-    // SeatController.php
     public function update(Request $request)
     {
         Log::info('Request headers:', $request->headers->all());
@@ -372,37 +371,6 @@ class SeatController extends Controller
             return response()->json([
                 'error' => 'Failed to update seats'
             ], 422);
-        }
-    }
-
-    public function spreadsheet()
-    {
-        try {
-            $seats = Seat::orderBy('row')->orderBy('column')->get();
-
-            $layout = [
-                'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
-                'totalColumns' => $seats->max('column'),
-                'items' => $seats->map(function ($seat) {
-                    return [
-                        'type' => 'seat',
-                        'seat_id' => $seat->seat_id,
-                        'seat_number' => $seat->seat_number, // Tambahkan ini
-                        'row' => $seat->row,
-                        'column' => $seat->column,
-                        'status' => $seat->status,
-                        'category' => $seat->category,
-                        'price' => $seat->price
-                    ];
-                })->values()
-            ];
-
-            return Inertia::render('Seat/Spreadsheet', [
-                'layout' => $layout
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error in spreadsheet method: ' . $e->getMessage());
-            return redirect()->back()->withErrors(['error' => 'Failed to load seat spreadsheet']);
         }
     }
 
@@ -705,51 +673,4 @@ class SeatController extends Controller
 
         return $seatId;
     }
-
-    // public function getEventTimelines(Request $request, $eventId)
-    // {
-    //     try {
-    //         // Validate event access
-    //         $event = Event::findOrFail($eventId);
-
-    //         // Get all timelines for this event
-    //         $timelines = TimelineSession::where('event_id', $eventId)
-    //             ->orderBy('start_date')
-    //             ->get();
-
-    //         // Determine current timeline based on current date
-    //         $currentDate = Carbon::now();
-    //         $currentTimeline = TimelineSession::where('event_id', $eventId)
-    //             ->where('start_date', '<=', $currentDate)
-    //             ->where('end_date', '>=', $currentDate)
-    //             ->first();
-
-    //         // If no current timeline, get the upcoming one or the most recent one
-    //         if (!$currentTimeline && $timelines->isNotEmpty()) {
-    //             $currentTimeline = TimelineSession::where('event_id', $eventId)
-    //                 ->where('start_date', '>', $currentDate)
-    //                 ->orderBy('start_date')
-    //                 ->first();
-
-    //             if (!$currentTimeline) {
-    //                 $currentTimeline = TimelineSession::where('event_id', $eventId)
-    //                     ->where('end_date', '<', $currentDate)
-    //                     ->orderBy('end_date', 'desc')
-    //                     ->first();
-    //             }
-    //         }
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'timelines' => $timelines,
-    //             'currentTimeline' => $currentTimeline
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         Log::error('Error fetching event timelines: ' . $e->getMessage());
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to fetch timelines: ' . $e->getMessage()
-    //         ], 422);
-    //     }
-    // }
 }

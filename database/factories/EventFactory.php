@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\EventStatus;
 use App\Enums\TicketStatus;
+use App\Enums\VenueStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use App\Models\Event;
@@ -40,7 +41,7 @@ class EventFactory extends Factory
 
         return [
             'team_id' => Team::inRandomOrder()->first()?->team_id,
-            'venue_id' => Venue::inRandomOrder()->first()?->venue_id,
+            'venue_id' => Venue::where('status', VenueStatus::ACTIVE->value)->inRandomOrder()->first()?->venue_id,
             'name' => $name,
             'slug' => $slug,
             'start_date' => $this->faker->dateTimeBetween('now', '+1 month'),

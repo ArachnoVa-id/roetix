@@ -2,12 +2,15 @@
 
 namespace App\Enums;
 
+use App\Enums\Traits\BaseEnumTrait;
 use Filament\Support\Colors\Color;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
 enum TicketOrderStatus: string implements HasLabel, HasColor
 {
+    use BaseEnumTrait;
+
     case ENABLED = 'enabled';
     case SCANNED = 'scanned';
     case DEACTIVATED = 'deactivated';
@@ -25,42 +28,29 @@ enum TicketOrderStatus: string implements HasLabel, HasColor
     {
         return match ($this) {
             self::ENABLED => Color::Green,
-            self::SCANNED => Color::Yellow,
+            self::SCANNED => Color::Blue,
             self::DEACTIVATED => Color::Red,
         };
     }
 
-    public static function fromLabel(string $label): self
+    public function getIcon(): string
     {
-        foreach (self::cases() as $case) {
-            if ($case->getLabel() === $label) {
-                return $case;
-            }
-        }
-
-        throw new \ValueError("\"$label\" is not a valid label for enum " . self::class);
+        return match ($this) {
+            self::ENABLED => 'heroicon-o-check-circle',
+            self::SCANNED => 'heroicon-o-check-circle',
+            self::DEACTIVATED => 'heroicon-o-x-circle',
+        };
     }
 
-    public static function toArray(): array
+    public static function editableOptions(TicketOrderStatus $currentStatus)
     {
-        return array_map(fn($case) => $case->getLabel(), self::cases());
-    }
-
-    public static function values(): array
-    {
-        return array_map(fn($case) => $case->value, self::cases());
-    }
-
-    public static function editableOptions()
-    {
-        return [
+        $returnStatuses = [
             self::ENABLED->value => self::ENABLED->getLabel(),
             self::DEACTIVATED->value => self::DEACTIVATED->getLabel(),
         ];
-    }
 
-    public static function getEditableOptionsValues()
-    {
-        return array_keys(self::editableOptions());
+        $returnStatuses[$currentStatus->value] = $currentStatus->getLabel();
+
+        return $returnStatuses;
     }
 }

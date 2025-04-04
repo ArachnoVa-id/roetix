@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 
@@ -29,6 +33,13 @@ class Ticket extends Model
         'team_id'
     ];
 
+    protected $with = [
+        'team',
+        'ticketOrders',
+        'ticketOrders.order',
+        'ticketOrders.order.user',
+    ];
+
     protected static function boot()
     {
         parent::boot();
@@ -38,19 +49,72 @@ class Ticket extends Model
                 $model->ticket_id = (string) Str::uuid();
             }
 
-            if (!empty($model->event_id)) {
-                $event = Event::find($model->event_id);
-                if ($event) {
-                    $model->team_id = $event->team_id;
+            if (empty($model->ticket_code)) {
+                // Ambil event jika ada
+                if (!empty($model->event_id)) {
+                    $event = Event::find($model->event_id);
+
+                    if ($event) {
+                        $model->team_id = $event->team_id;
+
+                        // Dapatkan kode event dari slug
+                        $slug = strtoupper(Str::slug($event->name));
+                        $codeEvent = substr($slug, 0, 4);
+
+                        // Jika kurang dari 4 karakter, tambahkan 0
+                        $codeEvent = str_pad($codeEvent, 4, '0');
+
+                        // Buat 8 karakter alfanumerik acak
+                        $randomCode = Str::random(8);
+
+                        // Kombinasikan
+                        $model->ticket_code = $codeEvent . $randomCode;
+                    }
                 }
             }
         });
+    }
+
+    public function getQRCode()
+    {
+        // Generate QR Code
+        $renderer = new ImageRenderer(
+            new RendererStyle(300, 0),
+            new SvgImageBackEnd()
+        );
+
+        $writer = new Writer($renderer);
+        $qrCode = base64_encode($writer->writeString($this->ticket_code));
+
+        return $qrCode;
+    }
+
+    public function getColor()
+    {
+        $category = $this->ticketCategory;
+        return $category->color;
     }
 
     public function getTicketPDFTitle(): string
     {
         $event = $this->event;
         return strtoupper($event->slug) . '-' . $event->eventYear() . '-' . strtoupper($this->ticket_id) . '-TICKET' . '.pdf';
+    }
+
+    public function getLatestOwner()
+    {
+        $latestTicketOrder = $this->latestTicketOrder;
+
+        if ($latestTicketOrder && $latestTicketOrder->relationLoaded('order') && $latestTicketOrder->order->relationLoaded('user')) {
+            return $latestTicketOrder->order->user->email ?? null;
+        }
+
+        return null;
+    }
+
+    public function latestTicketOrder(): HasOne
+    {
+        return $this->hasOne(TicketOrder::class, 'ticket_id', 'ticket_id')->latestOfMany();
     }
 
     public function event(): BelongsTo
@@ -76,6 +140,11 @@ class Ticket extends Model
     public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'ticket_order', 'ticket_id', 'order_id');
+    }
+
+    public function timelineSessions(): HasMany
+    {
+        return $this->hasMany(TimelineSession::class, 'event_id', 'event_id');
     }
 
     public function ticketCategory(): BelongsTo

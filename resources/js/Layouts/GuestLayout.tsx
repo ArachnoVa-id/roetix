@@ -1,12 +1,28 @@
 import { EventProps } from '@/types/front-end';
 import { Link } from '@inertiajs/react';
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useEffect } from 'react';
+
+const changeFavicon = (faviconUrl: string) => {
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (link) {
+        link.href = faviconUrl;
+    } else {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.href = faviconUrl;
+        document.head.appendChild(newLink);
+    }
+};
 
 export default function Guest({
     children,
     client,
     props,
 }: PropsWithChildren & { props: EventProps; client: string }) {
+    useEffect(() => {
+        changeFavicon(props.favicon);
+    }, [props.favicon]);
+
     return (
         <div
             className="flex min-h-screen w-full flex-col items-center justify-center gap-4 p-4"

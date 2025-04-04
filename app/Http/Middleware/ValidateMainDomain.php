@@ -25,7 +25,7 @@ class ValidateMainDomain
 
         // Ensure subdomains are blocked from the main domain
         if ($currentDomain !== $mainDomain) {
-            return redirect()->route('client.home');
+            return redirect()->route('client.home', ['client' => $request->route('client')]);
         }
 
         // Check if user is authenticated before accessing properties
@@ -40,7 +40,7 @@ class ValidateMainDomain
 
         $user = User::find($user->id);
 
-        if ($user->role === UserRole::USER->value) {
+        if ($user->isUser()) {
             Auth::logout();
             return redirect()->route('login');
         }
@@ -51,8 +51,8 @@ class ValidateMainDomain
             return redirect()->route('login');
         }
 
-        if ($request->route()->getName() === 'login') {
-            if ($user->role == UserRole::ADMIN->value) {
+        if ($request->route()->getName() === 'login' || $request->route()->getName() === 'home') {
+            if ($user->isAdmin()) {
                 return redirect()->route('filament.novatix-admin.pages.dashboard');
             }
             return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]);

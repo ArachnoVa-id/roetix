@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('maintenance_message')->default('')->nullable();
             $table->dateTime('maintenance_expected_finish')->default(now())->nullable();
 
-            $table->string('logo', 2048)->nullable();
+            $table->string('logo')->nullable();
             $table->string('logo_alt')->default('')->nullable();
             $table->string('favicon')->default('')->nullable();
             $table->string('texture')->default('')->nullable();
@@ -36,6 +36,16 @@ return new class extends Migration
             $table->string('secondary_color')->default('');
             $table->string('text_primary_color')->default('');
             $table->string('text_secondary_color')->default('');
+
+            $table->text('terms_and_conditions')->nullable();
+            $table->text('privacy_policy')->nullable();
+
+            $table->text('midtrans_client_key_sb')->nullable();
+            $table->text('midtrans_server_key_sb')->nullable();
+            $table->text('midtrans_client_key')->nullable();
+            $table->text('midtrans_server_key')->nullable();
+            $table->boolean('midtrans_is_production')->default(false);
+            $table->boolean('midtrans_use_novatix')->default(false);
 
             $table->timestamps();
         });

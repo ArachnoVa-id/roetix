@@ -1,41 +1,29 @@
 import { Button } from '@/Components/ui/button';
+import { GridCell, GridDimensions, GridSeatEditorProps } from '@/types/editor';
+import { Layout, LayoutItem, SeatItem, SeatStatus } from '@/types/seatmap';
 import { MousePointer, Plus, Square, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Category, Layout, LayoutItem, SeatItem, SeatStatus } from './types';
-
-interface Props {
-    initialLayout?: Layout;
-    onSave?: (layout: Layout) => void;
-    venueId: string;
-    isDisabled?: boolean;
-}
-
-interface GridCell {
-    type: 'empty' | 'seat' | 'label';
-    item?: SeatItem;
-    isBlocked?: boolean;
-}
-
-interface GridDimensions {
-    top: number;
-    bottom: number;
-    left: number;
-    right: number;
-}
 
 // Helper function to convert Excel-style column label to number
 const getRowNumber = (label: string): number => {
     let result = 0;
+    
+    // Iterasi melalui setiap karakter dalam label
     for (let i = 0; i < label.length; i++) {
+        // Untuk setiap posisi, kalikan hasil sejauh ini dengan 26
         result *= 26;
-        result += label.charCodeAt(i) - 64; // 'A' is 65 in ASCII
+        // Tambahkan nilai karakter saat ini (A=1, B=2, ..., Z=26)
+        const charValue = label.charCodeAt(i) - 64; // 'A' adalah 65 di ASCII
+        result += charValue;
     }
-    return result;
+    
+    // Kurangi 1 untuk mendapatkan indeks 0-based
+    return result - 1;
 };
 
 type EditorMode = 'add' | 'delete' | 'block';
 
-const GridSeatEditor: React.FC<Props> = ({
+const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
     initialLayout,
     onSave,
     isDisabled,
@@ -48,6 +36,8 @@ const GridSeatEditor: React.FC<Props> = ({
         right: 15,
     });
 
+    const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+    const [hasChanges, setHasChanges] = useState(false);
     const [grid, setGrid] = useState<GridCell[][]>([]);
     const [mode, setMode] = useState<EditorMode>('add');
     const [isMouseDown, setIsMouseDown] = useState(false);
@@ -58,6 +48,15 @@ const GridSeatEditor: React.FC<Props> = ({
     const [endCell, setEndCell] = useState<{ row: number; col: number } | null>(
         null,
     );
+    const [blockedAreas, setBlockedAreas] = useState<
+        {
+            minRow: number;
+            maxRow: number;
+            minCol: number;
+            maxCol: number;
+        }[]
+    >([]);
+    const gridContainerRef = useRef<HTMLDivElement>(null);
 
     // State for improved block mode
     const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -67,9 +66,13 @@ const GridSeatEditor: React.FC<Props> = ({
         minCol: number;
         maxCol: number;
     } | null>(null);
+    const [autoScrollDirection, setAutoScrollDirection] = useState({
+        horizontal: 0, // -1: left, 0: none, 1: right
+        vertical: 0, // -1: up, 0: none, 1: down
+    });
 
     // Default values for new seats
-    const defaultCategory: Category = 'standard';
+    const defaultCategory = 'unset';
     const defaultStatus: SeatStatus = 'available';
 
     const totalRows = dimensions.top + dimensions.bottom;
@@ -79,21 +82,23 @@ const GridSeatEditor: React.FC<Props> = ({
 
     // Function to check if a cell is in the most recently blocked/unblocked area
     const isInBlockedArea = (rowIndex: number, colIndex: number): boolean => {
-        if (!blockedArea) return false;
+        if (blockedAreas.length === 0) return false;
 
-        return (
-            rowIndex >= blockedArea.minRow &&
-            rowIndex <= blockedArea.maxRow &&
-            colIndex >= blockedArea.minCol &&
-            colIndex <= blockedArea.maxCol
+        // Cek apakah sel berada di salah satu block area
+        return blockedAreas.some(
+            (area) =>
+                rowIndex >= area.minRow &&
+                rowIndex <= area.maxRow &&
+                colIndex >= area.minCol &&
+                colIndex <= area.maxCol,
         );
     };
 
     // Handle mode change with cleanup
     const handleModeChange = (newMode: EditorMode) => {
-        // Clear blocked area highlight when switching out of block mode
+        // Clear blocked areas when switching out of block mode
         if (mode === 'block') {
-            setBlockedArea(null);
+            setBlockedAreas([]);
         }
         setMode(newMode);
     };
@@ -102,13 +107,13 @@ const GridSeatEditor: React.FC<Props> = ({
     const findHighestRow = (items: LayoutItem[]): number => {
         let maxRow = 0;
         items.forEach((item) => {
-            if (item.type === 'seat') {
-                const rowNum =
-                    typeof item.row === 'string'
-                        ? getRowNumber(item.row) - 1
-                        : item.row;
-                maxRow = Math.max(maxRow, rowNum);
-            }
+            // if (item.type === 'seat') {
+            const rowNum =
+                typeof item.row === 'string'
+                    ? getRowNumber(item.row) - 1
+                    : item.row;
+            maxRow = Math.max(maxRow, rowNum);
+            // }
         });
         return maxRow;
     };
@@ -117,9 +122,9 @@ const GridSeatEditor: React.FC<Props> = ({
     const findHighestColumn = (items: LayoutItem[]): number => {
         let maxCol = 0;
         items.forEach((item) => {
-            if (item.type === 'seat') {
-                maxCol = Math.max(maxCol, item.column);
-            }
+            // if (item.type === 'seat') {
+            maxCol = Math.max(maxCol, item.column);
+            // }
         });
         return maxCol;
     };
@@ -134,27 +139,27 @@ const GridSeatEditor: React.FC<Props> = ({
             );
 
         if (initialLayout) {
-            initialLayout.items.forEach((item) => {
-                if (item.type === 'seat') {
-                    const seatItem = item as SeatItem;
-                    const rowIndex =
-                        typeof seatItem.row === 'string'
-                            ? getRowNumber(seatItem.row) - 1 + dimensions.top
-                            : seatItem.row + dimensions.top;
-                    const colIndex = seatItem.column - 1 + dimensions.left;
+            initialLayout.items.forEach((item: SeatItem) => {
+                // if (item.type === 'seat') {
+                const seatItem = item;
+                const rowIndex =
+                    typeof seatItem.row === 'string'
+                        ? getRowNumber(seatItem.row) - 1 + dimensions.top
+                        : seatItem.row + dimensions.top;
+                const colIndex = seatItem.column - 1 + dimensions.left;
 
-                    if (
-                        rowIndex >= 0 &&
-                        rowIndex < totalRows &&
-                        colIndex >= 0 &&
-                        colIndex < totalColumns
-                    ) {
-                        newGrid[rowIndex][colIndex] = {
-                            type: 'seat',
-                            item: seatItem,
-                        };
-                    }
+                if (
+                    rowIndex >= 0 &&
+                    rowIndex < totalRows &&
+                    colIndex >= 0 &&
+                    colIndex < totalColumns
+                ) {
+                    newGrid[rowIndex][colIndex] = {
+                        type: 'seat',
+                        item: seatItem,
+                    };
                 }
+                // }
             });
         }
 
@@ -166,6 +171,37 @@ const GridSeatEditor: React.FC<Props> = ({
         totalRows,
         totalColumns,
     ]);
+
+    useEffect(() => {
+        if (
+            autoScrollDirection.horizontal === 0 &&
+            autoScrollDirection.vertical === 0
+        ) {
+            return;
+        }
+
+        // Create interval for continuous scrolling
+        const scrollInterval = setInterval(() => {
+            if (!gridContainerRef.current) return;
+
+            const container = gridContainerRef.current;
+            const scrollAmount = 15;
+
+            // Apply horizontal scrolling
+            if (autoScrollDirection.horizontal !== 0) {
+                container.scrollLeft +=
+                    autoScrollDirection.horizontal * scrollAmount;
+            }
+
+            // Apply vertical scrolling
+            if (autoScrollDirection.vertical !== 0) {
+                container.scrollTop +=
+                    autoScrollDirection.vertical * scrollAmount;
+            }
+        }, 50); // Adjust timing as needed for smoothness
+
+        return () => clearInterval(scrollInterval);
+    }, [autoScrollDirection]);
 
     // Initialize grid when dimensions change
     useEffect(() => {
@@ -222,6 +258,11 @@ const GridSeatEditor: React.FC<Props> = ({
     const handleMouseDown = (rowIndex: number, colIndex: number) => {
         if (mode !== 'block') return;
 
+        // Hapus block area sebelumnya ketika mulai selection baru
+        if (blockedArea !== null) {
+            setBlockedArea(null);
+        }
+
         setIsMouseDown(true);
         setIsDragging(true);
         setStartCell({ row: rowIndex, col: colIndex });
@@ -231,12 +272,66 @@ const GridSeatEditor: React.FC<Props> = ({
     const handleMouseOver = (rowIndex: number, colIndex: number) => {
         if (!isMouseDown || mode !== 'block') return;
 
+        // Update endCell for selection
         setEndCell({ row: rowIndex, col: colIndex });
-    };
 
+        // Auto-scroll logic
+        if (gridContainerRef.current) {
+            const container = gridContainerRef.current;
+            const containerRect = container.getBoundingClientRect();
+
+            // Get all cells
+            const cells = container.querySelectorAll(
+                'div[class*="cursor-pointer"]',
+            );
+
+            // We need to calculate cell position in the visible grid
+            // This is a simplified approach - for a more accurate approach we'd need
+            // to get the exact cell element at the current position
+
+            // Create a temporary element to use for position detection
+            const tempElement = document.elementFromPoint(
+                containerRect.left + containerRect.width / 2,
+                containerRect.top + containerRect.height / 2,
+            );
+
+            // If we can find the element, use its position for calculations
+            if (tempElement) {
+                const cellRect = tempElement.getBoundingClientRect();
+
+                // Threshold values for when to start scrolling
+                const threshold = 60;
+
+                // Calculate scroll directions
+                let horizontalDirection = 0;
+                let verticalDirection = 0;
+
+                // Check right and left edges
+                if (cellRect.right > containerRect.right - threshold) {
+                    horizontalDirection = 1; // scroll right
+                } else if (cellRect.left < containerRect.left + threshold) {
+                    horizontalDirection = -1; // scroll left
+                }
+
+                // Check bottom and top edges
+                if (cellRect.bottom > containerRect.bottom - threshold) {
+                    verticalDirection = 1; // scroll down
+                } else if (cellRect.top < containerRect.top + threshold) {
+                    verticalDirection = -1; // scroll up
+                }
+
+                // Update auto-scroll direction
+                setAutoScrollDirection({
+                    horizontal: horizontalDirection,
+                    vertical: verticalDirection,
+                });
+            }
+        }
+    };
     const handleMouseUp = () => {
         if (!isMouseDown || mode !== 'block' || !startCell || !endCell) return;
 
+        setAutoScrollDirection({ horizontal: 0, vertical: 0 });
         // Process blocked area
         const minRow = Math.min(startCell.row, endCell.row);
         const maxRow = Math.max(startCell.row, endCell.row);
@@ -249,18 +344,31 @@ const GridSeatEditor: React.FC<Props> = ({
         const firstCell = newGrid[startCell.row][startCell.col];
         const isBlocking = !firstCell.isBlocked;
 
+        // Flag to determine if any change occurred
+        let changesMade = false;
+
         for (let i = minRow; i <= maxRow; i++) {
             for (let j = minCol; j <= maxCol; j++) {
-                // Toggle isBlocked flag instead of changing the cell type
-                newGrid[i][j] = {
-                    ...newGrid[i][j],
-                    isBlocked: isBlocking,
-                };
+                // Check if the isBlocked status will actually change
+                if (newGrid[i][j].isBlocked !== isBlocking) {
+                    changesMade = true;
+                    // Toggle isBlocked flag
+                    newGrid[i][j] = {
+                        ...newGrid[i][j],
+                        isBlocked: isBlocking,
+                    };
+                }
             }
         }
 
-        // Save the blocked area so we can highlight it
-        setBlockedArea({ minRow, maxRow, minCol, maxCol });
+        // Only update hasChanges if actual changes were made
+        if (changesMade) {
+            setHasChanges(true);
+        }
+
+        // Add the new blocked area to the array
+        const newBlockedArea = { minRow, maxRow, minCol, maxCol };
+        setBlockedAreas((prev) => [...prev, newBlockedArea]);
 
         setGrid(newGrid);
         setIsMouseDown(false);
@@ -279,6 +387,60 @@ const GridSeatEditor: React.FC<Props> = ({
         }, 100);
     };
 
+    const handleMouseLeave = () => {
+        if (isMouseDown) {
+            handleMouseUp();
+        }
+
+        // Always stop auto-scrolling when mouse leaves
+        setAutoScrollDirection({ horizontal: 0, vertical: 0 });
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isMouseDown || mode !== 'block' || !gridContainerRef.current)
+            return;
+
+        const container = gridContainerRef.current;
+        const containerRect = container.getBoundingClientRect();
+
+        // Mouse position relative to viewport
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+
+        // Calculate distances to container edges
+        const distanceToRight = containerRect.right - mouseX;
+        const distanceToLeft = mouseX - containerRect.left;
+        const distanceToBottom = containerRect.bottom - mouseY;
+        const distanceToTop = mouseY - containerRect.top;
+
+        // Threshold for when to start scrolling
+        const threshold = 60;
+
+        // Determine scroll directions based on mouse position
+        let horizontalDirection = 0;
+        let verticalDirection = 0;
+
+        // Check horizontal scrolling
+        if (distanceToRight < threshold) {
+            horizontalDirection = 1; // Scroll right
+        } else if (distanceToLeft < threshold) {
+            horizontalDirection = -1; // Scroll left
+        }
+
+        // Check vertical scrolling
+        if (distanceToBottom < threshold) {
+            verticalDirection = 1; // Scroll down
+        } else if (distanceToTop < threshold) {
+            verticalDirection = -1; // Scroll up
+        }
+
+        // Update auto-scroll direction
+        setAutoScrollDirection({
+            horizontal: horizontalDirection,
+            vertical: verticalDirection,
+        });
+    };
+
     // Function to toggle a single cell's blocked status
     const toggleBlockedCell = (rowIndex: number, colIndex: number) => {
         const newGrid = [...grid];
@@ -291,23 +453,48 @@ const GridSeatEditor: React.FC<Props> = ({
         };
 
         setGrid(newGrid);
+        setHasChanges(true);
+
+        // Add this single cell as a new blocked area
+        const newBlockedArea = {
+            minRow: rowIndex,
+            maxRow: rowIndex,
+            minCol: colIndex,
+            maxCol: colIndex,
+        };
+        setBlockedAreas((prev) => [...prev, newBlockedArea]);
     };
 
     // Function to get row label from bottom-up position
     const getAdjustedRowLabel = (index: number, totalRows: number): string => {
+        // 'index' adalah posisi dari bawah ke atas (0-based)
+        // Konversi ke 1-based untuk kalkulasi
         const rowFromBottom = index + 1;
-
+        
         if (rowFromBottom <= 0 || rowFromBottom > totalRows) return '';
-
+    
+        // Implementasi algoritma konversi angka ke label Excel
+        // Di mana 1 -> A, 2 -> B, ..., 26 -> Z, 27 -> AA, 28 -> AB, dst.
         let label = '';
         let n = rowFromBottom;
-
+        
         while (n > 0) {
-            n--;
-            label = String.fromCharCode(65 + (n % 26)) + label;
+            // Dapatkan sisa pembagian dengan 26 (jumlah huruf)
+            let remainder = n % 26;
+            
+            // Jika sisa pembagian 0, gunakan 'Z' dan kurangi n
+            if (remainder === 0) {
+                remainder = 26;
+                n -= 1;
+            }
+            
+            // Konversi angka ke huruf (A=1, B=2, ...) dan tambahkan ke depan label
+            label = String.fromCharCode(64 + remainder) + label;
+            
+            // Bagi n dengan 26 untuk mendapatkan digit berikutnya
             n = Math.floor(n / 26);
         }
-
+        
         return label;
     };
 
@@ -318,7 +505,7 @@ const GridSeatEditor: React.FC<Props> = ({
         const adjustedColumn = colIndex + 1;
 
         const newSeat: SeatItem = {
-            type: 'seat',
+            // type: 'seat',
             seat_id: '', // Kosongkan seat_id, akan dibuat di backend
             seat_number: `${rowLabel}${adjustedColumn}`,
             row: rowLabel,
@@ -339,6 +526,7 @@ const GridSeatEditor: React.FC<Props> = ({
 
         setGrid(newGrid);
         reorderSeatNumbers();
+        setHasChanges(true);
     };
 
     const deleteSeat = (rowIndex: number, colIndex: number) => {
@@ -353,65 +541,87 @@ const GridSeatEditor: React.FC<Props> = ({
 
         setGrid(newGrid);
         reorderSeatNumbers();
+        setHasChanges(true);
     };
 
     // Function to add seats to all empty cells in the blocked area
     const addSeatsToBlockedArea = () => {
-        if (!blockedArea) return;
+        if (blockedAreas.length === 0) return;
 
         const newGrid = [...grid];
+        let changesMade = false;
 
-        for (let i = blockedArea.minRow; i <= blockedArea.maxRow; i++) {
-            for (let j = blockedArea.minCol; j <= blockedArea.maxCol; j++) {
-                const cell = newGrid[i][j];
-                if (cell.type === 'empty' && cell.isBlocked) {
-                    const rowLabel = getAdjustedRowLabel(i, totalRows);
-                    const adjustedColumn = j + 1;
+        // Proses semua block areas
+        blockedAreas.forEach((area) => {
+            for (let i = area.minRow; i <= area.maxRow; i++) {
+                for (let j = area.minCol; j <= area.maxCol; j++) {
+                    const cell = newGrid[i][j];
+                    if (cell.type === 'empty' && cell.isBlocked) {
+                        changesMade = true;
+                        const rowLabel = getAdjustedRowLabel(i, totalRows);
+                        const adjustedColumn = j + 1;
 
-                    const newSeat: SeatItem = {
-                        type: 'seat',
-                        seat_id: '', // Kosongkan seat_id, akan dibuat di backend
-                        seat_number: `${rowLabel}${adjustedColumn}`,
-                        row: rowLabel,
-                        column: adjustedColumn,
-                        status: defaultStatus,
-                        category: defaultCategory,
-                        price: 0,
-                    };
+                        const newSeat: SeatItem = {
+                            seat_id: '', // Kosongkan seat_id, akan dibuat di backend
+                            seat_number: `${rowLabel}${adjustedColumn}`,
+                            row: rowLabel,
+                            column: adjustedColumn,
+                            status: defaultStatus,
+                            category: defaultCategory,
+                            price: 0,
+                        };
 
-                    newGrid[i][j] = {
-                        type: 'seat',
-                        item: newSeat,
-                        isBlocked: true,
-                    };
+                        newGrid[i][j] = {
+                            type: 'seat',
+                            item: newSeat,
+                            isBlocked: true,
+                        };
+                    }
                 }
             }
-        }
+        });
 
-        setGrid(newGrid);
-        reorderSeatNumbers();
+        if (changesMade) {
+            setGrid(newGrid);
+            reorderSeatNumbers();
+            setHasChanges(true);
+
+            // Clear blocked areas after adding seats
+            setBlockedAreas([]);
+        }
     };
 
     // Function to delete all seats in the blocked area
     const deleteSeatsFromBlockedArea = () => {
-        if (!blockedArea) return;
+        if (blockedAreas.length === 0) return;
 
         const newGrid = [...grid];
+        let changesMade = false;
 
-        for (let i = blockedArea.minRow; i <= blockedArea.maxRow; i++) {
-            for (let j = blockedArea.minCol; j <= blockedArea.maxCol; j++) {
-                const cell = newGrid[i][j];
-                if (cell.type === 'seat' && cell.isBlocked) {
-                    newGrid[i][j] = {
-                        type: 'empty',
-                        isBlocked: true,
-                    };
+        // Proses semua block areas
+        blockedAreas.forEach((area) => {
+            for (let i = area.minRow; i <= area.maxRow; i++) {
+                for (let j = area.minCol; j <= area.maxCol; j++) {
+                    const cell = newGrid[i][j];
+                    if (cell.type === 'seat' && cell.isBlocked) {
+                        changesMade = true;
+                        newGrid[i][j] = {
+                            type: 'empty',
+                            isBlocked: true,
+                        };
+                    }
                 }
             }
-        }
+        });
 
-        setGrid(newGrid);
-        reorderSeatNumbers();
+        if (changesMade) {
+            setGrid(newGrid);
+            reorderSeatNumbers();
+            setHasChanges(true);
+
+            // Clear blocked areas after deleting seats
+            setBlockedAreas([]);
+        }
     };
 
     const reorderSeatNumbers = () => {
@@ -494,6 +704,15 @@ const GridSeatEditor: React.FC<Props> = ({
         };
 
         onSave?.(layout);
+        setHasChanges(false);
+        setBlockedAreas([]);
+        // Show success notification
+        setShowSaveSuccess(true);
+
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+            setShowSaveSuccess(false);
+        }, 3000);
     };
 
     const getCellColor = (cell: GridCell): string => {
@@ -524,193 +743,62 @@ const GridSeatEditor: React.FC<Props> = ({
         }
     };
 
-    // const getModeButtonVariant = (buttonMode: EditorMode) => {
-    //     return mode === buttonMode ? 'default' : 'outline';
-    // };
-    // const DimensionControl = () => (
-    //     <div className="mb-6 space-y-4">
-    //         <div className="flex items-center gap-4">
-    //             <div>
-    //                 <label className="block text-sm font-medium text-gray-700">
-    //                     Bottom Rows
-    //                 </label>
-    //                 <div className="flex items-center gap-2">
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 top: Math.max(0, d.top - 1),
-    //                             }))
-    //                         }
-    //                     >
-    //                         -
-    //                     </Button>
-    //                     <span className="w-8 text-center">
-    //                         {dimensions.top}
-    //                     </span>
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({ ...d, top: d.top + 1 }))
-    //                         }
-    //                     >
-    //                         +
-    //                     </Button>
-    //                 </div>
-    //             </div>
-
-    //             <div>
-    //                 <label className="block text-sm font-medium text-gray-700">
-    //                     Top Rows
-    //                 </label>
-    //                 <div className="flex items-center gap-2">
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 bottom: Math.max(1, d.bottom - 1),
-    //                             }))
-    //                         }
-    //                     >
-    //                         -
-    //                     </Button>
-    //                     <span className="w-8 text-center">
-    //                         {dimensions.bottom}
-    //                     </span>
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 bottom: d.bottom + 1,
-    //                             }))
-    //                         }
-    //                     >
-    //                         +
-    //                     </Button>
-    //                 </div>
-    //             </div>
-    //         </div>
-
-    //         <div className="flex items-center gap-4">
-    //             <div>
-    //                 <label className="block text-sm font-medium text-gray-700">
-    //                     Left Columns
-    //                 </label>
-    //                 <div className="flex items-center gap-2">
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 left: Math.max(0, d.left - 1),
-    //                             }))
-    //                         }
-    //                     >
-    //                         -
-    //                     </Button>
-    //                     <span className="w-8 text-center">
-    //                         {dimensions.left}
-    //                     </span>
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 left: d.left + 1,
-    //                             }))
-    //                         }
-    //                     >
-    //                         +
-    //                     </Button>
-    //                 </div>
-    //             </div>
-
-    //             <div>
-    //                 <label className="block text-sm font-medium text-gray-700">
-    //                     Right Columns
-    //                 </label>
-    //                 <div className="flex items-center gap-2">
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 right: Math.max(1, d.right - 1),
-    //                             }))
-    //                         }
-    //                     >
-    //                         -
-    //                     </Button>
-    //                     <span className="w-8 text-center">
-    //                         {dimensions.right}
-    //                     </span>
-    //                     <Button
-    //                         variant="outline"
-    //                         onClick={() =>
-    //                             setDimensions((d) => ({
-    //                                 ...d,
-    //                                 right: d.right + 1,
-    //                             }))
-    //                         }
-    //                     >
-    //                         +
-    //                     </Button>
-    //                 </div>
-    //             </div>
-    //         </div>
-    //     </div>
-    // );
-
-    // Block area action buttons component
-    // const BlockAreaActions = () => {
-    //     if (mode !== 'block' || !blockedArea) return null;
-
-    //     return (
-    //         <div className="mb-4 rounded border border-blue-300 bg-blue-50 p-2">
-    //             <div className="mb-2 text-sm font-medium">Area Selected:</div>
-    //             <div className="flex gap-2">
-    //                 <Button
-    //                     variant="outline"
-    //                     onClick={addSeatsToBlockedArea}
-    //                     className="flex items-center gap-2 border-green-300 bg-white text-green-600 hover:bg-green-50"
-    //                 >
-    //                     <Plus size={16} />
-    //                     Add Seats
-    //                 </Button>
-    //                 <Button
-    //                     variant="outline"
-    //                     onClick={deleteSeatsFromBlockedArea}
-    //                     className="flex items-center gap-2 border-red-300 bg-white text-red-600 hover:bg-red-50"
-    //                 >
-    //                     <Trash2 size={16} />
-    //                     Delete Seats
-    //                 </Button>
-    //                 <Button
-    //                     variant="outline"
-    //                     onClick={() => setBlockedArea(null)}
-    //                     className="bg-white"
-    //                 >
-    //                     Cancel
-    //                 </Button>
-    //             </div>
-    //         </div>
-    //     );
-    // };
+    const [droppedDown, setDroppedDown] = useState(false);
+    const handleToggle = () => {
+        setDroppedDown((prev) => !prev);
+    };
 
     return (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen max-md:flex-col">
             {/* Panel Kontrol - Posisi absolut dengan lebar tetap di atas */}
-            <div className="fixed left-0 top-0 z-20 flex h-full w-72 flex-col border-r border-gray-200 bg-white shadow-lg">
+            <div
+                className={`flex h-fit w-72 flex-col border-r border-gray-200 bg-white shadow-lg max-md:order-2 max-md:w-full md:h-full`}
+            >
                 {/* Header */}
-                <div className="flex w-full gap-2 border-b border-gray-200 bg-blue-600 p-4 text-white">
+                <div className="flex w-full justify-between border-b border-gray-200 bg-blue-600 p-4 text-white">
+                    <div className="flex w-fit gap-2">
+                        <button
+                            className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
+                            onClick={() => window.history.back()}
+                        >
+                            {/* back icon */}
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <h2 className="flex items-center gap-2 text-xl font-bold">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
+                                <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
+                                <path d="M12 12v5"></path>
+                            </svg>
+                            Grid Seat Editor
+                        </h2>
+                    </div>
                     <button
-                        className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
-                        onClick={() => window.history.back()}
+                        className={`h-full w-fit rotate-90 rounded-full bg-blue-500 px-1 font-bold text-white duration-500 hover:bg-blue-700 md:hidden ${droppedDown ? 'rotate-90' : '-rotate-90'}`}
+                        onClick={handleToggle}
                     >
-                        {/* back icon */}
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="20"
@@ -725,29 +813,11 @@ const GridSeatEditor: React.FC<Props> = ({
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                     </button>
-                    <h2 className="flex items-center gap-2 text-xl font-bold">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
-                            <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
-                            <path d="M12 12v5"></path>
-                        </svg>
-                        Grid Seat Editor
-                    </h2>
                 </div>
 
                 {/* Content Scrollable */}
                 <div
-                    className="flex-1 overflow-y-auto p-5"
+                    className={`flex-l overflow-y-auto duration-500 md:h-full md:p-5 ${droppedDown ? 'max-md:h-0' : 'h-[35vh] p-5'}`}
                     ref={sidebarContentRef}
                 >
                     {/* Dimensi Layout Card */}
@@ -780,7 +850,7 @@ const GridSeatEditor: React.FC<Props> = ({
                             Dimensi Layout
                         </h3>
 
-                        <div className="space-y-5">
+                        <div className="max-md:grid max-md:grid-cols-2 max-md:gap-2 md:space-y-5">
                             <div className="rounded-lg bg-blue-50 p-3">
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
                                     Bottom Rows
@@ -1071,7 +1141,7 @@ const GridSeatEditor: React.FC<Props> = ({
                     </div>
 
                     {/* Block Area Actions - Conditional */}
-                    {mode === 'block' && blockedArea && (
+                    {mode === 'block' && blockedAreas.length > 0 && (
                         <div
                             className="mb-6 overflow-hidden rounded-xl border border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm"
                             ref={blockActionsRef}
@@ -1091,7 +1161,9 @@ const GridSeatEditor: React.FC<Props> = ({
                                     >
                                         <path d="M3 3h18v18H3z"></path>
                                     </svg>
-                                    Area Selected
+                                    {blockedAreas.length > 1
+                                        ? `${blockedAreas.length} Areas Selected`
+                                        : 'Area Selected'}
                                 </div>
                             </div>
                             <div className="p-3">
@@ -1114,10 +1186,10 @@ const GridSeatEditor: React.FC<Props> = ({
                                     </Button>
                                     <Button
                                         variant="outline"
-                                        onClick={() => setBlockedArea(null)}
+                                        onClick={() => setBlockedAreas([])}
                                         className="border-gray-300 bg-white py-2 shadow-sm transition-colors hover:bg-gray-50"
                                     >
-                                        Cancel
+                                        Clear Selection
                                     </Button>
                                 </div>
                             </div>
@@ -1126,11 +1198,13 @@ const GridSeatEditor: React.FC<Props> = ({
                 </div>
 
                 {/* Save Button */}
-                <div className="border-t border-gray-200 bg-gray-50 p-4">
+                <div
+                    className={`overflow-hidden border-gray-200 bg-gray-50 duration-500 md:border-t md:p-4 ${droppedDown ? 'max-md:h-0' : 'border-t p-4'}`}
+                >
                     <button
                         onClick={handleSave}
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 font-medium text-white shadow-sm transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={isDisabled}
+                        disabled={isDisabled || !hasChanges}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1147,15 +1221,17 @@ const GridSeatEditor: React.FC<Props> = ({
                             <polyline points="17 21 17 13 7 13 7 21"></polyline>
                             <polyline points="7 3 7 8 15 8"></polyline>
                         </svg>
-                        {isDisabled ? 'Saving...' : 'Save Layout'}
+                        {isDisabled
+                            ? 'Saving...'
+                            : hasChanges
+                              ? 'Save Layout'
+                              : 'No Changes'}
                     </button>
                 </div>
             </div>
+
             {/* Main content area */}
-            <div
-                className="flex-1 overflow-hidden bg-gray-50"
-                style={{ marginLeft: '18rem' }}
-            >
+            <div className="h-screen flex-1 overflow-auto bg-gray-50 max-md:order-1">
                 {/* Use a flex container to properly center and expand the content */}
                 <div className="flex h-full items-center justify-center">
                     <div className="h-full w-full p-4">
@@ -1164,14 +1240,13 @@ const GridSeatEditor: React.FC<Props> = ({
                             className="relative h-full w-full rounded-3xl border-2 border-dashed border-gray-300 bg-white p-4"
                             style={{ minHeight: '80vh' }}
                             onMouseUp={handleMouseUp}
-                            onMouseLeave={() => {
-                                if (isMouseDown) {
-                                    handleMouseUp();
-                                }
-                            }}
+                            onMouseLeave={handleMouseLeave}
                         >
-                            {/* Remove the overflow-auto from this container and put it on an inner element */}
-                            <div className="h-full w-full overflow-auto rounded-lg">
+                            <div
+                                className="h-full w-full overflow-auto rounded-lg"
+                                ref={gridContainerRef}
+                                onMouseMove={handleMouseMove}
+                            >
                                 <div className="min-w-max p-2">
                                     <div className="grid grid-flow-row gap-1">
                                         {[...grid]
@@ -1332,6 +1407,27 @@ const GridSeatEditor: React.FC<Props> = ({
             </div> */
     }
     //{' '}
+    {
+        showSaveSuccess && (
+            <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-md bg-green-100 px-4 py-2 text-green-800 shadow-lg">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                Layout saved successfully!
+            </div>
+        );
+    }
 };
 
 export default GridSeatEditor;

@@ -128,6 +128,7 @@ jobs:
           cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
           #!/bin/bash
           cd ~/novatix/app/develop
+          rm -rf storage/*
           php artisan migrate:fresh --force --seed
           php artisan config:clear
           sudo php artisan cache:clear
@@ -208,5 +209,6 @@ jobs:
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
+          php artisan storage:link
 
           EOF

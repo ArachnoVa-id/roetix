@@ -6,12 +6,15 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
+use App\Events\TicketPurchased;
+use App\Exports\OrdersExport;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Seat;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketOrder;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
 use Midtrans\Snap;
@@ -19,85 +22,106 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PaymentController extends Controller
 {
-    public function __construct()
-    {
-        // Set up Midtrans configuration from a single place
-        Config::$serverKey = config('midtrans.server_key');
-        Config::$isProduction = config('midtrans.is_production', false);
-        Config::$isSanitized = config('midtrans.is_sanitized', true);
-        Config::$is3ds = config('midtrans.is_3ds', true);
-    }
+    // public function __construct()
+    // {
+    // Set up Midtrans configuration from a single place
+    // Config::$serverKey = config('midtrans.server_key');
+    // Config::$isProduction = config('midtrans.is_production', false);
+    // Config::$isSanitized = config('midtrans.is_sanitized', true);
+    // Config::$is3ds = config('midtrans.is_3ds', true);
+    // }
 
     /**
      * Handle payment charge requests from the frontend
      */
-    public function charge(Request $request)
+    // disini nanti taro eventnya
+    public function charge(Request $request, string $client = "")
     {
+        // Check if there's too much orders frequently, reject
+        $timeSpan = now()->subHour();
+        $orderCount = Order::where('user_id', Auth::id())
+            ->where('order_date', '>=', $timeSpan)
+            ->count();
+        $limitPerTimeSpan = 5;
+
+        if ($orderCount >= $limitPerTimeSpan) {
+            return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 hour to do the next transaction.'], 429);
+        }
+
+        $secondTimeSpan = now()->subDay();
+        $orderCountSecond = Order::where('user_id', Auth::id())
+            ->where('order_date', '>=', $secondTimeSpan)
+            ->count();
+        $limitPerTimeSpanSecond = 10;
+
+        if ($orderCountSecond >= $limitPerTimeSpanSecond) {
+            return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 day to do the next transaction.'], 429);
+        }
+
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'amount' => 'required|numeric|min:0',
+            'grouped_items' => 'required',
+            'tax_amount' => 'numeric',
+            'total_with_tax' => 'numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Ensure user is authenticated
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $event = Event::where('slug', $client)->first();
+        if (!$event) {
+            return response()->json(['message' => 'Event not found'], 404);
+        }
+
+        // Check if there's still existing order
+        $existingOrders = User::find(Auth::id())
+            ->orders()
+            ->where('event_id', $event->event_id)
+            ->where('status', OrderStatus::PENDING)
+            ->get();
+
+        if ($existingOrders->isNotEmpty()) {
+            return response()->json(['message' => 'There is an existing pending order'], 400);
+        }
+
+        // Check Array
+        $groupedItems = $request->grouped_items;
+        if (!is_array($groupedItems)) {
+            return response()->json(['message' => 'Invalid grouped_items format'], 422);
+        }
+
+        // Get seats
+        $seats = collect();
+        foreach ($groupedItems as $category => $item) {
+            if (!empty($item['seatNumbers'])) {
+                $seats = $seats->merge(
+                    Seat::whereIn('seat_number', $item['seatNumbers'])
+                        ->where('venue_id', $event->venue->venue_id)
+                        ->get()
+                );
+            }
+        }
+        if ($seats->isEmpty()) {
+            return response()->json(['message' => 'No seats available'], 400);
+        }
+
         DB::beginTransaction();
         try {
-            // Validate the request
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'amount' => 'required|numeric|min:0',
-                'grouped_items' => 'required',
-                'tax_amount' => 'numeric',
-                'total_with_tax' => 'numeric',
-            ]);
-
-            if ($validator->fails()) {
-                DB::rollBack();
-                return response()->json([
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Ensure user is authenticated
-            if (!Auth::check()) {
-                DB::rollBack();
-                return response()->json(['message' => 'Unauthorized'], 401);
-            }
-
-            // Validate host
-            $hostParts = explode('.', $request->getHost());
-            if (count($hostParts) < 2) {
-                DB::rollBack();
-                return response()->json(['message' => 'Invalid host'], 400);
-            }
-
-            $client = $hostParts[0];
-            $event = Event::where('slug', $client)->first();
-            if (!$event) {
-                DB::rollBack();
-                return response()->json(['message' => 'Event not found'], 404);
-            }
-
-            // Check Array
-            $groupedItems = $request->grouped_items;
-            if (!is_array($groupedItems)) {
-                DB::rollBack();
-                return response()->json(['message' => 'Invalid grouped_items format'], 422);
-            }
-
-            // Get seats
-            $seats = collect();
-            foreach ($groupedItems as $category => $item) {
-                if (!empty($item['seatNumbers'])) {
-                    $seats = $seats->merge(
-                        Seat::whereIn('seat_number', $item['seatNumbers'])
-                            ->where('venue_id', $event->venue->venue_id)
-                            ->get()
-                    );
-                }
-            }
-            if ($seats->isEmpty()) {
-                DB::rollBack();
-                return response()->json(['message' => 'No seats available'], 400);
-            }
-
             $seatIds = $seats->pluck('seat_id')->toArray();
             $tickets = Ticket::whereIn('seat_id', $seatIds)
                 ->where('event_id', $event->event_id)
@@ -105,9 +129,6 @@ class PaymentController extends Controller
                 ->distinct()
                 ->lockForUpdate()
                 ->get();
-
-            // Generate order ID
-            $orderCode = Order::keyGen(OrderType::AUTO);
 
             // Prepare transaction parameters
             $itemDetails = [];
@@ -152,6 +173,9 @@ class PaymentController extends Controller
             // Lock tickets
             $tickets->each(fn($ticket) => $ticket->update(['status' => TicketStatus::IN_TRANSACTION]));
 
+            // Generate order ID
+            $orderCode = Order::keyGen(OrderType::AUTO, $event);
+
             // Create order
             $order = Order::create([
                 'order_code' => $orderCode,
@@ -185,6 +209,7 @@ class PaymentController extends Controller
             }
 
             // Get Midtrans Snap Token
+            Config::$serverKey = $event->eventVariables->getKey('server');
             $snapToken = Snap::getSnapToken([
                 'transaction_details' => ['order_id' => $orderCode, 'gross_amount' => $totalWithTax],
                 'credit_card' => ['secure' => true],
@@ -205,7 +230,10 @@ class PaymentController extends Controller
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error processing payment: ' . $e->getMessage()], 500);
+            $responseString = $e->getMessage();
+            preg_match('/"error_messages":\["(.*?)"/', $responseString, $matches);
+            $firstErrorMessage = $matches[1] ?? null;
+            return response()->json(['message' => 'System failed to process payment! ' . $firstErrorMessage . '.'], 500);
         }
     }
 
@@ -263,7 +291,7 @@ class PaymentController extends Controller
             }
 
             $currentStatus = $order->status;
-            if ($currentStatus === $status) {
+            if ($currentStatus === $status || $currentStatus === OrderStatus::CANCELLED || $currentStatus === OrderStatus::COMPLETED) {
                 // No need to update if status is the same
                 DB::commit();
                 return;
@@ -424,217 +452,38 @@ class PaymentController extends Controller
         }
     }
 
-    // public function getPendingTransactions(Request $request, string $client = '')
-    // {
-    //     try {
-    //         $userId = Auth::id();
+    public function fetchMidtransClientKey(string $client = '')
+    {
+        try {
+            $event = Event::where('slug', $client)->first();
+            if (!$event) {
+                return response()->json(['error' => 'Event not found'], 404);
+            }
 
-    //         // Get the client's event
-    //         if (!$client) {
-    //             return response()->json(['success' => false, 'error' => 'Client identifier not found'], 400);
-    //         }
+            $clientKey = $event->eventVariables->getKey();
 
-    //         $event = Event::where('slug', $client)->first();
-    //         if (!$event) {
-    //             return response()->json(['error' => 'Event not found'], 404);
-    //         }
+            return response()->json(['client_key' => $clientKey]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch client key'], 500);
+        }
+    }
 
-    //         // PERBAIKAN: Gunakan query builder dengan kondisi yang benar
-    //         $pendingOrders = Order::where('user_id', $userId)  // Perhatikan: kolom 'id' merujuk ke user_id
-    //             ->where('event_id', $event->event_id)
-    //             ->where('status', OrderStatus::PENDING)
-    //             ->get();
+    /**
+     * Download orders as an Excel file
+     */
+    public function ordersDownload($id = null)
+    {
+        try {
+            $user = Auth::user();
 
-    //         $pendingTransactions = [];
+            $orderExport = new OrdersExport($id, $user);
 
-    //         foreach ($pendingOrders as $order) {
-    //             // Get tickets for this order
-    //             $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
-    //             $ticketIds = $ticketOrders->pluck('ticket_id');
-
-    //             $tickets = Ticket::whereIn('ticket_id', $ticketIds)->get();
-    //             $seatIds = $tickets->pluck('seat_id');
-
-    //             // Get seats
-    //             $seats = Seat::whereIn('seat_id', $seatIds)->get();
-
-    //             $seatsData = $seats->map(function ($seat) use ($tickets) {
-    //                 $ticket = $tickets->where('seat_id', $seat->seat_id)->first();
-
-    //                 // PERBAIKAN: Tambahkan pengecekan agar tidak error jika ticket null
-    //                 if (!$ticket) {
-    //                     return null;
-    //                 }
-
-    //                 return [
-    //                     'seat_id' => $seat->seat_id,
-    //                     'seat_number' => $seat->seat_number,
-    //                     'row' => $seat->row,
-    //                     'column' => $seat->column,
-    //                     'ticket_type' => $ticket->ticket_type,
-    //                     'status' => $ticket->status,
-    //                     'price' => $ticket->price,
-    //                     'type' => 'seat',
-    //                 ];
-    //             })->filter()->values(); // PERBAIKAN: Filter null values dan reset index array
-
-    //             $pendingTransactions[] = [
-    //                 'order_id' => $order->order_id,
-    //                 'order_code' => $order->order_code,
-    //                 'total_price' => $order->total_price,
-    //                 'seats' => $seatsData,
-    //             ];
-    //         }
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'pendingTransactions' => $pendingTransactions
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'error' => 'Failed to fetch pending transactions: ' . $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
-
-    // public function resumePayment(Request $request)
-    // {
-    //     try {
-    //         $validator = Validator::make($request->all(), [
-    //             'transaction_id' => 'required|string',
-    //         ]);
-
-    //         if ($validator->fails()) {
-    //             return response()->json([
-    //                 'message' => 'Validation error',
-    //                 'errors' => $validator->errors()
-    //             ], 422);
-    //         }
-
-    //         $orderCode = $request->transaction_id;
-
-    //         // PERBAIKAN: Tambahkan logging untuk debugging
-    //         Log::info('Attempting to resume payment', [
-    //             'order_code' => $orderCode,
-    //             'user_id' => Auth::id()
-    //         ]);
-
-    //         // PERBAIKAN: Cek apakah order ada di database dengan kondisi yang tepat
-    //         $order = Order::where('order_code', $orderCode)
-    //             ->where('user_id', Auth::id())  // Pastikan order milik user yang sedang login
-    //             ->where('status', OrderStatus::PENDING)
-    //             ->first();
-
-    //         if (!$order) {
-    //             // PERBAIKAN: Logging lebih detail jika order tidak ditemukan
-    //             $existingOrder = Order::where('order_code', $orderCode)->first();
-    //             if ($existingOrder) {
-    //                 Log::warning('Order found but not eligible for resume', [
-    //                     'order_code' => $orderCode,
-    //                     'user_id' => Auth::id(),
-    //                     'actual_user_id' => $existingOrder->id,
-    //                     'status' => $existingOrder->status
-    //                 ]);
-    //             } else {
-    //                 Log::warning('Order not found in database', [
-    //                     'order_code' => $orderCode
-    //                 ]);
-    //             }
-
-    //             return response()->json(['message' => 'Transaction not found or already completed'], 404);
-    //         }
-
-    //         // PERBAIKAN PENTING: Jika transaksi ditemukan di localStorage tapi tidak di database
-    //         // Periksa apakah localStorage masih memiliki transaksi yang valid
-    //         // Ini bisa ditambahkan di frontend dengan mengirim timestamp transaksi
-
-    //         // Get ticket orders for this order
-    //         $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
-
-    //         // PERBAIKAN: Periksa apakah ada ticket orders
-    //         if ($ticketOrders->isEmpty()) {
-    //             Log::warning('No ticket orders found for this order', [
-    //                 'order_id' => $order->order_id
-    //             ]);
-    //             return response()->json(['message' => 'Invalid order: no tickets found'], 400);
-    //         }
-
-    //         $ticketIds = $ticketOrders->pluck('ticket_id');
-    //         $tickets = Ticket::whereIn('ticket_id', $ticketIds)->get();
-
-    //         // Prepare item details for Midtrans
-    //         $itemDetails = [];
-    //         $ticketsByType = $tickets->groupBy('ticket_type');
-
-    //         foreach ($ticketsByType as $type => $typeTickets) {
-    //             $seatNumbers = $typeTickets->map(function ($ticket) {
-    //                 $seat = Seat::where('seat_id', $ticket->seat_id)->first();
-    //                 return $seat ? $seat->seat_number : '';
-    //             })->filter()->toArray();
-
-    //             $seatLabel = !empty($seatNumbers) ? ' (' . implode(', ', $seatNumbers) . ')' : '';
-
-    //             $itemDetails[] = [
-    //                 'id' => 'TICKET-' . strtoupper($type),
-    //                 'price' => (int)$typeTickets->first()->price,
-    //                 'quantity' => $typeTickets->count(),
-    //                 'name' => ucfirst($type) . ' Ticket' . $seatLabel,
-    //             ];
-    //         }
-
-    //         // Add tax item if applicable
-    //         $taxAmount = $order->total_price * 0.01; // Assuming 1% tax
-    //         if ($taxAmount > 0) {
-    //             $itemDetails[] = [
-    //                 'id' => 'TAX-1PCT',
-    //                 'price' => (int)$taxAmount,
-    //                 'quantity' => 1,
-    //                 'name' => 'Tax (1%)',
-    //             ];
-    //         }
-
-    //         // Get user email
-    //         $userEmail = Auth::user()->email ?? 'customer@example.com';
-
-    //         // Use original order_code - PERBAIKAN UTAMA
-    //         Log::info('Generating Snap token for order', [
-    //             'order_code' => $orderCode,
-    //             'amount' => (int)$order->total_price
-    //         ]);
-
-    //         $snapToken = Snap::getSnapToken([
-    //             'transaction_details' => [
-    //                 'order_id' => $orderCode, // Gunakan order_code asli
-    //                 'gross_amount' => (int)$order->total_price
-    //             ],
-    //             'credit_card' => ['secure' => true],
-    //             'customer_details' => ['email' => $userEmail],
-    //             'item_details' => $itemDetails,
-    //         ]);
-
-    //         if (!$snapToken) {
-    //             Log::error('Failed to get Snap token from Midtrans');
-    //             return response()->json(['message' => 'Failed to get Snap token'], 500);
-    //         }
-
-    //         Log::info('Successfully generated Snap token', [
-    //             'order_code' => $orderCode
-    //         ]);
-
-    //         return response()->json([
-    //             'snap_token' => $snapToken,
-    //             'transaction_id' => $orderCode,
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         Log::error('Error resuming payment', [
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString()
-    //         ]);
-
-    //         return response()->json([
-    //             'message' => 'Error resuming payment: ' . $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
+            return Excel::download(
+                $orderExport,
+                $orderExport->title() . '.csv',
+            );
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to download orders: ' . $e->getMessage()], 500);
+        }
+    }
 }

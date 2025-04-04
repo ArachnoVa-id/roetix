@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ContactUpdateRequest;
 use App\Http\Requests\PasswordUpdateRequest;
 use App\Http\Requests\ProfileUpdateRequest;
-use App\Models\Event;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,22 +20,15 @@ class ProfileController extends Controller
      */
     public function edit(Request $request, string $client = ''): Response
     {
-        // Get the event and associated venue
-        $event = Event::where('slug', $client)
-            ->first();
-
-        $props = $event->eventVariables;
-
-        $user = $request->user()->load('contactInfo');
+        $event = $request->get('event');
+        $props = $request->get('props');
 
         return Inertia::render('Profile/Edit', [
+            'event' => $event,
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
             'client' => $client,
             'props' => $props,
-            'auth' => [
-                'user' => $user,
-            ],
         ]);
     }
 

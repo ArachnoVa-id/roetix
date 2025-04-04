@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
 use App\Filament\Admin\Resources\OrderResource;
+use App\Filament\Components\BackButtonAction;
 use App\Models\Ticket;
 use App\Models\TicketOrder;
 use Filament\Actions;
@@ -22,12 +23,12 @@ class EditOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('Back')
-                ->url(fn() => url()->previous())
-                ->icon('heroicon-o-arrow-left')
-                ->color('info'),
-            Actions\DeleteAction::make('Delete Event')
-                ->icon('heroicon-o-trash'),
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            ),
+            OrderResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
         ];
     }
 
@@ -122,5 +123,12 @@ class EditOrder extends EditRecord
         $this->redirect($redirectUrl, navigate: $navigate);
 
         $this->halt();
+    }
+
+    protected function getSaveFormAction(): Actions\Action
+    {
+        return parent::getSaveFormAction()
+            ->label('Update Order')
+            ->icon('heroicon-o-folder');
     }
 }

@@ -2,25 +2,53 @@
 
 namespace App\Filament\Admin\Resources\EventResource\Pages;
 
-use App\Filament\Admin\Resources\EventResource;
-use App\Models\EventCategoryTimeboundPrice;
+use Filament\Actions;
 use App\Models\EventVariables;
 use App\Models\TicketCategory;
-use App\Models\TimelineSession;
-use Filament\Actions;
 use Filament\Facades\Filament;
+use App\Models\TimelineSession;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Facades\FilamentView;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Mockery\Matcher\Not;
+use App\Models\EventCategoryTimeboundPrice;
+use App\Filament\Admin\Resources\EventResource;
+use App\Filament\Components\BackButtonAction;
+use Illuminate\Support\Facades\Crypt;
+use Mews\Purifier\Facades\Purifier;
 
 class EditEvent extends EditRecord
 {
     protected static string $resource = EventResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            ),
+            EventResource::ChangeStatusButton(
+                Actions\Action::make('changeStatus')
+            ),
+            EventResource::EditSeatsButton(
+                Actions\Action::make('editSeats')
+            ),
+            EventResource::ExportOrdersButton(
+                Actions\Action::make('export')
+            ),
+            Actions\DeleteAction::make('Delete Event')
+                ->icon('heroicon-o-trash'),
+        ];
+    }
+
+    protected function getSaveFormAction(): Actions\Action
+    {
+        return parent::getSaveFormAction()
+            ->label('Update Event')
+            ->icon('heroicon-o-folder');
+    }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
@@ -169,6 +197,35 @@ class EditEvent extends EditRecord
             // Update all the event variables
             $eventVariables = EventVariables::where('event_id', $eventId)->first();
 
+            // Parse all the image based to get values only (because it is in array)
+            $columns = ['logo', 'texture', 'favicon'];
+            foreach ($columns as $column) {
+                if (isset($this->data[$column]) && !empty($this->data[$column])) {
+                    $this->data[$column] = array_values($this->data[$column])[0];
+                }
+            }
+
+            // Sanitize html content
+            $this->data['terms_and_conditions'] = Purifier::clean($this->data['terms_and_conditions']);
+            $this->data['privacy_policy'] = Purifier::clean($this->data['privacy_policy']);
+
+            // Crypt midtrans keys
+            if (isset($this->data['midtrans_client_key']) && !empty($this->data['midtrans_client_key'])) {
+                $this->data['midtrans_client_key'] = Crypt::encryptString($this->data['midtrans_client_key']);
+            }
+
+            if (isset($this->data['midtrans_server_key']) && !empty($this->data['midtrans_server_key'])) {
+                $this->data['midtrans_server_key'] = Crypt::encryptString($this->data['midtrans_server_key']);
+            }
+
+            if (isset($this->data['midtrans_client_key_sb']) && !empty($this->data['midtrans_client_key_sb'])) {
+                $this->data['midtrans_client_key_sb'] = Crypt::encryptString($this->data['midtrans_client_key_sb']);
+            }
+
+            if (isset($this->data['midtrans_server_key_sb']) && !empty($this->data['midtrans_server_key_sb'])) {
+                $this->data['midtrans_server_key_sb'] = Crypt::encryptString($this->data['midtrans_server_key_sb']);
+            }
+
             $eventVariables->fill($this->data);
             $colors = Cache::get('color_preview_' . $user->id);
             if (!$colors) {
@@ -187,7 +244,7 @@ class EditEvent extends EditRecord
                 $this->record->save();
 
                 // Clear cache for colors
-                Cache::forget('color_preview_' . Auth::user()->id);
+                Cache::forget('color_preview_' . Auth::id());
 
                 // Get the redirect URL (like getRedirectUrl)
                 $redirectUrl = $this->getResource()::getUrl('view', ['record' => $eventId]);
@@ -224,23 +281,5 @@ class EditEvent extends EditRecord
         }
 
         $this->halt();
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\Action::make('Back')
-                ->url(fn() => url()->previous())
-                ->icon('heroicon-o-arrow-left')
-                ->color('info'),
-            EventResource::ChangeStatusButton(
-                Actions\Action::make('changeStatus')
-            ),
-            EventResource::EditSeatsButton(
-                Actions\Action::make('editSeats')
-            )->button(),
-            Actions\DeleteAction::make('Delete Event')
-                ->icon('heroicon-o-trash'),
-        ];
     }
 }

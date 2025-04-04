@@ -1,59 +1,12 @@
 import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
+import { EditorProps } from '@/types/editor';
+import { Layout, SeatItem, Timeline, UpdatedSeats } from '@/types/seatmap';
 import { Head } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
-import SeatMapEditor, { UpdatedSeats } from './SeatMapEditor';
-import { Layout, SeatItem } from './types';
+import SeatMapEditor from './SeatMapEditor';
 
-declare global {
-    interface Window {
-        eventTimelines?: Timeline[];
-    }
-}
-
-interface Event {
-    event_id: string;
-    name: string;
-    venue_id: string;
-    team_id: string;
-}
-
-interface Venue {
-    venue_id: string;
-    name: string;
-}
-
-interface Timeline {
-    timeline_id: string;
-    name: string;
-    start_date: string;
-    end_date: string;
-}
-
-interface TicketCategory {
-    ticket_category_id: string;
-    name: string;
-    color: string;
-}
-
-interface CategoryPrice {
-    ticket_category_id: string;
-    timeline_id: string;
-    price: number;
-}
-
-interface Props {
-    layout: Layout;
-    event: Event;
-    venue: Venue;
-    ticketTypes: string[];
-    categoryColors?: Record<string, string>;
-    currentTimeline?: Timeline;
-    ticketCategories?: TicketCategory[];
-    categoryPrices?: CategoryPrice[];
-}
-
-const Edit: React.FC<Props> = ({
+const Edit: React.FC<EditorProps> = ({
     layout,
     event,
     ticketTypes,
@@ -217,7 +170,7 @@ const Edit: React.FC<Props> = ({
         updatedSeats.forEach((update) => {
             const seatToUpdate = updatedLayout.items.find(
                 (item) =>
-                    item.type === 'seat' &&
+                    // item.type === 'seat' &&
                     (item as SeatItem).seat_id === update.seat_id,
             ) as SeatItem | undefined;
 

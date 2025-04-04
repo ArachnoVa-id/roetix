@@ -1,31 +1,12 @@
+import {
+    LayoutItem,
+    SeatItem,
+    SeatMapEditorProps,
+    SelectionMode,
+} from '@/types/seatmap';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Layout, LayoutItem, SeatItem } from './types';
 
-export interface UpdatedSeats {
-    seat_id: string;
-    status: string;
-    ticket_type: string;
-    price: number;
-}
-
-interface Props {
-    layout: Layout;
-    onSave: (updatedSeats: UpdatedSeats[]) => void;
-    ticketTypes: string[];
-    categoryColors?: Record<string, string>;
-    currentTimeline?: {
-        timeline_id: string;
-        name: string;
-        start_date: string;
-        end_date: string;
-    };
-    // Add categoryPrices prop
-    categoryPrices?: Record<string, number>;
-}
-
-type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
-
-const SeatMapEditor: React.FC<Props> = ({
+const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
     layout,
     onSave,
     ticketTypes,
@@ -39,7 +20,7 @@ const SeatMapEditor: React.FC<Props> = ({
     );
     const [selectedStatus, setSelectedStatus] = useState<string>('available');
     const [selectedTicketType, setSelectedTicketType] = useState<string>(
-        ticketTypes[0] || 'standard',
+        ticketTypes[0] || 'unset',
     );
     const sidebarContentRef = useRef<HTMLDivElement>(null);
 
@@ -93,8 +74,7 @@ const SeatMapEditor: React.FC<Props> = ({
 
         // Default colors jika tidak disediakan (gunakan hex)
         const defaultColors: Record<string, string> = {
-            standard: '#90CAF9', // biru
-            VIP: '#FFD54F', // kuning
+            unset: '#FFF',
         };
 
         return defaultColors[category] || '#E0E0E0'; // default abu-abu
@@ -112,14 +92,46 @@ const SeatMapEditor: React.FC<Props> = ({
         let maxRowIndex = 0;
         layout.items.forEach((item) => {
             if ('seat_id' in item) {
-                const rowIndex =
-                    typeof item.row === 'string'
-                        ? item.row.charCodeAt(0) - 65
-                        : item.row;
+                // Konversi label baris ke angka dengan algoritma yang benar
+                let rowIndex = 0;
+                if (typeof item.row === 'string') {
+                    rowIndex = getRowIndex(item.row);
+                } else {
+                    rowIndex = item.row;
+                }
                 maxRowIndex = Math.max(maxRowIndex, rowIndex);
             }
         });
-        return maxRowIndex + 1;
+        return maxRowIndex + 1; // Add 1 karena index 0-based
+    };
+
+    const getRowLabel = (index: number): string => {
+        let label = '';
+        let n = index + 1; // Konversi ke 1-based
+        
+        while (n > 0) {
+            let remainder = n % 26;
+            
+            if (remainder === 0) {
+                remainder = 26;
+                n -= 1;
+            }
+            
+            label = String.fromCharCode(64 + remainder) + label;
+            n = Math.floor(n / 26);
+        }
+        
+        return label;
+    };
+
+    const getRowIndex = (label: string): number => {
+        let result = 0;
+        
+        for (let i = 0; i < label.length; i++) {
+            result = result * 26 + (label.charCodeAt(i) - 64);
+        }
+        
+        return result - 1; // Konversi ke 0-based index
     };
 
     const findHighestColumn = (): number => {
@@ -145,9 +157,9 @@ const SeatMapEditor: React.FC<Props> = ({
         if ('seat_id' in item) {
             const rowIndex =
                 typeof item.row === 'string'
-                    ? item.row.charCodeAt(0) - 65
+                    ? getRowIndex(item.row) // Gunakan fungsi getRowIndex
                     : item.row;
-
+    
             if (rowIndex >= 0 && rowIndex < actualRows) {
                 const colIndex = (item.column as number) - 1;
                 if (colIndex >= 0 && colIndex < actualColumns) {
@@ -176,10 +188,12 @@ const SeatMapEditor: React.FC<Props> = ({
                 case 'reserved':
                     baseColor = '#9E9E9E'; // Abu-abu
                     break;
+                default:
+                    baseColor = '#FFF'; // Putih
             }
         } else {
             // Jika available, tampilkan warna tipe tiket
-            const ticketType = seat.ticket_type || 'standard';
+            const ticketType = seat.ticket_type || 'unset';
             baseColor = getColorForCategory(ticketType);
         }
 
@@ -254,7 +268,10 @@ const SeatMapEditor: React.FC<Props> = ({
 
         // Check each seat to see if it's in the selection box
         layout.items.forEach((item) => {
-            if (item.type === 'seat' && isSeatEditable(item as SeatItem)) {
+            if (
+                // item.type === 'seat' &&
+                isSeatEditable(item as SeatItem)
+            ) {
                 const seatId = getSeatId(item as SeatItem);
                 const seatRef = seatRefs.current.get(seatId);
 
@@ -330,7 +347,7 @@ const SeatMapEditor: React.FC<Props> = ({
                     next.add(seatId);
                     // Set current values from the seat for editing
                     setSelectedStatus(seat.status);
-                    setSelectedTicketType(seat.ticket_type || 'standard');
+                    setSelectedTicketType(seat.ticket_type || 'unset');
                     break;
 
                 case 'MULTIPLE':
@@ -345,7 +362,7 @@ const SeatMapEditor: React.FC<Props> = ({
                     next.clear();
                     layout.items.forEach((item) => {
                         if (
-                            item.type === 'seat' &&
+                            // item.type === 'seat' &&
                             (item as SeatItem).ticket_type ===
                                 seat.ticket_type &&
                             isSeatEditable(item as SeatItem)
@@ -354,7 +371,7 @@ const SeatMapEditor: React.FC<Props> = ({
                             next.add(id);
                         }
                     });
-                    setSelectedCategory(seat.ticket_type || 'standard');
+                    setSelectedCategory(seat.ticket_type || 'unset');
                     break;
             }
 
@@ -369,7 +386,7 @@ const SeatMapEditor: React.FC<Props> = ({
         const seatsInCategory = layout.items
             .filter(
                 (item) =>
-                    item.type === 'seat' &&
+                    // item.type === 'seat' &&
                     (item as SeatItem).ticket_type === category &&
                     isSeatEditable(item as SeatItem),
             )
@@ -380,7 +397,10 @@ const SeatMapEditor: React.FC<Props> = ({
     };
 
     const renderCell = (item: LayoutItem | null, colIndex: number) => {
-        if (item && item.type === 'seat') {
+        if (
+            item
+            // && item.type === 'seat'
+        ) {
             const seat = item as SeatItem;
             const isEditable = isSeatEditable(seat);
             const seatId = getSeatId(seat);
@@ -412,7 +432,7 @@ const SeatMapEditor: React.FC<Props> = ({
                     title={
                         !isEditable
                             ? 'This seat is booked and cannot be edited'
-                            : `${seat.seat_number} - ${seat.ticket_type || 'Standard'} - ${seat.status} - ${seat.price || 0}`
+                            : `${seat.seat_number} - ${seat.ticket_type || 'Unset'} - ${seat.status} - ${seat.price || 0}`
                     }
                     draggable={false}
                 >
@@ -435,7 +455,7 @@ const SeatMapEditor: React.FC<Props> = ({
         const updatedSeats = layout.items
             .filter(
                 (item) =>
-                    item.type === 'seat' &&
+                    // item.type === 'seat' &&
                     selectedSeats.has(getSeatId(item as SeatItem)) &&
                     isSeatEditable(item as SeatItem),
             )
@@ -465,15 +485,61 @@ const SeatMapEditor: React.FC<Props> = ({
         setSelectionBox(null);
     };
 
+    const [droppedDown, setDroppedDown] = useState(false);
+    const handleToggle = () => {
+        setDroppedDown((prev) => !prev);
+    };
+
     return (
-        <div className="flex h-screen flex-col">
+        <div className="flex h-screen max-md:flex-col">
             {/* Left Panel - Fixed position with constant width */}
-            <div className="fixed left-0 top-0 z-20 flex h-full w-72 flex-col border-r border-gray-200 bg-white shadow-lg">
+            <div
+                className={`flex h-fit w-72 flex-col border-r border-gray-200 bg-white shadow-lg max-md:order-2 max-md:w-full md:h-full`}
+            >
                 {/* Header */}
-                <div className="flex w-full gap-2 border-b border-gray-200 bg-blue-600 p-4 text-white">
+                <div className="flex w-full justify-between border-b border-gray-200 bg-blue-600 p-4 text-white">
+                    <div className="flex w-fit gap-2">
+                        <button
+                            className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
+                            onClick={() => window.history.back()}
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        <h2 className="flex items-center gap-2 text-xl font-bold">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="rotate-90 transform"
+                            >
+                                <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
+                                <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
+                                <path d="M12 12v5"></path>
+                            </svg>
+                            Seat Map Editor
+                        </h2>
+                    </div>
                     <button
-                        className="h-full w-fit rounded bg-blue-500 px-1 font-bold text-white hover:bg-blue-700"
-                        onClick={() => window.history.back()}
+                        className={`h-full w-fit rotate-90 rounded-full bg-blue-500 px-1 font-bold text-white duration-500 hover:bg-blue-700 md:hidden ${droppedDown ? 'rotate-90' : '-rotate-90'}`}
+                        onClick={handleToggle}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -489,29 +555,11 @@ const SeatMapEditor: React.FC<Props> = ({
                             <polyline points="15 18 9 12 15 6"></polyline>
                         </svg>
                     </button>
-                    <h2 className="flex items-center gap-2 text-xl font-bold">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path>
-                            <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
-                            <path d="M12 12v5"></path>
-                        </svg>
-                        Seat Map Editor
-                    </h2>
                 </div>
 
                 {/* Scrollable Content */}
                 <div
-                    className="flex-1 overflow-y-auto p-5"
+                    className={`flex-l overflow-y-auto duration-500 md:h-full md:p-5 ${droppedDown ? 'max-md:h-0' : 'h-[35vh] p-5'}`}
                     ref={sidebarContentRef}
                 >
                     {/* Mode Selection */}
@@ -1043,7 +1091,9 @@ const SeatMapEditor: React.FC<Props> = ({
                 </div>
 
                 {/* Save Button */}
-                <div className="border-t border-gray-200 bg-gray-50 p-4">
+                <div
+                    className={`overflow-hidden border-gray-200 bg-gray-50 duration-500 md:border-t md:p-4 ${droppedDown ? 'max-md:h-0' : 'border-t p-4'}`}
+                >
                     <button
                         onClick={handleUpdateSelectedSeats}
                         className={`flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-blue-700 ${selectedSeats.size === 0 ? 'cursor-not-allowed opacity-50' : 'hover:shadow'}`}
@@ -1068,14 +1118,8 @@ const SeatMapEditor: React.FC<Props> = ({
             </div>
 
             {/* Main Content - Seat Map */}
-            <div
-                className="flex-1 overflow-auto bg-gray-50"
-                style={{
-                    marginLeft: '18rem',
-                    padding: '2rem',
-                }}
-            >
-                <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white p-4 shadow-md">
+            <div className="flex-1 overflow-auto bg-gray-50 max-md:order-1">
+                <div className="flex h-full items-center justify-center">
                     {/* Scrollable Seat Map Container - Just one scrollable area */}
                     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-auto rounded-lg border border-gray-300 bg-gray-100">
                         {/* Grid container */}

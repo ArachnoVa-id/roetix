@@ -2,32 +2,69 @@
 
 namespace App\Filament\Admin\Resources\OrderResource\Pages;
 
-use App\Enums\OrderStatus;
-use App\Enums\OrderType;
-use App\Enums\TicketOrderStatus;
-use App\Enums\TicketStatus;
-use App\Filament\Admin\Resources\OrderResource;
 use App\Models\Order;
+use Filament\Actions;
 use App\Models\Ticket;
+use App\Enums\OrderType;
+use App\Enums\OrderStatus;
+use App\Enums\TicketStatus;
 use App\Models\TicketOrder;
 use Filament\Facades\Filament;
+use App\Enums\TicketOrderStatus;
+use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Facades\FilamentView;
-use Illuminate\Support\Facades\DB;
+use App\Filament\Admin\Resources\OrderResource;
+use App\Filament\Components\BackButtonAction;
+use App\Models\Event;
+use Filament\Support\Enums\IconPosition;
 
 class CreateOrder extends CreateRecord
 {
     protected static string $resource = OrderResource::class;
+
+    protected function getCreateFormAction(): Actions\Action
+    {
+        return parent::getCreateFormAction()
+            ->label('Create Order')
+            ->icon('heroicon-o-plus');
+    }
+
+    protected function getCreateAnotherFormAction(): Actions\Action
+    {
+        return parent::getCreateAnotherFormAction()
+            ->label('Create & Create Another Order')
+            ->icon('heroicon-o-plus');
+    }
+
+    protected function getCancelFormAction(): Actions\Action
+    {
+        return parent::getCancelFormAction()->hidden();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            BackButtonAction::make(
+                Actions\Action::make('back')
+            )
+                ->label('Cancel')
+                ->icon('heroicon-o-x-circle')
+                ->iconPosition(IconPosition::After)
+        ];
+    }
 
     public function beforeCreate()
     {
         DB::beginTransaction();
         try {
             $data = $this->data;
-            $tenant_id = Filament::getTenant()->team_id;
             $event_id = $data['event_id'];
+            $event = Event::where('event_id', $event_id)->first();
+            $tenant_id = $event->team_id;
             $user_id = $data['user_id'];
+            $expired = $data['expired_at'] ?? now()->addHour();
 
             // Lock all tickets
             foreach ($data['tickets'] as $ticket) {
@@ -42,7 +79,7 @@ class CreateOrder extends CreateRecord
             }
 
             // Create Order
-            $orderCode = Order::keyGen(OrderType::MANUAL);
+            $orderCode = Order::keyGen(OrderType::MANUAL, $event);
             $order = Order::create([
                 'order_code' => $orderCode,
                 'user_id' => $user_id,
@@ -51,6 +88,7 @@ class CreateOrder extends CreateRecord
                 'order_date' => now(),
                 'total_price' => 0,
                 'status' => OrderStatus::COMPLETED,
+                'expired_at' => $expired,
             ]);
 
             // Calculate tickets selected
@@ -96,13 +134,13 @@ class CreateOrder extends CreateRecord
             // Perform the redirect
             $this->redirect($redirectUrl, navigate: $navigate);
         } catch (\Exception $e) {
+            DB::rollBack();
+
             Notification::make()
                 ->title('Failed to Save')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();
-
-            DB::rollBack();
         }
         $this->halt();
     }

@@ -26,11 +26,17 @@ class Event extends Model
         'status',
         'team_id',
     ];
+
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
-        'event_date' => 'datetime', // Added datetime cast for event_date
+        'event_date' => 'datetime',
     ];
+
+    protected $with = [
+        'team'
+    ];
+
     protected static function boot()
     {
         parent::boot();
@@ -45,6 +51,35 @@ class Event extends Model
     public function eventYear(): string
     {
         return $this->start_date->format('Y');
+    }
+
+    public function getEventDate(): string
+    {
+        $months = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        $day = $this->start_date->format('j');
+        $month = $months[(int)$this->start_date->format('n')];
+        $year = $this->start_date->format('Y');
+
+        return "{$day} {$month} {$year}";
+    }
+
+    public function getEventTime(): string
+    {
+        return $this->start_date->format('H:i') . ' WIB';
     }
 
     public function getAllTicketsPDFTitle()

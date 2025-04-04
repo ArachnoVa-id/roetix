@@ -2,17 +2,20 @@
 
 namespace App\Providers\Filament;
 
+use Filament\Panel;
+use Filament\Support\Colors\Color;
 use Filament\Http\Middleware\Authenticate;
+use App\Http\Middleware\ShareAuthenticatedUser;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use App\Http\Middleware\Filament\UrlHistoryStack;
 use Filament\Http\Middleware\AuthenticateSession;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Panel;
-use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 
 class SharedPanelSetup
 {
@@ -28,6 +31,8 @@ class SharedPanelSetup
             SubstituteBindings::class,
             DisableBladeIconComponents::class,
             DispatchServingFilamentEvent::class,
+            UrlHistoryStack::class,
+            ShareAuthenticatedUser::class,
         ];
     }
 
@@ -41,8 +46,12 @@ class SharedPanelSetup
     public static function commonSetup(Panel $panel): Panel
     {
         return $panel
+            ->favicon('/images/novatix-logo-white/favicon.ico')
             ->sidebarCollapsibleOnDesktop()
             ->middleware(self::getMiddlewares())
-            ->authMiddleware(self::getAuthMiddlewares());
+            ->authMiddleware(self::getAuthMiddlewares())
+            ->colors([
+                'primary' => Color::Amber,
+            ]);
     }
 }

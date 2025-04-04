@@ -24,14 +24,16 @@ use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Admin\Resources\TicketResource\Pages;
 use App\Filament\Admin\Resources\TicketResource\RelationManagers\TicketOrdersRelationManager;
 use App\Models\Order;
-use App\Models\Seat;
+use App\Models\Team;
 use App\Models\User;
 use Filament\Notifications\Notification;
-use Filament\Support\Facades\FilamentView;
+use Filament\Support\Colors\Color;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class TicketResource extends Resource
 {
+    protected static ?int $navigationSort = 2;
     protected static ?string $model = Ticket::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
@@ -53,9 +55,9 @@ class TicketResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = session('auth_user');
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value, UserRole::EVENT_ORGANIZER->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
     }
 
     public static function TraceTicketOrderButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -85,22 +87,46 @@ class TicketResource extends Resource
 
     public static function ChangeStatusButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
+        $user = session('auth_user');
+
         return $action
             ->label('Change Status')
-            ->color('success')
+            ->color(Color::Fuchsia)
             ->icon('heroicon-o-cog')
             ->modalHeading('Change Status')
-            ->modalDescription('Select a new status for this ticket.')
             ->form([
                 Forms\Components\Select::make('status')
                     ->label('Status')
-                    ->options(TicketStatus::editableOptions())
+                    ->options(fn($record) => $user->isAdmin() ? TicketStatus::allOptions() : TicketStatus::editableOptions(TicketStatus::tryFrom($record->status)))
+                    ->preload()
+                    ->searchable()
                     ->default(fn($record) => $record->status) // Set the current value as default
+                    ->validationAttribute('Status')
+                    ->validationMessages([
+                        'required' => 'Please select a status for the ticket.'
+                    ])
                     ->required(),
             ])
             ->action(function ($record, array $data) {
-                $record->update(['status' => $data['status']]);
+                try {
+                    $record->update(['status' => $data['status']]);
+
+                    Notification::make()
+                        ->title('Success')
+                        ->success()
+                        ->body('Status changed successfully.')
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error')
+                        ->danger()
+                        ->body($e->getMessage())
+                        ->send();
+                }
             })
+            ->requiresConfirmation(fn($record) => $record->status === TicketStatus::IN_TRANSACTION->value)
+            ->modalDescription(fn($record) => $record->status === TicketStatus::IN_TRANSACTION->value ? 'Ticket is in an ongoing transaction. Are you sure to change the status?' : 'Select a new status for this ticket.')
+            ->modalWidth('sm')
             ->modal(true);
     }
 
@@ -112,13 +138,13 @@ class TicketResource extends Resource
             ->color('warning')
             ->icon('heroicon-o-paper-airplane')
             ->modalHeading('Transfer Ownership')
-            ->modalDescription('Select a new user for this ticket.')
             ->form([
                 Forms\Components\Hidden::make('ticket_id')
                     ->default(fn($record) => $record->ticket_id),
                 Forms\Components\Select::make('user_id')
                     ->label('User')
                     ->searchable()
+                    ->preload()
                     ->options(function ($record) {
                         // Get the latest ticket order for this ticket
                         $latestTicketOrder = TicketOrder::where('ticket_id', $record->ticket_id)
@@ -142,9 +168,13 @@ class TicketResource extends Resource
                     })
                     ->getOptionLabelUsing(fn($value) => User::find($value)?->email ?? '')
                     ->optionsLimit(5)
+                    ->validationAttribute('User')
+                    ->validationMessages([
+                        'required' => 'Please select a user to transfer the ticket to.'
+                    ])
                     ->required(),
             ])
-            ->action(function (array $data) {
+            ->action(function ($record, array $data) {
                 DB::beginTransaction();
                 try {
                     // Check if ticket_id exists in the data
@@ -161,12 +191,20 @@ class TicketResource extends Resource
                         throw new \Exception('Ticket not found.');
                     }
 
+                    // Check if the latest user is not the same
+                    $previousOwner = TicketOrder::where('ticket_id', $ticket->ticket_id)->get()->sortBy('created_at')->last()->order->user;
+                    $user = User::find($data['user_id']);
+
+                    if ($user == $previousOwner)
+                        throw new \Exception('Cannot transfer to the same client.');
+
                     // Deactivate old ticket orders
                     TicketOrder::where('ticket_id', $ticket->ticket_id)
+                        ->lockForUpdate()
                         ->update(['status' => TicketOrderStatus::DEACTIVATED]);
 
                     // Create new order
-                    $order_code = Order::keyGen(OrderType::TRANSFER);
+                    $order_code = Order::keyGen(OrderType::TRANSFER, $ticket->event);
                     $order = Order::create([
                         'order_code'  => $order_code,
                         'user_id'     => $data['user_id'],
@@ -175,6 +213,7 @@ class TicketResource extends Resource
                         'order_date'  => now(),
                         'total_price' => $ticket->price,
                         'status'      => OrderStatus::COMPLETED,
+                        'expired_at'  => now()
                     ]);
 
                     if (!$order) {
@@ -198,35 +237,49 @@ class TicketResource extends Resource
 
                     DB::commit();
 
+                    $user = User::find($data['user_id']);
+
                     Notification::make()
                         ->title('Success')
+                        ->body("Ownership of the ticket: {$ticket->seat->seat_number} has been transferred successfully to user: {$user->email}")
                         ->success()
-                        ->body('Ownership transferred successfully.')
                         ->send();
                 } catch (\Exception $e) {
                     DB::rollBack();
                     Notification::make()
                         ->title('Error')
+                        ->body("Failed to transfer ownership: {$e->getMessage()}")
                         ->danger()
-                        ->body($e->getMessage())
                         ->send();
                 }
             })
+            ->requiresConfirmation(fn($record) => $record->status === TicketStatus::IN_TRANSACTION->value)
+            ->modalDescription(fn($record) => $record->status === TicketStatus::IN_TRANSACTION->value ? 'Ticket is in an ongoing transaction. Are you sure to change the owner?' : 'Select a new user for this ticket.')
+            ->modalWidth('sm')
             ->modal(true);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'ticketOrders',
+                'ticketOrders.order',
+                'ticketOrders.order.user',
+                'ticketOrders.event',
+            ]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showBuyer = true, bool $showOrders = true): Infolists\Infolist
     {
-        $ticket_id = $infolist->record->ticket_id;
-        $ticket = Ticket::find($ticket_id);
-        $event = $ticket->event;
+        $ticket = $infolist->record;
 
         // get latest buyer
-        $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-            ->latest()
+        $ticketOrder = $ticket->ticketOrders
+            ->sortByDesc('created_at')
             ->first();
 
-        $buyer = $ticketOrder?->order?->user;
+        $buyer = $ticket->latestTicketOrder?->order?->user ?? null;
         return $infolist
             ->columns([
                 'default' => 1,
@@ -248,6 +301,7 @@ class TicketResource extends Resource
                         ])
                         ->schema([
                             Infolists\Components\TextEntry::make('ticket_id')
+                                ->icon('heroicon-o-ticket')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -255,15 +309,18 @@ class TicketResource extends Resource
                                 ])
                                 ->label('ID'),
                             Infolists\Components\TextEntry::make('ticket_type')
+                                ->icon('heroicon-o-ticket')
                                 ->label('Type'),
                             Infolists\Components\TextEntry::make('price')
+                                ->icon('heroicon-o-banknotes')
                                 ->money('IDR'),
                             Infolists\Components\TextEntry::make('status')
                                 ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                                ->icon(fn($state) => TicketStatus::tryFrom($state)->getIcon())
                                 ->badge(),
                             Infolists\Components\TextEntry::make('ticket_order_status')
-                                ->label('Ownership')
+                                ->label('Latest Validity')
                                 ->default(function ($record) {
                                     $ticket_id = $record->ticket_id;
                                     $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
@@ -278,6 +335,7 @@ class TicketResource extends Resource
                                 })
                                 ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
                                 ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
+                                ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
                                 ->badge(),
                         ]),
                     Infolists\Components\Section::make('Latest Buyer')
@@ -294,6 +352,7 @@ class TicketResource extends Resource
                         ])
                         ->schema([
                             Infolists\Components\TextEntry::make('order_code')
+                                ->icon('heroicon-o-document-text')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -302,6 +361,7 @@ class TicketResource extends Resource
                                 ->default(fn() => $ticketOrder?->order?->order_code)
                                 ->label('Order Code'),
                             Infolists\Components\TextEntry::make('first_name')
+                                ->icon('heroicon-o-user')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -310,6 +370,7 @@ class TicketResource extends Resource
                                 ->default(fn() => $buyer?->first_name)
                                 ->label('First Name'),
                             Infolists\Components\TextEntry::make('last_name')
+                                ->icon('heroicon-o-user')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -318,6 +379,7 @@ class TicketResource extends Resource
                                 ->default(fn() => $buyer?->last_name)
                                 ->label('Last Name'),
                             Infolists\Components\TextEntry::make('email')
+                                ->icon('heroicon-o-at-symbol')
                                 ->columnSpan([
                                     'default' => 1,
                                     'sm' => 1,
@@ -339,15 +401,19 @@ class TicketResource extends Resource
                         ])
                         ->schema([
                             Infolists\Components\TextEntry::make('name')
-                                ->default(fn() => $event->name),
+                                ->icon('heroicon-o-ticket')
+                                ->default(fn($record) => $record->event->name),
                             Infolists\Components\TextEntry::make('location')
-                                ->default(fn() => $event->location),
+                                ->icon('heroicon-o-map')
+                                ->default(fn($record) => $record->event->location),
                             Infolists\Components\TextEntry::make('event_date')
+                                ->icon('heroicon-o-calendar')
                                 ->label('D-Day')
-                                ->default(fn() => $event->event_date),
+                                ->default(fn($record) => $record->event->event_date),
                             Infolists\Components\TextEntry::make('status')
-                                ->formatStateUsing(fn() => EventStatus::tryFrom($event->status)->getLabel())
-                                ->color(fn() => EventStatus::tryFrom($event->status)->getColor())
+                                ->formatStateUsing(fn($record) => EventStatus::tryFrom($record->event->status)->getLabel())
+                                ->color(fn($record) => EventStatus::tryFrom($record->event->status)->getColor())
+                                ->icon(fn($record) => EventStatus::tryFrom($record->event->status)->getIcon())
                                 ->badge(),
                         ]),
                     Infolists\Components\Section::make("Seat")
@@ -384,50 +450,31 @@ class TicketResource extends Resource
             );
     }
 
-    public static function table(Table $table, array $dataSource = [], bool $showEvent = true, bool $showTraceButton = false): Table
+    public static function table(Table $table, bool $showEvent = true, bool $showTraceButton = false, bool $filterStatus = false, bool $filterEvent = true, bool $filterTeam = true): Table
     {
-        $tenant_id = Filament::getTenant()->team_id;
+        $user = session('auth_user');
 
         $ownership = Tables\Columns\TextColumn::make('ticket_order_status')
-            ->label('Ownership')
-            ->default(function ($record) use ($dataSource) {
-                $ticketOrder = null;
-                $ticket_id = $record->ticket_id;
-                if (empty($dataSource)) {
-                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-                        ->latest()
-                        ->first();
-                } else {
-                    $order_id = $dataSource['order_id'];
-                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-                        ->where('order_id', $order_id)
-                        ->first();
-                }
+            ->label('Latest Validity')
+            ->default(function ($record) {
+                $ticketOrder = collect($record->ticketOrders)->sortByDesc('created_at')->first();
+
                 if (!$ticketOrder) {
                     return TicketOrderStatus::ENABLED->value;
                 }
 
                 return $ticketOrder->status;
             })
-            ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
-            ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
+            ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)?->getLabel())
+            ->color(fn($state) => TicketOrderStatus::tryFrom($state)?->getColor())
+            ->icon(fn($state) => TicketOrderStatus::tryFrom($state)?->getIcon())
             ->badge();
 
         $latestOwner = Tables\Columns\TextColumn::make('ticket_owner')
             ->label('Latest Owner')
-            ->default(function ($record) use ($dataSource) {
-                $ticketOrder = null;
-                $ticket_id = $record->ticket_id;
-                if (empty($dataSource)) {
-                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-                        ->latest()
-                        ->first();
-                } else {
-                    $order_id = $dataSource['order_id'];
-                    $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
-                        ->where('order_id', $order_id)
-                        ->first();
-                }
+            ->default(function ($record) {
+                $ticketOrder = collect($record->ticketOrders)->sortByDesc('created_at')->first();
+
                 if (!$ticketOrder) {
                     return 'N/A';
                 }
@@ -437,6 +484,12 @@ class TicketResource extends Resource
 
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('team.name')
+                    ->label('Team Name')
+                    ->searchable()
+                    ->sortable()
+                    ->hidden(!($user->isAdmin()))
+                    ->limit(50),
                 Tables\Columns\TextColumn::make('seat.seat_number')
                     ->searchable()
                     ->sortable(),
@@ -451,40 +504,71 @@ class TicketResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->formatStateUsing(fn($state) => TicketStatus::tryFrom($state)->getLabel())
                     ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => TicketStatus::tryFrom($state)->getIcon())
                     ->badge(),
-                $ownership,
-                $latestOwner,
+                Tables\Columns\TextColumn::make('ticket_order_status')
+                    ->label('Latest Validity')
+                    ->default(fn($record) => $record->latestTicketOrder?->status ?? TicketOrderStatus::ENABLED->value)
+                    ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
+                    ->badge(),
+                Tables\Columns\TextColumn::make('ticket_owner')
+                    ->label('Latest Owner')
+                    ->default(fn($record) => $record->getLatestOwner() ?? 'N/A'),
             ])
             ->defaultSort('seat.seat_number', 'asc')
             ->filters(
                 [
+                    Tables\Filters\SelectFilter::make('team_id')
+                        ->label('Filter by Team')
+                        ->relationship($dataSourceExists ? '' : 'team', $dataSourceExists ? '' : 'name')
+                        ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
+                        ->multiple()
+                        ->hidden(!($user->isAdmin())),
+
                     SelectFilter::make('event_id')
                         ->label('Filter by Event')
-                        ->options(fn() => Event::where('team_id', $tenant_id)->pluck('name', 'event_id'))
+                        ->relationship('event', 'name')
                         ->searchable()
+                        ->preload()
+                        ->optionsLimit(5)
                         ->multiple()
-                        ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
+                        ->hidden(!$filterEvent),
 
                     SelectFilter::make('status')
                         ->label('Filter by Status')
-                        ->options(TicketStatus::editableOptions())
+                        ->options(TicketStatus::allOptions())
+                        ->searchable()
                         ->multiple()
-                        ->default(request()->query('tableFilters')['status']['value'] ?? null),
+                        ->preload()
+                        ->hidden(!$filterStatus),
 
                     SelectFilter::make('ticket_order_status')
-                        ->label('Filter by Ownership')
-                        ->options(TicketOrderStatus::editableOptions())
+                        ->label('Filter by Validity')
+                        ->options(TicketOrderStatus::allOptions())
+                        ->searchable()
+                        ->preload()
                         ->multiple()
-                        ->query(function ($query, array $data) {
+                        ->query(function ($query, $data) {
                             if (!empty($data['values'])) {
-                                $query->whereHas('ticketOrders', function ($subQuery) use ($data) {
-                                    $subQuery->whereIn('status', $data['values'])
-                                        ->orderByDesc('created_at'); // Ensure the latest status is considered
+                                $query->whereHas('ticketOrders', function ($query) use ($data) {
+                                    $query->joinSub(function ($subquery) {
+                                        // Subquery to get the latest ticket order for each ticket_id
+                                        $subquery->from('ticket_order')
+                                            ->selectRaw('ticket_id, MAX(created_at) as latest_created_at')
+                                            ->groupBy('ticket_id');
+                                    }, 'latest_ticket_orders', function ($join) {
+                                        // Join with the tickets based on ticket_id and the latest created_at
+                                        $join->on('ticket_order.ticket_id', '=', 'latest_ticket_orders.ticket_id')
+                                            ->on('ticket_order.created_at', '=', 'latest_ticket_orders.latest_created_at');
+                                    })
+                                        ->whereIn('ticket_order.status', $data['values']); // Filter by ticket order status
                                 });
                             }
                         })
-                        ->default(request()->query('tableFilters')['ticket_order_status']['value'] ?? null),
-
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )

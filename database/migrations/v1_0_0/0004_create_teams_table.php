@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('teams', function (Blueprint $table) {
             $table->string('team_id', 36)->primary();
             $table->string('name');
-            $table->integer('vendor_quota')->nullable()->default(0);
-            $table->integer('event_quota')->nullable()->default(0);
+            $table->integer('vendor_quota')->default(0);
+            $table->integer('event_quota')->default(0);
             $table->string('code')->unique();
             $table->timestamps();
         });

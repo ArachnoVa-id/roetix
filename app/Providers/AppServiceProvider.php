@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use BladeUI\Icons\Factory;
 use Filament\Infolists\Infolist;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\File;

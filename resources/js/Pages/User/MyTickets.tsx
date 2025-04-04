@@ -3,19 +3,13 @@ import Ticket from '@/Components/novatix/Ticket';
 import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { MyTicketsPageProps, TicketProps } from '@/types/ticket';
+import {
+    MyTicketsPageProps,
+    TicketActionEvent,
+    TicketProps,
+} from '@/types/ticket';
 import { Head } from '@inertiajs/react';
 import React, { useCallback, useEffect } from 'react';
-
-// Define the type for the custom event
-interface TicketActionEvent extends Event {
-    detail: {
-        action: string;
-        ticketId: string;
-        ticketType?: string;
-        error?: string;
-    };
-}
 
 export default function MyTickets({
     client,
@@ -35,7 +29,7 @@ export default function MyTickets({
         const ticketIds = tickets.map((ticket) => ticket.id);
 
         // Update the URL to use query parameters instead of path parameters
-        const downloadUrl = `/api/tickets/download-all?event_id=${event.event_id}&ticket_ids=${ticketIds.join(',')}`;
+        const downloadUrl = `/api/tickets/download?event_id=${event.event_id}&ticket_ids=${ticketIds.join(',')}`;
 
         try {
             window.open(downloadUrl, '_blank');
@@ -87,20 +81,23 @@ export default function MyTickets({
 
     return (
         <AuthenticatedLayout client={client} props={props}>
-            <Head title="My Tickets" />
-            <div className="py-8">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+            <Head title={'My Tickets | ' + event.name} />
+            <div className="w-full py-8">
+                <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="overflow-hidden shadow-sm sm:rounded-lg"
+                        className="w-full overflow-hidden shadow-sm sm:rounded-lg"
                         style={containerStyle}
                     >
-                        <div className="p-6">
+                        <div className="w-full p-6">
                             <div className="mb-6 flex items-center justify-between">
                                 <h2
                                     className="text-xl font-semibold"
                                     style={titleStyle}
                                 >
-                                    {event?.name || client} - My Tickets
+                                    {event?.name || client}{' '}
+                                    <br className="md:hidden" />
+                                    <span className="max-md:hidden">-</span> My
+                                    Tickets
                                 </h2>
 
                                 {tickets && tickets.length > 0 && (
@@ -120,24 +117,32 @@ export default function MyTickets({
                                                 clipRule="evenodd"
                                             />
                                         </svg>
-                                        Unduh Semua Tiket
+                                        Download All Tickets
                                     </button>
                                 )}
                             </div>
 
                             {tickets && tickets.length > 0 ? (
                                 <div className="flex w-full flex-wrap gap-6">
-                                    {tickets.map((ticket: TicketProps) => (
-                                        <Ticket
-                                            key={ticket.id}
-                                            ticketType={ticket.ticketType}
-                                            ticketCode={ticket.ticketCode}
-                                            ticketURL={ticket.ticketURL}
-                                            ticketData={ticket.ticketData}
-                                            eventId={event.event_id}
-                                            status={ticket.status} // Pass the status
-                                        />
-                                    ))}
+                                    {tickets
+                                        .sort((a: TicketProps) =>
+                                            a.status === 'scanned' ? 1 : -1,
+                                        )
+                                        .map((ticket: TicketProps) => (
+                                            <Ticket
+                                                key={ticket.id}
+                                                id={ticket.id}
+                                                type={ticket.type}
+                                                code={ticket.code}
+                                                qrStr={ticket.qrStr}
+                                                data={ticket.data}
+                                                eventId={event.event_id}
+                                                status={ticket.status}
+                                                categoryColor={
+                                                    ticket.categoryColor
+                                                }
+                                            />
+                                        ))}
                                 </div>
                             ) : (
                                 <EmptyState

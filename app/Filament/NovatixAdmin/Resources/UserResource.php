@@ -11,7 +11,9 @@ use Filament\Resources;
 use Filament\Tables;
 use App\Models\Team;
 use Filament\Infolists;
-use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Notification;
+use Filament\Support\Colors\Color;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resources\Resource
 {
@@ -19,11 +21,19 @@ class UserResource extends Resources\Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user';
 
+    protected static ?int $navigationSort = 2;
+
     public static function canAccess(): bool
     {
-        $user = Auth::user();
+        $user = session('auth_user');
 
-        return $user && in_array($user->role, [UserRole::ADMIN->value]);
+        return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTeams = true): Infolists\Infolist
@@ -44,13 +54,18 @@ class UserResource extends Resources\Resource
                     ])
                     ->schema([
                         Infolists\Components\TextEntry::make('first_name')
+                            ->icon('heroicon-o-user')
                             ->label('First Name'),
                         Infolists\Components\TextEntry::make('last_name')
+                            ->icon('heroicon-o-user')
                             ->label('Last Name'),
-                        Infolists\Components\TextEntry::make('email'),
+                        Infolists\Components\TextEntry::make('email')
+                            ->icon('heroicon-o-at-symbol')
+                            ->label('Email'),
                         Infolists\Components\TextEntry::make('role')
                             ->formatStateUsing(fn($state) => UserRole::tryFrom($state)->getLabel())
                             ->color(fn($state) => UserRole::tryFrom($state)->getColor())
+                            ->icon(fn($state) => UserRole::tryFrom($state)->getIcon())
                             ->badge(),
                     ]),
                 Infolists\Components\Section::make('User Contact')
@@ -67,11 +82,16 @@ class UserResource extends Resources\Resource
                     ->relationship('contactInfo')
                     ->schema([
                         Infolists\Components\TextEntry::make('phone_number')
+                            ->icon('heroicon-o-phone')
                             ->label('Phone Number'),
-                        Infolists\Components\TextEntry::make('email'),
+                        Infolists\Components\TextEntry::make('email')
+                            ->icon('heroicon-o-at-symbol')
+                            ->label('Email'),
                         Infolists\Components\TextEntry::make('whatsapp_number')
+                            ->icon('heroicon-o-phone')
                             ->label('WhatsApp Number'),
                         Infolists\Components\TextEntry::make('instagram')
+                            ->icon('heroicon-o-share')
                             ->label('Instagram Handle')
                             ->prefix('@'),
                     ]),
@@ -107,18 +127,56 @@ class UserResource extends Resources\Resource
                         Forms\Components\Group::make([
                             Forms\Components\TextInput::make('first_name')
                                 ->label('First Name')
+                                ->placeholder('First Name')
                                 ->required()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->validationAttribute('First Name')
+                                ->validationMessages([
+                                    'required' => 'The First Name field is required.',
+                                    'max' => 'The First Name may not be greater than 255 characters.',
+                                ]),
                             Forms\Components\TextInput::make('last_name')
                                 ->label('Last Name')
+                                ->placeholder('Last Name')
                                 ->required()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->validationAttribute('Last Name')
+                                ->validationMessages([
+                                    'required' => 'The Last Name field is required.',
+                                    'max' => 'The Last Name may not be greater than 255 characters.',
+                                ]),
                             Forms\Components\Select::make('role')
                                 ->options(UserRole::editableOptions())
+                                ->preload()
+                                ->reactive()
+                                ->searchable()
+                                ->validationAttribute('Role')
+                                ->validationMessages([
+                                    'required' => 'The Role field is required.',
+                                ])
                                 ->required(),
                             Forms\Components\TextInput::make('email')
+                                ->label('Personal Email')
                                 ->required()
                                 ->email()
+                                ->live(debounce: 500)
+                                ->validationAttribute('Email')
+                                ->validationMessages([
+                                    'required' => 'The Email field is required.',
+                                    'email' => 'The Email must be a valid email address.',
+                                ])
+                                ->afterStateUpdated(function ($state, $record, Forms\Set $set) {
+                                    $find = User::where('email', $state)->first();
+                                    if ($record && $record->id === $find->id) return;
+                                    if ($find) {
+                                        $set('email', null);
+                                        Notification::make()
+                                            ->title('Email Already Exists')
+                                            ->body('The email you entered already exists in the system. Please enter a different email.')
+                                            ->danger()
+                                            ->send();
+                                    }
+                                })
                                 ->unique('users', 'email', ignoreRecord: true)
                                 ->maxLength(255),
                             Forms\Components\Toggle::make('change_password')
@@ -131,7 +189,15 @@ class UserResource extends Resources\Resource
                                 ->hidden(fn(Forms\Get $get) => !$get('change_password'))
                                 ->required(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\CreateRecord)
                                 ->password()
-                                ->maxLength(255),
+                                ->placeholder('Password')
+                                ->validationAttribute('Password')
+                                ->validationMessages([
+                                    'required' => 'The Password field is required.',
+                                    'min' => 'The Password must be at least 8 characters.',
+                                    'max' => 'The Password may not be greater than 255 characters.',
+                                ])
+                                ->maxLength(255)
+                                ->minLength(8),
                         ]),
                     ]),
                 Forms\Components\Section::make('User Contact')
@@ -143,22 +209,50 @@ class UserResource extends Resources\Resource
                     ->relationship('contactInfo', 'venue_id')
                     ->schema([
                         Forms\Components\TextInput::make('phone_number')
+                            ->maxLength(24)
+                            ->validationAttribute('Phone Number')
+                            ->validationMessages([
+                                'max' => 'The phone number may not be greater than 24 characters.',
+                            ])
+                            ->placeholder('e.g. 089919991999')
                             ->label('Phone Number')
                             ->tel(),
 
                         Forms\Components\TextInput::make('email')
+                            ->label('Professional Email')
+                            ->maxLength(255)
+                            ->validationAttribute('Email')
+                            ->validationMessages([
+                                'max' => 'The email may not be greater than 255 characters.',
+                            ])
+                            ->placeholder('e.g. username@example.com')
                             ->label('Email')
                             ->email(),
 
                         Forms\Components\TextInput::make('whatsapp_number')
+                            ->maxLength(24)
+                            ->validationAttribute('WhatsApp Number')
+                            ->validationMessages([
+                                'required' => 'The WhatsApp number field is required.',
+                                'max' => 'The WhatsApp number may not be greater than 24 characters.',
+                            ])
+                            ->placeholder('e.g. 089919991999')
                             ->label('WhatsApp Number')
                             ->tel(),
 
                         Forms\Components\TextInput::make('instagram')
+                            ->maxLength(256)
+                            ->validationAttribute('Instagram Handle')
+                            ->validationMessages([
+                                'required' => 'The Instagram handle field is required.',
+                                'max' => 'The Instagram handle may not be greater than 256 characters.',
+                            ])
+                            ->placeholder('e.g. novatix.id')
                             ->label('Instagram Handle')
                             ->prefix('@'),
                     ]),
                 Forms\Components\Section::make('Teams')
+                    ->hidden(fn(Forms\Get $get) => in_array($get('role'), [UserRole::USER->value, UserRole::ADMIN->value]) ? 1 : 0)
                     ->columnSpan([
                         'default' => 1,
                         'sm' => 1,
@@ -168,7 +262,12 @@ class UserResource extends Resources\Resource
                         Forms\Components\Repeater::make('teams')
                             ->grid(4)
                             ->live()
-                            ->minItems(1)
+                            ->minItems(fn(Forms\Get $get) => in_array($get('role'), [UserRole::USER->value, UserRole::ADMIN->value]) ? 0 : 1)
+                            ->validationAttribute('Teams')
+                            ->validationMessages([
+                                'required' => 'The Teams field is required.',
+                                'min' => 'The Teams field must have at least 1 team.',
+                            ])
                             ->addable(function ($get) {
                                 // overall team size
                                 $teamSize = Team::count();
@@ -217,6 +316,10 @@ class UserResource extends Resources\Resource
                                     ->preload()
                                     ->searchable()
                                     ->optionsLimit(5)
+                                    ->validationAttribute('Team Name')
+                                    ->validationMessages([
+                                        'required' => 'The Team Name field is required.',
+                                    ])
                                     ->required()
                             ])
                             ->afterStateHydrated(function ($set, $record) {
@@ -238,7 +341,7 @@ class UserResource extends Resources\Resource
             ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Tables\Table $table, bool $filterRole = false): Tables\Table
     {
         return $table
             ->columns([
@@ -259,6 +362,7 @@ class UserResource extends Resources\Resource
                 Tables\Columns\TextColumn::make('role')
                     ->formatStateUsing(fn($state) => UserRole::tryFrom($state)->getLabel())
                     ->color(fn($state) => UserRole::tryFrom($state)->getColor())
+                    ->icon(fn($state) => UserRole::tryFrom($state)->getIcon())
                     ->badge(),
                 Tables\Columns\TextColumn::make('teams.name')
                     ->label('Teams')
@@ -276,13 +380,18 @@ class UserResource extends Resources\Resource
                     Tables\Filters\SelectFilter::make('role')
                         ->options(UserRole::editableOptions())
                         ->multiple()
+                        ->preload()
+                        ->searchable()
+                        ->hidden(!$filterRole),
                 ],
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->modalHeading('View User'),
-                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make()
+                        ->modalHeading('View User'),
+                    Tables\Actions\EditAction::make()
+                        ->color(Color::Orange),
                     Tables\Actions\DeleteAction::make(),
                 ]),
             ])
