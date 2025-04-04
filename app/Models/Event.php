@@ -27,7 +27,6 @@ class Event extends Model
         'team_id',
     ];
 
-
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',

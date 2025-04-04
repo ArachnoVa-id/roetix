@@ -522,7 +522,7 @@ class TicketResource extends Resource
                 [
                     Tables\Filters\SelectFilter::make('team_id')
                         ->label('Filter by Team')
-                        ->relationship('team', 'name')
+                        ->relationship($dataSourceExists ? '' : 'team', $dataSourceExists ? '' : 'name')
                         ->searchable()
                         ->preload()
                         ->optionsLimit(5)

@@ -273,7 +273,7 @@ class OrderResource extends Resource
     public static function infolist(Infolists\Infolist $infolist, bool $showTickets = true): Infolists\Infolist
     {
         $order = $infolist->record;
-        $order = $infolist->record;
+
         $firstEvent = $order->getSingleEvent();
         return $infolist
             ->columns([
@@ -449,7 +449,7 @@ class OrderResource extends Resource
                 [
                     Tables\Filters\SelectFilter::make('team_id')
                         ->label('Filter by Team')
-                        ->relationship('team', 'name')
+                        ->relationship($dataSourceExists ? '' : 'team', $dataSourceExists ? '' : 'name')
                         ->searchable()
                         ->preload()
                         ->optionsLimit(5)

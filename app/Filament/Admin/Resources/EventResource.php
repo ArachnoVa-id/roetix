@@ -44,6 +44,7 @@ class EventResource extends Resource
     public static function canCreate(): bool
     {
         $user = session('auth_user');
+
         if (!$user || !$user->isAllowedInRoles([UserRole::EVENT_ORGANIZER])) {
             return false;
         }
@@ -62,6 +63,7 @@ class EventResource extends Resource
     public static function canDelete(Model $record): bool
     {
         $user = session('auth_user');
+      
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }
 
@@ -361,7 +363,6 @@ class EventResource extends Resource
                                         Infolists\Components\TextEntry::make('midtrans_server_key_sb')
                                             ->label('Server Key SB')
                                             ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
-
                                         Infolists\Components\TextEntry::make('midtrans_client_key')
                                             ->label('Client Key')
                                             ->formatStateUsing(fn($state) => Crypt::decryptString($state)),

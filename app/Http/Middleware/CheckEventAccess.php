@@ -20,6 +20,7 @@ class CheckEventAccess
     public function handle(Request $request, Closure $next)
     {
         $user = session('auth_user');
+
         if ($user->isAdmin()) return $next($request);
 
         $userId = $user->id;

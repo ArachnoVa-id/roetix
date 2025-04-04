@@ -14,7 +14,9 @@ class TicketsRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return TicketResource::infolist($infolist, showBuyer: false, showOrders: false);
+        $buyer = $this->ownerRecord->user;
+
+        return TicketResource::infolist($infolist, buyer: $buyer, showBuyer: false, showOrders: false);
     }
 
     public function table(Table $table): Table

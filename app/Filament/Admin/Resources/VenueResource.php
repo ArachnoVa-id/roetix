@@ -36,6 +36,7 @@ class VenueResource extends Resources\Resource
     public static function canCreate(): bool
     {
         $user = session('auth_user');
+
         if (!$user || !$user->isAllowedInRoles([UserRole::VENDOR])) {
             return false;
         }
@@ -54,6 +55,7 @@ class VenueResource extends Resources\Resource
     public static function canDelete(Model $record): bool
     {
         $user = session('auth_user');
+      
         return $user->isAdmin();
     }
 
@@ -412,7 +414,6 @@ class VenueResource extends Resources\Resource
                     ->limit(50),
                 Tables\Columns\TextColumn::make('capacity')
                     ->label('Capacity')
-                    ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A')
                     ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
