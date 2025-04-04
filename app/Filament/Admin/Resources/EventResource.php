@@ -4,8 +4,6 @@ namespace App\Filament\Admin\Resources;
 
 use Carbon\Carbon;
 use Filament\Forms;
-use App\Models\Team;
-use App\Models\User;
 use Filament\Tables;
 use App\Models\Event;
 use App\Models\Venue;
@@ -19,7 +17,6 @@ use Illuminate\Support\Str;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
@@ -1580,38 +1577,38 @@ class EventResource extends Resource
                                 Forms\Components\TextInput::make('midtrans_client_key_sb')
                                     ->label('Client Key Sandbox')
                                     ->placeholder('Client Key Sandbox')
-                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                     ->maxLength(65535)
                                     ->validationAttribute('Client Key Sandbox')
                                     ->validationMessages([
-                                        'max' => 'Client Key Sandbox must not exceed 255 characters',
+                                        'max' => 'Client Key Sandbox must not exceed 65535 characters',
                                     ]),
                                 Forms\Components\TextInput::make('midtrans_server_key_sb')
                                     ->label('Server Key Sandbox')
                                     ->placeholder('Server Key Sandbox')
-                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                     ->maxLength(65535)
                                     ->validationAttribute('Server Key Sandbox')
                                     ->validationMessages([
-                                        'max' => 'Server Key Sandbox must not exceed 255 characters',
+                                        'max' => 'Server Key Sandbox must not exceed 65535 characters',
                                     ]),
                                 Forms\Components\TextInput::make('midtrans_client_key')
                                     ->label('Client Key')
                                     ->placeholder('Client Key')
-                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                     ->maxLength(65535)
                                     ->validationAttribute('Client Key')
                                     ->validationMessages([
-                                        'max' => 'Client Key must not exceed 255 characters',
+                                        'max' => 'Client Key must not exceed 65535 characters',
                                     ]),
                                 Forms\Components\TextInput::make('midtrans_server_key')
                                     ->label('Server Key')
                                     ->placeholder('Server Key')
-                                    ->formatStateUsing(fn($state) => $modelExists ? Crypt::decryptString($state) : null)
+                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                     ->maxLength(65535)
                                     ->validationAttribute('Server Key')
                                     ->validationMessages([
-                                        'max' => 'Server Key must not exceed 255 characters',
+                                        'max' => 'Server Key must not exceed 65535 characters',
                                     ]),
                                 Forms\Components\Toggle::make('midtrans_is_production')
                                     ->label('Is Production'),
@@ -1631,7 +1628,7 @@ class EventResource extends Resource
             ]);
     }
 
-    public static function table(Table $table, bool $filterStatus = false): Table
+    public static function table(Table $table, bool $showTeamName = true, bool $filterStatus = false): Table
     {
         $user = session('auth_user');
 
@@ -1662,7 +1659,7 @@ class EventResource extends Resource
                     ->label('Team Name')
                     ->searchable()
                     ->sortable()
-                    ->hidden(!($user->isAdmin()))
+                    ->hidden(!($user->isAdmin()) || !$showTeamName)
                     ->limit(20),
                 Tables\Columns\TextColumn::make('slug')
                     ->limit(20)

@@ -27,12 +27,9 @@ class EventScanTicket extends Component implements HasForms, HasTable
     public Event $event;
     public $ticket_code = '';
 
-    public function mount($eventId)
+    public function mount($event)
     {
-        // dd($eventId);
-        // $this->event = Event::first();
-        $this->event = Event::findOrFail($eventId);
-        // dd($this->event->event_id);
+        $this->event = $event;
     }
 
     protected function getFormSchema(): array

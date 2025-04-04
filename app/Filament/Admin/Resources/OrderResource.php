@@ -273,6 +273,7 @@ class OrderResource extends Resource
     public static function infolist(Infolists\Infolist $infolist, bool $showTickets = true): Infolists\Infolist
     {
         $order = $infolist->record;
+        $order = $infolist->record;
         $firstEvent = $order->getSingleEvent();
         return $infolist
             ->columns([
@@ -389,7 +390,7 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function table(Table $table, bool $filterStatus = false, bool $filterEvent = true): Table
+    public static function table(Table $table, bool $filterStatus = false, bool $filterEvent = true, bool $filterTeam = true): Table
     {
         $user = session('auth_user');
 
@@ -400,7 +401,7 @@ class OrderResource extends Resource
                     ->label('Team Name')
                     ->searchable()
                     ->sortable()
-                    ->hidden(!($user->isAdmin()))
+                    ->hidden(!($user->isAdmin()) || !$filterTeam)
                     ->limit(50),
                 Tables\Columns\TextColumn::make('order_code')
                     ->label('Code')
@@ -417,7 +418,7 @@ class OrderResource extends Resource
                         });
                     })
                     ->sortable()
-                    ->formatStateUsing(fn($state) => $state->getUserName()),
+                    ->formatStateUsing(fn($record) => $record->user?->getUserName() ?? 'N/A'),
                 Tables\Columns\TextColumn::make('order_date')
                     ->label('Date')
                     ->sortable(),

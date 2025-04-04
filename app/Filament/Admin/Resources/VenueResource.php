@@ -4,7 +4,6 @@ namespace App\Filament\Admin\Resources;
 
 use Filament\Forms;
 use App\Models\Team;
-use App\Models\User;
 use Filament\Tables;
 use App\Models\Venue;
 use Filament\Actions;
@@ -13,7 +12,6 @@ use Filament\Infolists;
 use Filament\Resources;
 use App\Enums\VenueStatus;
 use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
@@ -414,6 +412,7 @@ class VenueResource extends Resources\Resource
                     ->limit(50),
                 Tables\Columns\TextColumn::make('capacity')
                     ->label('Capacity')
+                    ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A')
                     ->getStateUsing(fn($record) => $record->seats->count() ?? 'N/A')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')

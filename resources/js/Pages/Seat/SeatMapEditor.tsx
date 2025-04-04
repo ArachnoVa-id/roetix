@@ -92,14 +92,46 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
         let maxRowIndex = 0;
         layout.items.forEach((item) => {
             if ('seat_id' in item) {
-                const rowIndex =
-                    typeof item.row === 'string'
-                        ? item.row.charCodeAt(0) - 65
-                        : item.row;
+                // Konversi label baris ke angka dengan algoritma yang benar
+                let rowIndex = 0;
+                if (typeof item.row === 'string') {
+                    rowIndex = getRowIndex(item.row);
+                } else {
+                    rowIndex = item.row;
+                }
                 maxRowIndex = Math.max(maxRowIndex, rowIndex);
             }
         });
-        return maxRowIndex + 1;
+        return maxRowIndex + 1; // Add 1 karena index 0-based
+    };
+
+    const getRowLabel = (index: number): string => {
+        let label = '';
+        let n = index + 1; // Konversi ke 1-based
+        
+        while (n > 0) {
+            let remainder = n % 26;
+            
+            if (remainder === 0) {
+                remainder = 26;
+                n -= 1;
+            }
+            
+            label = String.fromCharCode(64 + remainder) + label;
+            n = Math.floor(n / 26);
+        }
+        
+        return label;
+    };
+
+    const getRowIndex = (label: string): number => {
+        let result = 0;
+        
+        for (let i = 0; i < label.length; i++) {
+            result = result * 26 + (label.charCodeAt(i) - 64);
+        }
+        
+        return result - 1; // Konversi ke 0-based index
     };
 
     const findHighestColumn = (): number => {
@@ -125,9 +157,9 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
         if ('seat_id' in item) {
             const rowIndex =
                 typeof item.row === 'string'
-                    ? item.row.charCodeAt(0) - 65
+                    ? getRowIndex(item.row) // Gunakan fungsi getRowIndex
                     : item.row;
-
+    
             if (rowIndex >= 0 && rowIndex < actualRows) {
                 const colIndex = (item.column as number) - 1;
                 if (colIndex >= 0 && colIndex < actualColumns) {

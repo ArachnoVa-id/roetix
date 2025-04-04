@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Collection;
 
 class EventsRelationManager extends RelationManager
 {
+
+
     protected static string $relationship = 'events';
 
     public function getTableRecords(): Collection
@@ -39,7 +41,7 @@ class EventsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return EventResource::table($table, filterStatus: true)
+        return EventResource::table($table, showTeamName: false, filterStatus: true)
             ->modifyQueryUsing(fn(Builder $query) => $query->withoutGlobalScopes())
             ->heading('');
     }

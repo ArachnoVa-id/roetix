@@ -10,6 +10,37 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
     currentTimeline,
     eventStatus = 'active', // Nilai default
 }) => {
+    // Pindahkan deklarasi fungsi konversi ke awal komponen
+    // agar dapat digunakan sebelum panggilan fungsi lain
+    const getRowIndex = (label: string): number => {
+        let result = 0;
+
+        for (let i = 0; i < label.length; i++) {
+            result = result * 26 + (label.charCodeAt(i) - 64);
+        }
+
+        return result - 1; // Konversi ke 0-based index
+    };
+
+    const getRowLabel = (index: number): string => {
+        let label = '';
+        let n = index + 1; // Konversi ke 1-based
+
+        while (n > 0) {
+            let remainder = n % 26;
+
+            if (remainder === 0) {
+                remainder = 26;
+                n -= 1;
+            }
+
+            label = String.fromCharCode(64 + remainder) + label;
+            n = Math.floor(n / 26);
+        }
+
+        return label;
+    };
+
     const [rows, setRows] = useState(config.totalRows);
     const [columns, setColumns] = useState(config.totalColumns);
 
@@ -18,10 +49,13 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
         let maxRowIndex = 0;
         config.items.forEach((item) => {
             if ('seat_id' in item) {
-                const rowIndex =
-                    typeof item.row === 'string'
-                        ? item.row.charCodeAt(0) - 65
-                        : item.row;
+                // Konversi label baris ke angka dengan algoritma yang benar
+                let rowIndex = 0;
+                if (typeof item.row === 'string') {
+                    rowIndex = getRowIndex(item.row);
+                } else {
+                    rowIndex = item.row;
+                }
                 maxRowIndex = Math.max(maxRowIndex, rowIndex);
             }
         });
@@ -54,9 +88,7 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
     config.items.forEach((item) => {
         if ('seat_id' in item) {
             const rowIndex =
-                typeof item.row === 'string'
-                    ? item.row.charCodeAt(0) - 65
-                    : item.row;
+                typeof item.row === 'string' ? getRowIndex(item.row) : item.row;
 
             if (rowIndex >= 0 && rowIndex < rows) {
                 const colIndex = (item.column as number) - 1;

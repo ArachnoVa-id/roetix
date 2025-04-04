@@ -279,7 +279,7 @@ class TicketResource extends Resource
             ->sortByDesc('created_at')
             ->first();
 
-        $buyer = $ticketOrder?->order?->user;
+        $buyer = $ticket->latestTicketOrder?->order?->user ?? null;
         return $infolist
             ->columns([
                 'default' => 1,
@@ -506,8 +506,16 @@ class TicketResource extends Resource
                     ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
                     ->icon(fn($state) => TicketStatus::tryFrom($state)->getIcon())
                     ->badge(),
-                $ownership,
-                $latestOwner,
+                Tables\Columns\TextColumn::make('ticket_order_status')
+                    ->label('Latest Validity')
+                    ->default(fn($record) => $record->latestTicketOrder?->status ?? TicketOrderStatus::ENABLED->value)
+                    ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
+                    ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
+                    ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
+                    ->badge(),
+                Tables\Columns\TextColumn::make('ticket_owner')
+                    ->label('Latest Owner')
+                    ->default(fn($record) => $record->getLatestOwner() ?? 'N/A'),
             ])
             ->defaultSort('seat.seat_number', 'asc')
             ->filters(

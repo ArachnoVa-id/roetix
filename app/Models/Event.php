@@ -27,10 +27,11 @@ class Event extends Model
         'team_id',
     ];
 
+
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
-        'event_date' => 'datetime', // Added datetime cast for event_date
+        'event_date' => 'datetime',
     ];
 
     protected $with = [
