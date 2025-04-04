@@ -28,11 +28,7 @@ class Venue extends Model
     ];
 
     protected $with = [
-        'seats',
-        'events',
-        'events.ticketCategories',
-        'events.ticketCategories.eventCategoryTimeboundPrices',
-        'events.ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+        'team'
     ];
 
     protected static function boot()

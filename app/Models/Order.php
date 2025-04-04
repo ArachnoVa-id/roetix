@@ -34,6 +34,11 @@ class Order extends Model
         'expired_at',
     ];
 
+    protected $with = [
+        'team',
+        'user'
+    ];
+
     protected static function boot()
     {
         parent::boot();

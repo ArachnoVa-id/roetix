@@ -21,9 +21,7 @@ class TicketsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $ownerRecordArray = $this->ownerRecord->toArray();
-
-        return TicketResource::table($table, dataSource: $ownerRecordArray, showEvent: false, showTraceButton: true, filterStatus: true)
+        return TicketResource::table($table, showEvent: false, showTraceButton: true, filterStatus: true, filterTeam: false)
             ->heading('');
     }
 }

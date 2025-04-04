@@ -33,6 +33,10 @@ class Event extends Model
         'event_date' => 'datetime',
     ];
 
+    protected $with = [
+        'team'
+    ];
+
     protected static function boot()
     {
         parent::boot();

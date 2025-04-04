@@ -20,7 +20,7 @@ class ListOrders extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        $user = session('userProps');
+        $user = session('auth_user');
 
         return [
             Actions\CreateAction::make()

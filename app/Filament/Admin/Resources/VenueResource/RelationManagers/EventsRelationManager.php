@@ -7,6 +7,7 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class EventsRelationManager extends RelationManager
 {
@@ -14,23 +15,28 @@ class EventsRelationManager extends RelationManager
 
     protected static string $relationship = 'events';
 
+    public function getTableRecords(): Collection
+    {
+        $events = $this->ownerRecord->events;
+
+        return new Collection($events);
+    }
+
     public function infolist(Infolist $infolist): Infolist
     {
-        $ownerRecordArray = $this->ownerRecord->toArray();
-        // Loop through the ownerRecordArray and add the new property `timelineSession_name`
-        foreach ($ownerRecordArray['events'] as &$event) {
-            foreach ($event['ticket_categories'] as &$ticketCategory) {
-                foreach ($ticketCategory['event_category_timebound_prices'] as &$timeboundPrice) {
-                    // Check if 'timeline_session' exists and has a 'name' field
-                    if (isset($timeboundPrice['timeline_session']['name'])) {
-                        // Add a new property 'timelineSession_name' based on 'timeline_session.name'
-                        $timeboundPrice['timelineSession_name'] = $timeboundPrice['timeline_session']['name'];
-                    }
-                }
-            }
-        }
+        $eventId = $infolist->record->event_id;
 
-        return EventResource::infolist($infolist, dataSource: $ownerRecordArray, showOrders: false, showTickets: false);
+        $record = $this->ownerRecord->events()
+            ->where('event_id', $eventId)
+            ->with([
+                'team',
+                'ticketCategories',
+                'ticketCategories.eventCategoryTimeboundPrices',
+                'ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+            ])
+            ->first();
+
+        return EventResource::infolist($infolist, record: $record, showOrders: false, showTickets: false);
     }
 
     public function table(Table $table): Table

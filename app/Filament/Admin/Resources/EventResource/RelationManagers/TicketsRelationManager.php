@@ -6,10 +6,18 @@ use App\Filament\Admin\Resources\TicketResource;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 
 class TicketsRelationManager extends RelationManager
 {
     protected static string $relationship = 'tickets';
+
+    public function getTableRecords(): Collection
+    {
+        $tickets = $this->ownerRecord->tickets;
+
+        return new Collection($tickets);
+    }
 
     public function infolist(Infolist $infolist): Infolist
     {
@@ -21,7 +29,7 @@ class TicketsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return TicketResource::table($table, showEvent: false, showTraceButton: true, filterStatus: true, filterEvent: false)
+        return TicketResource::table($table, showEvent: false, showTraceButton: true, filterStatus: true, filterEvent: false, filterTeam: false)
             ->heading('');
     }
 }

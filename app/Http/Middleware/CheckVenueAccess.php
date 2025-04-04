@@ -17,7 +17,8 @@ class CheckVenueAccess
      */
     public function handle(Request $request, Closure $next)
     {
-        $user = session('userProps');
+        $user = session('auth_user');
+
         if ($user->isAdmin()) return $next($request);
 
         $userId = $user->id;

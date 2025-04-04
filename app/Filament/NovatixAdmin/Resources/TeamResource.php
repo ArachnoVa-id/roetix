@@ -8,14 +8,13 @@ use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\EventsRela
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\UsersRelationManager;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\VenuesRelationManager;
 use App\Models\Team;
-use App\Models\User;
 use Filament\Forms;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
 use Filament\Tables;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class TeamResource extends Resource
 {
@@ -27,9 +26,24 @@ class TeamResource extends Resource
 
     public static function canAccess(): bool
     {
-        $user = session('userProps');
+        $user = session('auth_user');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'events',
+                'events.team',
+                'events.ticketCategories',
+                'events.ticketCategories.eventCategoryTimeboundPrices',
+                'events.ticketCategories.eventCategoryTimeboundPrices.timelineSession',
+                'venues',
+                'venues.seats',
+                'venues.team',
+            ]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showMembers = true, bool $showEvents = true, bool $showVenues = true): Infolists\Infolist

@@ -33,6 +33,13 @@ class Ticket extends Model
         'team_id'
     ];
 
+    protected $with = [
+        'team',
+        'ticketOrders',
+        'ticketOrders.order',
+        'ticketOrders.order.user',
+    ];
+
     protected static function boot()
     {
         parent::boot();
