@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 // Helper function to convert Excel-style column label to number
 const getRowNumber = (label: string): number => {
     let result = 0;
-    
+
     // Iterasi melalui setiap karakter dalam label
     for (let i = 0; i < label.length; i++) {
         // Untuk setiap posisi, kalikan hasil sejauh ini dengan 26
@@ -16,7 +16,7 @@ const getRowNumber = (label: string): number => {
         const charValue = label.charCodeAt(i) - 64; // 'A' adalah 65 di ASCII
         result += charValue;
     }
-    
+
     // Kurangi 1 untuk mendapatkan indeks 0-based
     return result - 1;
 };
@@ -281,9 +281,9 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
             const containerRect = container.getBoundingClientRect();
 
             // Get all cells
-            const cells = container.querySelectorAll(
-                'div[class*="cursor-pointer"]',
-            );
+            // const cells = container.querySelectorAll(
+            //     'div[class*="cursor-pointer"]',
+            // );
 
             // We need to calculate cell position in the visible grid
             // This is a simplified approach - for a more accurate approach we'd need
@@ -470,31 +470,31 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         // 'index' adalah posisi dari bawah ke atas (0-based)
         // Konversi ke 1-based untuk kalkulasi
         const rowFromBottom = index + 1;
-        
+
         if (rowFromBottom <= 0 || rowFromBottom > totalRows) return '';
-    
+
         // Implementasi algoritma konversi angka ke label Excel
         // Di mana 1 -> A, 2 -> B, ..., 26 -> Z, 27 -> AA, 28 -> AB, dst.
         let label = '';
         let n = rowFromBottom;
-        
+
         while (n > 0) {
             // Dapatkan sisa pembagian dengan 26 (jumlah huruf)
             let remainder = n % 26;
-            
+
             // Jika sisa pembagian 0, gunakan 'Z' dan kurangi n
             if (remainder === 0) {
                 remainder = 26;
                 n -= 1;
             }
-            
+
             // Konversi angka ke huruf (A=1, B=2, ...) dan tambahkan ke depan label
             label = String.fromCharCode(64 + remainder) + label;
-            
+
             // Bagi n dengan 26 untuk mendapatkan digit berikutnya
             n = Math.floor(n / 26);
         }
-        
+
         return label;
     };
 
