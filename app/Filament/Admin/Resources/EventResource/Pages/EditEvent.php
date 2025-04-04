@@ -200,8 +200,10 @@ class EditEvent extends EditRecord
             // Parse all the image based to get values only (because it is in array)
             $columns = ['logo', 'texture', 'favicon'];
             foreach ($columns as $column) {
-                if (isset($this->data[$column]) && !empty($this->data[$column])) {
-                    $this->data[$column] = array_values($this->data[$column])[0];
+                if (isset($eventVariables[$column])) {
+                    if (!empty($this->data[$column]))
+                        $this->data[$column] = array_values($this->data[$column])[0];
+                    else $this->data[$column] = "";
                 }
             }
 
