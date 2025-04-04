@@ -128,7 +128,8 @@ jobs:
           cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
           #!/bin/bash
           cd ~/novatix/app/develop
-          sudo rm -rf storage/*
+          sudo rm -rf storage/app/public/*
+          sudo rm -rf storage/app/private/*
           php artisan migrate:fresh --force --seed
           php artisan config:clear
           sudo php artisan cache:clear
@@ -200,9 +201,14 @@ jobs:
           # Build frontend assets
           npm run build
 
-          # Set correct permissions
-          sudo chown -R www-data:www-data /var/www/novatix_staging
-          sudo chmod -R 775 /var/www/novatix_staging/storage /var/www/novatix_staging/bootstrap/cache
+          # Ensure cache and storage directories exist
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs
+          mkdir -p bootstrap/cache
+
+          # Set permissions
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          sudo chmod -R 775 storage bootstrap/cache
 
           # Cache configurations
           php artisan config:clear
