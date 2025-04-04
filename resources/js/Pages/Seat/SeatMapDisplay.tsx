@@ -22,24 +22,24 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
         return result - 1; // Konversi ke 0-based index
     };
 
-    const getRowLabel = (index: number): string => {
-        let label = '';
-        let n = index + 1; // Konversi ke 1-based
+    // const getRowLabel = (index: number): string => {
+    //     let label = '';
+    //     let n = index + 1; // Konversi ke 1-based
 
-        while (n > 0) {
-            let remainder = n % 26;
+    //     while (n > 0) {
+    //         let remainder = n % 26;
 
-            if (remainder === 0) {
-                remainder = 26;
-                n -= 1;
-            }
+    //         if (remainder === 0) {
+    //             remainder = 26;
+    //             n -= 1;
+    //         }
 
-            label = String.fromCharCode(64 + remainder) + label;
-            n = Math.floor(n / 26);
-        }
+    //         label = String.fromCharCode(64 + remainder) + label;
+    //         n = Math.floor(n / 26);
+    //     }
 
-        return label;
-    };
+    //     return label;
+    // };
 
     const [rows, setRows] = useState(config.totalRows);
     const [columns, setColumns] = useState(config.totalColumns);

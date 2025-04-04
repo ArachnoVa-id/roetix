@@ -105,32 +105,32 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
         return maxRowIndex + 1; // Add 1 karena index 0-based
     };
 
-    const getRowLabel = (index: number): string => {
-        let label = '';
-        let n = index + 1; // Konversi ke 1-based
-        
-        while (n > 0) {
-            let remainder = n % 26;
-            
-            if (remainder === 0) {
-                remainder = 26;
-                n -= 1;
-            }
-            
-            label = String.fromCharCode(64 + remainder) + label;
-            n = Math.floor(n / 26);
-        }
-        
-        return label;
-    };
+    // const getRowLabel = (index: number): string => {
+    //     let label = '';
+    //     let n = index + 1; // Konversi ke 1-based
+
+    //     while (n > 0) {
+    //         let remainder = n % 26;
+
+    //         if (remainder === 0) {
+    //             remainder = 26;
+    //             n -= 1;
+    //         }
+
+    //         label = String.fromCharCode(64 + remainder) + label;
+    //         n = Math.floor(n / 26);
+    //     }
+
+    //     return label;
+    // };
 
     const getRowIndex = (label: string): number => {
         let result = 0;
-        
+
         for (let i = 0; i < label.length; i++) {
             result = result * 26 + (label.charCodeAt(i) - 64);
         }
-        
+
         return result - 1; // Konversi ke 0-based index
     };
 
@@ -159,7 +159,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                 typeof item.row === 'string'
                     ? getRowIndex(item.row) // Gunakan fungsi getRowIndex
                     : item.row;
-    
+
             if (rowIndex >= 0 && rowIndex < actualRows) {
                 const colIndex = (item.column as number) - 1;
                 if (colIndex >= 0 && colIndex < actualColumns) {
