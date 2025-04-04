@@ -2,21 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Seat;
-use App\Models\Section;
+use Inertia\Inertia;
 use App\Models\Event;
 use App\Models\Venue;
 use App\Models\Ticket;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\TicketCategory;
+use App\Models\TimelineSession;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
-use App\Models\TicketCategory;
-use Carbon\Carbon;
-use App\Models\TimelineSession;
 use App\Models\EventCategoryTimeboundPrice;
-
+use Illuminate\Validation\ValidationException;
 
 class SeatController extends Controller
 {
@@ -84,6 +83,41 @@ class SeatController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Failed to import seat map']);
+        }
+    }
+
+    public function exportMap()
+    {
+        try {
+            // Retrieve seat data related to the model, assuming it's related by 'seats' relationship
+            $venue = Venue::find(request()->route('venue'));
+            $seats = $venue->seats()->get()->map(function ($seat) {
+                return [
+                    'position' => $seat->position,
+                ];
+            })->toArray();
+
+            // Format the data
+            $export = [
+                'layout' => [
+                    'items' => $seats
+                ]
+            ];
+
+            // Encode data to JSON format
+            $encoded = json_encode($export, JSON_PRETTY_PRINT);
+
+            // Define the filename
+            $venueName = Str::slug($venue->name);
+            $fileName = "novatix-{$venueName}-seatconfig.json";
+
+            // Return a JSON download response using response()->make()
+            return response()->make($encoded, 200, [
+                'Content-Type' => 'application/json',
+                'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            ]);
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to export seat map']);
         }
     }
 

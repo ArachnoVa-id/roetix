@@ -55,7 +55,7 @@ class VenueResource extends Resources\Resource
     public static function canDelete(Model $record): bool
     {
         $user = session('auth_user');
-      
+
         return $user->isAdmin();
     }
 
@@ -116,22 +116,7 @@ class VenueResource extends Resources\Resource
             ->label('Export Venue')
             ->icon('heroicon-o-arrow-down-tray')
             ->color(Color::Emerald)
-            ->action(function ($record) {
-                try {
-                    $record->exportSeats();
-                    Notification::make()
-                        ->title('Success')
-                        ->body("Venue {$record->name} seats have been exported.")
-                        ->success()
-                        ->send();
-                } catch (\Exception $e) {
-                    Notification::make()
-                        ->title('Failed')
-                        ->body("Failed to export venue {$record->name} seats: {$e->getMessage()}")
-                        ->danger()
-                        ->send();
-                }
-            });
+            ->url(fn($record) => route('venues.export', ['venue' => $record->venue_id]));
     }
 
     public static function ImportVenueButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action

@@ -63,7 +63,7 @@ class EventResource extends Resource
     public static function canDelete(Model $record): bool
     {
         $user = session('auth_user');
-      
+
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }
 
@@ -203,7 +203,7 @@ class EventResource extends Resource
                         ->tabs([
                             Infolists\Components\Tabs\Tab::make('Scan Tickets')
                                 ->schema([
-                                    Infolists\Components\Livewire::make('event-scan-ticket', ['eventId' => $infolist->record->event_id])
+                                    Infolists\Components\Livewire::make('event-scan-ticket', ['event' => $infolist->record])
                                 ]),
                             Infolists\Components\Tabs\Tab::make('Timeline and Categories')
                                 ->schema([

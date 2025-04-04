@@ -57,7 +57,6 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
         $request->session()->regenerate();
-
         $user = Auth::user();
         $userModel = User::find($user->id);
 
@@ -78,6 +77,7 @@ class AuthenticatedSessionController extends Controller
         $firstTeam = $userModel->teams()->first();
 
         if ($userModel->isAdmin()) {
+            dd('test');
             session([
                 'auth_user' => $userModel,
             ]);

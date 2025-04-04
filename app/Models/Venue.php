@@ -65,34 +65,6 @@ class Venue extends Model
         return [$success, $message];
     }
 
-    public function exportSeats()
-    {
-        // Retrieve seat data related to the model, assuming it's related by 'seats' relationship
-        $seats = $this->seats()->pluck('position')->toArray();
-
-        // Format the data
-        $export = [
-            'layout' => [
-                'items' => $seats
-            ]
-        ];
-
-        // Encode data to JSON format
-        $encoded = json_encode($export, JSON_PRETTY_PRINT);
-
-        // Define the filename
-        $venueName = Str::slug($this->name);
-        $fileName = "novatix-{$venueName}-seatconfig.json";
-
-        // Return a JSON download response
-        return response()->streamDownload(function () use ($encoded) {
-            echo $encoded;
-        }, $fileName, [
-            'Content-Type' => 'application/json',
-            'Content-Disposition' => "attachment; filename={$fileName}",
-        ]);
-    }
-
     public function seats(): HasMany
     {
         return $this->hasMany(Seat::class, 'venue_id', 'venue_id');

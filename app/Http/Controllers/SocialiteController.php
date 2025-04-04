@@ -37,6 +37,10 @@ class SocialiteController extends Controller
             $userHasCorrectGoogleId = $userExists && $user->google_id === $google_resp->id;
 
             if ($userHasCorrectGoogleId) {
+                session([
+                    'auth_user' => $user,
+                ]);
+
                 Auth::login($user);
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
@@ -132,6 +136,10 @@ class SocialiteController extends Controller
                 }
 
                 DB::commit();
+
+                session([
+                    'auth_user' => $userData,
+                ]);
 
                 Auth::login($userData);
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
