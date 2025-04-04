@@ -77,7 +77,6 @@ class AuthenticatedSessionController extends Controller
         $firstTeam = $userModel->teams()->first();
 
         if ($userModel->isAdmin()) {
-            dd('test');
             session([
                 'auth_user' => $userModel,
             ]);
