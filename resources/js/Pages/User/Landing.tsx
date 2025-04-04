@@ -13,16 +13,16 @@ import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
 
-interface Ticket {
-    ticket_id: string;
-    status: string;
-    seat_id: string;
-    event_id: string;
-}
+// interface Ticket {
+//     ticket_id: string;
+//     status: string;
+//     seat_id: string;
+//     event_id: string;
+// }
 
-interface TicketPurchasedEvent {
-    tickets: Ticket;
-}
+// interface TicketPurchasedEvent {
+//     tickets: Ticket;
+// }
 
 export default function Landing({
     client,
@@ -453,24 +453,24 @@ export default function Landing({
 
     // If we have an error, show it
 
-    useEffect(() => {
-        window.Echo.channel('tickets').listen(
-            '.ticket-purchased',
-            (e: TicketPurchasedEvent) => {
-                console.log('Ticket purchased:', e.tickets);
-            },
-        );
-        const channel = window.Echo.channel('.tickets');
-        console.log(window.Echo);
+    // useEffect(() => {
+    //     window.Echo.channel('tickets').listen(
+    //         '.ticket-purchased',
+    //         (e: TicketPurchasedEvent) => {
+    //             console.log('Ticket purchased:', e.tickets);
+    //         },
+    //     );
+    //     const channel = window.Echo.channel('.tickets');
+    //     console.log(window.Echo);
 
-        window.Echo.connector.socket.on('.tickets', () =>
-            console.log('WebSocket Connected'),
-        );
+    //     window.Echo.connector.socket.on('.tickets', () =>
+    //         console.log('WebSocket Connected'),
+    //     );
 
-        channel.subscribed(() => {
-            console.log('Terhubung ke channel: tickets');
-        });
-    }, []);
+    //     channel.subscribed(() => {
+    //         console.log('Terhubung ke channel: tickets');
+    //     });
+    // }, []);
 
     if (error) {
         return (
