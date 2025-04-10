@@ -229,6 +229,10 @@ class PaymentController extends Controller
             $order->snap_token = $snapToken;
             $order->save();
 
+            $this->publishMqtt(data:[
+                'message' => 'hallo ini dari charge'
+            ]);
+
             DB::commit();
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
         } catch (\Exception $e) {
@@ -273,13 +277,6 @@ class PaymentController extends Controller
                     break;
             }
 
-            if ($data['transaction_status'] == 'settlement')
-            {
-                $this->publishMqtt($data = [
-                    'message' => $data['transaction_status']
-                ]);
-            }
-
             DB::commit();
             return response()->json(['message' => 'Callback processed successfully']);
         } catch (\Exception $e) {
@@ -321,6 +318,9 @@ class PaymentController extends Controller
                     $ticket->save();
                 }
             }
+            $this->publishMqtt(data:[
+                'message' => 'ini dari update status'
+            ]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
