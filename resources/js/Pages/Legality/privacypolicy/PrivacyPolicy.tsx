@@ -24,11 +24,11 @@ interface Props {
 export default function PrivacyPolicy({
     client,
     props,
-    event,
+    // event,
     user,
     dbContent,
 }: Props) {
-    const eventName = event?.name || 'NovaTix'; // Fallback to 'NovaTix' if event name isn't available
+    // const eventName = event?.name || 'NovaTix'; // Fallback to 'NovaTix' if event name isn't available
     const contentRef = useRef<HTMLDivElement>(null);
     const [activeSection, setActiveSection] = useState<string | null>(null);
     const [language, setLanguage] = useState('indonesia');
@@ -247,7 +247,7 @@ export default function PrivacyPolicy({
                                         {section.title}
                                     </h3>
                                     <div
-                                        className="whitespace-pre-line mb-4 leading-relaxed transition-all duration-300"
+                                        className="mb-4 whitespace-pre-line leading-relaxed transition-all duration-300"
                                         style={{
                                             color: props.text_primary_color,
                                             maxWidth: '75ch',

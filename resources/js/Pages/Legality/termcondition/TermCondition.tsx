@@ -24,11 +24,11 @@ interface Props {
 export default function TermCondition({
     client,
     props,
-    event,
+    // event,
     user,
     dbContent,
 }: Props) {
-    const eventName = event?.name || 'NovaTix';
+    // const eventName = event?.name || 'NovaTix';
     const contentRef = useRef<HTMLDivElement>(null);
     const [activeSection, setActiveSection] = useState<string | null>(null);
     const [language, setLanguage] = useState('indonesia');
@@ -88,7 +88,7 @@ export default function TermCondition({
         <>
             <Head title="Syarat dan Ketentuan" />
             <div
-                className="relative w-full p-10 mb-10 text-center text-white"
+                className="relative mb-10 w-full p-10 text-center text-white"
                 style={{
                     background: `linear-gradient(135deg, ${props.secondary_color} 0%, ${props.primary_color} 100%)`,
                 }}
@@ -108,7 +108,6 @@ export default function TermCondition({
                     </p>
                 </div>
             </div>
-
             <div
                 className="mx-auto flex max-w-7xl flex-col px-4 py-8 md:flex-row"
                 ref={contentRef}
@@ -237,8 +236,7 @@ export default function TermCondition({
                     </div>
                 </div>
             </div>
-
-            {/* Language Selector
+            Language Selector
             <div className="fixed right-4 top-32 z-50">
                 <div className="flex rounded-full border bg-white p-1 shadow-lg">
                     {['indonesia', 'english'].map((lang) => (
@@ -265,8 +263,7 @@ export default function TermCondition({
                         </button>
                     ))}
                 </div>
-            </div> */}
-
+            </div>
             {/* Back button */}
             <div className="flex items-center justify-center pb-8">
                 <a

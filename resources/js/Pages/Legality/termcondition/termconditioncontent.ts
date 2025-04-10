@@ -2,9 +2,9 @@ export interface TermConditionSection {
     id: string;
     title: string;
     content: string;
-  }
-  
-  export interface TermConditionContent {
+}
+
+export interface TermConditionContent {
     title: string;
     lastUpdated: string;
     // introduction: string;
@@ -12,9 +12,9 @@ export interface TermConditionSection {
     mainTitle: string;
     sections: TermConditionSection[];
     footer: string;
-  }
-  
-  export const termConditionContent: TermConditionContent = {
+}
+
+export const termConditionContent: TermConditionContent = {
     title: 'Syarat dan Ketentuan',
     lastUpdated: '10 April 2025 • 14:00 • GMT +7',
     // introduction:
@@ -23,10 +23,10 @@ export interface TermConditionSection {
     //   'Demi kenyamanan bersama, kami mohon dapat memperhatikan dan mematuhi tata tertib yang berlaku selama event berlangsung.',
     mainTitle: 'Syarat dan Ketentuan NovaTix',
     sections: [
-      {
-        id: 'syarat-dan-ketentuan-novatix',
-        title: 'Syarat dan Ketentuan NovaTix',
-        content: `Selamat datang di NovaTix! Terimakasih telah menyempatkan waktu untuk mempelajari segala ketentuan yang berkaitan dengan NovaTix.
+        {
+            id: 'syarat-dan-ketentuan-novatix',
+            title: 'Syarat dan Ketentuan NovaTix',
+            content: `Selamat datang di NovaTix! Terimakasih telah menyempatkan waktu untuk mempelajari segala ketentuan yang berkaitan dengan NovaTix.
 
 Dengan memanfaatkan layanan kami, Anda dianggap telah menerima dan terikat sepenuhnya oleh seluruh syarat serta ketentuan yang berlaku. Jika keberatan terhadap ketentuan tersebut, sangat disarankan untuk menghentikan proses transaksi dengan pihak kami.
 
@@ -71,11 +71,11 @@ Ketentuan ini tunduk pada hukum yang berlaku di Indonesia. Jika terjadi sengketa
 
 Ketentuan umum ini dapat berubah dari waktu ke waktu. Kami akan selalu berupaya untuk memberikan pelayanan terbaik bagi Anda, sehingga perubahan yang kami lakukan bertujuan untuk memberikan pelayanan terbaik. Oleh karena itu, sangat disarankan bagi Anda untuk memahami dan terus meninjau secara berkala Ketentuan Umum dari kami.
 `,
-      },
-      {
-        id: 'tanggung-jawab-novatix',
-        title: 'Tanggung Jawab NovaTix',
-        content: `**1. Penyediaan Layanan**
+        },
+        {
+            id: 'tanggung-jawab-novatix',
+            title: 'Tanggung Jawab NovaTix',
+            content: `**1. Penyediaan Layanan**
 NovaTix bertanggung jawab untuk menyediakan platform yang memungkinkan pengguna dan EO melakukan transaksi tiket secara aman dan efisien. Kami akan berusaha menjaga ketersediaan layanan dan meningkatkan fitur sesuai kebutuhan pengguna.
 
 **2. Keamanan Data Pengguna**
@@ -92,12 +92,12 @@ Jika terjadi perselisihan antara pengguna dan EO terkait transaksi tiket, NovaTi
 
 **6. Pembaruan Kebijakan dan Ketentuan**
 NovaTix berhak melakukan perubahan terhadap Ketentuan Layanan sesuai dengan perkembangan hukum dan kebijakan internal. Pengguna akan diinformasikan mengenai perubahan tersebut melalui platform atau media komunikasi resmi NovaTix.
-`
-      },
-      {
-        id: 'tanggung-jawab-pengguna',
-        title: 'Tanggung Jawab Pengguna',
-        content: `**1. Keakuratan Data**
+`,
+        },
+        {
+            id: 'tanggung-jawab-pengguna',
+            title: 'Tanggung Jawab Pengguna',
+            content: `**1. Keakuratan Data**
 Pengguna wajib memberikan informasi yang benar dan lengkap saat melakukan pendaftaran akun atau pembelian tiket.
 
 **2. Keamanan Akun**
@@ -111,12 +111,12 @@ Dengan menggunakan layanan NovaTix, pengguna dianggap telah membaca, memahami, d
 
 **5. Pemantauan Informasi Acara**
 Pengguna bertanggung jawab untuk memastikan detail acara sebelum membeli tiket, termasuk membaca kebijakan refund dan pembatalan yang berlaku untuk setiap event.
-`
-      },
-      {
-        id: 'tanggung-jawab-eo',
-        title: 'Tanggung Jawab Event Organizer (EO)',
-        content: `**1. Keabsahan Acara**
+`,
+        },
+        {
+            id: 'tanggung-jawab-eo',
+            title: 'Tanggung Jawab Event Organizer (EO)',
+            content: `**1. Keabsahan Acara**
 EO wajib memastikan bahwa acara yang mereka unggah di NovaTix adalah sah dan sesuai dengan hukum yang berlaku di Indonesia.
 
 **2. Keakuratan Informasi Acara**
@@ -135,12 +135,12 @@ Jika ada keluhan dari pembeli tiket, EO bertanggung jawab untuk menanganinya den
 EO harus mengikuti semua ketentuan dan kebijakan yang ditetapkan oleh NovaTix untuk memastikan pengalaman pengguna yang aman dan nyaman.
 
 Jika terjadi pelanggaran terhadap tanggung jawab ini, NovaTix berhak mengambil tindakan yang diperlukan, termasuk penangguhan atau penghapusan akun pengguna maupun EO yang terbukti melanggar ketentuan.
-`
-      },
-      {
-        id: 'penyelesaian-sengketa',
-        title: 'Penyelesaian Sengketa',
-        content: `**1. Upaya Penyelesaian Secara Damai**
+`,
+        },
+        {
+            id: 'penyelesaian-sengketa',
+            title: 'Penyelesaian Sengketa',
+            content: `**1. Upaya Penyelesaian Secara Damai**
 Setiap sengketa yang timbul antara pengguna, Event Organizer (EO), dan NovaTix akan diselesaikan terlebih dahulu melalui musyawarah untuk mencapai kesepakatan yang adil bagi semua pihak.
 
 **2. Pelaporan Sengketa**
@@ -166,8 +166,8 @@ b. Pengguna tidak dapat menuntut ganti rugi di luar ketentuan yang telah ditetap
 Keputusan yang diambil NovaTix dalam proses penyelesaian sengketa bersifat final dan mengikat, kecuali pengguna atau EO memilih untuk melanjutkan penyelesaian melalui jalur hukum sesuai dengan poin 4.
 
 Dengan demikian ketentuan Penyelesaian Sengketa Kami buat dan ketentuan ini dapat berubah dari waktu ke waktu. Dengan menggunakan layanan NovaTix, pengguna dan EO dianggap telah membaca, memahami, dan menyetujui mekanisme ketentuan ini.
-`
-      },
+`,
+        },
     ],
-    footer: 'Bila ada pertanyaan lebih lanjut, silakan menghubungi kami melalui Direct Message Instagram **@arachnova.id**.\n\nAtas perhatian dan kerja sama, kami ucapkan terima kasih.\n\nHormat kami,\n **NovaTix**'
-  };
+    footer: 'Bila ada pertanyaan lebih lanjut, silakan menghubungi kami melalui Direct Message Instagram **@arachnova.id**.\n\nAtas perhatian dan kerja sama, kami ucapkan terima kasih.\n\nHormat kami,\n **NovaTix**',
+};

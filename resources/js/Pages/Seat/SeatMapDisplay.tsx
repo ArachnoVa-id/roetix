@@ -233,7 +233,7 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
 
             {/* Stage */}
             <div
-                className="mt-12 flex h-12 w-full max-w-4xl items-center justify-center rounded"
+                className="mx-auto mt-12 flex h-12 w-full max-w-4xl items-center justify-center rounded"
                 style={{
                     backgroundColor: props.primary_color,
                 }}
