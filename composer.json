@@ -24,6 +24,7 @@
         "mews/purifier": "^3.4",
         "midtrans/midtrans-php": "^2.6",
         "njxqlus/filament-relation-manager-component": "*",
+        "php-mqtt/client": "^2.2",
         "predis/predis": "^2.3",
         "ramsey/uuid": "*",
         "tightenco/ziggy": "^2.0"

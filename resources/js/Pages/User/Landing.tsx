@@ -451,27 +451,6 @@ export default function Landing({
         { label: 'Reserved', color: 'bg-gray-400' },
     ];
 
-    // If we have an error, show it
-
-    // useEffect(() => {
-    //     window.Echo.channel('tickets').listen(
-    //         '.ticket-purchased',
-    //         (e: TicketPurchasedEvent) => {
-    //             console.log('Ticket purchased:', e.tickets);
-    //         },
-    //     );
-    //     const channel = window.Echo.channel('.tickets');
-    //     console.log(window.Echo);
-
-    //     window.Echo.connector.socket.on('.tickets', () =>
-    //         console.log('WebSocket Connected'),
-    //     );
-
-    //     channel.subscribed(() => {
-    //         console.log('Terhubung ke channel: tickets');
-    //     });
-    // }, []);
-
     if (error) {
         return (
             <AuthenticatedLayout client={client} props={props}>
