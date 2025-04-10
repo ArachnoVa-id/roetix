@@ -236,7 +236,6 @@ export default function TermCondition({
                     </div>
                 </div>
             </div>
-            Language Selector
             <div className="fixed right-4 top-32 z-50">
                 <div className="flex rounded-full border bg-white p-1 shadow-lg">
                     {['indonesia', 'english'].map((lang) => (

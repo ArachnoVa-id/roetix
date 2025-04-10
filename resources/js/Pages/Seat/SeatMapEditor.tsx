@@ -346,7 +346,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                     next.clear();
                     next.add(seatId);
                     // Set current values from the seat for editing
-                    setSelectedStatus(seat.status);
+                    // setSelectedStatus(seat.status);
                     setSelectedTicketType(seat.ticket_type || 'unset');
                     break;
 
@@ -473,6 +473,8 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
             // console.log('Sending updated seats:', updatedSeats);
             onSave(updatedSeats);
         }
+        console.log('Sending updated seats:', updatedSeats);
+        console.log('Selected status:', selectedStatus);
     };
 
     const handleModeChange = (mode: SelectionMode) => {
