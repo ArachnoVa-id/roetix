@@ -45,7 +45,7 @@ return new class extends Migration
             $table->text('midtrans_client_key')->nullable();
             $table->text('midtrans_server_key')->nullable();
             $table->boolean('midtrans_is_production')->default(false);
-            $table->boolean('midtrans_use_novatix')->default(true);
+            $table->boolean('midtrans_use_novatix')->default(false);
 
             $table->timestamps();
         });
