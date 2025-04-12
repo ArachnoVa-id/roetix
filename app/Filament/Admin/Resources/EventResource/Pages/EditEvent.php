@@ -83,7 +83,7 @@ class EditEvent extends EditRecord
             $ticketCategories = $this->data['ticket_categories'];
             $timelineSessions = $this->data['event_timeline'];
 
-            $eventId = $this->data['id'];
+            $eventId = $this->data['event_id'];
 
             // Track valid timeline sessions
             $existingTimelineSessionIds = [];
@@ -122,7 +122,7 @@ class EditEvent extends EditRecord
 
                 // Check if the category exists by name and event_id
                 $existingCategory = TicketCategory::where('event_id', $eventId)
-                    ->where('ticket_category_id', $category['ticket_category_id'])
+                    ->where('id', $category['ticket_category_id'])
                     ->first();
 
                 if ($existingCategory) {
