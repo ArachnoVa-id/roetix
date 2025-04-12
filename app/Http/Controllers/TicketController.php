@@ -35,19 +35,19 @@ class TicketController extends Controller
             $ticketIds = explode(',', $request->input('ticket_ids'));
 
             // Get user's order IDs
-            $userOrderIds = Order::where('user_id', Auth::id())->pluck('order_id');
+            $userOrderIds = Order::where('user_id', Auth::id())->pluck('id');
 
             // Find accessible tickets in one query
             $accessibleTickets = Ticket::with(['seat', 'event', 'ticketOrders.order'])
-                ->join('ticket_order', 'tickets.ticket_id', '=', 'ticket_order.ticket_id')
-                ->join('orders', 'orders.order_id', '=', 'ticket_order.order_id')
+                ->join('ticket_order', 'tickets.id', '=', 'ticket_order.ticket_id')
+                ->join('orders', 'orders.id', '=', 'ticket_order.order_id')
                 ->where('tickets.event_id', $eventId) // Prefix 'event_id' with the 'tickets' table
-                ->whereIn('tickets.ticket_id', $ticketIds) // Prefix 'ticket_id' with the 'tickets' table
+                ->whereIn('tickets.id', $ticketIds) // Prefix 'ticket_id' with the 'tickets' table
                 ->whereHas('ticketOrders', function ($query) use ($userOrderIds) {
                     $query->whereIn('order_id', $userOrderIds);
                 })
                 ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED]) // Filter ticket order status
-                ->select('tickets.*', 'orders.order_id') // Include 'orders.order_date' in the result
+                ->select('tickets.*', 'orders.id') // Include 'orders.order_date' in the result
                 ->get();
 
             if ($accessibleTickets->isEmpty()) {
@@ -55,7 +55,7 @@ class TicketController extends Controller
             }
 
             foreach ($accessibleTickets as $ticket) {
-                $order = Order::where('order_id', $ticket->order_id)->first();
+                $order = Order::where('id', $ticket->order_id)->first();
                 $ticket->order_date = $order->getOrderDateTimestamp();
             }
 

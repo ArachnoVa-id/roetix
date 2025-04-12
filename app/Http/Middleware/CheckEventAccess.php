@@ -34,10 +34,10 @@ class CheckEventAccess
 
         $userTeamIds = User::find($userId)
             ->teams()
-            ->pluck('teams.team_id')
+            ->pluck('teams.id')
             ->toArray();
 
-        $eventTeamId = Event::where('event_id', $eventId)
+        $eventTeamId = Event::where('id', $eventId)
             ->value('team_id');
 
         if (!$eventTeamId || !in_array($eventTeamId, $userTeamIds)) {

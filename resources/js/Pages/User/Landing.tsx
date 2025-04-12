@@ -153,6 +153,7 @@ export default function Landing({
                 showSuccess(
                     'Your payment is pending. Please complete the payment.',
                 );
+                window.location.reload();
             },
             onError: () => {
                 showError('Payment failed. Please try again.');
@@ -161,6 +162,7 @@ export default function Landing({
                 showSuccess(
                     'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
                 );
+                window.location.reload();
             },
         };
     };
@@ -1056,6 +1058,46 @@ export default function Landing({
                                                         </div>
                                                     ),
                                                 )}
+                                                {/* Subtotal, Tax, and Total */}
+
+                                                <div
+                                                    className="mt-6 space-y-2 rounded-lg p-3"
+                                                    style={{
+                                                        backgroundColor:
+                                                            props.secondary_color,
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    <div className="flex justify-between">
+                                                        <span className="font-medium">
+                                                            Subtotal:
+                                                        </span>
+                                                        <span>
+                                                            {formatRupiah(
+                                                                subtotal,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="font-medium">
+                                                            Tax (1%):
+                                                        </span>
+                                                        <span>
+                                                            {formatRupiah(
+                                                                taxAmount,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between text-lg font-semibold">
+                                                        <span>Total:</span>
+                                                        <span>
+                                                            {formatRupiah(
+                                                                total,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
                                                 <div className="mt-4 flex gap-2">
                                                     {/* Resume Button */}
                                                     {isBookingAllowed && (
@@ -1073,93 +1115,52 @@ export default function Landing({
                                                     {/* Cancel Button */}
                                                     {isBookingAllowed && (
                                                         <div className="flex gap-2">
-                                                            {
-                                                                //                     const currentCancellingStack:
-                                                                //     | CancellingStack
-                                                                //     | undefined = cancellingStack.find(
-                                                                //     (item: CancellingStack) =>
-                                                                //         item.order_id !==
-                                                                //         transaction.order_id,
-                                                                // );
-                                                                //                     return true
-                                                                // ? (
-                                                                //     currentCancellingStack.cancelling && (
-                                                                //         <button
-                                                                //             className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-                                                                //             onClick={() =>
-                                                                //                 cancelPayment(
-                                                                //                     [
-                                                                //                         transaction.order_id,
-                                                                //                     ],
-                                                                //                 )
-                                                                //             }
-                                                                //         >
-                                                                //             Confirm
-                                                                //             Cancel
-                                                                //         </button>
-                                                                //     )
-                                                                // ) : (
-                                                                //     <button
-                                                                //         className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-                                                                //         onClick={() =>
-                                                                //             addItemToStack(
-                                                                //                 transaction.order_id,
-                                                                //             )
-                                                                //         }
-                                                                //     >
-                                                                //         Cancel
-                                                                //         Payment
-                                                                //     </button>
-                                                                // )
-
-                                                                // check if the order_id is in the cancellingStack
-                                                                cancellingStack.some(
-                                                                    (item) =>
-                                                                        item.order_id ===
-                                                                        transaction.order_id,
-                                                                ) ? (
-                                                                    <>
-                                                                        <button
-                                                                            className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-                                                                            onClick={() =>
-                                                                                cancelPayment(
-                                                                                    [
-                                                                                        transaction.order_id,
-                                                                                    ],
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            Confirm
-                                                                            Cancel
-                                                                        </button>
-                                                                        <button
-                                                                            className="rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
-                                                                            onClick={() =>
-                                                                                removeItemFromStack(
+                                                            {cancellingStack.some(
+                                                                (item) =>
+                                                                    item.order_id ===
+                                                                    transaction.order_id,
+                                                            ) ? (
+                                                                <>
+                                                                    <button
+                                                                        className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                                        onClick={() =>
+                                                                            cancelPayment(
+                                                                                [
                                                                                     transaction.order_id,
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            Abort
-                                                                            Cancellation
-                                                                        </button>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <button
-                                                                            className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-                                                                            onClick={() =>
-                                                                                addItemToStack(
-                                                                                    transaction.order_id,
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            Cancel
-                                                                            Payment
-                                                                        </button>
-                                                                    </>
-                                                                )
-                                                            }
+                                                                                ],
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Confirm
+                                                                        Cancel
+                                                                    </button>
+                                                                    <button
+                                                                        className="rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
+                                                                        onClick={() =>
+                                                                            removeItemFromStack(
+                                                                                transaction.order_id,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Abort
+                                                                        Cancellation
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <button
+                                                                        className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                                        onClick={() =>
+                                                                            addItemToStack(
+                                                                                transaction.order_id,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Cancel
+                                                                        Payment
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -1171,67 +1172,75 @@ export default function Landing({
                         ) : selectedSeats.length === 0 ? (
                             <p>No seats selected.</p>
                         ) : (
-                            <div className="space-y-4">
-                                {selectedSeats.map((seat) => (
+                            <>
+                                <div className="space-y-4">
+                                    {selectedSeats.map((seat) => (
+                                        <div
+                                            key={seat.seat_id}
+                                            className="flex items-center justify-between rounded-lg p-3"
+                                            style={{
+                                                backgroundColor:
+                                                    props.secondary_color,
+                                                color: props.text_secondary_color,
+                                            }}
+                                        >
+                                            <div>
+                                                <p className="font-semibold">
+                                                    Ticket Type:{' '}
+                                                    {seat.ticket_type ||
+                                                        seat.category ||
+                                                        'Unset'}
+                                                </p>
+                                                <p className="text-sm">
+                                                    Seat: {seat.seat_number}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold">
+                                                    Price:{' '}
+                                                    {formatRupiah(
+                                                        getSafePrice(
+                                                            seat.price,
+                                                        ),
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Subtotal, Tax, and Total */}
+                                {selectedSeats.length > 0 && (
                                     <div
-                                        key={seat.seat_id}
-                                        className="flex items-center justify-between rounded-lg p-3"
+                                        className="mt-6 space-y-2 rounded-lg p-3"
                                         style={{
                                             backgroundColor:
                                                 props.secondary_color,
                                             color: props.text_secondary_color,
                                         }}
                                     >
-                                        <div>
-                                            <p className="font-semibold">
-                                                Ticket Type:{' '}
-                                                {seat.ticket_type ||
-                                                    seat.category ||
-                                                    'Unset'}
-                                            </p>
-                                            <p className="text-sm">
-                                                Seat: {seat.seat_number}
-                                            </p>
+                                        <div className="flex justify-between">
+                                            <span className="font-medium">
+                                                Subtotal:
+                                            </span>
+                                            <span>
+                                                {formatRupiah(subtotal)}
+                                            </span>
                                         </div>
-                                        <div>
-                                            <p className="font-semibold">
-                                                Price:{' '}
-                                                {formatRupiah(
-                                                    getSafePrice(seat.price),
-                                                )}
-                                            </p>
+                                        <div className="flex justify-between">
+                                            <span className="font-medium">
+                                                Tax (1%):
+                                            </span>
+                                            <span>
+                                                {formatRupiah(taxAmount)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-lg font-semibold">
+                                            <span>Total:</span>
+                                            <span>{formatRupiah(total)}</span>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Subtotal, Tax, and Total */}
-                        {selectedSeats.length > 0 && (
-                            <div
-                                className="mt-6 space-y-2 rounded-lg p-3"
-                                style={{
-                                    backgroundColor: props.secondary_color,
-                                    color: props.text_secondary_color,
-                                }}
-                            >
-                                <div className="flex justify-between">
-                                    <span className="font-medium">
-                                        Subtotal:
-                                    </span>
-                                    <span>{formatRupiah(subtotal)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="font-medium">
-                                        Tax (1%):
-                                    </span>
-                                    <span>{formatRupiah(taxAmount)}</span>
-                                </div>
-                                <div className="flex justify-between text-lg font-semibold">
-                                    <span>Total:</span>
-                                    <span>{formatRupiah(total)}</span>
-                                </div>
-                            </div>
+                                )}
+                            </>
                         )}
 
                         {/* Proceed Button */}

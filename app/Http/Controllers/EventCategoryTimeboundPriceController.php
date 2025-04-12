@@ -30,7 +30,7 @@ class EventCategoryTimeboundPriceController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'ticket_category_id' => 'required|exists:ticket_categories,ticket_category_id',
+            'ticket_category_id' => 'required|exists:ticket_categories,id',
             'timeline_id' => 'required|exists:timeline_sessions,timeline_id',
             'price' => 'required|numeric|min:0',
         ]);
@@ -86,8 +86,8 @@ class EventCategoryTimeboundPriceController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'ticket_category_id' => 'sometimes|required|exists:ticket_categories,ticket_category_id',
-            'timeline_id' => 'sometimes|required|exists:timeline_sessions,timeline_id',
+            'ticket_category_id' => 'sometimes|required|exists:ticket_categories,id',
+            'timeline_id' => 'sometimes|required|exists:timeline_sessions,id',
             'price' => 'sometimes|required|numeric|min:0',
         ]);
 
@@ -102,7 +102,7 @@ class EventCategoryTimeboundPriceController extends Controller
 
             $exists = EventCategoryTimeboundPrice::where('ticket_category_id', $request->ticket_category_id ?? $timeboundPrice->ticket_category_id)
                 ->where('timeline_id', $request->timeline_id ?? $timeboundPrice->timeline_id)
-                ->where('timebound_price_id', '!=', $id)
+                ->where('id', '!=', $id)
                 ->exists();
 
             if ($exists) {
@@ -155,7 +155,7 @@ class EventCategoryTimeboundPriceController extends Controller
         // Find active timelines for the given date
         $activeTimelines = TimelineSession::where('start_date', '<=', $date)
             ->where('end_date', '>=', $date)
-            ->pluck('timeline_id');
+            ->pluck('id');
 
         // Get prices for those timelines
         $activePrices = EventCategoryTimeboundPrice::with(['ticketCategories', 'timelineSession'])

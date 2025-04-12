@@ -13,7 +13,6 @@ class Seat extends Model
 {
     use HasFactory, Notifiable;
 
-    protected $primaryKey = 'seat_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -30,8 +29,8 @@ class Seat extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->seat_id)) {
-                $model->seat_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
@@ -42,11 +41,11 @@ class Seat extends Model
 
     public function venue(): BelongsTo
     {
-        return $this->belongsTo(Venue::class, 'venue_id', 'venue_id');
+        return $this->belongsTo(Venue::class, 'venue_id', 'id');
     }
 
     public function tickets(): HasMany
     {
-        return $this->hasMany(Ticket::class, 'seat_id', 'seat_id');
+        return $this->hasMany(Ticket::class, 'seat_id', 'id');
     }
 }

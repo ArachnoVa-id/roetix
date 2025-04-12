@@ -42,11 +42,20 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        if (!Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            // Check if rate limiting is triggered
+            if (RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+                // Throttle has been exceeded
+                throw ValidationException::withMessages([
+                    'email' => trans('auth.throttle', ['seconds' => RateLimiter::availableIn($this->throttleKey())]),
+                ]);
+            }
+
+            // Otherwise, if authentication failed, show a generic message
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('Auth failed, please try again later.'),
+                'email' => trans('Incorrect credentials. Please try again.'),
             ]);
         }
 
@@ -82,5 +91,21 @@ class LoginRequest extends FormRequest
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('email')) . '|' . $this->ip());
+    }
+
+    /**
+     * Get custom validation messages.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.required' => 'Email is required.',
+            'email.email' => 'Email must be a valid email address.',
+            'password.required' => 'Password is required.',
+            'client.string' => 'Client must be a string.',
+            'client.nullable' => 'Client is optional.',
+        ];
     }
 }

@@ -39,7 +39,7 @@ class EditOrder extends EditRecord
             return;
         }
 
-        $order_id = $this->data['order_id'];
+        $order_id = $this->data['id'];
         $event_id = $this->data['event_id'];
         $tickets = $this->data['tickets'];
 
@@ -47,7 +47,7 @@ class EditOrder extends EditRecord
         try {
             // Lock all tickets
             foreach ($tickets as $ticket) {
-                $ticketModel = Ticket::where('event_id', $event_id)->where('ticket_id', $ticket['ticket_id'])
+                $ticketModel = Ticket::where('event_id', $event_id)->where('id', $ticket['ticket_id'])
                     ->lockForUpdate()
                     ->first();
                 if (!$ticketModel) {
@@ -90,7 +90,7 @@ class EditOrder extends EditRecord
                         throw new \Exception('Ticket is already booked');
                     }
 
-                    Ticket::where('ticket_id', $ticket_id)
+                    Ticket::where('id', $ticket_id)
                         ->update([
                             'status' => TicketStatus::BOOKED,
                         ]);

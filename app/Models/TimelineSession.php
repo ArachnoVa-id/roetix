@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TimelineSession extends Model
 {
-    protected $primaryKey = 'timeline_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -44,8 +43,8 @@ class TimelineSession extends Model
     {
         parent::boot();
         static::creating(function ($model) {
-            if (empty($model->timeline_id)) {
-                $model->timeline_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
@@ -55,13 +54,13 @@ class TimelineSession extends Model
      */
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'event_id', 'event_id');
+        return $this->belongsTo(Event::class, 'event_id', 'id');
     }
 
     public function eventCategoryTimeboundPrices(): HasMany
     {
-        return $this->hasMany(EventCategoryTimeboundPrice::class, 'timeline_id', 'timeline_id')
-            ->join('timeline_sessions', 'event_category_timebound_prices.timeline_id', '=', 'timeline_sessions.timeline_id')
+        return $this->hasMany(EventCategoryTimeboundPrice::class, 'timeline_id', 'id')
+            ->join('timeline_sessions', 'event_category_timebound_prices.timeline_id', '=', 'timeline_sessions.id')
             ->orderBy('timeline_sessions.created_at');
     }
 }

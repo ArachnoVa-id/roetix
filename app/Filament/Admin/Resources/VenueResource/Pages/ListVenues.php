@@ -26,7 +26,7 @@ class ListVenues extends ListRecords
 
     public function getTabs(): array
     {
-        $tenant_id = Filament::getTenant()?->team_id ?? null;
+        $tenant_id = Filament::getTenant()?->id ?? null;
 
         $baseQuery = Venue::query();
         if ($tenant_id) {

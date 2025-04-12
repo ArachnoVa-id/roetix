@@ -67,22 +67,21 @@ class CreateEvent extends CreateRecord
                 throw new \Exception('User not found.');
             }
 
-            $tenant_id = Filament::getTenant()->team_id;
-            $team = Team::where('team_id', $tenant_id)->lockForUpdate()->first();
+            $tenant = Filament::getTenant();
+            $team = Team::where('id', $tenant->id)->lockForUpdate()->first();
 
             if (!$team || $team->event_quota <= 0) {
                 throw new \Exception('Event Quota tidak mencukupi untuk membuat venue baru.');
             };
 
-            $tenant = Filament::getTenant();
             $data = $this->data;
 
-            $data['team_id'] = $tenant->team_id;
+            $data['team_id'] = $tenant->id;
             $data['team_code'] = $tenant->code;
 
             // Create the Event with existing data
             $event = Event::create($data);
-            $event_id = $event->event_id;
+            $event_id = $event->id;
 
             // Create Timeline
             $ticketTimelines = $data['event_timeline'] ?? [];
@@ -97,7 +96,7 @@ class CreateEvent extends CreateRecord
                         'end_date' => $timeline['end_date'],
                     ]);
 
-                    $timelineFormXDb[$key] = $db_timeline->timeline_id;
+                    $timelineFormXDb[$key] = $db_timeline->id;
                 }
             }
 
@@ -112,18 +111,18 @@ class CreateEvent extends CreateRecord
                         'color' => $category['color'],
                     ]);
 
-                    $ticketCategories[$idx]['ticket_category_id'] = $ticketCategory->ticket_category_id;
+                    $ticketCategories[$idx]['ticket_category_id'] = $ticketCategory->id;
 
                     if (!empty($category['event_category_timebound_prices'])) {
                         foreach ($category['event_category_timebound_prices'] as $idx2 => $timeboundPrice) {
                             $timeboundPrice = EventCategoryTimeboundPrice::create([
-                                'ticket_category_id' => $ticketCategory->ticket_category_id,
+                                'ticket_category_id' => $ticketCategory->id,
                                 'timeline_id' => $timelineFormXDb[$timeboundPrice['timeline_id']],
                                 'price' => $timeboundPrice['price'],
                                 'is_active' => $timeboundPrice['is_active'],
                             ]);
 
-                            $ticketCategories[$idx]['event_category_timebound_prices'][$idx2]['timebound_price_id'] = $timeboundPrice->timebound_price_id;
+                            $ticketCategories[$idx]['event_category_timebound_prices'][$idx2]['timebound_price_id'] = $timeboundPrice->id;
                         }
                     }
                 }

@@ -30,7 +30,7 @@ class SeatController extends Controller
             'items' => $seats->map(function ($seat) {
                 return [
                     'type' => 'seat',
-                    'seat_id' => $seat->seat_id,
+                    'seat_id' => $seat->id,
                     'seat_number' => $seat->seat_number,
                     'row' => $seat->row,
                     'column' => $seat->column,
@@ -136,7 +136,7 @@ class SeatController extends Controller
             $venue = Venue::findOrFail($event->venue_id);
 
             // Get all seats for this venue
-            $seats = Seat::where('venue_id', $venue->venue_id)
+            $seats = Seat::where('venue_id', $venue->id)
                 ->orderBy('row')
                 ->orderBy('column')
                 ->get();
@@ -178,10 +178,10 @@ class SeatController extends Controller
             $allPrices = [];
             if ($currentTimeline) {
                 // Get all timeline IDs for this event
-                $timelineIds = $allTimelines->pluck('timeline_id')->toArray();
+                $timelineIds = $allTimelines->pluck('id')->toArray();
 
                 // Get all category IDs for this event
-                $categoryIds = $ticketCategories->pluck('ticket_category_id')->toArray();
+                $categoryIds = $ticketCategories->pluck('id')->toArray();
 
                 // Get all prices for these categories and timelines
                 $allPrices = EventCategoryTimeboundPrice::whereIn('timeline_id', $timelineIds)
@@ -192,7 +192,7 @@ class SeatController extends Controller
             // Get prices for the current timeline
             $prices = [];
             if ($currentTimeline) {
-                $priceData = EventCategoryTimeboundPrice::where('timeline_id', $currentTimeline->timeline_id)->get();
+                $priceData = EventCategoryTimeboundPrice::where('timeline_id', $currentTimeline->id)->get();
                 foreach ($priceData as $price) {
                     $prices[$price->ticket_category_id] = $price->price;
                 }
@@ -203,12 +203,12 @@ class SeatController extends Controller
                 'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
                 'totalColumns' => $seats->max('column'),
                 'items' => $seats->map(function ($seat) use ($existingTickets, $ticketCategories, $prices) {
-                    $ticket = $existingTickets->get($seat->seat_id);
+                    $ticket = $existingTickets->get($seat->id);
 
                     // Base seat data
                     $seatData = [
                         'type' => 'seat',
-                        'seat_id' => $seat->seat_id,
+                        'seat_id' => $seat->id,
                         'seat_number' => $seat->seat_number,
                         'row' => $seat->row,
                         'column' => $seat->column
@@ -219,7 +219,7 @@ class SeatController extends Controller
                         $seatData['status'] = $ticket->status;
 
                         // Use linked ticket category if available
-                        if ($ticket->ticket_category_id && $categoryObj = $ticketCategories->firstWhere('ticket_category_id', $ticket->ticket_category_id)) {
+                        if ($ticket->ticket_category_id && $categoryObj = $ticketCategories->firstWhere('id', $ticket->ticket_category_id)) {
                             $seatData['ticket_type'] = $categoryObj->name;
 
                             // Use price from timebound prices if available
@@ -318,7 +318,7 @@ class SeatController extends Controller
             // Get category prices based on active timeline
             $categoryPrices = [];
             if ($activeTimeline) {
-                $priceData = EventCategoryTimeboundPrice::where('timeline_id', $activeTimeline->timeline_id)
+                $priceData = EventCategoryTimeboundPrice::where('timeline_id', $activeTimeline->id)
                     ->get();
                 foreach ($priceData as $price) {
                     $categoryPrices[$price->ticket_category_id] = $price->price;
@@ -332,7 +332,7 @@ class SeatController extends Controller
                 // Find category ID and price based on ticket type
                 if (isset($ticketCategories[$seatData['ticket_type']])) {
                     $category = $ticketCategories[$seatData['ticket_type']];
-                    $ticketCategoryId = $category->ticket_category_id;
+                    $ticketCategoryId = $category->id;
 
                     // Get price from timebound prices if available
                     if (isset($categoryPrices[$ticketCategoryId])) {
@@ -386,13 +386,13 @@ class SeatController extends Controller
             DB::beginTransaction();
 
             foreach ($validated['seats'] as $seatData) {
-                $seat = Seat::where('seat_id', $seatData['seat_id'])->first();
+                $seat = Seat::where('id', $seatData['seat_id'])->first();
 
                 if ($seat && $seat->status === 'booked' && $seatData['status'] !== 'booked') {
                     continue;
                 }
 
-                Seat::where('seat_id', $seatData['seat_id'])
+                Seat::where('id', $seatData['seat_id'])
                     ->update([
                         'status' => $seatData['status']
                     ]);
@@ -429,7 +429,7 @@ class SeatController extends Controller
             DB::beginTransaction();
 
             $existingSeats = Seat::where('venue_id', $validated['venue_id'])
-                ->pluck('seat_id')
+                ->pluck('id')
                 ->toArray();
 
             $seatItems = collect($validated['items'])->filter(function ($item) {
@@ -442,7 +442,7 @@ class SeatController extends Controller
 
             // Delete seats that are no longer in the layout
             Seat::where('venue_id', $validated['venue_id'])
-                ->whereNotIn('seat_id', $updatedSeatIds)
+                ->whereNotIn('id', $updatedSeatIds)
                 ->delete();
 
             // Process seat items
@@ -461,7 +461,7 @@ class SeatController extends Controller
 
                 Seat::updateOrCreate(
                     [
-                        'seat_id' => $item['seat_id'],
+                        'id' => $item['seat_id'],
                         'venue_id' => $validated['venue_id']
                     ],
                     $seatData
@@ -485,7 +485,7 @@ class SeatController extends Controller
 
                 // Update seat_id jika seat_number berubah
                 if ($seat->seat_number != $newSeatNumber) {
-                    $seat->seat_id = $this->generateUniqueSeatId($validated['venue_id'], $newSeatNumber);
+                    $seat->id = $this->generateUniqueSeatId($validated['venue_id'], $newSeatNumber);
                     $seat->seat_number = $newSeatNumber;
                     $seat->save();
                 }
@@ -538,7 +538,7 @@ class SeatController extends Controller
                     'items' => $seats->map(function ($seat) {
                         return [
                             'type' => 'seat',
-                            'seat_id' => $seat->seat_id,
+                            'seat_id' => $seat->id,
                             'seat_number' => $seat->seat_number,
                             'row' => $seat->row,
                             'column' => $seat->column,
@@ -582,7 +582,7 @@ class SeatController extends Controller
 
             // Get existing seat IDs for this venue
             $existingSeats = Seat::where('venue_id', $venueId)
-                ->pluck('seat_id')
+                ->pluck('id')
                 ->toArray();
 
             $seatItems = collect($validated['items'])->filter(function ($item) {
@@ -595,7 +595,7 @@ class SeatController extends Controller
 
             // Delete seats that are no longer in the layout
             Seat::where('venue_id', $venueId)
-                ->whereNotIn('seat_id', $updatedSeatIds)
+                ->whereNotIn('id', $updatedSeatIds)
                 ->delete();
 
             // Process seat items
@@ -619,7 +619,7 @@ class SeatController extends Controller
 
                 Seat::updateOrCreate(
                     [
-                        'seat_id' => $item['seat_id'],
+                        'id' => $item['seat_id'],
                         'venue_id' => $venueId
                     ],
                     $seatData
@@ -643,7 +643,7 @@ class SeatController extends Controller
 
                 // Update seat_id if seat_number changes
                 if ($seat->seat_number != $newSeatNumber) {
-                    $seat->seat_id = $this->generateUniqueSeatId($venueId, $newSeatNumber);
+                    $seat->id = $this->generateUniqueSeatId($venueId, $newSeatNumber);
                     $seat->seat_number = $newSeatNumber;
                     $seat->save();
                 }
@@ -700,7 +700,7 @@ class SeatController extends Controller
         // Cek apakah ID sudah ada, jika ada tambahkan suffix
         $counter = 1;
         $originalSeatId = $seatId;
-        while (Seat::where('seat_id', $seatId)->exists()) {
+        while (Seat::where('id', $seatId)->exists()) {
             $seatId = $originalSeatId . '-' . $counter;
             $counter++;
         }

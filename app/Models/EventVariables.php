@@ -12,7 +12,7 @@ class EventVariables extends Model
 {
     /** @use HasFactory<\Database\Factories\EventVariablesFactory> */
     use Notifiable;
-    protected $primaryKey = 'event_variables_id';
+
     protected $keyType = 'string';
     public $incrementing = false;
     /**
@@ -81,8 +81,8 @@ class EventVariables extends Model
     {
         parent::boot();
         static::creating(function ($model) {
-            if (empty($model->event_variables_id)) {
-                $model->event_variables_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
@@ -91,7 +91,7 @@ class EventVariables extends Model
     {
         $isProduction = $this->midtrans_is_production;
         $useNovatix = $this->midtrans_use_novatix;
-        
+
         $nullValue = Crypt::encryptString('');
         $clientKey = Crypt::decryptString($isProduction ? ($this->midtrans_client_key ?? $nullValue) : ($this->midtrans_client_key_sb ?? $nullValue));
         $serverKey = Crypt::decryptString($isProduction ? ($this->midtrans_server_key ?? $nullValue) : ($this->midtrans_server_key_sb ?? $nullValue));
@@ -103,7 +103,7 @@ class EventVariables extends Model
         $returnVal = $requestType === 'client'
             ? (!empty($clientKey) ? $clientKey : ($useNovatix ? $configKey : null))
             : (!empty($serverKey) ? $serverKey : ($useNovatix ? $configKey : null));
-        
+
         return $returnVal;
     }
 
@@ -119,6 +119,6 @@ class EventVariables extends Model
 
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'event_id', 'event_id');
+        return $this->belongsTo(Event::class, 'event_id', 'id');
     }
 }

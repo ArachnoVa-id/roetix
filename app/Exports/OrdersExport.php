@@ -42,7 +42,7 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
         // Map over the orders and populate the additional fields (Event name, User full name, Team name)
         $data = $orders->map(function ($order) {
             return [
-                'order_id' => $order->order_id,
+                'order_id' => $order->id,
                 'order_code' => $order->order_code,
                 'event_name' => $order->events ? $order->getSingleEvent()->name : null,  // Populate Event name
                 'user_full_name' => $order->user ? $order->user->first_name . ' ' . $order->user->last_name : null,  // Populate User full name

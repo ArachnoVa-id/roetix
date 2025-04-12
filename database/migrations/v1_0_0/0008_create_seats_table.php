@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('seats', function (Blueprint $table) {
-            $table->string('seat_id', 50)->primary();
+            $table->string('id', 50)->primary();
             $table->string('venue_id', 36);
             $table->string('seat_number');
             $table->string('position');
@@ -17,7 +17,7 @@ return new class extends Migration
             $table->integer('column');
 
             $table->timestamps();
-            $table->foreign('venue_id')->references('venue_id')->on('venues')->onDelete('cascade');
+            $table->foreign('venue_id')->references('id')->on('venues')->onDelete('cascade');
         });
     }
 

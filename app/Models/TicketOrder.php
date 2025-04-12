@@ -35,16 +35,16 @@ class TicketOrder extends Model
 
     public function order(): BelongsTo
     {
-        return $this->belongsTo(Order::class, 'order_id', 'order_id');
+        return $this->belongsTo(Order::class, 'order_id', 'id');
     }
 
     public function ticket(): BelongsTo
     {
-        return $this->belongsTo(Ticket::class, 'ticket_id', 'ticket_id');
+        return $this->belongsTo(Ticket::class, 'ticket_id', 'id');
     }
 
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'event_id', 'event_id');
+        return $this->belongsTo(Event::class, 'event_id', 'id');
     }
 }

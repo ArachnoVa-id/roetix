@@ -122,11 +122,11 @@ class TeamResource extends Resource
                             ->reactive()
                             ->unique('teams', 'code', ignoreRecord: true)
                             ->afterStateUpdated(function (Forms\Set $set, $state) use ($form) {
-                                $current_team_id = $form->model?->team_id ?? null;
+                                $current_team_id = $form->model?->id ?? null;
                                 $findTeam = Team::where('code', $state)->first();
                                 if (
                                     $findTeam &&
-                                    $findTeam->team_id !== $current_team_id
+                                    $findTeam->id !== $current_team_id
                                 ) {
                                     $set('code', '');
                                 } else {

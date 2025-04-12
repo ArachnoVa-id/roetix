@@ -39,8 +39,8 @@ class EventCategoryTimeboundPrice extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->timebound_price_id)) {
-                $model->timebound_price_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
@@ -50,21 +50,13 @@ class EventCategoryTimeboundPrice extends Model
      */
     public function ticketCategories(): BelongsTo
     {
-        return $this->belongsTo(TicketCategory::class, 'ticket_category_id', 'ticket_category_id');
+        return $this->belongsTo(TicketCategory::class, 'ticket_category_id', 'id');
     }
 
     public function timelineSession(): BelongsTo
     {
-        return $this->belongsTo(TimelineSession::class, 'timeline_id', 'timeline_id');
+        return $this->belongsTo(TimelineSession::class, 'timeline_id', 'id');
     }
-
-    /**
-     * Get the timeline session that owns the timebound price.
-     */
-    // public function timelineSession(): BelongsTo
-    // {
-    //     return $this->belongsTo(TimelineSession::class, 'timeline_id', 'timeline_id');
-    // }
 
     /**
      * Indicates if the model's ID is auto-incrementing.
@@ -79,11 +71,4 @@ class EventCategoryTimeboundPrice extends Model
      * @var string
      */
     protected $keyType = 'string';
-
-    /**
-     * The primary key for the model.
-     *
-     * @var string
-     */
-    protected $primaryKey = 'timebound_price_id';
 }

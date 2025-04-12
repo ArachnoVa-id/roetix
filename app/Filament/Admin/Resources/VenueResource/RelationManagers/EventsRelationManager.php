@@ -24,10 +24,10 @@ class EventsRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        $eventId = $infolist->record->event_id;
+        $eventId = $infolist->record->id;
 
         $record = $this->ownerRecord->events()
-            ->where('event_id', $eventId)
+            ->where('id', $eventId)
             ->with([
                 'team',
                 'ticketCategories',

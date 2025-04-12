@@ -42,7 +42,7 @@ class ImportSeatMap extends Command
                 // Generate unique seat_id
                 $seatId = self::generateSeatId($venueId, $seatNumber);
                 Seat::create([
-                    'seat_id'     => $seatId,
+                    'id'     => $seatId,
                     'venue_id'    => $venueId,
                     'seat_number' => $seatNumber,
                     'position'    => $position,
@@ -102,7 +102,7 @@ class ImportSeatMap extends Command
         // Cek apakah ID sudah ada, jika ada tambahkan suffix
         $counter = 1;
         $originalSeatId = $seatId;
-        while (Seat::where('seat_id', $seatId)->exists()) {
+        while (Seat::where('id', $seatId)->exists()) {
             $seatId = $originalSeatId . '-' . $counter;
             $counter++;
         }

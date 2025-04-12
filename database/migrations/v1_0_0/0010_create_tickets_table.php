@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tickets', function (Blueprint $table) {
-            $table->string('ticket_id', 36)->primary();
+            $table->string('id', 36)->primary();
             $table->string('ticket_code', 36)->unique();
             $table->string('event_id', 36);
             $table->string('seat_id', 50);
@@ -24,10 +24,10 @@ return new class extends Migration
             $table->enum('status', TicketStatus::values())->default(TicketStatus::AVAILABLE);
 
             // foreign keys
-            $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
-            $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
-            $table->foreign('seat_id')->references('seat_id')->on('seats')->onDelete('cascade');
-            $table->foreign('ticket_category_id')->references('ticket_category_id')->on('ticket_categories')->onDelete('set null');
+            $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
+            $table->foreign('event_id')->references('id')->on('events')->onDelete('cascade');
+            $table->foreign('seat_id')->references('id')->on('seats')->onDelete('cascade');
+            $table->foreign('ticket_category_id')->references('id')->on('ticket_categories')->onDelete('set null');
 
             $table->timestamps();
         });

@@ -41,9 +41,9 @@ class VenueResource extends Resources\Resource
             return false;
         }
 
-        $tenant_id = Filament::getTenant()->team_id;
+        $tenant_id = Filament::getTenant()->id;
 
-        $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
+        $team = $user->teams()->where('teams.id', $tenant_id)->first();
 
         if (!$team) {
             return false;
@@ -107,7 +107,7 @@ class VenueResource extends Resources\Resource
             ->label('Edit Venue')
             ->icon('heroicon-m-map')
             ->color(Color::Indigo)
-            ->url(fn($record) => "/seats/grid-edit?venue_id={$record->venue_id}");
+            ->url(fn($record) => "/seats/grid-edit?venue_id={$record->id}");
     }
 
     public static function ExportVenueButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -116,7 +116,7 @@ class VenueResource extends Resources\Resource
             ->label('Export Venue')
             ->icon('heroicon-o-arrow-down-tray')
             ->color(Color::Emerald)
-            ->url(fn($record) => route('venues.export', ['venue' => $record->venue_id]));
+            ->url(fn($record) => route('venues.export', ['venue' => $record->id]));
     }
 
     public static function ImportVenueButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -212,7 +212,7 @@ class VenueResource extends Resources\Resource
                             'md' => 2,
                         ])
                         ->schema([
-                            Infolists\Components\TextEntry::make('venue_id')
+                            Infolists\Components\TextEntry::make('id')
                                 ->icon('heroicon-o-hashtag')
                                 ->label('Venue ID')
                                 ->columnSpan([
@@ -236,7 +236,7 @@ class VenueResource extends Resources\Resource
                         ]),
                     Infolists\Components\Group::make([
                         Infolists\Components\Section::make('Venue Contact')
-                            ->relationship('contactInfo', 'venue_id')
+                            ->relationship('contactInfo')
                             ->columnSpan([
                                 'default' => 1,
                                 'sm' => 1,
@@ -268,7 +268,7 @@ class VenueResource extends Resources\Resource
                                 'sm' => 1,
                                 'md' => 1,
                             ])
-                            ->relationship('team', 'team_id')
+                            ->relationship('team', 'id')
                             ->columns([
                                 'default' => 1,
                                 'sm' => 1,
@@ -324,7 +324,7 @@ class VenueResource extends Resources\Resource
                             ->required(),
                     ]),
                 Forms\Components\Section::make('Venue Contact')
-                    ->relationship('contactInfo', 'venue_id')
+                    ->relationship('contactInfo')
                     ->columns(2)
                     ->schema([
                         Forms\Components\TextInput::make('phone_number')
@@ -416,7 +416,7 @@ class VenueResource extends Resources\Resource
                         ->optionsLimit(5)
                         ->preload()
                         ->multiple()
-                        ->options(Team::pluck('name', 'team_id')->toArray())
+                        ->options(Team::pluck('name', 'id')->toArray())
                         ->hidden(!($user->isAdmin())),
                     Tables\Filters\Filter::make('capacity')
                         ->columns(2)
@@ -441,11 +441,11 @@ class VenueResource extends Resources\Resource
                         ])
                         ->query(function ($query, array $data) {
                             return $query
-                                ->whereIn('venue_id', function ($subquery) use ($data) {
-                                    $subquery->select('venues.venue_id')
+                                ->whereIn('id', function ($subquery) use ($data) {
+                                    $subquery->select('venues.id')
                                         ->from('venues')
-                                        ->leftJoin('seats', 'venues.venue_id', '=', 'seats.venue_id')
-                                        ->groupBy('venues.venue_id')
+                                        ->leftJoin('seats', 'venues.id', '=', 'seats.venue_id')
+                                        ->groupBy('venues.id')
                                         ->havingRaw('COUNT(seats.venue_id) >= ?', [(int) (empty($data['min']) ? 0 : $data['min'])])
                                         ->havingRaw('COUNT(seats.venue_id) <= ?', [(int) (empty($data['max']) ? PHP_INT_MAX : $data['max'])]);
                                 });

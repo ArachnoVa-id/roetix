@@ -35,11 +35,11 @@ class UserPageController extends Controller
             }
 
             // Get all tickets for this event
-            $tickets = Ticket::where('event_id', $event->event_id)
+            $tickets = Ticket::where('event_id', $event->id)
                 ->get();
 
             // Get all seats for this venue
-            $seats = Seat::where('venue_id', $venue->venue_id)
+            $seats = Seat::where('venue_id', $venue->id)
                 ->orderBy('row')
                 ->orderBy('column')
                 ->get();
@@ -52,11 +52,11 @@ class UserPageController extends Controller
                 'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
                 'totalColumns' => $seats->max('column'),
                 'items' => $seats->map(function ($seat) use ($ticketsBySeatId) {
-                    $ticket = $ticketsBySeatId->get($seat->seat_id);
+                    $ticket = $ticketsBySeatId->get($seat->id);
 
                     if ($ticket) {
                         return [
-                            'seat_id' => $seat->seat_id,
+                            'seat_id' => $seat->id,
                             'seat_number' => $seat->seat_number,
                             'row' => $seat->row,
                             'column' => $seat->column,
@@ -69,7 +69,7 @@ class UserPageController extends Controller
                     } else {
                         // Fallback for seats without tickets
                         return [
-                            'seat_id' => $seat->seat_id,
+                            'seat_id' => $seat->id,
                             'seat_number' => $seat->seat_number,
                             'row' => $seat->row,
                             'column' => $seat->column,
@@ -92,7 +92,7 @@ class UserPageController extends Controller
             ];
 
             // Get ticket categories for this specific event
-            $ticketCategories = TicketCategory::where('event_id', $event->event_id)->get();
+            $ticketCategories = TicketCategory::where('event_id', $event->id)->get();
 
             // If no ticket categories found, create default ones
             if ($ticketCategories->isEmpty()) {
@@ -103,14 +103,14 @@ class UserPageController extends Controller
 
             // Find current timeline based on current date
             $currentDate = Carbon::now();
-            $currentTimeline = TimelineSession::where('event_id', $event->event_id)
+            $currentTimeline = TimelineSession::where('event_id', $event->id)
                 ->where('start_date', '<=', $currentDate)
                 ->where('end_date', '>=', $currentDate)
                 ->first();
 
             // If no current timeline found, get the first upcoming one
             if (!$currentTimeline) {
-                $currentTimeline = TimelineSession::where('event_id', $event->event_id)
+                $currentTimeline = TimelineSession::where('event_id', $event->id)
                     ->where('start_date', '>', $currentDate)
                     ->orderBy('start_date', 'asc')
                     ->first();
@@ -118,7 +118,7 @@ class UserPageController extends Controller
 
             // If still no timeline found, get the most recent past one
             if (!$currentTimeline) {
-                $currentTimeline = TimelineSession::where('event_id', $event->event_id)
+                $currentTimeline = TimelineSession::where('event_id', $event->id)
                     ->where('end_date', '<', $currentDate)
                     ->orderBy('end_date', 'desc')
                     ->first();
@@ -127,7 +127,7 @@ class UserPageController extends Controller
             // Get category prices for the current timeline
             $categoryPrices = [];
             if ($currentTimeline) {
-                $categoryPrices = EventCategoryTimeboundPrice::where('timeline_id', $currentTimeline->timeline_id)
+                $categoryPrices = EventCategoryTimeboundPrice::where('timeline_id', $currentTimeline->id)
                     ->get();
             }
 
@@ -135,7 +135,7 @@ class UserPageController extends Controller
             $ownedTicketCount = Order::where('user_id', Auth::id())
                 ->where('status', OrderStatus::COMPLETED) // Filter orders that are completed
                 ->whereHas('tickets', function ($query) use ($event) {
-                    $query->where('tickets.event_id', $event->event_id)
+                    $query->where('tickets.event_id', $event->id)
                         ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED, TicketOrderStatus::SCANNED]); // Count only enabled tickets
                 })
                 ->count();
@@ -176,11 +176,11 @@ class UserPageController extends Controller
 
             // Get order_ids for the logged-in user
             $userOrderIds = Order::where('user_id', Auth::id())
-                ->where('event_id', $event->event_id)
-                ->pluck('order_id')->toArray();
+                ->where('event_id', $event->id)
+                ->pluck('id')->toArray();
 
             // Get all ticket categories for this event
-            $ticketCategories = TicketCategory::where('event_id', $event->event_id)
+            $ticketCategories = TicketCategory::where('event_id', $event->id)
                 ->get()
                 ->keyBy('ticket_category_id'); // Create a map of categories by ID for lookup
 
@@ -192,10 +192,10 @@ class UserPageController extends Controller
                 'ticket_order.status as ticket_order_status',
                 'ticket_categories.color as category_color' // Add the category color to the query
             )
-                ->join('ticket_order', 'tickets.ticket_id', '=', 'ticket_order.ticket_id')
-                ->join('orders', 'ticket_order.order_id', '=', 'orders.order_id')
-                ->leftJoin('ticket_categories', 'tickets.ticket_category_id', '=', 'ticket_categories.ticket_category_id') // Left join to get category colors
-                ->where('tickets.event_id', $event->event_id)
+                ->join('ticket_order', 'tickets.id', '=', 'ticket_order.ticket_id')
+                ->join('orders', 'ticket_order.order_id', '=', 'orders.id')
+                ->leftJoin('ticket_categories', 'tickets.ticket_category_id', '=', 'ticket_categories.id') // Left join to get category colors
+                ->where('tickets.event_id', $event->id)
                 ->whereIn('orders.status', [OrderStatus::COMPLETED])
                 ->whereIn('ticket_order.order_id', $userOrderIds)
                 ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED, TicketOrderStatus::SCANNED])
@@ -205,7 +205,7 @@ class UserPageController extends Controller
             // Load seat data for each ticket
             $tickets = [];
             foreach ($userTickets as $ticketData) {
-                $ticket = Ticket::with('seat')->find($ticketData->ticket_id);
+                $ticket = Ticket::with('seat')->find($ticketData->id);
                 if ($ticket) {
                     $tickets[] = $ticket;
                     // Attach order_date, ticket_order_status, and category color to ticket object
@@ -234,7 +234,7 @@ class UserPageController extends Controller
                 $ticketStatus = $ticket->ticket_order_status ?? TicketOrderStatus::ENABLED->value;
 
                 return [
-                    'id' => $ticket->ticket_id,
+                    'id' => $ticket->id,
                     'type' => $typeName,
                     'code' => $ticket->ticket_code,
                     'qrStr' => $ticket->getQRCode(),
@@ -250,7 +250,7 @@ class UserPageController extends Controller
             });
 
             // Get ticket categories for this specific event
-            $ticketCategories = TicketCategory::where('event_id', $event->event_id)->get();
+            $ticketCategories = TicketCategory::where('event_id', $event->id)->get();
 
             // If no ticket categories found, create default ones
             if ($ticketCategories->isEmpty()) {
@@ -265,7 +265,7 @@ class UserPageController extends Controller
                 'tickets' => $formattedTickets,
                 'ticketCategories' => $ticketCategories,
                 'event' => [
-                    'event_id' => $event->event_id,
+                    'event_id' => $event->id,
                     'name' => $event->name,
                     'slug' => $event->slug,
                     'description' => $event->description ?? '',
@@ -291,7 +291,7 @@ class UserPageController extends Controller
                 'client' => $client,
                 'props' => $props,
                 'event' => [
-                    'event_id' => $event->event_id,
+                    'event_id' => $event->id,
                     'name' => $event->name,
                     'slug' => $event->slug,
                 ],
@@ -320,7 +320,7 @@ class UserPageController extends Controller
                 'client' => $client,
                 'props' => $props,
                 'event' => [
-                    'event_id' => $event->event_id,
+                    'event_id' => $event->id,
                     'name' => $event->name,
                     'slug' => $event->slug,
                 ],
@@ -365,7 +365,7 @@ class UserPageController extends Controller
 
                 // Direct comparison (plain text)
                 if ($passwordInput === $storedPassword) {
-                    $request->session()->put("event_auth_{$event->event_id}", true);
+                    $request->session()->put("event_auth_{$event->id}", true);
                     return Inertia::location(route('client.home', ['client' => $client]));
                 }
 
@@ -375,7 +375,7 @@ class UserPageController extends Controller
                     str_starts_with($storedPassword, '$2a$')
                 ) {
                     if (Hash::check($passwordInput, $storedPassword)) {
-                        $request->session()->put("event_auth_{$event->event_id}", true);
+                        $request->session()->put("event_auth_{$event->id}", true);
                         return Inertia::location(route('client.home', ['client' => $client]));
                     }
                 }

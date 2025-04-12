@@ -16,7 +16,7 @@ class VenueSeeder extends Seeder
     {
         Venue::factory()->count(10)->create()->each(function ($venue) {
             Seat::factory()->count(100)->create([
-                'venue_id' => $venue->venue_id,
+                'venue_id' => $venue->id,
             ]);
         });
     }

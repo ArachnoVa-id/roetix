@@ -12,7 +12,6 @@ class TicketCategory extends Model
 {
     use Notifiable;
 
-    protected $primaryKey = 'ticket_category_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -27,22 +26,22 @@ class TicketCategory extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->ticket_category_id)) {
-                $model->ticket_category_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
 
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'event_id', 'event_id');
+        return $this->belongsTo(Event::class, 'event_id', 'id');
     }
 
     public function eventCategoryTimeboundPrices(): HasMany
     {
         return $this
-            ->hasMany(EventCategoryTimeboundPrice::class, 'ticket_category_id', 'ticket_category_id')
-            ->join('timeline_sessions', 'event_category_timebound_prices.timeline_id', '=', 'timeline_sessions.timeline_id')
+            ->hasMany(EventCategoryTimeboundPrice::class, 'id', 'ticket_category_id')
+            ->join('timeline_sessions', 'event_category_timebound_prices.timeline_id', '=', 'timeline_sessions.id')
             ->orderBy('timeline_sessions.start_date');
     }
 }

@@ -93,7 +93,7 @@ class PaymentController extends Controller
         // Check if there's still existing order
         $existingOrders = User::find(Auth::id())
             ->orders()
-            ->where('event_id', $event->event_id)
+            ->where('event_id', $event->id)
             ->where('status', OrderStatus::PENDING)
             ->get();
 
@@ -113,7 +113,7 @@ class PaymentController extends Controller
             if (!empty($item['seatNumbers'])) {
                 $seats = $seats->merge(
                     Seat::whereIn('seat_number', $item['seatNumbers'])
-                        ->where('venue_id', $event->venue->venue_id)
+                        ->where('venue_id', $event->venue->id)
                         ->get()
                 );
             }
@@ -124,9 +124,9 @@ class PaymentController extends Controller
 
         DB::beginTransaction();
         try {
-            $seatIds = $seats->pluck('seat_id')->toArray();
+            $seatIds = $seats->pluck('id')->toArray();
             $tickets = Ticket::whereIn('seat_id', $seatIds)
-                ->where('event_id', $event->event_id)
+                ->where('event_id', $event->id)
                 ->where('status', 'available')
                 ->distinct()
                 ->lockForUpdate()
@@ -160,7 +160,7 @@ class PaymentController extends Controller
                 ];
             }
 
-            $team = Team::where('team_id', $event->team_id)->first();
+            $team = Team::where('id', $event->team_id)->first();
             if (!$team) {
                 DB::rollBack();
                 return response()->json(['message' => 'Team not found'], 404);
@@ -181,9 +181,9 @@ class PaymentController extends Controller
             // Create order
             $order = Order::create([
                 'order_code' => $orderCode,
-                'event_id' => $event->event_id,
+                'event_id' => $event->id,
                 'user_id' => Auth::id(),
-                'team_id' => $team->team_id,
+                'team_id' => $team->id,
                 'order_date' => now(),
                 'total_price' => $totalWithTax,
                 'status' => OrderStatus::PENDING,
@@ -199,9 +199,9 @@ class PaymentController extends Controller
             $ticketOrders = [];
             foreach ($tickets as $ticket) {
                 $ticketOrders[] = TicketOrder::create([
-                    'ticket_id' => $ticket->ticket_id,
-                    'order_id' => $order->order_id,
-                    'event_id' => $event->event_id,
+                    'ticket_id' => $ticket->id,
+                    'order_id' => $order->id,
+                    'event_id' => $event->id,
                     'status' => TicketOrderStatus::ENABLED,
                 ]);
             }
@@ -310,7 +310,7 @@ class PaymentController extends Controller
             $order->save();
 
             // Update ticket statuses
-            $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
+            $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
             foreach ($ticketOrders as $ticketOrder) {
                 $ticket = Ticket::find($ticketOrder->ticket_id);
                 if ($ticket) { // Ensure the ticket exists before updating
@@ -345,7 +345,7 @@ class PaymentController extends Controller
 
             // PERBAIKAN: Gunakan query builder dengan kondisi yang benar
             $pendingOrders = Order::where('user_id', $userId)  // Perhatikan: kolom 'id' merujuk ke user_id
-                ->where('event_id', $event->event_id)
+                ->where('event_id', $event->id)
                 ->where('status', OrderStatus::PENDING)
                 ->get();
 
@@ -353,17 +353,17 @@ class PaymentController extends Controller
 
             foreach ($pendingOrders as $order) {
                 // Get tickets for this order
-                $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
+                $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
                 $ticketIds = $ticketOrders->pluck('ticket_id');
 
-                $tickets = Ticket::whereIn('ticket_id', $ticketIds)->get();
+                $tickets = Ticket::whereIn('id', $ticketIds)->get();
                 $seatIds = $tickets->pluck('seat_id');
 
                 // Get seats
-                $seats = Seat::whereIn('seat_id', $seatIds)->get();
+                $seats = Seat::whereIn('id', $seatIds)->get();
 
                 $seatsData = $seats->map(function ($seat) use ($tickets) {
-                    $ticket = $tickets->where('seat_id', $seat->seat_id)->first();
+                    $ticket = $tickets->where('seat_id', $seat->id)->first();
 
                     // PERBAIKAN: Tambahkan pengecekan agar tidak error jika ticket null
                     if (!$ticket) {
@@ -371,7 +371,7 @@ class PaymentController extends Controller
                     }
 
                     return [
-                        'seat_id' => $seat->seat_id,
+                        'seat_id' => $seat->id,
                         'seat_number' => $seat->seat_number,
                         'ticket_type' => $ticket->ticket_type,
                         'category' => $ticket->ticketCategory,
@@ -382,7 +382,7 @@ class PaymentController extends Controller
 
                 $pendingTransactions[] = [
                     'snap_token' => $order->snap_token,
-                    'order_id' => $order->order_id,
+                    'order_id' => $order->id,
                     'order_code' => $order->order_code,
                     'total_price' => $order->total_price,
                     'seats' => $seatsData,
@@ -419,9 +419,9 @@ class PaymentController extends Controller
             }
 
             $orderIds = $request->order_ids;
-            $orders = Order::whereIn('order_id', $orderIds)
+            $orders = Order::whereIn('id', $orderIds)
                 ->where('user_id', Auth::id())
-                ->where('event_id', $event->event_id)
+                ->where('event_id', $event->id)
                 ->where('status', OrderStatus::PENDING)
                 ->get();
 
@@ -435,7 +435,7 @@ class PaymentController extends Controller
                 $order->save();
 
                 // Update ticket statuses
-                $ticketOrders = TicketOrder::where('order_id', $order->order_id)->get();
+                $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
                 foreach ($ticketOrders as $ticketOrder) {
                     $ticket = Ticket::find($ticketOrder->ticket_id);
                     if ($ticket) { // Ensure the ticket exists before updating

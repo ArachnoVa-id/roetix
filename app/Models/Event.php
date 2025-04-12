@@ -5,15 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Event extends Model
 {
     use HasFactory, Notifiable;
-    protected $primaryKey = 'event_id';
+
     public $incrementing = false;
     protected $keyType = 'string';
     protected $fillable = [
@@ -42,8 +42,8 @@ class Event extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->event_id)) {
-                $model->event_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
@@ -90,39 +90,34 @@ class Event extends Model
     public function timelineSessions(): HasMany
     {
         return $this
-            ->hasMany(TimelineSession::class, 'event_id', 'event_id')
+            ->hasMany(TimelineSession::class, 'event_id', 'id')
             ->orderBy('start_date');
     }
 
     public function ticketCategories(): HasMany
     {
         return $this
-            ->hasMany(TicketCategory::class, 'event_id', 'event_id')
+            ->hasMany(TicketCategory::class, 'event_id', 'id')
             ->orderBy('created_at');
-    }
-
-    public function team(): BelongsTo
-    {
-        return $this->belongsTo(Team::class, 'team_id', 'team_id');
     }
 
     public function eventVariables(): HasOne
     {
-        return $this->hasOne(EventVariables::class, 'event_id', 'event_id');
+        return $this->hasOne(EventVariables::class, 'event_id', 'id');
     }
 
-    public function venue(): BelongsTo
+    public function team(): BelongsTo
     {
-        return $this->belongsTo(Venue::class, 'venue_id', 'venue_id');
+        return $this->belongsTo(Team::class, 'team_id', 'id');
     }
 
     public function orders(): HasMany
     {
-        return $this->hasMany(Order::class, 'event_id', 'event_id');
+        return $this->hasMany(Order::class, 'event_id', 'id');
     }
 
     public function tickets(): HasMany
     {
-        return $this->hasMany(Ticket::class, 'event_id', 'event_id');
+        return $this->hasMany(Ticket::class, 'event_id', 'id');
     }
 }

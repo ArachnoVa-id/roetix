@@ -22,7 +22,7 @@ class CheckEventLock
         $isAuthenticated = false;
 
         if ($props->is_locked) {
-            $isAuthenticated = $request->session()->get("event_auth_{$event->event_id}", false);
+            $isAuthenticated = $request->session()->get("event_auth_{$event->id}", false);
 
             // If not authenticated, show the lock screen
             if (!$isAuthenticated) {

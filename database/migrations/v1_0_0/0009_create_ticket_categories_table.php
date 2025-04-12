@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ticket_categories', function (Blueprint $table) {
-            $table->string('ticket_category_id', 36)->primary();
+            $table->string('id', 36)->primary();
             $table->string('event_id', 36);
             $table->string('name');
             $table->string('color');
 
             $table->timestamps();
             // foreign key
-            $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
+            $table->foreign('event_id')->references('id')->on('events')->onDelete('cascade');
         });
     }
 

@@ -15,7 +15,6 @@ class Venue extends Model
     /** @use HasFactory<\Database\Factories\VenueFactory> */
     use HasFactory, Notifiable;
 
-    protected $primaryKey = 'venue_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -36,10 +35,8 @@ class Venue extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            $team = Team::find($model->team_id);
-
-            if (empty($model->venue_id)) {
-                $model->venue_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
@@ -51,7 +48,7 @@ class Venue extends Model
 
         ImportSeatMap::generateFromConfig(
             config: $config,
-            venueId: $this->venue_id,
+            venueId: $this->id,
             successLineCallback: fn() => null,
             successCallback: function ($msg) use (&$success, &$message) {
                 $success = true;
@@ -67,21 +64,21 @@ class Venue extends Model
 
     public function seats(): HasMany
     {
-        return $this->hasMany(Seat::class, 'venue_id', 'venue_id');
+        return $this->hasMany(Seat::class, 'venue_id', 'id');
     }
 
     public function contactInfo(): BelongsTo
     {
-        return $this->belongsTo(UserContact::class, 'contact_info', 'contact_id');
+        return $this->belongsTo(UserContact::class, 'contact_info', 'id');
     }
 
     public function team(): BelongsTo
     {
-        return $this->belongsTo(Team::class, 'team_id', 'team_id');
+        return $this->belongsTo(Team::class, 'team_id', 'id');
     }
 
     public function events(): HasMany
     {
-        return $this->hasMany(Event::class, 'venue_id', 'venue_id');
+        return $this->hasMany(Event::class, 'venue_id', 'id');
     }
 }

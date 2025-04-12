@@ -50,7 +50,7 @@ class EventScanTicket extends Component implements HasForms, HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(Ticket::query()->where('event_id', $this->event->event_id))
+            ->query(Ticket::query()->where('event_id', $this->event->id))
             ->columns([
                 TextColumn::make('ticket_code')->label('Ticket Code')->searchable(),
                 TextColumn::make('ticket_order_status')
@@ -78,7 +78,7 @@ class EventScanTicket extends Component implements HasForms, HasTable
         try {
             DB::beginTransaction();
             $ticket = Ticket::where('ticket_code', $this->ticket_code)
-                ->where('event_id', $this->event->event_id)
+                ->where('event_id', $this->event->id)
                 ->lockForUpdate()
                 ->first();
 
@@ -86,7 +86,7 @@ class EventScanTicket extends Component implements HasForms, HasTable
                 throw new \Exception('Tiket tidak ditemukan atau tidak valid.');
             }
 
-            $ticketOrder = TicketOrder::where('ticket_id', $ticket->ticket_id)->first();
+            $ticketOrder = TicketOrder::where('ticket_id', $ticket->id)->first();
 
             if (!$ticketOrder) {
                 throw new \Exception('Order tiket tidak ditemukan.');

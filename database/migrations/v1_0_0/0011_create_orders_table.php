@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('orders', function (Blueprint $table) {
-            $table->string('order_id', 36)->primary();
+            $table->string('id', 36)->primary();
             $table->string('snap_token', 36)->nullable();
             $table->string('order_code', 36)->unique();
             $table->string('user_id', 36);
@@ -28,8 +28,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
-            $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
+            $table->foreign('event_id')->references('id')->on('events')->onDelete('cascade');
+            $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
         });
 
         Schema::create('ticket_order', function (Blueprint $table) {
@@ -40,8 +40,9 @@ return new class extends Migration
             $table->enum('status', TicketOrderStatus::values())->default(TicketOrderStatus::ENABLED);
             $table->timestamps();
 
-            $table->foreign('ticket_id')->references('ticket_id')->on('tickets')->onDelete('cascade');
-            $table->foreign('order_id')->references('order_id')->on('orders')->onDelete('cascade');
+            $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('cascade');
+            $table->foreign('order_id')->references('id')->on('orders')->onDelete('cascade');
+            $table->foreign('event_id')->references('id')->on('events')->onDelete('cascade');
         });
     }
 
