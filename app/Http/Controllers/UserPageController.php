@@ -358,10 +358,11 @@ class UserPageController extends Controller
         }
 
         // Check if event is locked
-        if ($props->is_locked) {
+        $eventProps = $event->eventVariables;
+        if ($eventProps->is_locked) {
             if ($request->has('event_password')) {
                 $passwordInput = $request->event_password;
-                $storedPassword = $props->locked_password;
+                $storedPassword = $eventProps->locked_password;
 
                 // Direct comparison (plain text)
                 if ($passwordInput === $storedPassword) {

@@ -28,10 +28,9 @@ export default function LockedEvent({
     props,
 }: LockedEventProps): React.ReactElement {
     // Explicitly type the useForm hook with our interface
-    const { data, setData, post, processing, errors } =
-        useForm<EventPasswordForm>({
-            event_password: '',
-        });
+    const { data, setData, post, processing, errors } = useForm({
+        event_password: '',
+    } as EventPasswordForm);
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
         e.preventDefault();
@@ -123,8 +122,8 @@ export default function LockedEvent({
                         disabled={processing}
                         className="inline-flex w-full items-center justify-center rounded-lg border-b-2 border-b-transparent px-6 pb-2 pt-2 text-center text-sm font-medium leading-5 transition duration-150 ease-in-out hover:border-b-white focus:outline-none"
                         style={{
-                            backgroundColor: props.primary_color || '#4F46E5',
-                            color: '#FFFFFF',
+                            backgroundColor: props.primary_color,
+                            color: props.text_primary_color,
                             borderRadius: '0.375rem',
                         }}
                     >
