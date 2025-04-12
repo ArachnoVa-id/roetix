@@ -21,6 +21,9 @@ class ViewTeam extends ViewRecord
             Actions\EditAction::make('Edit Event')
                 ->icon('heroicon-m-pencil-square')
                 ->color(Color::Orange),
+            TeamResource::AddMemberButton(
+                Actions\Action::make('addMember')
+            ),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
         ];

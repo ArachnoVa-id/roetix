@@ -8,7 +8,9 @@ use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\EventsRela
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\UsersRelationManager;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\VenuesRelationManager;
 use App\Models\Team;
+use App\Models\User;
 use Filament\Forms;
+use Filament\Actions;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -29,6 +31,60 @@ class TeamResource extends Resource
         $user = session('auth_user');
 
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
+    }
+
+    public static function AddMemberButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Add Member')
+            ->color(Color::Blue)
+            ->icon('heroicon-o-user-plus')
+            ->modalHeading('Add Member to Team')
+            ->modalDescription('Select a user to add to this team.')
+            ->form([
+                Forms\Components\Select::make('user_id')
+                    ->label('User')
+                    ->options(function ($record) {
+                        return
+                            User::whereNotIn('id', $record->users->pluck('id'))
+                            ->wherein('role', [
+                                UserRole::VENDOR,
+                                UserRole::EVENT_ORGANIZER,
+                            ])
+                            ->pluck('email', 'id');
+                    })
+                    ->optionsLimit(5)
+                    ->searchable()
+                    ->preload()
+                    ->validationAttribute('User')
+                    ->validationMessages([
+                        'required' => 'A user is required',
+                    ])
+                    ->required(),
+            ])
+            ->action(function ($record, array $data) {
+                try {
+                    // Add the selected user to the team
+                    $user = User::find($data['user_id']);
+                    $record->users()->attach($user);
+
+                    // Send a notification
+                    Notification::make()
+                        ->title('Member Added to Team')
+                        ->body("User {$user->name} has been added to the team {$record->name}.")
+                        ->success()
+                        ->send();
+                } catch (\Exception $e) {
+                    // Handle any errors that occur during the add member action
+                    Notification::make()
+                        ->title('Failed to Add Member')
+                        ->body("Failed to add user to team {$record->name}: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
+                }
+            })
+            ->modalWidth('sm')
+            ->modal(true);
     }
 
     public static function getEloquentQuery(): Builder
@@ -239,6 +295,9 @@ class TeamResource extends Resource
                         ->modalHeading('View Team'),
                     Tables\Actions\EditAction::make()
                         ->color(Color::Orange),
+                    self::AddMemberButton(
+                        Tables\Actions\Action::make('addMember')
+                    ),
                     Tables\Actions\DeleteAction::make(),
                 ]),
             ])
