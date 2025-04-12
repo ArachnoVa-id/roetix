@@ -202,6 +202,10 @@ class EventResource extends Resource
                     Infolists\Components\Tabs::make('Tabs')
                         ->tabs([
                             Infolists\Components\Tabs\Tab::make('Scan Tickets')
+                                ->hidden(function () {
+                                    $user = session('auth_user');
+                                    return !$user->isAllowedInRoles([UserRole::ADMIN, UserRole::EVENT_ORGANIZER]);
+                                })
                                 ->schema([
                                     Infolists\Components\Livewire::make('event-scan-ticket', ['event' => $infolist->record])
                                 ]),
