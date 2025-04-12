@@ -19,7 +19,8 @@ class CheckEventMaintenance
         $props = $request->get('props');
 
         // Check if the event is in maintenance mode
-        if ($props['is_maintenance']) {
+
+        if ($props->is_maintenance) {
             return Inertia::render('User/Maintenance', [
                 'client' => $client,
                 'event' => [
@@ -31,7 +32,7 @@ class CheckEventMaintenance
                     'message' => $props->maintenance_message ?: 'We are currently performing maintenance on our system. Please check back later.',
                     'expected_finish' => $props->maintenance_expected_finish ? Carbon::parse($props->maintenance_expected_finish)->format('F j, Y, g:i a') : null,
                 ],
-                'props' => $props
+                'props' => $props->getSecure()
             ]);
         }
 

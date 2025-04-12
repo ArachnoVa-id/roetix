@@ -113,11 +113,12 @@ class PaymentController extends Controller
             if (!empty($item['seatNumbers'])) {
                 $seats = $seats->merge(
                     Seat::whereIn('seat_number', $item['seatNumbers'])
-                        ->where('venue_id', $event->venue->id)
+                        ->where('venue_id', $event->venue_id)
                         ->get()
                 );
             }
         }
+
         if ($seats->isEmpty()) {
             return response()->json(['message' => 'No seats available'], 400);
         }

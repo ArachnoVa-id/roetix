@@ -156,14 +156,14 @@ class UserPageController extends Controller
                 'ticketCategories' => $ticketCategories,
                 'currentTimeline' => $currentTimeline,
                 'categoryPrices' => $categoryPrices,
-                'props' => $props,
+                'props' => $props->getSecure(),
                 'ownedTicketCount' => $ownedTicketCount,
             ]);
         } catch (\Exception $e) {
             return Inertia::render('User/Landing', [
                 'client' => $client,
                 'error' => 'Failed to load event data: ' . $e->getMessage(),
-                'props' => $props
+                'props' => $props->getSecure()
             ]);
         }
     }
@@ -261,7 +261,7 @@ class UserPageController extends Controller
 
             return Inertia::render('User/MyTickets', [
                 'client' => $client,
-                'props' => $props,
+                'props' => $props->getSecure(),
                 'tickets' => $formattedTickets,
                 'ticketCategories' => $ticketCategories,
                 'event' => [
@@ -289,7 +289,7 @@ class UserPageController extends Controller
 
             return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
                 'client' => $client,
-                'props' => $props,
+                'props' => $props->getSecure(),
                 'event' => [
                     'event_id' => $event->id,
                     'name' => $event->name,
@@ -318,7 +318,7 @@ class UserPageController extends Controller
 
             return Inertia::render('Legality/termcondition/TermCondition', [
                 'client' => $client,
-                'props' => $props,
+                'props' => $props->getSecure(),
                 'event' => [
                     'event_id' => $event->id,
                     'name' => $event->name,
@@ -351,18 +351,17 @@ class UserPageController extends Controller
             return Inertia::render('User/LockedEvent', [
                 'client' => $client,
                 'event' => $event,
-                'props' => $props,
+                'props' => $props->getSecure(),
             ])->with([
                 'errors' => $validator->errors()->toArray()
             ]);
         }
 
         // Check if event is locked
-        $eventProps = $event->eventVariables;
-        if ($eventProps->is_locked) {
+        if ($props->is_locked) {
             if ($request->has('event_password')) {
                 $passwordInput = $request->event_password;
-                $storedPassword = $eventProps->locked_password;
+                $storedPassword = $props->locked_password;
 
                 // Direct comparison (plain text)
                 if ($passwordInput === $storedPassword) {
@@ -385,7 +384,7 @@ class UserPageController extends Controller
                 return Inertia::render('User/LockedEvent', [
                     'client' => $client,
                     'event' => $event,
-                    'props' => $props,
+                    'props' => $props->getSecure(),
                 ])->with([
                     'errors' => ['event_password' => 'The password you entered is incorrect.']
                 ]);
