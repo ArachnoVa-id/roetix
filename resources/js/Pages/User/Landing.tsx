@@ -13,17 +13,6 @@ import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
 
-// interface Ticket {
-//     ticket_id: string;
-//     status: string;
-//     seat_id: string;
-//     event_id: string;
-// }
-
-// interface TicketPurchasedEvent {
-//     tickets: Ticket;
-// }
-
 export default function Landing({
     client,
     layout,
@@ -90,10 +79,12 @@ export default function Landing({
     useEffect(() => {
         const fetchAndInitializeSnap = async () => {
             let clientKey = null;
+            let isProduction = null;
 
             try {
                 const response = await axios.get('api/payment/get-client');
                 clientKey = response.data.client_key;
+                isProduction = response.data.is_production;
             } catch (error) {
                 console.error('Failed to fetch client key:', error);
                 showErrorRef.current(
@@ -121,7 +112,9 @@ export default function Landing({
 
             // Load Snap.js
             const snapScript = document.createElement('script');
-            snapScript.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+            snapScript.src = isProduction
+                ? 'https://app.midtrans.com/snap/snap.js'
+                : 'https://app.sandbox.midtrans.com/snap/snap.js';
             snapScript.setAttribute('data-client-key', clientKey);
             snapScript.onload = () => {
                 setSnapInitialized(true);

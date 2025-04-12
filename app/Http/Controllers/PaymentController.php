@@ -229,7 +229,7 @@ class PaymentController extends Controller
             $order->snap_token = $snapToken;
             $order->save();
 
-            $this->publishMqtt(data:[
+            $this->publishMqtt(data: [
                 'message' => 'hallo ini dari charge'
             ]);
 
@@ -238,7 +238,7 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             $responseString = $e->getMessage();
-            
+
             preg_match('/"error_messages":\["(.*?)"/', $responseString, $matches);
             $firstErrorMessage = $matches[1] ?? null;
             return response()->json(['message' => 'System failed to process payment! ' . $firstErrorMessage . '.'], 500);
@@ -318,7 +318,7 @@ class PaymentController extends Controller
                     $ticket->save();
                 }
             }
-            $this->publishMqtt(data:[
+            $this->publishMqtt(data: [
                 'message' => 'ini dari update status'
             ]);
             DB::commit();
@@ -472,8 +472,9 @@ class PaymentController extends Controller
             }
 
             $clientKey = $event->eventVariables->getKey();
+            $isProduction = $event->eventVariables->midtrans_is_production;
 
-            return response()->json(['client_key' => $clientKey]);
+            return response()->json(['client_key' => $clientKey, 'is_production' => $isProduction]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch client key'], 500);
         }
@@ -510,11 +511,11 @@ class PaymentController extends Controller
         $topic = 'novatix/midtrans/defaultclient/defaultcode/ticketpurchased';
 
         $conn_settings = (new ConnectionSettings)
-        ->setUsername($usrname)
-        ->setPassword($password)
-        ->setLastWillMessage('client disconnected')
-        ->setLastWillTopic('emqx/last-will')
-        ->setLastWillQualityOfService(1);
+            ->setUsername($usrname)
+            ->setPassword($password)
+            ->setLastWillMessage('client disconnected')
+            ->setLastWillTopic('emqx/last-will')
+            ->setLastWillQualityOfService(1);
 
         $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
 
