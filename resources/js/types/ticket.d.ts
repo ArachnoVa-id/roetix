@@ -16,7 +16,7 @@ export interface TicketProps {
 }
 
 export interface SeatInterface {
-    seat_id: string;
+    id: string;
     seat_number: string;
     row: string;
     column: number;
@@ -27,21 +27,21 @@ export interface SeatInterface {
 }
 
 export interface OrderInterface {
-    order_id: string;
+    id: string;
     order_date: string;
     total_price: number;
     status: string;
 }
 
 export interface TicketCategoryInterface {
-    ticket_category_id: string;
+    id: string;
     name: string;
     color: string;
     event_id: string;
 }
 
 export interface TicketInterface {
-    ticket_id: string;
+    id: string;
     ticket_type: string;
     price: number;
     status: string;
@@ -59,7 +59,7 @@ export interface TicketInterface {
 }
 
 export interface EventInterface {
-    event_id: string;
+    id: string;
     name: string;
     slug: string;
     description: string;

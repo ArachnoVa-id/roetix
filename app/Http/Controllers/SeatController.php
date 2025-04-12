@@ -30,7 +30,7 @@ class SeatController extends Controller
             'items' => $seats->map(function ($seat) {
                 return [
                     'type' => 'seat',
-                    'seat_id' => $seat->id,
+                    'id' => $seat->id,
                     'seat_number' => $seat->seat_number,
                     'row' => $seat->row,
                     'column' => $seat->column,
@@ -68,7 +68,7 @@ class SeatController extends Controller
             foreach ($json['items'] as $item) {
                 if ($item['type'] === 'seat') {
                     Seat::create([
-                        'seat_id' => $item['seat_id'],
+                        'id' => $item['id'],
                         'row' => $item['row'],
                         'column' => $item['column'],
                         'status' => $item['status'],
@@ -91,11 +91,7 @@ class SeatController extends Controller
         try {
             // Retrieve seat data related to the model, assuming it's related by 'seats' relationship
             $venue = Venue::find(request()->route('venue'));
-            $seats = $venue->seats()->get()->map(function ($seat) {
-                return [
-                    'position' => $seat->position,
-                ];
-            })->toArray();
+            $seats = $venue->seats()->pluck('position');
 
             // Format the data
             $export = [
@@ -208,7 +204,7 @@ class SeatController extends Controller
                     // Base seat data
                     $seatData = [
                         'type' => 'seat',
-                        'seat_id' => $seat->id,
+                        'id' => $seat->id,
                         'seat_number' => $seat->seat_number,
                         'row' => $seat->row,
                         'column' => $seat->column
@@ -285,7 +281,7 @@ class SeatController extends Controller
         $validated = $request->validate([
             'event_id' => 'required|string',
             'seats' => 'required|array',
-            'seats.*.seat_id' => 'required|string',
+            'seats.*.id' => 'required|string',
             'seats.*.status' => 'required|string|in:available,booked,in_transaction,not_available,reserved',
             'seats.*.ticket_type' => 'required|string',
         ]);
@@ -343,7 +339,7 @@ class SeatController extends Controller
                 Ticket::updateOrCreate(
                     [
                         'event_id' => $eventId,
-                        'seat_id' => $seatData['seat_id']
+                        'seat_id' => $seatData['id']
                     ],
                     [
                         'status' => $seatData['status'],
@@ -378,7 +374,7 @@ class SeatController extends Controller
 
         $validated = $request->validate([
             'seats' => 'required|array',
-            'seats.*.seat_id' => 'required|string',
+            'seats.*.id' => 'required|string',
             'seats.*.status' => 'required|string|in:available,booked,in_transaction,not_available',
         ]);
 
@@ -386,13 +382,13 @@ class SeatController extends Controller
             DB::beginTransaction();
 
             foreach ($validated['seats'] as $seatData) {
-                $seat = Seat::where('id', $seatData['seat_id'])->first();
+                $seat = Seat::where('id', $seatData['id'])->first();
 
                 if ($seat && $seat->status === 'booked' && $seatData['status'] !== 'booked') {
                     continue;
                 }
 
-                Seat::where('id', $seatData['seat_id'])
+                Seat::where('id', $seatData['id'])
                     ->update([
                         'status' => $seatData['status']
                     ]);
@@ -421,7 +417,7 @@ class SeatController extends Controller
                 'items.*.type' => 'required|string|in:seat,label',
                 'items.*.row' => 'required|string', // Removed size:1 restriction
                 'items.*.column' => 'required|integer|min:1',
-                'items.*.seat_id' => 'nullable|string|max:36',
+                'items.*.id' => 'nullable|string|max:36',
                 'items.*.seat_number' => 'required_if:items.*.type,seat|string',
                 'items.*.position' => 'required_if:items.*.type,seat|string',
             ]);
@@ -437,8 +433,8 @@ class SeatController extends Controller
             });
 
             $updatedSeatIds = $seatItems->filter(function ($item) {
-                return !empty($item['seat_id']);
-            })->pluck('seat_id')->toArray();
+                return !empty($item['id']);
+            })->pluck('id')->toArray();
 
             // Delete seats that are no longer in the layout
             Seat::where('venue_id', $validated['venue_id'])
@@ -455,13 +451,13 @@ class SeatController extends Controller
                 ];
 
                 // For new seats or seats with empty seat_id, generate a new ID from venue_id and seat_number
-                if (empty($item['seat_id'])) {
-                    $item['seat_id'] = $this->generateUniqueSeatId($validated['venue_id'], $item['seat_number']);
+                if (empty($item['id'])) {
+                    $item['id'] = $this->generateUniqueSeatId($validated['venue_id'], $item['seat_number']);
                 }
 
                 Seat::updateOrCreate(
                     [
-                        'id' => $item['seat_id'],
+                        'id' => $item['id'],
                         'venue_id' => $validated['venue_id']
                     ],
                     $seatData
@@ -538,7 +534,7 @@ class SeatController extends Controller
                     'items' => $seats->map(function ($seat) {
                         return [
                             'type' => 'seat',
-                            'seat_id' => $seat->id,
+                            'id' => $seat->id,
                             'seat_number' => $seat->seat_number,
                             'row' => $seat->row,
                             'column' => $seat->column,
@@ -571,7 +567,7 @@ class SeatController extends Controller
                 'items.*.type' => 'required|string|in:seat,label',
                 'items.*.row' => 'required|string',
                 'items.*.column' => 'required|integer|min:1',
-                'items.*.seat_id' => 'nullable|string|max:64',
+                'items.*.id' => 'nullable|string|max:64',
                 'items.*.seat_number' => 'required_if:items.*.type,seat|string',
                 'items.*.position' => 'nullable|string',
             ]);
@@ -590,8 +586,8 @@ class SeatController extends Controller
             });
 
             $updatedSeatIds = $seatItems->filter(function ($item) {
-                return !empty($item['seat_id']);
-            })->pluck('seat_id')->toArray();
+                return !empty($item['id']);
+            })->pluck('id')->toArray();
 
             // Delete seats that are no longer in the layout
             Seat::where('venue_id', $venueId)
@@ -613,13 +609,13 @@ class SeatController extends Controller
                 ];
 
                 // For new seats, generate a seat_id from venue_id and seat_number
-                if (empty($item['seat_id'])) {
-                    $item['seat_id'] = $this->generateUniqueSeatId($venueId, $item['seat_number']);
+                if (empty($item['id'])) {
+                    $item['id'] = $this->generateUniqueSeatId($venueId, $item['seat_number']);
                 }
 
                 Seat::updateOrCreate(
                     [
-                        'id' => $item['seat_id'],
+                        'id' => $item['id'],
                         'venue_id' => $venueId
                     ],
                     $seatData

@@ -117,6 +117,27 @@ class EventVariables extends Model
         }
     }
 
+    public function getSecure()
+    {
+        return [
+            'is_locked' => $this->is_locked,
+            'is_maintenance' => $this->is_maintenance,
+            'maintenance_title' => $this->maintenance_title,
+            'maintenance_message' => $this->maintenance_message,
+            'maintenance_expected_finish' => $this->maintenance_expected_finish,
+            'logo' => $this->logo,
+            'logo_alt' => $this->logo_alt,
+            'texture' => $this->texture,
+            'favicon' => $this->favicon,
+            'primary_color' => $this->primary_color,
+            'secondary_color' => $this->secondary_color,
+            'text_primary_color' => $this->text_primary_color,
+            'text_secondary_color' => $this->text_secondary_color,
+            'terms_and_conditions' => $this->terms_and_conditions,
+            'privacy_policy' => $this->privacy_policy,
+        ];
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id', 'id');

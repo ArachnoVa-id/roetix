@@ -309,8 +309,8 @@ export default function Landing({
         // Find the price for this category in the current timeline
         const priceEntry = categoryPrices.find(
             (p) =>
-                p.ticket_category_id === category.ticket_category_id &&
-                p.timeline_id === currentTimeline.timeline_id,
+                p.ticket_category_id === category.id &&
+                p.timeline_id === currentTimeline.id,
         );
 
         if (priceEntry) {
@@ -323,11 +323,9 @@ export default function Landing({
     };
 
     const handleSeatClick = (seat: SeatItem) => {
-        const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
+        const exists = selectedSeats.find((s) => s.id === seat.id);
         if (exists) {
-            setSelectedSeats(
-                selectedSeats.filter((s) => s.seat_id !== seat.seat_id),
-            );
+            setSelectedSeats(selectedSeats.filter((s) => s.id !== seat.id));
             showSuccess(`Seat ${seat.seat_number} removed from selection`);
 
             return;
@@ -861,9 +859,9 @@ export default function Landing({
                                                 categoryPrices.find(
                                                     (p) =>
                                                         p.ticket_category_id ===
-                                                            category.ticket_category_id &&
+                                                            category.id &&
                                                         p.timeline_id ===
-                                                            currentTimeline.timeline_id,
+                                                            currentTimeline.id,
                                                 );
                                             if (priceEntry) {
                                                 price = priceEntry.price;
@@ -1023,7 +1021,7 @@ export default function Landing({
                                                 {transaction.seats.map(
                                                     (seat) => (
                                                         <div
-                                                            key={seat.seat_id}
+                                                            key={seat.id}
                                                             className="flex items-center justify-between rounded-lg p-3"
                                                             style={{
                                                                 backgroundColor:
@@ -1176,7 +1174,7 @@ export default function Landing({
                                 <div className="space-y-4">
                                     {selectedSeats.map((seat) => (
                                         <div
-                                            key={seat.seat_id}
+                                            key={seat.id}
                                             className="flex items-center justify-between rounded-lg p-3"
                                             style={{
                                                 backgroundColor:

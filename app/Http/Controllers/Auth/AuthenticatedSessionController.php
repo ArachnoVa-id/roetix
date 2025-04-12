@@ -46,7 +46,7 @@ class AuthenticatedSessionController extends Controller
             'status' => session('status'),
             'event' => $event,
             'client' => $client,
-            'props' => $props,
+            'props' => (is_array($props) ? $props : $props->getSecure()),
         ]);
     }
 

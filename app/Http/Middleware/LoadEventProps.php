@@ -42,7 +42,7 @@ class LoadEventProps
 
         $request->merge([
             'event' => $event,
-            'props' => $props,
+            'props' => $props->getSecure(),
         ]);
 
         return $next($request);

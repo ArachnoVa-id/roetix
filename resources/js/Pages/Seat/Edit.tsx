@@ -136,14 +136,13 @@ const Edit: React.FC<EditorProps> = ({
             // Create a mapping of category IDs to category names and colors
             const categoryIdToNameMap: Record<string, string> = {};
             ticketCategories.forEach((category) => {
-                categoryIdToNameMap[category.ticket_category_id] =
-                    category.name;
+                categoryIdToNameMap[category.id] = category.name;
                 colorMap[category.name] = category.color;
             });
 
             // Find prices for the active timeline
             const currentTimelinePrices = categoryPrices.filter(
-                (price) => price.timeline_id === activeTimeline.timeline_id,
+                (price) => price.timeline_id === activeTimeline.id,
             );
 
             // Map category IDs to their prices and then to category names
@@ -158,9 +157,6 @@ const Edit: React.FC<EditorProps> = ({
             // Update state with the new mappings
             setCategoryNameToPriceMap(priceMap);
             setCategoryColorMap(colorMap);
-
-            // console.log('Updated price map:', priceMap);
-            // console.log('Updated color map:', colorMap);
         }
     }, [activeTimeline, ticketCategories, categoryPrices]);
 
@@ -171,7 +167,7 @@ const Edit: React.FC<EditorProps> = ({
             const seatToUpdate = updatedLayout.items.find(
                 (item) =>
                     // item.type === 'seat' &&
-                    (item as SeatItem).seat_id === update.seat_id,
+                    (item as SeatItem).id === update.id,
             ) as SeatItem | undefined;
 
             if (seatToUpdate) {
@@ -182,13 +178,11 @@ const Edit: React.FC<EditorProps> = ({
         });
 
         setCurrentLayout(updatedLayout);
-
         // Log the request payload for debugging
         const requestPayload = {
-            event_id: event.event_id,
+            event_id: event.id,
             seats: updatedSeats,
         };
-        // console.log('Sending request payload:', requestPayload);
 
         // Use fetch directly to avoid Inertia JSON response error
         fetch('/seats/update-event-seats', {

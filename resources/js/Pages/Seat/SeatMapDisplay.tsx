@@ -48,7 +48,7 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
     const findHighestRow = useCallback(() => {
         let maxRowIndex = 0;
         config.items.forEach((item) => {
-            if ('seat_id' in item) {
+            if ('id' in item) {
                 // Konversi label baris ke angka dengan algoritma yang benar
                 let rowIndex = 0;
                 if (typeof item.row === 'string') {
@@ -66,7 +66,7 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
     const findHighestColumn = useCallback(() => {
         let maxColumn = 0;
         config.items.forEach((item) => {
-            if ('seat_id' in item) {
+            if ('id' in item) {
                 maxColumn = Math.max(maxColumn, item.column);
             }
         });
@@ -86,7 +86,7 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
 
     // Fill grid with seat items
     config.items.forEach((item) => {
-        if ('seat_id' in item) {
+        if ('id' in item) {
             const rowIndex =
                 typeof item.row === 'string' ? getRowIndex(item.row) : item.row;
 
@@ -102,9 +102,7 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
     // Function to determine seat color based on status and ticket type
     const getSeatColor = (seat: SeatItem): string => {
         // First check if the seat is selected
-        const isSelected = selectedSeats.some(
-            (s) => s.seat_id === seat.seat_id,
-        );
+        const isSelected = selectedSeats.some((s) => s.id === seat.id);
         if (isSelected) {
             return '#4CAF50'; // Green untuk selected seats
         }

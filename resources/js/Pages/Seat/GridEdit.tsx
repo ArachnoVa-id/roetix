@@ -41,7 +41,7 @@ const GridEdit: React.FC<GridEditorProps> = ({
 
                 return {
                     type: 'seat',
-                    seat_id: seatItem.seat_id,
+                    id: seatItem.id,
                     seat_number: seatItem.seat_number,
                     row: rowStr,
                     column: seatItem.column,

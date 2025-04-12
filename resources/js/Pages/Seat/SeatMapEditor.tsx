@@ -91,7 +91,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
     const findHighestRow = (): number => {
         let maxRowIndex = 0;
         layout.items.forEach((item) => {
-            if ('seat_id' in item) {
+            if ('id' in item) {
                 // Konversi label baris ke angka dengan algoritma yang benar
                 let rowIndex = 0;
                 if (typeof item.row === 'string') {
@@ -137,7 +137,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
     const findHighestColumn = (): number => {
         let maxColumn = 0;
         layout.items.forEach((item) => {
-            if ('seat_id' in item) {
+            if ('id' in item) {
                 maxColumn = Math.max(maxColumn, item.column);
             }
         });
@@ -154,7 +154,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
 
     // Fill grid with seats
     layout.items.forEach((item) => {
-        if ('seat_id' in item) {
+        if ('id' in item) {
             const rowIndex =
                 typeof item.row === 'string'
                     ? getRowIndex(item.row) // Gunakan fungsi getRowIndex
@@ -461,10 +461,9 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
             )
             .map((item) => {
                 return {
-                    seat_id: (item as SeatItem).seat_id,
+                    id: (item as SeatItem).id,
                     status: selectedStatus,
                     ticket_type: selectedTicketType,
-                    // Use the calculated price from the selected ticket type
                     price: currentPrice,
                 };
             });
@@ -473,8 +472,6 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
             // console.log('Sending updated seats:', updatedSeats);
             onSave(updatedSeats);
         }
-        console.log('Sending updated seats:', updatedSeats);
-        console.log('Selected status:', selectedStatus);
     };
 
     const handleModeChange = (mode: SelectionMode) => {

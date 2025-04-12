@@ -19,7 +19,7 @@ class CheckEventMaintenance
         $props = $request->get('props');
 
         // Check if the event is in maintenance mode
-        if ($props->is_maintenance) {
+        if ($props['is_maintenance']) {
             return Inertia::render('User/Maintenance', [
                 'client' => $client,
                 'event' => [
