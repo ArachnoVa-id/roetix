@@ -131,6 +131,10 @@ class VenueResource extends Resources\Resource
                     ->label('Upload Venue JSON')
                     ->required()
                     ->acceptedFileTypes(['application/json']) // Accepts only .json files
+                    ->validationMessages([
+                        'required' => 'The venue JSON file is required.',
+                        'mimes' => 'The venue JSON file must be a valid JSON file.',
+                    ])
                     ->disk('local'),
             ])
             ->action(function ($record, array $data) {

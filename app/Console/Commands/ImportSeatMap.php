@@ -11,8 +11,6 @@ class ImportSeatMap extends Command
     protected $signature = 'seats:import {file : Path to JSON config file} {venue_id : Venue ID}';
     protected $description = 'Import seat configuration from JSON';
 
-    // private $seatNumberCounters = [];
-
     public static function generateFromConfig($config = null, $venueId = null, $successLineCallback = null, $successCallback = null, $failedCallback = null)
     {
         try {
@@ -24,6 +22,14 @@ class ImportSeatMap extends Command
             foreach ($config['layout']['items'] as $item) {
                 // Parse position untuk mendapatkan row dan column
                 $position = $item ?? '';
+                // make sure type is string
+                if (!is_string($position)) {
+                    throw new \Exception("Invalid position format: {$position}");
+                }
+                if (empty($position)) {
+                    throw new \Exception("Position cannot be empty");
+                }
+
                 if (!preg_match('/^([A-Za-z]+)(\d+)$/', $position, $matches)) {
                     throw new \Exception("Invalid position format: {$position}");
                 }

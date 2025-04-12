@@ -1311,7 +1311,7 @@ class EventResource extends Resource
                                                             $timeline = $get('../../../../event_timeline');
 
                                                             // timeline has key => obj where one of th obj is timeline_id to matched with $id, find and acquire
-                                                            $found = collect($timeline)->firstWhere('timeline_id', $id);
+                                                            $found = collect($timeline)->firstWhere('id', $id);
 
                                                             if ($found) return $found['name'];
                                                             else return '';
