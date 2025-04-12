@@ -56,7 +56,7 @@ class UserPageController extends Controller
 
                     if ($ticket) {
                         return [
-                            'seat_id' => $seat->id,
+                            'id' => $seat->id,
                             'seat_number' => $seat->seat_number,
                             'row' => $seat->row,
                             'column' => $seat->column,
@@ -69,7 +69,7 @@ class UserPageController extends Controller
                     } else {
                         // Fallback for seats without tickets
                         return [
-                            'seat_id' => $seat->id,
+                            'id' => $seat->id,
                             'seat_number' => $seat->seat_number,
                             'row' => $seat->row,
                             'column' => $seat->column,
