@@ -80,206 +80,165 @@ class EditEvent extends EditRecord
 
         DB::beginTransaction();
         try {
-            $ticketCategories = $this->data['ticket_categories'];
-            $timelineSessions = $this->data['event_timeline'];
+            $eventId = $this->data['event_id'];
 
-            $eventId = $this->data['id'];
-
-            // Track valid timeline sessions
-            $existingTimelineSessionIds = [];
+            // Initialize mappings
+            $timelineIdMap = [];
+            $existingTimelineIds = [];
             $existingCategoryIds = [];
 
-            $timelineIdMap = []; // To map dummy keys to actual IDs
+            // 1. Handle Timeline Sessions
+            $timelineSessions = [];
+            foreach ($this->data['event_timeline'] ?? [] as $key => $session) {
+                $sessionData = collect($session)->except(['created_at', 'updated_at'])->toArray();
 
-            // Process timelineSessions
-            foreach ($timelineSessions as $key => $session) {
-                unset($session['created_at'], $session['updated_at']);
-
-                if (isset($session['timeline_id']) && strpos($session['timeline_id'], 'record-') !== 0) {
-                    // Existing timeline session
-                    $timelineSession = TimelineSession::find($session['timeline_id']);
-                    if ($timelineSession) {
-                        $existingTimelineSessionIds[] = $session['timeline_id'];
-                        // Save changes
-                        $timelineSession->fill($session);
-                        $timelineSession->save();
+                if (!empty($sessionData['id']) && !str_starts_with($sessionData['id'], 'record-')) {
+                    // Update existing timeline
+                    $timeline = TimelineSession::find($sessionData['id']);
+                    if ($timeline) {
+                        $timeline->fill($sessionData)->save();
+                        $existingTimelineIds[] = $timeline->id;
+                        $timelineSessions[$key] = array_merge($sessionData, ['id' => $timeline->id]);
                     }
                 } else {
-                    // Create a new timeline session
-                    $session['event_id'] = $eventId;
-                    $newTimelineSession = TimelineSession::create($session);
-
-                    // Store real ID mapping
-                    $timelineIdMap[$key] = $newTimelineSession->id;
-                    $existingTimelineSessionIds[] = $newTimelineSession->id;
-                    $timelineSessions[$key]['timeline_id'] = $newTimelineSession->id;
+                    // Create new timeline
+                    $sessionData['event_id'] = $eventId;
+                    $newTimeline = TimelineSession::create($sessionData);
+                    $timelineIdMap[$sessionData['id'] ?? $key] = $newTimeline->id;
+                    $existingTimelineIds[] = $newTimeline->id;
+                    $timelineSessions[$key] = array_merge($sessionData, ['id' => $newTimeline->id]);
                 }
             }
 
-            // Process ticketCategories
-            foreach ($ticketCategories as $key => $category) {
-                unset($category['event_category_timebound_prices'], $category['created_at'], $category['updated_at']);
+            // 2. Handle Ticket Categories
+            $ticketCategories = [];
+            foreach ($this->data['ticket_categories'] ?? [] as $key => $category) {
+                $categoryData = collect($category)->except(['created_at', 'updated_at', 'event_category_timebound_prices'])->toArray();
 
-                // Check if the category exists by name and event_id
-                $existingCategory = TicketCategory::where('event_id', $eventId)
-                    ->where('ticket_category_id', $category['ticket_category_id'])
-                    ->first();
+                $existingCategory = !empty($category['id'])
+                    ? TicketCategory::where('event_id', $eventId)->where('id', $category['id'])->first()
+                    : null;
 
                 if ($existingCategory) {
                     // Update existing category
-                    $existingCategory->fill($category);
-                    $existingCategory->save();
-                    $ticketCategories[$key]['ticket_category_id'] = $existingCategory->id;
-                    // Store real ID mapping
+                    $existingCategory->fill($categoryData)->save();
+                    $ticketCategories[$key] = array_merge($category, ['id' => $existingCategory->id]);
                     $existingCategoryIds[] = $existingCategory->id;
                 } else {
-                    // Create a new category only if it doesn't exist
-                    $category['event_id'] = $eventId;
-                    $newCategory = TicketCategory::create($category);
-                    $ticketCategories[$key]['ticket_category_id'] = $newCategory->id;
-                    // Store real ID mapping
+                    // Create new category
+                    $categoryData['event_id'] = $eventId;
+                    $newCategory = TicketCategory::create($categoryData);
+                    $ticketCategories[$key] = array_merge($category, ['id' => $newCategory->id]);
                     $existingCategoryIds[] = $newCategory->id;
                 }
             }
 
-            // Process event_category_timebound_prices
-            foreach ($ticketCategories as $key1 => $category) {
-                if (!isset($category['ticket_category_id']) || empty($category['ticket_category_id'])) {
-                    continue; // Skip this category if ID is missing
-                }
+            // 3. Handle Timebound Prices
+            foreach ($ticketCategories as &$category) {
+                if (empty($category['ticket_category_id'])) continue;
 
-                foreach ($category['event_category_timebound_prices'] as $key2 => $price) {
-                    unset($price['created_at'], $price['updated_at'], $price['title'], $price['name']);
+                foreach ($category['event_category_timebound_prices'] ?? [] as $priceIndex => $price) {
+                    $priceData = collect($price)->except(['created_at', 'updated_at', 'title', 'name'])->toArray();
+                    $priceData['ticket_category_id'] = $category['id'];
 
-                    // Ensure ticket_category_id is explicitly set
-                    $price['ticket_category_id'] = $category['ticket_category_id'];
-
-                    // Ensure valid timeline_id
-                    if (!isset($price['timeline_id']) || !in_array($price['timeline_id'], $existingTimelineSessionIds)) {
-                        if (isset($timelineIdMap[$price['timeline_id']])) {
-                            $price['timeline_id'] = $timelineIdMap[$price['timeline_id']];
-                        } else {
-                            continue;
-                        }
+                    // Resolve timeline_id mapping
+                    $timelineId = $priceData['timeline_id'] ?? null;
+                    if (isset($timelineIdMap[$timelineId])) {
+                        $priceData['timeline_id'] = $timelineIdMap[$timelineId];
                     }
 
-                    $existingPrice = EventCategoryTimeboundPrice::where('ticket_category_id', $price['ticket_category_id'])
-                        ->where('timeline_id', $price['timeline_id'])
+                    if (empty($priceData['timeline_id']) || !in_array($priceData['timeline_id'], $existingTimelineIds)) {
+                        continue;
+                    }
+
+                    $existingPrice = EventCategoryTimeboundPrice::where('ticket_category_id', $priceData['ticket_category_id'])
+                        ->where('timeline_id', $priceData['timeline_id'])
                         ->first();
 
                     if ($existingPrice) {
                         // Update existing price
-                        $existingPrice->fill($price);
-                        $existingPrice->save();
-                        $ticketCategories[$key1]['event_category_timebound_prices'][$key2]['timebound_price_id'] = $existingPrice->id;
+                        $existingPrice->fill($priceData)->save();
+                        $category['event_category_timebound_prices'][$priceIndex]['id'] = $existingPrice->id;
                     } else {
-                        // Create a new price
-                        $newEventCategoryTimebound = EventCategoryTimeboundPrice::create($price);
-                        $ticketCategories[$key1]['event_category_timebound_prices'][$key2]['timebound_price_id'] = $newEventCategoryTimebound->id;
+                        // Create new price
+                        $newPrice = EventCategoryTimeboundPrice::create($priceData);
+                        $category['event_category_timebound_prices'][$priceIndex]['id'] = $newPrice->id;
                     }
                 }
             }
 
-            // Delete unused timeline
+            // 4. Cleanup unused data (delete only those removed from the form)
             TimelineSession::where('event_id', $eventId)
-                ->whereNotIn('id', $existingTimelineSessionIds)
+                ->whereNotIn('id', $existingTimelineIds)
                 ->delete();
 
-            // Delete unused categories
             TicketCategory::where('event_id', $eventId)
                 ->whereNotIn('id', $existingCategoryIds)
                 ->delete();
 
-            // Ensure updated data is reflected in the form
-            $this->data['ticket_categories'] = $ticketCategories;
-            $this->data['event_timeline'] = $timelineSessions;
+            // 5. Update EventVariables
+            $eventVariables = EventVariables::firstOrCreate(
+                ['event_id' => $eventId],
+                EventVariables::getDefaultValue()
+            );
 
-            // Update all the event variables
-            $eventVariables = EventVariables::where('event_id', $eventId)->first();
+            // Handle image fields
+            foreach (['logo', 'texture', 'favicon'] as $imgField) {
+                $this->data[$imgField] = !empty($this->data[$imgField])
+                    ? array_values($this->data[$imgField])[0]
+                    : '';
+            }
 
-            // Parse all the image based to get values only (because it is in array)
-            $columns = ['logo', 'texture', 'favicon'];
-            foreach ($columns as $column) {
-                if (isset($eventVariables[$column])) {
-                    if (!empty($this->data[$column]))
-                        $this->data[$column] = array_values($this->data[$column])[0];
-                    else $this->data[$column] = "";
+            // Sanitize text fields
+            $this->data['terms_and_conditions'] = Purifier::clean($this->data['terms_and_conditions'] ?? '');
+            $this->data['privacy_policy'] = Purifier::clean($this->data['privacy_policy'] ?? '');
+
+            // Encrypt sensitive fields
+            foreach (['midtrans_client_key', 'midtrans_server_key', 'midtrans_client_key_sb', 'midtrans_server_key_sb'] as $keyField) {
+                if (!empty($this->data[$keyField])) {
+                    $this->data[$keyField] = Crypt::encryptString($this->data[$keyField]);
                 }
             }
 
-            // Sanitize html content
-            $this->data['terms_and_conditions'] = Purifier::clean($this->data['terms_and_conditions']);
-            $this->data['privacy_policy'] = Purifier::clean($this->data['privacy_policy']);
-
-            // Crypt midtrans keys
-            if (isset($this->data['midtrans_client_key']) && !empty($this->data['midtrans_client_key'])) {
-                $this->data['midtrans_client_key'] = Crypt::encryptString($this->data['midtrans_client_key']);
-            }
-
-            if (isset($this->data['midtrans_server_key']) && !empty($this->data['midtrans_server_key'])) {
-                $this->data['midtrans_server_key'] = Crypt::encryptString($this->data['midtrans_server_key']);
-            }
-
-            if (isset($this->data['midtrans_client_key_sb']) && !empty($this->data['midtrans_client_key_sb'])) {
-                $this->data['midtrans_client_key_sb'] = Crypt::encryptString($this->data['midtrans_client_key_sb']);
-            }
-
-            if (isset($this->data['midtrans_server_key_sb']) && !empty($this->data['midtrans_server_key_sb'])) {
-                $this->data['midtrans_server_key_sb'] = Crypt::encryptString($this->data['midtrans_server_key_sb']);
-            }
-
+            // Fill and save EventVariables
             $eventVariables->fill($this->data);
+
+            // Handle color cache
             $colors = Cache::get('color_preview_' . $user->id);
             if (!$colors) {
                 throw new \Exception('Please retry setting the colors.');
             }
-
             $eventVariables->fill($colors);
-
             $eventVariables->save();
 
-            // Sync the form state
+            // 6. Final Save
+            $this->data['ticket_categories'] = $ticketCategories;
+            $this->data['event_timeline'] = $timelineSessions;
+
             $this->form->fill($this->data);
 
             if ($this->record) {
-                $this->record->fill($this->form->getState());
-                $this->record->save();
+                $this->record->fill($this->form->getState())->save();
 
-                // Clear cache for colors
-                Cache::forget('color_preview_' . Auth::id());
+                Cache::forget('color_preview_' . $user->id);
 
-                // Get the redirect URL (like getRedirectUrl)
+                Notification::make()->success()->title('Saved')->send();
+
                 $redirectUrl = $this->getResource()::getUrl('view', ['record' => $eventId]);
-
-                // Determine whether to use navigate (SPA mode)
                 $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);
-
-                // Perform the redirect
                 $this->redirect($redirectUrl, navigate: $navigate);
-
-                Notification::make()
-                    ->success()
-                    ->title('Saved')
-                    ->send();
 
                 DB::commit();
             } else {
-                Notification::make()
-                    ->title('Failed to Save')
-                    ->body('Unknown error occurred')
-                    ->danger()
-                    ->send();
-
-                DB::rollBack();
+                throw new \Exception('Record does not exist.');
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            DB::rollBack();
             Notification::make()
                 ->title('Failed to Save')
                 ->body($e->getMessage())
                 ->danger()
                 ->send();
-
-            DB::rollBack();
         }
 
         $this->halt();

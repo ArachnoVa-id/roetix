@@ -506,7 +506,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
         const newSeat: SeatItem = {
             // type: 'seat',
-            seat_id: '', // Kosongkan seat_id, akan dibuat di backend
+            id: '', // Kosongkan seat_id, akan dibuat di backend
             seat_number: `${rowLabel}${adjustedColumn}`,
             row: rowLabel,
             column: adjustedColumn,
@@ -562,7 +562,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                         const adjustedColumn = j + 1;
 
                         const newSeat: SeatItem = {
-                            seat_id: '', // Kosongkan seat_id, akan dibuat di backend
+                            id: '', // Kosongkan seat_id, akan dibuat di backend
                             seat_number: `${rowLabel}${adjustedColumn}`,
                             row: rowLabel,
                             column: adjustedColumn,

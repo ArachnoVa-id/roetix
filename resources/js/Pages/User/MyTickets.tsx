@@ -21,7 +21,7 @@ export default function MyTickets({
 
     // Handle download all tickets - updated to use query parameters
     const handleDownloadAll = () => {
-        if (!tickets || tickets.length === 0 || !event?.event_id) {
+        if (!tickets || tickets.length === 0 || !event?.id) {
             showError('No tickets available to download');
             return;
         }
@@ -29,7 +29,7 @@ export default function MyTickets({
         const ticketIds = tickets.map((ticket) => ticket.id);
 
         // Update the URL to use query parameters instead of path parameters
-        const downloadUrl = `/api/tickets/download?event_id=${event.event_id}&ticket_ids=${ticketIds.join(',')}`;
+        const downloadUrl = `/api/tickets/download?event_id=${event.id}&ticket_ids=${ticketIds.join(',')}`;
 
         try {
             window.open(downloadUrl, '_blank');
@@ -136,7 +136,7 @@ export default function MyTickets({
                                                 code={ticket.code}
                                                 qrStr={ticket.qrStr}
                                                 data={ticket.data}
-                                                eventId={event.event_id}
+                                                eventId={event.id}
                                                 status={ticket.status}
                                                 categoryColor={
                                                     ticket.categoryColor

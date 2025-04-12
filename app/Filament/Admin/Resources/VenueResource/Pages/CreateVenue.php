@@ -5,7 +5,6 @@ namespace App\Filament\Admin\Resources\VenueResource\Pages;
 use Filament\Actions;
 use App\Models\UserContact;
 use App\Models\Team;
-use Illuminate\Support\Str;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Admin\Resources\VenueResource;
 use App\Filament\Components\BackButtonAction;
@@ -56,7 +55,7 @@ class CreateVenue extends CreateRecord
         try {
             DB::beginTransaction();
             $tenant_id = Filament::getTenant()->id;
-            $team = Team::where('team_id', $tenant_id)->lockForUpdate()->first();
+            $team = Team::where('id', $tenant_id)->lockForUpdate()->first();
 
             if (!$team || $team->vendor_quota <= 0) {
                 throw new \Exception('Venue Quota tidak mencukupi untuk membuat venue baru.');
@@ -87,7 +86,7 @@ class CreateVenue extends CreateRecord
                 ->title('Error')
                 ->body($e->getMessage())
                 ->danger()
-                ->show();
+                ->send();
 
             $this->halt();
             return $data;

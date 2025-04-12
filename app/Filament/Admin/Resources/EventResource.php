@@ -486,7 +486,7 @@ class EventResource extends Resource
                                 ->reactive(),
                             Forms\Components\DateTimePicker::make('start_date')
                                 ->label('Start Date')
-                                ->helperText('The date when the event starts. Must be not earlier than the current time.')
+                                ->helperText('The date when the event timeline starts. Must be not earlier than the current time.')
                                 ->required()
                                 ->validationAttribute('Start Date')
                                 ->validationMessages([
@@ -614,7 +614,7 @@ class EventResource extends Resource
                                 ->optionsLimit(5)
                                 ->options(
                                     function () {
-                                        $venues = Venue::where('status', VenueStatus::ACTIVE)->get()->pluck('name', 'venue_id');
+                                        $venues = Venue::where('status', VenueStatus::ACTIVE)->get()->pluck('name', 'id');
                                         return $venues;
                                     }
                                 )
@@ -1311,7 +1311,7 @@ class EventResource extends Resource
                                                             $timeline = $get('../../../../event_timeline');
 
                                                             // timeline has key => obj where one of th obj is timeline_id to matched with $id, find and acquire
-                                                            $found = collect($timeline)->firstWhere('timeline_id', $id);
+                                                            $found = collect($timeline)->firstWhere('id', $id);
 
                                                             if ($found) return $found['name'];
                                                             else return '';
@@ -1332,24 +1332,6 @@ class EventResource extends Resource
                                                             'min' => 'Timeline Price must be greater than 0',
                                                         ])
                                                         ->minValue(1)
-                                                        ->reactive()
-                                                        ->afterStateUpdated(function (Forms\Set $set, $state) {
-                                                            $numericValue = (float) preg_replace('/[^\d]/', '', $state);
-
-                                                            if ($numericValue <= 0) {
-                                                                $set('price', 1);
-
-                                                                Notification::make()
-                                                                    ->title('Price Rejected')
-                                                                    ->body('Price must be greater than 0')
-                                                                    ->info()
-                                                                    ->send();
-                                                            } else {
-                                                                // Save the plain numeric value without formatting
-                                                                $set('price', $numericValue);
-                                                            }
-                                                        }),
-
                                                 ])
                                         ])
                                 ])

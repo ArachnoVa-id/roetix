@@ -13,7 +13,7 @@ export interface BaseItem {
 }
 
 export interface SeatItem extends BaseItem {
-    seat_id: string;
+    id: string;
     seat_number: string;
     status: string;
     ticket_type?: string;
@@ -37,7 +37,7 @@ export interface Layout {
 type Position = string | { x: number; y: number };
 
 export interface Seat {
-    seat_id: string;
+    id: string;
     seat_number: string;
     position: Position;
     status: SeatStatus;
@@ -180,19 +180,19 @@ export interface SavedTransaction {
 
 // export  interface untuk Timeline
 export interface Timeline {
-    timeline_id: string;
+    id: string;
     name: string;
     start_date: string;
     end_date: string;
 }
 
 export interface Venue {
-    venue_id: string;
+    id: string;
     name: string;
 }
 
 export interface Event {
-    event_id: string;
+    id: string;
     name: string;
     event_date: string;
     venue_id: string;
@@ -200,13 +200,13 @@ export interface Event {
 }
 
 export interface TicketCategory {
-    ticket_category_id: string;
+    id: string;
     name: string;
     color: string;
 }
 
 export interface CategoryPrice {
-    timebound_price_id: string;
+    id: string;
     ticket_category_id: string;
     timeline_id: string;
     price: number;
@@ -223,7 +223,7 @@ export interface PendingTransactionResponseItem {
 export type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
 
 export interface UpdatedSeats {
-    seat_id: string;
+    id: string;
     status: string;
     ticket_type: string;
     price: number;
@@ -235,7 +235,7 @@ export interface SeatMapEditorProps {
     ticketTypes: string[];
     categoryColors?: Record<string, string>;
     currentTimeline?: {
-        timeline_id: string;
+        id: string;
         name: string;
         start_date: string;
         end_date: string;

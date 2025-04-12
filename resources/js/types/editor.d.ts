@@ -1,24 +1,24 @@
 export interface Event {
-    event_id: string;
+    id: string;
     name: string;
     venue_id: string;
     team_id: string;
 }
 
 export interface Venue {
-    venue_id: string;
+    id: string;
     name: string;
 }
 
 export interface Timeline {
-    timeline_id: string;
+    id: string;
     name: string;
     start_date: string;
     end_date: string;
 }
 
 export interface TicketCategory {
-    ticket_category_id: string;
+    id: string;
     name: string;
     color: string;
 }

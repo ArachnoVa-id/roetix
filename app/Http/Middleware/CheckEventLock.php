@@ -32,7 +32,7 @@ class CheckEventLock
                         'name' => $event->name,
                         'slug' => $event->slug
                     ],
-                    'props' => $props
+                    'props' => $props->getSecure()
                 ]);
             }
         }

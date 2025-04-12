@@ -17,6 +17,9 @@ class EditTeam extends EditRecord
             BackButtonAction::make(
                 Actions\Action::make('back')
             ),
+            TeamResource::AddMemberButton(
+                Actions\Action::make('addMember')
+            ),
             Actions\DeleteAction::make('Delete Event')
                 ->icon('heroicon-o-trash'),
         ];

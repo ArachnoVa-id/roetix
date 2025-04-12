@@ -341,8 +341,22 @@ class UserResource extends Resources\Resource
             ]);
     }
 
-    public static function table(Tables\Table $table, bool $filterRole = false): Tables\Table
+    public static function table(Tables\Table $table, bool $filterRole = false, $additionActions = null): Tables\Table
     {
+        $actions = [
+            Tables\Actions\ViewAction::make()
+                ->modalHeading('View User'),
+            Tables\Actions\EditAction::make()
+                ->color(Color::Orange),
+        ];
+
+        if ($additionActions)
+            foreach ($additionActions as $action) {
+                $actions[] = $action;
+            }
+
+        $actions[] = Tables\Actions\DeleteAction::make();
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('first_name')
@@ -387,13 +401,7 @@ class UserResource extends Resources\Resource
                 layout: Tables\Enums\FiltersLayout::Modal
             )
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()
-                        ->modalHeading('View User'),
-                    Tables\Actions\EditAction::make()
-                        ->color(Color::Orange),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
+                Tables\Actions\ActionGroup::make($actions),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
