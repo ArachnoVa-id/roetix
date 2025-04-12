@@ -252,14 +252,19 @@ class PaymentController extends Controller
     public function midtransCallback(Request $request)
     {
         $data = $request->all();
+        $identifier = $data['order_id'] ?? null;
+
+        if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
+            return response()->json(['error' => 'Invalid callback data'], 400);
+        }
+
+        // Check if the identifier is testing
+        if (str_contains($identifier, 'payment_notif_test')) {
+            return response()->json(['message' => 'Test notification received'], 200);
+        }
 
         DB::beginTransaction();
         try {
-            $identifier = $data['order_id'] ?? null;
-            if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
-                return response()->json(['error' => 'Invalid callback data'], 400);
-            }
-
             // Process the callback based on transaction status
             switch ($data['transaction_status']) {
                 case 'capture':
