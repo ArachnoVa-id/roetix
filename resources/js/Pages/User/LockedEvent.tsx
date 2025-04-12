@@ -15,11 +15,6 @@ interface LockedEventProps {
 }
 
 // Define a properly typed interface for the form
-interface EventPasswordForm {
-    event_password: string;
-    [key: string]: string | File | File[]; // Add index signature for generic string keys
-}
-
 export default function LockedEvent({
     client,
     event,
@@ -28,9 +23,11 @@ export default function LockedEvent({
     props,
 }: LockedEventProps): React.ReactElement {
     // Explicitly type the useForm hook with our interface
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors } = useForm<{
+        event_password: string;
+    }>({
         event_password: '',
-    } as EventPasswordForm);
+    });
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
         e.preventDefault();
