@@ -485,7 +485,7 @@ export default function Landing({
                 )}
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="flex flex-col overflow-hidden rounded-lg p-6 shadow-xl"
+                        className="flex flex-col rounded-lg p-6 shadow-xl"
                         style={{
                             backgroundColor: props.primary_color,
                             color: props.text_primary_color,
@@ -945,32 +945,31 @@ export default function Landing({
                         </div>
                         {/* Seat Map Section - takes up more vertical space */}
                         <div
-                            className="flex flex-col items-center justify-center gap-2 rounded-lg p-3"
+                            className="relative flex h-[80vh] flex-col items-center gap-2 rounded-lg p-3"
                             style={{
                                 backgroundColor: props.secondary_color,
-                                height: '80vh',
                             }}
                         >
-                            <div className="relative flex w-full flex-col items-center justify-center">
-                                {/* make deselect all seats button if seat exist */}
-                                {
-                                    <button
-                                        className={
-                                            'left-0 top-0 rounded-lg bg-red-500 px-4 text-lg text-white duration-200 hover:bg-red-600 max-md:mt-4 md:absolute ' +
-                                            (selectedSeats.length > 0
-                                                ? 'opacity-100'
-                                                : 'pointer-events-none opacity-0')
-                                        }
-                                        onClick={deselectAllSeats}
-                                    >
-                                        Clear Selection
-                                    </button>
-                                }
+                            {/* Header + Button */}
+                            <div className="flex w-full flex-col items-center justify-center">
+                                <button
+                                    className={
+                                        'absolute left-4 top-4 rounded-lg bg-red-500 px-4 text-lg text-white duration-200 hover:bg-red-600 max-md:static ' +
+                                        (selectedSeats.length > 0
+                                            ? 'opacity-100 max-md:mt-1'
+                                            : 'pointer-events-none h-0 opacity-0')
+                                    }
+                                    onClick={deselectAllSeats}
+                                >
+                                    Clear Selection
+                                </button>
                                 <h3 className="h-fit text-center text-lg font-bold">
                                     Seat Map
                                 </h3>
                             </div>
-                            <div className="flex h-[92%] w-full overflow-clip">
+
+                            {/* Scrollable Seat Map */}
+                            <div className="flex h-full w-full flex-1 overflow-hidden">
                                 <div className="flex w-full justify-center overflow-auto">
                                     <SeatMapDisplay
                                         config={layout}

@@ -120,6 +120,7 @@ class EventVariables extends Model
     public function getSecure()
     {
         return [
+            'ticket_limit' => $this->ticket_limit,
             'is_locked' => $this->is_locked,
             'is_maintenance' => $this->is_maintenance,
             'maintenance_title' => $this->maintenance_title,
