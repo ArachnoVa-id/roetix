@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpMqtt\Client\MqttClient;
+use PhpMqtt\Client\ConnectionSettings;
 
 class PaymentController extends Controller
 {
@@ -185,6 +187,7 @@ class PaymentController extends Controller
                 'order_date' => now(),
                 'total_price' => $totalWithTax,
                 'status' => OrderStatus::PENDING,
+                'expired_at' => now()->addMinutes(10)
             ]);
 
             if (!$order) {
@@ -226,11 +229,16 @@ class PaymentController extends Controller
             $order->snap_token = $snapToken;
             $order->save();
 
+            $this->publishMqtt(data: [
+                'message' => 'hallo ini dari charge'
+            ]);
+
             DB::commit();
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
         } catch (\Exception $e) {
             DB::rollBack();
             $responseString = $e->getMessage();
+
             preg_match('/"error_messages":\["(.*?)"/', $responseString, $matches);
             $firstErrorMessage = $matches[1] ?? null;
             return response()->json(['message' => 'System failed to process payment! ' . $firstErrorMessage . '.'], 500);
@@ -310,6 +318,9 @@ class PaymentController extends Controller
                     $ticket->save();
                 }
             }
+            $this->publishMqtt(data: [
+                'message' => 'ini dari update status'
+            ]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -461,8 +472,9 @@ class PaymentController extends Controller
             }
 
             $clientKey = $event->eventVariables->getKey();
+            $isProduction = $event->eventVariables->midtrans_is_production;
 
-            return response()->json(['client_key' => $clientKey]);
+            return response()->json(['client_key' => $clientKey, 'is_production' => $isProduction]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch client key'], 500);
         }
@@ -484,6 +496,40 @@ class PaymentController extends Controller
             );
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to download orders: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
+    {
+        $server = 'broker.emqx.io';
+        $port = 1883;
+        $clientId = 'novatix_midtrans' . rand(100, 999);
+        $usrname = 'emqx';
+        $password = 'public';
+        $mqtt_version = MqttClient::MQTT_3_1_1;
+        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
+        $topic = 'novatix/midtrans/defaultclient/defaultcode/ticketpurchased';
+
+        $conn_settings = (new ConnectionSettings)
+            ->setUsername($usrname)
+            ->setPassword($password)
+            ->setLastWillMessage('client disconnected')
+            ->setLastWillTopic('emqx/last-will')
+            ->setLastWillQualityOfService(1);
+
+        $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
+
+        try {
+            $mqtt->connect($conn_settings, true);
+            $mqtt->publish(
+                $topic,
+                json_encode($data),
+                0
+            );
+            $mqtt->disconnect();
+        } catch (\Throwable $th) {
+            // biarin lewat aja biar ga bikin masalah di payment controller flow nya
+            Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
 }

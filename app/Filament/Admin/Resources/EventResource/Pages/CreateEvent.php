@@ -158,8 +158,10 @@ class CreateEvent extends CreateRecord
             // Parse all the image based to get values only (because it is in array)
             $columns = ['logo', 'texture', 'favicon'];
             foreach ($columns as $column) {
-                if (isset($eventVariables[$column]) && !empty($eventVariables[$column])) {
-                    $eventVariables[$column] = array_values($eventVariables[$column])[0];
+                if (isset($eventVariables[$column])) {
+                    if (!empty($eventVariables[$column]))
+                        $eventVariables[$column] = array_values($eventVariables[$column])[0];
+                    else $eventVariables[$column] = "";
                 }
             }
 

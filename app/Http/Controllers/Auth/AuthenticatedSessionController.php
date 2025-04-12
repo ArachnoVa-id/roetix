@@ -57,7 +57,6 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
         $request->session()->regenerate();
-
         $user = Auth::user();
         $userModel = User::find($user->id);
 

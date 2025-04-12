@@ -81,6 +81,10 @@ Route::domain(config('app.domain'))
                     ->name('seats.update-event-seats');
                 Route::post('/seats/save-grid-layout', 'saveGridLayout')
                     ->name('seats.save-grid-layout');
+
+                // Export layout
+                Route::get('/venues/{venue}', 'exportMap')
+                    ->name('venues.export');
             });
 
             // Download Orders

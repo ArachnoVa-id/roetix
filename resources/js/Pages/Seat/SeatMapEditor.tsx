@@ -346,7 +346,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                     next.clear();
                     next.add(seatId);
                     // Set current values from the seat for editing
-                    setSelectedStatus(seat.status);
+                    // setSelectedStatus(seat.status);
                     setSelectedTicketType(seat.ticket_type || 'unset');
                     break;
 
@@ -473,6 +473,8 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
             // console.log('Sending updated seats:', updatedSeats);
             onSave(updatedSeats);
         }
+        console.log('Sending updated seats:', updatedSeats);
+        console.log('Selected status:', selectedStatus);
     };
 
     const handleModeChange = (mode: SelectionMode) => {
@@ -1119,9 +1121,9 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
 
             {/* Main Content - Seat Map */}
             <div className="flex-1 overflow-auto bg-gray-50 max-md:order-1">
-                <div className="flex h-full items-center justify-center">
+                <div className="flex h-full w-full items-start justify-center p-4">
                     {/* Scrollable Seat Map Container - Just one scrollable area */}
-                    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-auto rounded-lg border border-gray-300 bg-gray-100">
+                    <div className="relative flex w-full flex-col items-center overflow-auto rounded-lg border border-gray-300 bg-gray-100 p-2">
                         {/* Grid container */}
                         <div
                             className="relative m-auto p-4"

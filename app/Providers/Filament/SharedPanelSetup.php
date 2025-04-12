@@ -5,7 +5,6 @@ namespace App\Providers\Filament;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
 use Filament\Http\Middleware\Authenticate;
-use App\Http\Middleware\ShareAuthenticatedUser;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use App\Http\Middleware\Filament\UrlHistoryStack;
@@ -32,7 +31,6 @@ class SharedPanelSetup
             DisableBladeIconComponents::class,
             DispatchServingFilamentEvent::class,
             UrlHistoryStack::class,
-            ShareAuthenticatedUser::class,
         ];
     }
 

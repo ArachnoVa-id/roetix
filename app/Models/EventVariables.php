@@ -91,17 +91,20 @@ class EventVariables extends Model
     {
         $isProduction = $this->midtrans_is_production;
         $useNovatix = $this->midtrans_use_novatix;
-
-        $clientKey = Crypt::decryptString($isProduction ? $this->midtrans_client_key : $this->midtrans_client_key_sb);
-        $serverKey = Crypt::decryptString($isProduction ? $this->midtrans_server_key : $this->midtrans_server_key_sb);
+        
+        $nullValue = Crypt::encryptString('');
+        $clientKey = Crypt::decryptString($isProduction ? ($this->midtrans_client_key ?? $nullValue) : ($this->midtrans_client_key_sb ?? $nullValue));
+        $serverKey = Crypt::decryptString($isProduction ? ($this->midtrans_server_key ?? $nullValue) : ($this->midtrans_server_key_sb ?? $nullValue));
 
         $configKey = $isProduction
             ? config('midtrans.' . ($requestType === 'client' ? 'client_key' : 'server_key'))
             : config('midtrans.' . ($requestType === 'client' ? 'client_key_sb' : 'server_key_sb'));
 
-        return $requestType === 'client'
-            ? ($clientKey ?? ($useNovatix ? $configKey : null))
-            : ($serverKey ?? ($useNovatix ? $configKey : null));
+        $returnVal = $requestType === 'client'
+            ? (!empty($clientKey) ? $clientKey : ($useNovatix ? $configKey : null))
+            : (!empty($serverKey) ? $serverKey : ($useNovatix ? $configKey : null));
+        
+        return $returnVal;
     }
 
     public function reconstructImgLinks()
