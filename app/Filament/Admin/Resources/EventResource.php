@@ -49,9 +49,9 @@ class EventResource extends Resource
             return false;
         }
 
-        $tenant_id = Filament::getTenant()->team_id;
+        $tenant_id = Filament::getTenant()->id;
 
-        $team = $user->teams()->where('teams.team_id', $tenant_id)->first();
+        $team = $user->teams()->where('teams.id', $tenant_id)->first();
 
         if (!$team) {
             return false;
@@ -117,7 +117,7 @@ class EventResource extends Resource
             ->label('Seating')
             ->icon('heroicon-o-adjustments-horizontal')
             ->color(Color::Indigo)
-            ->url(fn($record) => "/seats/edit?event_id={$record->event_id}");
+            ->url(fn($record) => "/seats/edit?event_id={$record->id}");
     }
 
     public static function ExportOrdersButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
@@ -130,7 +130,7 @@ class EventResource extends Resource
                 fn($record) =>
                 route(
                     'orders.export',
-                    ['id' => $record?->event_id]
+                    ['id' => $record?->id]
                 )
             )
         ;
@@ -162,7 +162,7 @@ class EventResource extends Resource
             ->schema(
                 [
                     Infolists\Components\Section::make()->schema([
-                        Infolists\Components\TextEntry::make('event_id')
+                        Infolists\Components\TextEntry::make('id')
                             ->label('Event ID')
                             ->icon('heroicon-o-identification'),
                         Infolists\Components\TextEntry::make('status')
@@ -423,7 +423,7 @@ class EventResource extends Resource
                                     // reject if name already used
                                     $event_id = $get('event_id');
                                     $foundEvent = Event::where('name', $get('name'))->first();
-                                    if ($foundEvent && $foundEvent->event_id != $event_id) {
+                                    if ($foundEvent && $foundEvent->id != $event_id) {
                                         $set('name', null);
                                         $set('slug', null);
 
@@ -441,7 +441,7 @@ class EventResource extends Resource
 
                                     $foundEvent = Event::where('slug', $slug)->first();
 
-                                    while ($foundEvent && $foundEvent->event_id != $event_id) {
+                                    while ($foundEvent && $foundEvent->id != $event_id) {
                                         if ($increment > 0) {
                                             $slug = $base_slug . '-' . $increment;
                                             $foundEvent = Event::where('slug', $slug)->first();
@@ -470,7 +470,7 @@ class EventResource extends Resource
                                     $event_id = $get('event_id');
                                     $foundEvent = Event::where('slug', $slug)->first();
 
-                                    while ($foundEvent && $foundEvent->event_id != $event_id) {
+                                    while ($foundEvent && $foundEvent->id != $event_id) {
                                         if ($increment > 0) {
                                             $slug = $base_slug . '-' . $increment;
                                             $foundEvent = Event::where('slug', $slug)->first();

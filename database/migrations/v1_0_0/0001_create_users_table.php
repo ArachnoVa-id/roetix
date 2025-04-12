@@ -28,7 +28,7 @@ return new class extends Migration
 
             // Fix foreign key constraint
             $table->foreign('contact_info')
-                ->references('contact_id')
+                ->references('id')
                 ->on('user_contacts')
                 ->onDelete('set null');
         });

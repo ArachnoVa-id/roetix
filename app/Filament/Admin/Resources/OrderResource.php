@@ -140,12 +140,12 @@ class OrderResource extends Resource
                             ->reactive()
                             ->optionsLimit(5)
                             ->options(function () {
-                                $tenant_id = Filament::getTenant()?->team_id;
+                                $tenant_id = Filament::getTenant()?->id;
                                 $query = Event::query();
                                 if ($tenant_id) {
                                     $query->where('team_id', $tenant_id);
                                 }
-                                return $query->pluck('name', 'event_id');
+                                return $query->pluck('name', 'id');
                             })
                             ->required()
                             ->preload()
@@ -191,13 +191,13 @@ class OrderResource extends Resource
 
                                     foreach ($record->tickets as $ticket) {
                                         $uuid = \Illuminate\Support\Str::uuid()->toString();
-                                        $ticketOrder = TicketOrder::where('order_id', $record->order_id)
-                                            ->where('ticket_id', $ticket->ticket_id)
+                                        $ticketOrder = TicketOrder::where('order_id', $record->id)
+                                            ->where('ticket_id', $ticket->id)
                                             ->latest()
                                             ->first();
 
                                         $return[$uuid] = [
-                                            'ticket_id' => $ticket->ticket_id,
+                                            'ticket_id' => $ticket->id,
                                             'status' => $ticketOrder ? $ticketOrder->status : TicketOrderStatus::ENABLED,
                                         ];
                                     }
@@ -229,14 +229,14 @@ class OrderResource extends Resource
 
                                             return Ticket::where('event_id', $get('../../event_id'))
                                                 ->where('status', TicketStatus::AVAILABLE)
-                                                ->whereHas('seat') // Ensure the ticket has a related seat
-                                                ->with('seat') // Load the seat relationship
+                                                ->whereHas('seat')
+                                                ->with('seat')
                                                 ->when(!empty($selectedTickets), function ($query) use ($selectedTickets) {
-                                                    return $query->whereNotIn('ticket_id', $selectedTickets); // Use 'id' if it's the primary key
+                                                    return $query->whereNotIn('id', $selectedTickets);
                                                 })
                                                 ->get()
                                                 ->sortBy('seat.seat_number')
-                                                ->pluck('seat.seat_number', 'ticket_id') // Pluck seat_number as label, ticket_id as value
+                                                ->pluck('seat.seat_number', 'id')
                                                 ->toArray();
                                         }
                                     )
@@ -290,7 +290,7 @@ class OrderResource extends Resource
                         'md' => 2,
                     ])
                     ->schema([
-                        Infolists\Components\TextEntry::make('order_id')
+                        Infolists\Components\TextEntry::make('id')
                             ->icon('heroicon-o-shopping-cart')
                             ->label('Order ID'),
                         Infolists\Components\TextEntry::make('order_date')
@@ -462,8 +462,7 @@ class OrderResource extends Resource
                         ->preload()
                         ->optionsLimit(5)
                         ->multiple()
-                        ->hidden(!$filterEvent)
-                        ->default(request()->query('tableFilters')['event_id']['value'] ?? null),
+                        ->hidden(!$filterEvent),
                     Tables\Filters\SelectFilter::make('status')
                         ->options(OrderStatus::allOptions())
                         ->searchable()

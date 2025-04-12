@@ -19,7 +19,6 @@ class Ticket extends Model
 {
     use Notifiable;
 
-    protected $primaryKey = 'ticket_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -45,8 +44,8 @@ class Ticket extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->ticket_id)) {
-                $model->ticket_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
 
             if (empty($model->ticket_code)) {
@@ -98,7 +97,7 @@ class Ticket extends Model
     public function getTicketPDFTitle(): string
     {
         $event = $this->event;
-        return strtoupper($event->slug) . '-' . $event->eventYear() . '-' . strtoupper($this->ticket_id) . '-TICKET' . '.pdf';
+        return strtoupper($event->slug) . '-' . $event->eventYear() . '-' . strtoupper($this->id) . '-TICKET' . '.pdf';
     }
 
     public function getLatestOwner()
@@ -114,27 +113,27 @@ class Ticket extends Model
 
     public function latestTicketOrder(): HasOne
     {
-        return $this->hasOne(TicketOrder::class, 'ticket_id', 'ticket_id')->latestOfMany();
+        return $this->hasOne(TicketOrder::class, 'ticket_id', 'id')->latestOfMany();
     }
 
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class, 'event_id', 'event_id');
+        return $this->belongsTo(Event::class, 'event_id', 'id');
     }
 
     public function seat(): BelongsTo
     {
-        return $this->belongsTo(Seat::class, 'seat_id', 'seat_id');
+        return $this->belongsTo(Seat::class, 'seat_id', 'id');
     }
 
     public function team(): BelongsTo
     {
-        return $this->belongsTo(Team::class, 'team_id', 'team_id');
+        return $this->belongsTo(Team::class, 'team_id', 'id');
     }
 
     public function ticketOrders(): HasMany
     {
-        return $this->hasMany(TicketOrder::class, 'ticket_id', 'ticket_id');
+        return $this->hasMany(TicketOrder::class, 'ticket_id', 'id');
     }
 
     public function orders(): BelongsToMany
@@ -144,11 +143,11 @@ class Ticket extends Model
 
     public function timelineSessions(): HasMany
     {
-        return $this->hasMany(TimelineSession::class, 'event_id', 'event_id');
+        return $this->hasMany(TimelineSession::class, 'event_id', 'id');
     }
 
     public function ticketCategory(): BelongsTo
     {
-        return $this->belongsTo(TicketCategory::class, 'ticket_category_id', 'ticket_category_id');
+        return $this->belongsTo(TicketCategory::class, 'ticket_category_id', 'id');
     }
 }

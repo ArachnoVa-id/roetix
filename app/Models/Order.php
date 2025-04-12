@@ -18,7 +18,6 @@ class Order extends Model
     /** @use HasFactory<\Database\Factories\OrderFactory> */
     use HasFactory, Notifiable;
 
-    protected $primaryKey = 'order_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -44,8 +43,8 @@ class Order extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->order_id)) {
-                $model->order_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
@@ -112,7 +111,7 @@ class Order extends Model
 
     public function ticketOrders(): HasMany
     {
-        return $this->hasMany(TicketOrder::class, 'order_id', 'order_id');
+        return $this->hasMany(TicketOrder::class, 'order_id', 'id');
     }
 
     public function user(): BelongsTo
@@ -132,6 +131,6 @@ class Order extends Model
 
     public function team(): BelongsTo
     {
-        return $this->belongsTo(Team::class, 'team_id', 'team_id');
+        return $this->belongsTo(Team::class, 'team_id', 'id');
     }
 }

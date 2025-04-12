@@ -13,9 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('venues', function (Blueprint $table) {
-            $table->string('venue_id', 36)->primary();
+            $table->string('id', 36)->primary();
             $table->string('team_id', 36)->nullable();
-            $table->foreign('team_id')->references('team_id')->on('teams')->onDelete('cascade');
+            $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
 
             $table->string('name');
             $table->longText('location');
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->enum('status', VenueStatus::values())->default(VenueStatus::INACTIVE);
             $table->timestamps();
 
-            $table->foreign('contact_info')->references('contact_id')->on('user_contacts')->onDelete('cascade');
+            $table->foreign('contact_info')->references('id')->on('user_contacts')->onDelete('cascade');
         });
     }
 

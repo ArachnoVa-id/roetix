@@ -75,7 +75,7 @@
           <table style="width: 100%; color: black; font-size: 0.7rem;">
             <tr>
               <td><strong>Tanggal Transaksi:</strong> {{ $ticket->order_date }}</td>
-              <td style="text-align: right;"><strong>ID Tiket:</strong> #{{ $ticket->ticket_id }}</td>
+              <td style="text-align: right;"><strong>ID Tiket:</strong> #{{ $ticket->id }}</td>
             </tr>
           </table>
         </div>

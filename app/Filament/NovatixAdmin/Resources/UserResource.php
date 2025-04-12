@@ -206,7 +206,7 @@ class UserResource extends Resources\Resource
                         'sm' => 1,
                         'md' => 1,
                     ])
-                    ->relationship('contactInfo', 'venue_id')
+                    ->relationship('contactInfo')
                     ->schema([
                         Forms\Components\TextInput::make('phone_number')
                             ->maxLength(24)
@@ -292,7 +292,7 @@ class UserResource extends Resources\Resource
                                     ->filter() // Remove null values
                                     ->toArray();
 
-                                $remainingTeams = Team::whereNotIn('team_id', $selectedTeams)
+                                $remainingTeams = Team::whereNotIn('id', $selectedTeams)
                                     ->count();
 
                                 return $remainingTeams > 0;
@@ -309,7 +309,7 @@ class UserResource extends Resources\Resource
                                             ->toArray();
 
                                         // Exclude already selected teams
-                                        $return = Team::whereNotIn('team_id', $selectedTeams)->pluck('name', 'team_id');
+                                        $return = Team::whereNotIn('id', $selectedTeams)->pluck('name', 'id');
 
                                         return $return;
                                     })
@@ -329,7 +329,7 @@ class UserResource extends Resources\Resource
                                     foreach ($record->teams as $team) {
                                         $uuid = \Illuminate\Support\Str::uuid()->toString();
                                         $return[$uuid] = [
-                                            'team_id' => $team->team_id,
+                                            'team_id' => $team->id,
                                             'name' => $team->name,
                                         ];
                                     }

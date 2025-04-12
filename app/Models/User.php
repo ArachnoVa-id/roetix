@@ -148,7 +148,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
 
     public function contactInfo(): BelongsTo
     {
-        return $this->belongsTo(UserContact::class, 'contact_info', 'contact_id');
+        return $this->belongsTo(UserContact::class, 'contact_info', 'id');
     }
 
     public function getTenants(Panel $panel): Collection

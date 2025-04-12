@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('event_category_timebound_prices', function (Blueprint $table) {
-            $table->string('timebound_price_id', 36)->primary();
+            $table->string('id', 36)->primary();
             $table->string('ticket_category_id', 36);
             $table->string('timeline_id', 36);
             $table->decimal('price', 10, 2);
@@ -20,12 +20,12 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('ticket_category_id', 'fk_ectbp_ticket_category')
-                ->references('ticket_category_id')
+                ->references('id')
                 ->on('ticket_categories')
                 ->onDelete('cascade');
 
             $table->foreign('timeline_id', 'fk_ectbp_timeline')
-                ->references('timeline_id')
+                ->references('id')
                 ->on('timeline_sessions')
                 ->onDelete('cascade');
 

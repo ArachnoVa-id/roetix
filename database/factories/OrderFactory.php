@@ -36,7 +36,7 @@ class OrderFactory extends Factory
 
         // If no available tickets, return an empty array (prevent creating empty orders)
         if (!$ticket) {
-            return [];
+            throw new \Exception('No available ticket found. Cannot create order.');
         }
 
         $event_id = $ticket->event_id;
@@ -96,8 +96,8 @@ class OrderFactory extends Factory
 
                 // Create TicketOrder with correct order_id
                 TicketOrder::create([
-                    'order_id' => $order->order_id,
-                    'ticket_id' => $ticket->ticket_id,
+                    'order_id' => $order->id,
+                    'ticket_id' => $ticket->id,
                     'event_id' => $order->event_id,
                     'status' => TicketOrderStatus::ENABLED,
                 ]);

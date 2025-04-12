@@ -61,7 +61,7 @@ class CreateOrder extends CreateRecord
         try {
             $data = $this->data;
             $event_id = $data['event_id'];
-            $event = Event::where('event_id', $event_id)->first();
+            $event = Event::where('id', $event_id)->first();
             $tenant_id = $event->team_id;
             $user_id = $data['user_id'];
             $expired = $data['expired_at'] ?? now()->addHour();
@@ -69,7 +69,7 @@ class CreateOrder extends CreateRecord
             // Lock all tickets
             foreach ($data['tickets'] as $ticket) {
                 $ticket_id = $ticket['ticket_id'];
-                $ticketModel = Ticket::where('event_id', $event_id)->where('ticket_id', $ticket_id)
+                $ticketModel = Ticket::where('event_id', $event_id)->where('id', $ticket_id)
                     ->where('status', TicketStatus::AVAILABLE)
                     ->lockForUpdate()
                     ->first();
@@ -102,7 +102,7 @@ class CreateOrder extends CreateRecord
                 // Create Ticket Order
                 $ticketOrder = TicketOrder::create([
                     'ticket_id' => $ticket_id,
-                    'order_id' => $order->order_id,
+                    'order_id' => $order->id,
                     'event_id' => $event_id,
                     'status' => TicketOrderStatus::ENABLED,
                 ]);
@@ -126,7 +126,7 @@ class CreateOrder extends CreateRecord
             DB::commit();
 
             // Get the redirect URL (like getRedirectUrl)
-            $redirectUrl = $this->getResource()::getUrl('view', ['record' => $order->order_id]);
+            $redirectUrl = $this->getResource()::getUrl('view', ['record' => $order->id]);
 
             // Determine whether to use navigate (SPA mode)
             $navigate = FilamentView::hasSpaMode() && Filament::isAppUrl($redirectUrl);

@@ -23,7 +23,7 @@ class VenueFactory extends Factory
         return [
             'name' => $this->faker->sentence(2),
             'location' => $this->faker->address,
-            'team_id' => Team::inRandomOrder()->first()?->team_id,
+            'team_id' => Team::inRandomOrder()->first()?->id,
             'contact_info' => UserContact::factory(),
             'status' => $this->faker->randomElement(VenueStatus::values()),
         ];

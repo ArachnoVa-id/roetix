@@ -21,10 +21,10 @@ class VenuesRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        $venueId = $infolist->record->venue_id;
+        $venueId = $infolist->record->id;
 
         $record = $this->ownerRecord->venues()
-            ->where('venue_id', $venueId)
+            ->where('id', $venueId)
             ->with([
                 'seats',
             ])

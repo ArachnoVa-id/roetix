@@ -33,11 +33,11 @@ class CheckVenueAccess
         // Ambil semua team_id milik user yang login
         $userTeamIds = User::find($userId)
             ->teams()
-            ->pluck('teams.team_id')
+            ->pluck('teams.id')
             ->toArray();
 
         // Ambil team_id dari venue
-        $venueTeamId = Venue::where('venue_id', $venueId)
+        $venueTeamId = Venue::where('id', $venueId)
             ->value('team_id');
 
         // Cek apakah user memiliki akses ke venue ini

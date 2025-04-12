@@ -68,7 +68,7 @@ class TicketResource extends Resource
             ->icon('heroicon-o-magnifying-glass')
             ->action(function ($record) {
                 // Ensure the record exists
-                if (!$record || !$record->ticket_id) {
+                if (!$record || !$record->id) {
                     Notification::make()
                         ->title('Error')
                         ->error()
@@ -78,7 +78,7 @@ class TicketResource extends Resource
                 }
 
                 // Get the View page URL for the ticket
-                $redirectUrl = TicketResource::getUrl('view', ['record' => $record->ticket_id]);
+                $redirectUrl = TicketResource::getUrl('view', ['record' => $record->id]);
 
                 // Perform the redirect
                 return redirect($redirectUrl);
@@ -140,14 +140,14 @@ class TicketResource extends Resource
             ->modalHeading('Transfer Ownership')
             ->form([
                 Forms\Components\Hidden::make('ticket_id')
-                    ->default(fn($record) => $record->ticket_id),
+                    ->default(fn($record) => $record->id),
                 Forms\Components\Select::make('user_id')
                     ->label('User')
                     ->searchable()
                     ->preload()
                     ->options(function ($record) {
                         // Get the latest ticket order for this ticket
-                        $latestTicketOrder = TicketOrder::where('ticket_id', $record->ticket_id)
+                        $latestTicketOrder = TicketOrder::where('ticket_id', $record->id)
                             ->latest()
                             ->first();
 
@@ -160,7 +160,7 @@ class TicketResource extends Resource
                             ->toArray(); // Ensure it's returned as an array
                     })
                     ->default(function ($record) {
-                        $latestTicketOrder = TicketOrder::where('ticket_id', $record->ticket_id)
+                        $latestTicketOrder = TicketOrder::where('ticket_id', $record->id)
                             ->latest()
                             ->first();
 
@@ -183,7 +183,7 @@ class TicketResource extends Resource
                     }
 
                     // Correct way to lock a record for update
-                    $ticket = Ticket::where('ticket_id', $data['ticket_id'])
+                    $ticket = Ticket::where('id', $data['ticket_id'])
                         ->lockForUpdate()
                         ->first();
 
@@ -192,14 +192,14 @@ class TicketResource extends Resource
                     }
 
                     // Check if the latest user is not the same
-                    $previousOwner = TicketOrder::where('ticket_id', $ticket->ticket_id)->get()->sortBy('created_at')->last()->order->user;
+                    $previousOwner = TicketOrder::where('ticket_id', $ticket->id)->get()->sortBy('created_at')->last()->order->user;
                     $user = User::find($data['user_id']);
 
                     if ($user == $previousOwner)
                         throw new \Exception('Cannot transfer to the same client.');
 
                     // Deactivate old ticket orders
-                    TicketOrder::where('ticket_id', $ticket->ticket_id)
+                    TicketOrder::where('ticket_id', $ticket->id)
                         ->lockForUpdate()
                         ->update(['status' => TicketOrderStatus::DEACTIVATED]);
 
@@ -222,8 +222,8 @@ class TicketResource extends Resource
 
                     // Create new ticket order
                     $ticketOrder = TicketOrder::create([
-                        'ticket_id' => $ticket->ticket_id,
-                        'order_id'  => $order->order_id,
+                        'ticket_id' => $ticket->id,
+                        'order_id'  => $order->id,
                         'event_id'  => $ticket->event_id,
                         'status'    => TicketOrderStatus::ENABLED,
                     ]);
@@ -322,7 +322,7 @@ class TicketResource extends Resource
                             Infolists\Components\TextEntry::make('ticket_order_status')
                                 ->label('Latest Validity')
                                 ->default(function ($record) {
-                                    $ticket_id = $record->ticket_id;
+                                    $ticket_id = $record->id;
                                     $ticketOrder = TicketOrder::where('ticket_id', $ticket_id)
                                         ->latest()
                                         ->first();
@@ -417,7 +417,7 @@ class TicketResource extends Resource
                                 ->badge(),
                         ]),
                     Infolists\Components\Section::make("Seat")
-                        ->relationship('seat', 'seat_id')
+                        ->relationship('seat', 'id')
                         ->columnSpan([
                             'default' => 1,
                             'sm' => 1,

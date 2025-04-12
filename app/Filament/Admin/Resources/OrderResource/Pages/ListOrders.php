@@ -34,7 +34,7 @@ class ListOrders extends ListRecords
 
     public function getTabs(): array
     {
-        $tenant_id = Filament::getTenant()?->team_id ?? null;
+        $tenant_id = Filament::getTenant()?->id ?? null;
 
         $baseQuery = Order::query();
         if ($tenant_id) {

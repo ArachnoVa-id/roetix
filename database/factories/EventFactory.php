@@ -40,8 +40,8 @@ class EventFactory extends Factory
         $endDate = $this->faker->dateTimeBetween('+1 month', '+2 months');
 
         return [
-            'team_id' => Team::inRandomOrder()->first()?->team_id,
-            'venue_id' => Venue::where('status', VenueStatus::ACTIVE->value)->inRandomOrder()->first()?->venue_id,
+            'team_id' => Team::inRandomOrder()->first()?->id,
+            'venue_id' => Venue::where('status', VenueStatus::ACTIVE->value)->inRandomOrder()->first()?->id,
             'name' => $name,
             'slug' => $slug,
             'start_date' => $this->faker->dateTimeBetween('now', '+1 month'),
@@ -73,16 +73,15 @@ class EventFactory extends Factory
 
     private function eventVariables(Event $event)
     {
-        $event->eventVariables()->create(EventVariables::getDefaultValue());
-
-        // Edit some values
-        $event->eventVariables->update([
-            'texture' => null,
-            'primary_color' => $this->randomColor(),
-            'secondary_color' => $this->randomColor(),
-            'text_primary_color' => $this->randomColor(),
-            'text_secondary_color' => $this->randomColor(),
-        ]);
+        $event->eventVariables()->create(array_merge(
+            EventVariables::getDefaultValue(),
+            [
+                'texture' => null,
+                'primary_color' => $this->randomColor(),
+                'secondary_color' => $this->randomColor(),
+                'text_primary_color' => $this->randomColor(),
+            ]
+        ));
     }
 
     private $sessionNames = [
@@ -132,7 +131,7 @@ class EventFactory extends Factory
             }
 
             TimelineSession::create([
-                'event_id' => $event->event_id,
+                'event_id' => $event->id,
                 'name' => $this->sessionNames[$i % count($this->sessionNames)],
                 'start_date' => $currentDate,
                 'end_date' => $nextEndDate,
@@ -154,7 +153,7 @@ class EventFactory extends Factory
         $categoryCount = rand(3, 5);
         for ($i = 0; $i < $categoryCount; $i++) {
             $event->ticketCategories()->create([
-                'event_id' => $event->event_id,
+                'event_id' => $event->id,
                 'name' => $this->faker->sentence(2),
                 'color' => $this->randomColor(),
             ]);
@@ -202,7 +201,7 @@ class EventFactory extends Factory
         foreach ($event->ticketCategories as $ticketCategory) {
             foreach ($event->timelineSessions as $timeline) {
                 $timeline->eventCategoryTimeboundPrices()->create([
-                    'ticket_category_id' => $ticketCategory->ticket_category_id,
+                    'ticket_category_id' => $ticketCategory->id,
                     'price' => $this->getPriceBasedOnTimelineName($timeline->name),
                 ]);
             }
@@ -212,8 +211,8 @@ class EventFactory extends Factory
     private function ticketsGeneration(Event $event)
     {
         // seats in that events venue
-        $seatIds = Seat::where('venue_id', Event::find($event->event_id)->venue_id)
-            ->pluck('seat_id')
+        $seatIds = Seat::where('venue_id', Event::find($event->id)->venue_id)
+            ->pluck('id')
             ->toArray();
 
         if (empty($seatIds)) return;
@@ -232,7 +231,7 @@ class EventFactory extends Factory
 
         // Get current active timeline
         $currentDate = Carbon::now();
-        $activeTimeline = TimelineSession::where('event_id', $event->event_id)
+        $activeTimeline = TimelineSession::where('event_id', $event->id)
             ->where('start_date', '<=', $currentDate)
             ->where('end_date', '>=', $currentDate)
             ->first();
@@ -250,7 +249,7 @@ class EventFactory extends Factory
             $price = 0;
             if ($activeTimeline) {
                 $priceData = $activeTimeline->eventCategoryTimeboundPrices()
-                    ->where('ticket_category_id', $category->ticket_category_id)
+                    ->where('ticket_category_id', $category->id)
                     ->first();
 
                 if ($priceData) {
@@ -266,7 +265,7 @@ class EventFactory extends Factory
             $event->tickets()->create([
                 'seat_id' => $seatId,
                 'team_id' => $event->team_id,
-                'ticket_category_id' => $category->ticket_category_id,
+                'ticket_category_id' => $category->id,
                 'ticket_type' => $category->name,
                 'price' => $price,
                 'status' => TicketStatus::AVAILABLE,

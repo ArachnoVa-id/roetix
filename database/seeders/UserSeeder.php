@@ -22,7 +22,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'user',
                 'role' => UserRole::USER->value,
-                'contact_info' => UserContact::factory()->create()->contact_id,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // admin novatix
@@ -32,7 +32,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'admin',
                 'role' => UserRole::ADMIN->value,
-                'contact_info' => UserContact::factory()->create()->contact_id,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // vendor 1
@@ -42,7 +42,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'vendor1',
                 'role' => UserRole::VENDOR->value,
-                'contact_info' => UserContact::factory()->create()->contact_id,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // vendor 2
@@ -52,7 +52,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'vendor2',
                 'role' => UserRole::VENDOR->value,
-                'contact_info' => UserContact::factory()->create()->contact_id,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // eo 1
@@ -62,7 +62,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'eo1',
                 'role' => UserRole::EVENT_ORGANIZER->value,
-                'contact_info' => UserContact::factory()->create()->contact_id,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // eo2
@@ -72,7 +72,7 @@ class UserSeeder extends Seeder
                 'first_name' => 'test',
                 'last_name' => 'eo2',
                 'role' => UserRole::EVENT_ORGANIZER->value,
-                'contact_info' => UserContact::factory()->create()->contact_id,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
         ];
     }

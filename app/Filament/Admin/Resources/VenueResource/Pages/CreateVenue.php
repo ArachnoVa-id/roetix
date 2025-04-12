@@ -55,7 +55,7 @@ class CreateVenue extends CreateRecord
     {
         try {
             DB::beginTransaction();
-            $tenant_id = Filament::getTenant()->team_id;
+            $tenant_id = Filament::getTenant()->id;
             $team = Team::where('team_id', $tenant_id)->lockForUpdate()->first();
 
             if (!$team || $team->vendor_quota <= 0) {
@@ -65,7 +65,6 @@ class CreateVenue extends CreateRecord
             // Create new UserContact
             $contactInfo = $this->data['contactInfo'];
             $contact = UserContact::create([
-                'contact_id' => Str::uuid(),
                 'phone_number' => $contactInfo['phone_number'],
                 'email' => $contactInfo['email'],
                 'whatsapp_number' => $contactInfo['whatsapp_number'] ?? null,
@@ -73,7 +72,7 @@ class CreateVenue extends CreateRecord
             ]);
 
             // Assign the new contact to the venue data
-            $data['contact_info'] = $contact->contact_id;
+            $data['contact_info'] = $contact->id;
 
             $team->decrement('vendor_quota');
             if ($team->vendor_quota <= 0) {

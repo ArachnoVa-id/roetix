@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\UserRole;
-use App\Models\User;
-use App\Models\UserContact;
 use Exception;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Enums\UserRole;
+use App\Models\UserContact;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -123,7 +123,7 @@ class SocialiteController extends Controller
 
                 $userContact = null;
                 if ($userExists) {
-                    $userContact = UserContact::find($userData->contactInfo->contact_id);
+                    $userContact = UserContact::find($userData->contactInfo->id);
                     $userContact->update($userContactBody);
                 } else {
                     $userContact = UserContact::create($userContactBody);
@@ -131,7 +131,7 @@ class SocialiteController extends Controller
                     if (!$userContact) throw new Exception('Failed to create user contact');
 
                     // Link
-                    $userData->contact_info = $userContact->contact_id;
+                    $userData->contact_info = $userContact->id;
                     $userData->save();
                 }
 

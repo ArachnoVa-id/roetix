@@ -13,7 +13,6 @@ class UserContact extends Model
     /** @use HasFactory<\Database\Factories\UserContactFactory> */
     use HasFactory, Notifiable;
 
-    protected $primaryKey = 'contact_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -35,19 +34,19 @@ class UserContact extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->contact_id)) {
-                $model->contact_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
 
     public function user(): HasOne
     {
-        return $this->hasOne(User::class, 'contact_info', 'contact_id');
+        return $this->hasOne(User::class, 'contact_info', 'id');
     }
 
     public function venue(): HasOne
     {
-        return $this->hasOne(Venue::class, 'contact_info', 'contact_id');
+        return $this->hasOne(Venue::class, 'contact_info', 'id');
     }
 }

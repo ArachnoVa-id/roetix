@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('event_variables', function (Blueprint $table) {
-            $table->string('event_variables_id', 36)->primary();
+            $table->string('id', 36)->primary();
 
             $table->string('event_id', 36)->nullable();
-            $table->foreign('event_id')->references('event_id')->on('events')->onDelete('cascade');
+            $table->foreign('event_id')->references('id')->on('events')->onDelete('cascade');
 
             $table->boolean('is_locked')->default(false);
             $table->string('locked_password')->default('')->nullable();
