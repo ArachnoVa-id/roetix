@@ -196,7 +196,7 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
 
     return (
         <div className="flex h-fit w-full flex-col items-center">
-            {/* Timeline Information */}
+            {/* Timeline */}
             {currentTimeline && (
                 <div className="mb-4 w-full rounded-lg bg-blue-50 p-3 text-center">
                     <h3 className="font-medium text-blue-800">
@@ -214,29 +214,31 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
                 </div>
             )}
 
-            <div className="mx-auto grid gap-1">
-                {reversedGrid.map((row, reversedIndex) => (
-                    <div
-                        key={reversedIndex}
-                        className="flex items-center justify-center gap-1"
-                    >
-                        <div className="flex select-none gap-1">
+            {/* Grid + Stage Wrapper */}
+            <div className="mx-auto inline-flex flex-col items-center gap-8">
+                {/* Grid */}
+                <div className="grid gap-1">
+                    {reversedGrid.map((row, reversedIndex) => (
+                        <div
+                            key={reversedIndex}
+                            className="flex items-center justify-center gap-1"
+                        >
                             {row.map((seat, colIndex) =>
                                 renderCell(seat, colIndex),
                             )}
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
 
-            {/* Stage */}
-            <div
-                className="mx-auto mt-12 flex h-12 w-full max-w-4xl items-center justify-center rounded"
-                style={{
-                    backgroundColor: props.primary_color,
-                }}
-            >
-                Stage
+                {/* Stage */}
+                <div
+                    className="flex h-12 w-[25vw] items-center justify-center rounded px-4 py-2 text-white"
+                    style={{
+                        backgroundColor: props.primary_color,
+                    }}
+                >
+                    Stage
+                </div>
             </div>
         </div>
     );
