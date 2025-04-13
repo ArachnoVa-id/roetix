@@ -45,12 +45,11 @@
       try {
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         videoElement.srcObject = currentStream;
-        console.log('Kamera berhasil diakses.');
 
         // mulai pindai qr code
         scanQRCode();
       } catch (error) {
-        console.log('Terjadi kesalahan dalam mengakses kamera: ', error.message);
+        // console.log('Terjadi kesalahan dalam mengakses kamera: ', error.message);
       }
     }
 
@@ -76,8 +75,6 @@
 
           if (code) {
             // Jika QR code ditemukan, tampilkan hasilnya
-            console.log("QR Code ditemukan:", code.data);
-            alert('QR Code: ' + code.data); // Atau lakukan sesuatu dengan data QR
             clearInterval(scanInterval); // Berhenti setelah QR Code ditemukan
 
             @this.set('ticket_code', code.data)

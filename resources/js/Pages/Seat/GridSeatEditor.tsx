@@ -8,16 +8,16 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 const getRowNumber = (label: string): number => {
     let result = 0;
 
-    // Iterasi melalui setiap karakter dalam label
+    // Iterate through each character in the label
     for (let i = 0; i < label.length; i++) {
-        // Untuk setiap posisi, kalikan hasil sejauh ini dengan 26
+        // For each position, multiply the result so far by 26
         result *= 26;
-        // Tambahkan nilai karakter saat ini (A=1, B=2, ..., Z=26)
-        const charValue = label.charCodeAt(i) - 64; // 'A' adalah 65 di ASCII
+        // Add the value of the current character (A=1, B=2, ..., Z=26)
+        const charValue = label.charCodeAt(i) - 64; // 'A' is 65 in ASCII
         result += charValue;
     }
 
-    // Kurangi 1 untuk mendapatkan indeks 0-based
+    // Return 0-based index
     return result - 1;
 };
 
@@ -110,7 +110,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
             // if (item.type === 'seat') {
             const rowNum =
                 typeof item.row === 'string'
-                    ? getRowNumber(item.row) - 1
+                    ? getRowNumber(item.row)
                     : item.row;
             maxRow = Math.max(maxRow, rowNum);
             // }
@@ -140,26 +140,28 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
         if (initialLayout) {
             initialLayout.items.forEach((item: SeatItem) => {
-                // if (item.type === 'seat') {
                 const seatItem = item;
+                // Convert row label to index properly
                 const rowIndex =
                     typeof seatItem.row === 'string'
-                        ? getRowNumber(seatItem.row) - 1 + dimensions.top
-                        : seatItem.row + dimensions.top;
+                        ? getRowNumber(seatItem.row)
+                        : seatItem.row;
+
+                // Adjust for dimensions offset
+                const adjustedRowIndex = rowIndex + dimensions.top;
                 const colIndex = seatItem.column - 1 + dimensions.left;
 
                 if (
-                    rowIndex >= 0 &&
-                    rowIndex < totalRows &&
+                    adjustedRowIndex >= 0 &&
+                    adjustedRowIndex < totalRows &&
                     colIndex >= 0 &&
                     colIndex < totalColumns
                 ) {
-                    newGrid[rowIndex][colIndex] = {
+                    newGrid[adjustedRowIndex][colIndex] = {
                         type: 'seat',
                         item: seatItem,
                     };
                 }
-                // }
             });
         }
 
@@ -467,31 +469,31 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
     // Function to get row label from bottom-up position
     const getAdjustedRowLabel = (index: number, totalRows: number): string => {
-        // 'index' adalah posisi dari bawah ke atas (0-based)
-        // Konversi ke 1-based untuk kalkulasi
-        const rowFromBottom = index + 1;
+        // The problem is here - we need to properly map indices to Excel-style labels
+        // No need to reverse from bottom-up
+        // Convert to 1-based index for Excel-style labels
+        const rowNumber = index + 1;
 
-        if (rowFromBottom <= 0 || rowFromBottom > totalRows) return '';
+        if (rowNumber <= 0) return '';
 
-        // Implementasi algoritma konversi angka ke label Excel
-        // Di mana 1 -> A, 2 -> B, ..., 26 -> Z, 27 -> AA, 28 -> AB, dst.
+        // Convert number to Excel-style column label (A, B, C, ... Z, AA, AB, etc.)
         let label = '';
-        let n = rowFromBottom;
+        let n = rowNumber;
 
         while (n > 0) {
-            // Dapatkan sisa pembagian dengan 26 (jumlah huruf)
+            // Get the remainder when divided by 26 (number of letters)
             let remainder = n % 26;
 
-            // Jika sisa pembagian 0, gunakan 'Z' dan kurangi n
+            // If remainder is 0, use 'Z' and adjust n
             if (remainder === 0) {
                 remainder = 26;
                 n -= 1;
             }
 
-            // Konversi angka ke huruf (A=1, B=2, ...) dan tambahkan ke depan label
+            // Convert number to letter (A=1, B=2, ...) and add to front of label
             label = String.fromCharCode(64 + remainder) + label;
 
-            // Bagi n dengan 26 untuk mendapatkan digit berikutnya
+            // Integer division by 26 to get the next digit
             n = Math.floor(n / 26);
         }
 
@@ -501,12 +503,12 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
     // Function to add a seat at the specified position
     const addSeatAtPosition = (rowIndex: number, colIndex: number) => {
         const newGrid = [...grid];
+        // Get the correct row label for this index
         const rowLabel = getAdjustedRowLabel(rowIndex, totalRows);
         const adjustedColumn = colIndex + 1;
 
         const newSeat: SeatItem = {
-            // type: 'seat',
-            id: '', // Kosongkan seat_id, akan dibuat di backend
+            id: '', // Will be created on backend
             seat_number: `${rowLabel}${adjustedColumn}`,
             row: rowLabel,
             column: adjustedColumn,
@@ -628,8 +630,9 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         const newGrid = [...grid];
         const seatCounters: { [key: string]: number } = {};
 
-        // Process from bottom to top
-        for (let i = totalRows - 1; i >= 0; i--) {
+        // Process all rows
+        for (let i = 0; i < totalRows; i++) {
+            // Get the proper row label for this index
             const rowLabel = getAdjustedRowLabel(i, totalRows);
             seatCounters[rowLabel] = 1;
 
@@ -638,8 +641,6 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                 if (cell.type === 'seat' && cell.item) {
                     cell.item.row = rowLabel;
                     cell.item.seat_number = `${rowLabel}${seatCounters[rowLabel]}`;
-                    // Hapus bagian ini, biarkan seat_id diatur oleh backend
-                    // cell.item.seat_id = `${rowLabel}${seatCounters[rowLabel]}`;
                     seatCounters[rowLabel]++;
                 }
             }
@@ -658,6 +659,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         const tempGrid = [...newGrid];
         const seatCounters: { [key: string]: number } = {};
 
+        // Process from bottom to top correctly
         for (let i = totalRows - 1; i >= 0; i--) {
             const rowLabel = getAdjustedRowLabel(i, totalRows);
             seatCounters[rowLabel] = 1;
@@ -666,12 +668,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                 const cell = tempGrid[i][j];
                 if (cell.type === 'seat' && cell.item) {
                     cell.item.row = rowLabel;
-                    // Only generate seat_number, seat_id will be generated on server
                     cell.item.seat_number = `${rowLabel}${seatCounters[rowLabel]}`;
-
-                    // We're not setting seat_id here as it will be generated on the server
-                    // based on the venue_id and seat_number
-
                     seatCounters[rowLabel]++;
                 }
             }
@@ -685,7 +682,6 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
             for (let j = 0; j < totalColumns; j++) {
                 const cell = tempGrid[i][j];
-                // We only include actual seats, not empty blocked spaces
                 if (cell.type === 'seat' && cell.item) {
                     const adjustedColumn = j + 1;
                     items.push({
@@ -792,7 +788,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                                 <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
                                 <path d="M12 12v5"></path>
                             </svg>
-                            Grid Seat Editor
+                            Venue Editor
                         </h2>
                     </div>
                     <button
@@ -1247,124 +1243,131 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                                 ref={gridContainerRef}
                                 onMouseMove={handleMouseMove}
                             >
-                                <div className="min-w-max p-2">
-                                    <div className="grid grid-flow-row gap-1">
-                                        {[...grid]
-                                            .reverse()
-                                            .map((row, reversedIndex) => (
-                                                <div
-                                                    key={reversedIndex}
-                                                    className="flex gap-1"
-                                                >
-                                                    {row.map(
-                                                        (cell, colIndex) => {
-                                                            const actualRowIndex =
-                                                                grid.length -
-                                                                1 -
-                                                                reversedIndex;
-
-                                                            return (
-                                                                <div
-                                                                    key={
-                                                                        colIndex
-                                                                    }
-                                                                    onClick={() =>
-                                                                        handleCellClick(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    onMouseDown={() =>
-                                                                        handleMouseDown(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    onMouseOver={() =>
-                                                                        handleMouseOver(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    className={`flex h-8 w-8 cursor-pointer select-none items-center justify-center rounded text-xs font-medium ${getCellColor(cell)} ${
-                                                                        cell.isBlocked
-                                                                            ? 'border-2 border-gray-400'
-                                                                            : 'border border-gray-200'
-                                                                    } ${
-                                                                        (isDragging &&
-                                                                            mode ===
-                                                                                'block' &&
-                                                                            startCell &&
-                                                                            endCell &&
-                                                                            actualRowIndex >=
-                                                                                Math.min(
-                                                                                    startCell.row,
-                                                                                    endCell.row,
-                                                                                ) &&
-                                                                            actualRowIndex <=
-                                                                                Math.max(
-                                                                                    startCell.row,
-                                                                                    endCell.row,
-                                                                                ) &&
-                                                                            colIndex >=
-                                                                                Math.min(
-                                                                                    startCell.col,
-                                                                                    endCell.col,
-                                                                                ) &&
-                                                                            colIndex <=
-                                                                                Math.max(
-                                                                                    startCell.col,
-                                                                                    endCell.col,
-                                                                                )) ||
-                                                                        (mode ===
-                                                                            'block' &&
-                                                                            isInBlockedArea(
+                                <div className="flex justify-center">
+                                    {' '}
+                                    {/* Tambahkan wrapper flex centering */}
+                                    <div className="min-w-max p-2">
+                                        <div className="grid grid-flow-row gap-1">
+                                            {[...grid]
+                                                .reverse()
+                                                .map((row, reversedIndex) => {
+                                                    const actualRowIndex =
+                                                        grid.length -
+                                                        1 -
+                                                        reversedIndex;
+                                                    return (
+                                                        <div
+                                                            key={reversedIndex}
+                                                            className="flex gap-1"
+                                                        >
+                                                            {row.map(
+                                                                (
+                                                                    cell,
+                                                                    colIndex,
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            colIndex
+                                                                        }
+                                                                        onClick={() =>
+                                                                            handleCellClick(
                                                                                 actualRowIndex,
                                                                                 colIndex,
-                                                                            ))
-                                                                            ? 'ring-2 ring-blue-500'
-                                                                            : ''
-                                                                    }`}
-                                                                    draggable={
-                                                                        false
-                                                                    }
-                                                                >
-                                                                    {cell.type ===
-                                                                        'seat' &&
-                                                                        cell
-                                                                            .item
-                                                                            ?.seat_number}
-                                                                </div>
-                                                            );
-                                                        },
-                                                    )}
-                                                </div>
-                                            ))}
-                                    </div>
+                                                                            )
+                                                                        }
+                                                                        onMouseDown={() =>
+                                                                            handleMouseDown(
+                                                                                actualRowIndex,
+                                                                                colIndex,
+                                                                            )
+                                                                        }
+                                                                        onMouseOver={() =>
+                                                                            handleMouseOver(
+                                                                                actualRowIndex,
+                                                                                colIndex,
+                                                                            )
+                                                                        }
+                                                                        className={`flex h-8 w-8 cursor-pointer select-none items-center justify-center rounded text-xs font-medium ${getCellColor(cell)} ${
+                                                                            cell.isBlocked
+                                                                                ? 'border-2 border-gray-400'
+                                                                                : 'border border-gray-200'
+                                                                        } ${
+                                                                            (isDragging &&
+                                                                                mode ===
+                                                                                    'block' &&
+                                                                                startCell &&
+                                                                                endCell &&
+                                                                                actualRowIndex >=
+                                                                                    Math.min(
+                                                                                        startCell.row,
+                                                                                        endCell.row,
+                                                                                    ) &&
+                                                                                actualRowIndex <=
+                                                                                    Math.max(
+                                                                                        startCell.row,
+                                                                                        endCell.row,
+                                                                                    ) &&
+                                                                                colIndex >=
+                                                                                    Math.min(
+                                                                                        startCell.col,
+                                                                                        endCell.col,
+                                                                                    ) &&
+                                                                                colIndex <=
+                                                                                    Math.max(
+                                                                                        startCell.col,
+                                                                                        endCell.col,
+                                                                                    )) ||
+                                                                            (mode ===
+                                                                                'block' &&
+                                                                                isInBlockedArea(
+                                                                                    actualRowIndex,
+                                                                                    colIndex,
+                                                                                ))
+                                                                                ? 'ring-2 ring-blue-500'
+                                                                                : ''
+                                                                        }`}
+                                                                        draggable={
+                                                                            false
+                                                                        }
+                                                                    >
+                                                                        {cell.type ===
+                                                                            'seat' &&
+                                                                            cell
+                                                                                .item
+                                                                                ?.seat_number}
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
 
-                                    <div className="mx-auto mt-8 flex h-12 w-64 items-center justify-center rounded-lg border border-gray-400 bg-gray-200 font-medium text-gray-700">
-                                        <span className="flex items-center justify-center gap-2">
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="18"
-                                                height="18"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            >
-                                                <rect
-                                                    x="4"
-                                                    y="5"
-                                                    width="16"
-                                                    height="14"
-                                                    rx="2"
-                                                />
-                                            </svg>
-                                            Stage
-                                        </span>
+                                        {/* Stage */}
+                                        <div className="mx-auto mt-8 flex h-12 w-64 items-center justify-center rounded-lg border border-gray-400 bg-gray-200 font-medium text-gray-700">
+                                            <span className="flex items-center justify-center gap-2">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <rect
+                                                        x="4"
+                                                        y="5"
+                                                        width="16"
+                                                        height="14"
+                                                        rx="2"
+                                                    />
+                                                </svg>
+                                                Stage
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

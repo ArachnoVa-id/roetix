@@ -93,7 +93,7 @@ const GridEdit: React.FC<GridEditorProps> = ({
 
     return (
         <>
-            <Head title="Grid Seat Editor" />
+            <Head title="Venue Editor - NovaTix Vendor" />
             {/* Take up full viewport without scrolling */}
             <div className="fixed inset-0 overflow-hidden">
                 <div className="h-full w-full">
