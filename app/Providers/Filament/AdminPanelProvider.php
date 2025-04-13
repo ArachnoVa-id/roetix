@@ -2,11 +2,14 @@
 
 namespace App\Providers\Filament;
 
+use App\Enums\UserRole;
 use App\Models\Team;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Widgets;
+use App\Filament\Components;
+use App\Models\User;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Auth;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -15,6 +18,10 @@ class AdminPanelProvider extends PanelProvider
         return
             SharedPanelSetup::commonSetup(
                 $panel
+                    ->brandName(function () {
+                        $user = User::find(Auth::id());
+                        return 'NovaTix ' . UserRole::tryFrom($user->role)->getLabel() ?? 'Unknown';
+                    })
                     ->default()
                     ->id('admin')
                     ->domain(config('app.domain'))
@@ -31,16 +38,12 @@ class AdminPanelProvider extends PanelProvider
                         in: app_path('Filament/Admin/Pages'),
                         for: 'App\\Filament\\Admin\\Pages'
                     )
-                    ->pages([
-                        Pages\Dashboard::class,
-                    ])
+                    ->pages([])
                     ->discoverWidgets(
                         in: app_path('Filament/Admin/Widgets'),
                         for: 'App\\Filament\\Admin\\Widgets'
                     )
-                    ->widgets([
-                        Widgets\AccountWidget::class,
-                    ])
+                    ->widgets([])
             );
     }
 }

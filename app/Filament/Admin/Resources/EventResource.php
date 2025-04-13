@@ -1637,6 +1637,8 @@ class EventResource extends Resource
 
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('eventVariables.logo')
+                    ->label(''),
                 Tables\Columns\TextColumn::make('name')
                     ->limit(20)
                     ->label('Event Name')

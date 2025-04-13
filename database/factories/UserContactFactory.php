@@ -21,7 +21,7 @@ class UserContactFactory extends Factory
         return [
             'nickname' => $this->faker->userName,
             'fullname' => $this->faker->name,
-            'avatar' => $this->faker->imageUrl(),
+            'avatar' => null,
             'phone_number' => $this->faker->phoneNumber,
             'email' => $this->faker->unique()->safeEmail,
             'whatsapp_number' => $this->faker->phoneNumber,

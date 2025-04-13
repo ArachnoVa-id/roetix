@@ -29,6 +29,6 @@ class EditTeam extends EditRecord
     {
         return parent::getSaveFormAction()
             ->label('Update Team')
-            ->icon('heroicon-o-folder');
+            ->icon('heroicon-o-check-circle');
     }
 }

@@ -129,6 +129,6 @@ class EditOrder extends EditRecord
     {
         return parent::getSaveFormAction()
             ->label('Update Order')
-            ->icon('heroicon-o-folder');
+            ->icon('heroicon-o-check-circle');
     }
 }

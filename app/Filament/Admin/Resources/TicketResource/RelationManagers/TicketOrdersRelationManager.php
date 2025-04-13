@@ -31,7 +31,7 @@ class TicketOrdersRelationManager extends RelationManager
                     ->label('Event'),
                 Tables\Columns\TextColumn::make('order.user')
                     ->label('Buyer')
-                    ->formatStateUsing(fn($state) => $state->getFullNameAttribute()),
+                    ->formatStateUsing(fn($state) => $state->getFilamentName()),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)?->getLabel() ?? 'Unknown')

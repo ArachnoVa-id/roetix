@@ -47,7 +47,7 @@ class EditEvent extends EditRecord
     {
         return parent::getSaveFormAction()
             ->label('Update Event')
-            ->icon('heroicon-o-folder');
+            ->icon('heroicon-o-check-circle');
     }
 
     protected function mutateFormDataBeforeFill(array $data): array
