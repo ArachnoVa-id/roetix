@@ -47,7 +47,8 @@ class TicketController extends Controller
                     $query->whereIn('order_id', $userOrderIds);
                 })
                 ->whereIn('ticket_order.status', [TicketOrderStatus::ENABLED]) // Filter ticket order status
-                ->select('tickets.*', 'orders.id') // Include 'orders.order_date' in the result
+                ->select('tickets.*', 'orders.id')
+                ->addSelect('orders.id as order_id')
                 ->get();
 
             if ($accessibleTickets->isEmpty()) {

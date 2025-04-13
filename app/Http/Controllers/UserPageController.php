@@ -265,7 +265,7 @@ class UserPageController extends Controller
                 'tickets' => $formattedTickets,
                 'ticketCategories' => $ticketCategories,
                 'event' => [
-                    'event_id' => $event->id,
+                    'id' => $event->id,
                     'name' => $event->name,
                     'slug' => $event->slug,
                     'description' => $event->description ?? '',
