@@ -12,6 +12,15 @@ class NTOrderChart extends ChartWidget
 {
     protected static ?int $sort = 3;
 
+    public function getColumnSpan(): int | string | array
+    {
+        return [
+            'default' => 2,
+            'sm' => 2,
+            'md' => 1,
+        ];
+    }
+
     public function getHeading(): string
     {
         return 'Orders for ' . " All Orders";
