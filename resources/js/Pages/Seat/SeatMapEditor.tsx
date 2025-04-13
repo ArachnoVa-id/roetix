@@ -901,9 +901,9 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                                             <option value="available">
                                                 Available
                                             </option>
-                                            <option value="in_transaction">
+                                            {/* <option value="in_transaction">
                                                 In Transaction
-                                            </option>
+                                            </option> */}
                                             <option value="reserved">
                                                 Reserved
                                             </option>
@@ -982,32 +982,41 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                                     Category
                                 </div>
                                 <div className="flex flex-wrap items-center justify-center gap-6 p-4">
-                                    {ticketTypes.map((type) => (
-                                        <div
-                                            key={type}
-                                            className="flex flex-col items-center"
-                                        >
+                                    {[...ticketTypes]
+                                        .sort(
+                                            (a, b) =>
+                                                (categoryPrices[b] || 0) -
+                                                (categoryPrices[a] || 0),
+                                        )
+                                        .map((type) => (
                                             <div
-                                                className="h-8 w-8 rounded-full shadow-sm"
-                                                style={{
-                                                    backgroundColor:
-                                                        getColorForCategory(
-                                                            type,
-                                                        ),
-                                                }}
-                                            ></div>
-                                            <span className="mt-1 text-sm font-medium">
-                                                {type.charAt(0).toUpperCase() +
-                                                    type.slice(1)}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                Rp{' '}
-                                                {(
-                                                    categoryPrices[type] || 0
-                                                ).toLocaleString()}
-                                            </span>
-                                        </div>
-                                    ))}
+                                                key={type}
+                                                className="flex flex-col items-center"
+                                            >
+                                                <div
+                                                    className="h-8 w-8 rounded-full shadow-sm"
+                                                    style={{
+                                                        backgroundColor:
+                                                            getColorForCategory(
+                                                                type,
+                                                            ),
+                                                    }}
+                                                ></div>
+                                                <span className="mt-1 text-sm font-medium">
+                                                    {type
+                                                        .charAt(0)
+                                                        .toUpperCase() +
+                                                        type.slice(1)}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    Rp{' '}
+                                                    {(
+                                                        categoryPrices[type] ||
+                                                        0
+                                                    ).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        ))}
                                 </div>
                             </div>
                             <div className="overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
