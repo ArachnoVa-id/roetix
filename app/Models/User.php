@@ -10,6 +10,7 @@ use Illuminate\Notifications\Notifiable;
 use Filament\Panel;
 use Illuminate\Support\Str;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Models\Contracts\HasTenants;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
-class User extends Authenticatable implements FilamentUser, HasName, HasTenants
+class User extends Authenticatable implements FilamentUser, HasName, HasTenants, HasAvatar
 {
     use Notifiable;
 
@@ -32,14 +33,16 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';
     }
 
-    /**
-     * Get the user's name for Filament.
-     *
-     * @return string
-     */
-    public function getUserName(): string
+    public function getFilamentAvatarUrl(): ?string
     {
-        return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';
+        return $this->contactInfo?->avatar ?? null;
+    }
+
+    public function getFullnameLastWord(): string
+    {
+        $fullname = self::getFilamentName();
+        $lastName = explode(' ', $fullname);
+        return end($lastName);
     }
 
     protected $primaryKey = 'id';
@@ -96,9 +99,9 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         });
     }
 
-    public function getFullNameAttribute(): string
+    public function getRoleLabel(): string
     {
-        return trim($this->first_name . ' ' . $this->last_name);
+        return UserRole::tryFrom($this->role)->getLabel() ?? 'Unknown';
     }
 
     /**

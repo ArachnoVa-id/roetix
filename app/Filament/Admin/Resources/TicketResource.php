@@ -132,7 +132,6 @@ class TicketResource extends Resource
 
     public static function TransferOwnershipButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
     {
-
         return $action
             ->label('Transfer Ownership')
             ->color('warning')

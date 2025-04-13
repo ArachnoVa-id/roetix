@@ -33,10 +33,20 @@ class EditUser extends EditRecord
 
         if (!empty($userdata)) {
             $teams = $userdata['teams'] ?? [];
-            foreach ($teams as $team) {
-                $team = Team::find($team);
-                $user->teams()->attach($team);
-            }
+
+            $teams = array_map(function ($team) {
+                // if team_id exists
+                if (isset($team['team_id'])) {
+                    return $team['team_id'];
+                } else return $team['name'];
+            }, $teams);
+
+            // Attach the teams to the user
+            $user->teams()->sync($teams);
+            // Detach the teams nonexist in the array
+            $user->teams()->detach(
+                Team::whereNotIn('id', $teams)->pluck('id')
+            );
         }
     }
 
@@ -44,6 +54,6 @@ class EditUser extends EditRecord
     {
         return parent::getSaveFormAction()
             ->label('Update User')
-            ->icon('heroicon-o-folder');
+            ->icon('heroicon-o-check-circle');
     }
 }

@@ -418,7 +418,7 @@ class OrderResource extends Resource
                         });
                     })
                     ->sortable()
-                    ->formatStateUsing(fn($record) => $record->user?->getUserName() ?? 'N/A'),
+                    ->formatStateUsing(fn($record) => $record->user?->getFilamentName() ?? 'N/A'),
                 Tables\Columns\TextColumn::make('order_date')
                     ->label('Date')
                     ->sortable(),

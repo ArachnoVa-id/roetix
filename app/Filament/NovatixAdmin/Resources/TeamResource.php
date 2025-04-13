@@ -263,8 +263,27 @@ class TeamResource extends Resource
             ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Tables\Table $table, $showAddMemberAction = true, $additionActions = null): Tables\Table
     {
+        $actions = [
+            Tables\Actions\ViewAction::make()
+                ->modalHeading('View Team'),
+            Tables\Actions\EditAction::make()
+                ->color(Color::Orange),
+        ];
+
+        if ($showAddMemberAction) {
+            $actions[] = self::AddMemberButton(
+                Tables\Actions\Action::make('addMember')
+            );
+        }
+
+        if ($additionActions) {
+            $actions = array_merge($actions, $additionActions);
+        }
+
+        $actions[] = Tables\Actions\DeleteAction::make();
+
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -290,16 +309,7 @@ class TeamResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()
-                        ->modalHeading('View Team'),
-                    Tables\Actions\EditAction::make()
-                        ->color(Color::Orange),
-                    self::AddMemberButton(
-                        Tables\Actions\Action::make('addMember')
-                    ),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
+                Tables\Actions\ActionGroup::make($actions),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

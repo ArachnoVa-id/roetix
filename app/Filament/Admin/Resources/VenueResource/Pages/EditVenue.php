@@ -35,6 +35,6 @@ class EditVenue extends EditRecord
     {
         return parent::getSaveFormAction()
             ->label('Update Venue')
-            ->icon('heroicon-o-folder');
+            ->icon('heroicon-o-check-circle');
     }
 }

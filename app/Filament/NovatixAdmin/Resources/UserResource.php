@@ -30,10 +30,70 @@ class UserResource extends Resources\Resource
         return $user && $user->isAllowedInRoles([UserRole::ADMIN]);
     }
 
+    public static function KickMemberButton(): Tables\Actions\Action
+    {
+        return Tables\Actions\Action::make('remove_member')
+            ->label('Remove from Team')
+            ->icon('heroicon-o-user-minus')
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading('Remove Member')
+            ->modalDescription(
+                function ($record, $livewire) {
+                    if ($record instanceof User) {
+                        $team = $livewire->ownerRecord ?? null;
+                        $user = $record;
+                    } else if ($record instanceof Team) {
+                        $team = $record;
+                        $user = $livewire->ownerRecord ?? null;
+                    }
+
+                    if (!$team) {
+                        return 'Team not found';
+                    }
+
+                    return "Are you sure you want to remove {$user->getFilamentName()} ({$user->email}) from the team {$team->name}?";
+                }
+            )
+            ->action(function (User $record, $livewire) {
+                if ($record instanceof User) {
+                    $team = $livewire->ownerRecord ?? null;
+                    $user = $record;
+                } else if ($record instanceof Team) {
+                    $team = $record;
+                    $user = $livewire->ownerRecord ?? null;
+                }
+                if (!$team) {
+                    Notification::make()
+                        ->title('Team not found')
+                        ->danger()
+                        ->send();
+                    return;
+                }
+
+                try {
+                    $team->users()->detach($user->id);
+                    Notification::make()
+                        ->title("Removed from Team")
+                        ->body("User {$user->getFilamentName()} has been removed from the team {$team->name}.")
+                        ->success()
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Failed to Remove User')
+                        ->body("Error: {$e->getMessage()}")
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with([]);
+            ->with([
+                'teams'
+            ]);
     }
 
     public static function infolist(Infolists\Infolist $infolist, bool $showTeams = true): Infolists\Infolist
@@ -110,6 +170,10 @@ class UserResource extends Resources\Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
+        $allTeams = Team::orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
+
         return $form
             ->columns([
                 'default' => 1,
@@ -213,6 +277,7 @@ class UserResource extends Resources\Resource
                             ->validationAttribute('Phone Number')
                             ->validationMessages([
                                 'max' => 'The phone number may not be greater than 24 characters.',
+                                'regex' => 'The phone number format is invalid.',
                             ])
                             ->placeholder('e.g. 089919991999')
                             ->label('Phone Number')
@@ -224,6 +289,7 @@ class UserResource extends Resources\Resource
                             ->validationAttribute('Email')
                             ->validationMessages([
                                 'max' => 'The email may not be greater than 255 characters.',
+                                'email' => 'The email must be a valid email address.',
                             ])
                             ->placeholder('e.g. username@example.com')
                             ->label('Email')
@@ -235,6 +301,7 @@ class UserResource extends Resources\Resource
                             ->validationMessages([
                                 'required' => 'The WhatsApp number field is required.',
                                 'max' => 'The WhatsApp number may not be greater than 24 characters.',
+                                'regex' => 'The WhatsApp number format is invalid.',
                             ])
                             ->placeholder('e.g. 089919991999')
                             ->label('WhatsApp Number')
@@ -268,9 +335,9 @@ class UserResource extends Resources\Resource
                                 'required' => 'The Teams field is required.',
                                 'min' => 'The Teams field must have at least 1 team.',
                             ])
-                            ->addable(function ($get) {
+                            ->addable(function ($get) use ($allTeams) {
                                 // overall team size
-                                $teamSize = Team::count();
+                                $teamSize = count($allTeams);
 
                                 // count how many teams slots are already created
                                 $currentSlots = collect($get('teams'))->count();
@@ -301,15 +368,15 @@ class UserResource extends Resources\Resource
                             ->schema([
                                 Forms\Components\Select::make('name')
                                     ->label('Assign to Team')
-                                    ->options(function (callable $get) {
+                                    ->options(function (callable $get) use ($allTeams) {
                                         // Get already selected team IDs
                                         $selectedTeams = collect($get('../../teams'))
-                                            ->pluck('name')
+                                            ->pluck('name', 'team_id')
                                             ->filter()
                                             ->toArray();
 
                                         // Exclude already selected teams
-                                        $return = Team::whereNotIn('id', $selectedTeams)->pluck('name', 'id');
+                                        $return = array_diff_key($allTeams, $selectedTeams);
 
                                         return $return;
                                     })
@@ -321,6 +388,16 @@ class UserResource extends Resources\Resource
                                         'required' => 'The Team Name field is required.',
                                     ])
                                     ->required()
+                                    ->afterStateUpdated(function ($state, $set) {
+                                        $name = Team::find($state);
+                                        if ($name) {
+                                            $set('team_id', $name->id);
+                                            $set('name', $name->name);
+                                        } else {
+                                            $set('team_id', null);
+                                            $set('name', null);
+                                        }
+                                    })
                             ])
                             ->afterStateHydrated(function ($set, $record) {
                                 if ($record) {
@@ -351,9 +428,7 @@ class UserResource extends Resources\Resource
         ];
 
         if ($additionActions)
-            foreach ($additionActions as $action) {
-                $actions[] = $action;
-            }
+            $actions = array_merge($actions, $additionActions);
 
         $actions[] = Tables\Actions\DeleteAction::make();
 
