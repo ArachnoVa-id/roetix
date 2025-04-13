@@ -94,6 +94,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     'Your payment is pending. Please complete the payment.',
                 );
                 setIsLoading(false);
+                window.location.reload();
             },
             onError: () => {
                 toasterFunction.showError('Payment failed. Please try again.');

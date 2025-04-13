@@ -123,7 +123,7 @@ export default function MyTickets({
                             </div>
 
                             {tickets && tickets.length > 0 ? (
-                                <div className="flex w-full flex-wrap gap-6">
+                                <div className="flex w-full flex-wrap justify-center gap-6">
                                     {tickets
                                         .sort((a: TicketProps) =>
                                             a.status === 'scanned' ? 1 : -1,

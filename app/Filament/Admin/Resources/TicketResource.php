@@ -191,16 +191,18 @@ class TicketResource extends Resource
                     }
 
                     // Check if the latest user is not the same
-                    $previousOwner = TicketOrder::where('ticket_id', $ticket->id)->get()->sortBy('created_at')->last()->order->user;
-                    $user = User::find($data['user_id']);
+                    $previousOwner = TicketOrder::where('ticket_id', $ticket->id)->get()->sortBy('created_at')->last()?->order->user;
+                    if ($previousOwner) {
+                        $user = User::find($data['user_id']);
 
-                    if ($user == $previousOwner)
-                        throw new \Exception('Cannot transfer to the same client.');
+                        if ($user == $previousOwner)
+                            throw new \Exception('Cannot transfer to the same client.');
 
-                    // Deactivate old ticket orders
-                    TicketOrder::where('ticket_id', $ticket->id)
-                        ->lockForUpdate()
-                        ->update(['status' => TicketOrderStatus::DEACTIVATED]);
+                        // Deactivate old ticket orders
+                        TicketOrder::where('ticket_id', $ticket->id)
+                            ->lockForUpdate()
+                            ->update(['status' => TicketOrderStatus::DEACTIVATED]);
+                    }
 
                     // Create new order
                     $order_code = Order::keyGen(OrderType::TRANSFER, $ticket->event);
@@ -299,7 +301,7 @@ class TicketResource extends Resource
                             'md' => 6,
                         ])
                         ->schema([
-                            Infolists\Components\TextEntry::make('ticket_id')
+                            Infolists\Components\TextEntry::make('id')
                                 ->icon('heroicon-o-ticket')
                                 ->columnSpan([
                                     'default' => 1,
@@ -505,16 +507,8 @@ class TicketResource extends Resource
                     ->color(fn($state) => TicketStatus::tryFrom($state)->getColor())
                     ->icon(fn($state) => TicketStatus::tryFrom($state)->getIcon())
                     ->badge(),
-                Tables\Columns\TextColumn::make('ticket_order_status')
-                    ->label('Latest Validity')
-                    ->default(fn($record) => $record->latestTicketOrder?->status ?? TicketOrderStatus::ENABLED->value)
-                    ->formatStateUsing(fn($state) => TicketOrderStatus::tryFrom($state)->getLabel())
-                    ->color(fn($state) => TicketOrderStatus::tryFrom($state)->getColor())
-                    ->icon(fn($state) => TicketOrderStatus::tryFrom($state)->getIcon())
-                    ->badge(),
-                Tables\Columns\TextColumn::make('ticket_owner')
-                    ->label('Latest Owner')
-                    ->default(fn($record) => $record->getLatestOwner() ?? 'N/A'),
+                $ownership,
+                $latestOwner
             ])
             ->defaultSort('seat.seat_number', 'asc')
             ->filters(

@@ -146,7 +146,6 @@ export default function Landing({
         return {
             onSuccess: () => {
                 showSuccess('Payment successful!');
-                // clearTransaction(); // Clear the transaction data
                 window.location.reload();
             },
             onPending: () => {
