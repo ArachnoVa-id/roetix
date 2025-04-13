@@ -28,15 +28,6 @@ use PhpMqtt\Client\ConnectionSettings;
 
 class PaymentController extends Controller
 {
-    // public function __construct()
-    // {
-    // Set up Midtrans configuration from a single place
-    // Config::$serverKey = config('midtrans.server_key');
-    // Config::$isProduction = config('midtrans.is_production', false);
-    // Config::$isSanitized = config('midtrans.is_sanitized', true);
-    // Config::$is3ds = config('midtrans.is_3ds', true);
-    // }
-
     /**
      * Handle payment charge requests from the frontend
      */
@@ -214,6 +205,10 @@ class PaymentController extends Controller
 
             // Get Midtrans Snap Token
             Config::$serverKey = $event->eventVariables->getKey('server');
+            Config::$isProduction = $event->eventVariables->midtrans_is_production;
+            Config::$isSanitized = config('midtrans.is_sanitized', true);
+            Config::$is3ds = config('midtrans.is_3ds', true);
+
             $snapToken = Snap::getSnapToken([
                 'transaction_details' => ['order_id' => $orderCode, 'gross_amount' => $totalWithTax],
                 'credit_card' => ['secure' => true],

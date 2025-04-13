@@ -35,8 +35,6 @@ export default function Ticket({
         text: 'text-blue-800',
     });
 
-    console.log(eventId);
-
     // Function to handle ticket download
     const handleDownload = (): void => {
         try {

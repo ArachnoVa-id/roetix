@@ -78,6 +78,8 @@ export default function Landing({
 
     useEffect(() => {
         const fetchAndInitializeSnap = async () => {
+            setSnapInitialized(false);
+
             let clientKey = null;
             let isProduction = null;
 
@@ -104,12 +106,6 @@ export default function Landing({
                 'System payment has been activated. You may purchase your tickets.',
             );
 
-            // Check if Snap.js is already loaded
-            if (window.snap) {
-                setSnapInitialized(true);
-                return;
-            }
-
             // Load Snap.js
             const snapScript = document.createElement('script');
             snapScript.src = isProduction
@@ -127,16 +123,6 @@ export default function Landing({
             };
 
             document.head.appendChild(snapScript);
-
-            // Cleanup on unmount
-            return () => {
-                if (snapScript) {
-                    document.head.removeChild(snapScript);
-                }
-                if (window.snap) {
-                    delete window.snap; // Remove Snap from the global scope
-                }
-            };
         };
 
         fetchAndInitializeSnap();
