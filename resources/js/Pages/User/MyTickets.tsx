@@ -19,7 +19,6 @@ export default function MyTickets({
 }: MyTicketsPageProps): React.ReactElement {
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
 
-    console.log(event);
     // Handle download all tickets - updated to use query parameters
     const handleDownloadAll = () => {
         if (!tickets || tickets.length === 0 || !event?.id) {
