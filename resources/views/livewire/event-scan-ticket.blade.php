@@ -45,12 +45,11 @@
       try {
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
         videoElement.srcObject = currentStream;
-        console.log('Kamera berhasil diakses.');
 
         // mulai pindai qr code
         scanQRCode();
       } catch (error) {
-        console.log('Terjadi kesalahan dalam mengakses kamera: ', error.message);
+        // console.log('Terjadi kesalahan dalam mengakses kamera: ', error.message);
       }
     }
 
