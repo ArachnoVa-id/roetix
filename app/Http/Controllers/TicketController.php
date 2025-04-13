@@ -61,7 +61,16 @@ class TicketController extends Controller
             }
 
             // Get event details
-            $event = Event::findOrFail($eventId);
+            $event = Event::find($eventId);
+            if (!$event) {
+                return response()->json(['error' => 'Event not found'], 404);
+            }
+
+            // Ensure event has event variables
+            if (!$event->eventVariables) {
+                return response()->json(['error' => 'Event variables not found'], 404);
+            }
+
             $user = Auth::user();
 
             // Prepare data for PDF

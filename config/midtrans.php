@@ -1,14 +1,8 @@
 <?php
 
 return [
-    'server_key' => env(
-        env('MIDTRANS_IS_PRODUCTION', false) ? 'MIDTRANS_SERVER_KEY' : 'MIDTRANS_SERVER_KEY_SB',
-        null
-    ),
-    'client_key' => env(
-        env('MIDTRANS_IS_PRODUCTION', false) ? 'MIDTRANS_CLIENT_KEY' : 'MIDTRANS_CLIENT_KEY_SB',
-        null
-    ),
+    'server_key' => env('MIDTRANS_SERVER_KEY', null),
+    'client_key' => env('MIDTRANS_CLIENT_KEY', null),
     'server_key_sb' => env('MIDTRANS_SERVER_KEY_SB', null),
     'client_key_sb' => env('MIDTRANS_CLIENT_KEY_SB', null),
     'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
