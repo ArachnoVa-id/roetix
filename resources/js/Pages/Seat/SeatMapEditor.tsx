@@ -533,7 +533,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                                 <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path>
                                 <path d="M12 12v5"></path>
                             </svg>
-                            Seat Map Editor
+                            Event Editor
                         </h2>
                     </div>
                     <button

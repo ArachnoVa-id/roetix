@@ -228,7 +228,7 @@ const Edit: React.FC<EditorProps> = ({
 
     return (
         <>
-            <Head title="Configure Event Seats" />
+            <Head title="Event Editor - NovaTix EO" />
             <div className="flex h-screen overflow-hidden">
                 {' '}
                 {/* Changed to h-screen and removed padding/overflow */}
