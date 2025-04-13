@@ -11,6 +11,15 @@ class NTUserChart extends ChartWidget
 {
     protected static ?int $sort = 2;
 
+    public function getColumnSpan(): int | string | array
+    {
+        return [
+            'default' => 2,
+            'sm' => 2,
+            'md' => 1,
+        ];
+    }
+
     public function getHeading(): string
     {
         return "Users in the last 30 days";
