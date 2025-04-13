@@ -473,30 +473,30 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         // No need to reverse from bottom-up
         // Convert to 1-based index for Excel-style labels
         const rowNumber = index + 1;
-    
+
         if (rowNumber <= 0) return '';
-    
+
         // Convert number to Excel-style column label (A, B, C, ... Z, AA, AB, etc.)
         let label = '';
         let n = rowNumber;
-    
+
         while (n > 0) {
             // Get the remainder when divided by 26 (number of letters)
             let remainder = n % 26;
-    
+
             // If remainder is 0, use 'Z' and adjust n
             if (remainder === 0) {
                 remainder = 26;
                 n -= 1;
             }
-    
+
             // Convert number to letter (A=1, B=2, ...) and add to front of label
             label = String.fromCharCode(64 + remainder) + label;
-    
+
             // Integer division by 26 to get the next digit
             n = Math.floor(n / 26);
         }
-    
+
         return label;
     };
 
@@ -1243,127 +1243,131 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                                 ref={gridContainerRef}
                                 onMouseMove={handleMouseMove}
                             >
-                                <div className="min-w-max p-2">
-                                    <div className="grid grid-flow-row gap-1">
-                                        {[...grid]
-                                            .reverse()
-                                            .map((row, reversedIndex) => {
-                                                // Calculate the actual row index properly
-                                                const actualRowIndex =
-                                                    grid.length -
-                                                    1 -
-                                                    reversedIndex;
-                                                return (
-                                                    <div
-                                                        key={reversedIndex}
-                                                        className="flex gap-1"
-                                                    >
-                                                        {row.map(
-                                                            (
-                                                                cell,
-                                                                colIndex,
-                                                            ) => (
-                                                                <div
-                                                                    key={
-                                                                        colIndex
-                                                                    }
-                                                                    onClick={() =>
-                                                                        handleCellClick(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    onMouseDown={() =>
-                                                                        handleMouseDown(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    onMouseOver={() =>
-                                                                        handleMouseOver(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    className={`flex h-8 w-8 cursor-pointer select-none items-center justify-center rounded text-xs font-medium ${getCellColor(cell)} ${
-                                                                        cell.isBlocked
-                                                                            ? 'border-2 border-gray-400'
-                                                                            : 'border border-gray-200'
-                                                                    } ${
-                                                                        (isDragging &&
-                                                                            mode ===
-                                                                                'block' &&
-                                                                            startCell &&
-                                                                            endCell &&
-                                                                            actualRowIndex >=
-                                                                                Math.min(
-                                                                                    startCell.row,
-                                                                                    endCell.row,
-                                                                                ) &&
-                                                                            actualRowIndex <=
-                                                                                Math.max(
-                                                                                    startCell.row,
-                                                                                    endCell.row,
-                                                                                ) &&
-                                                                            colIndex >=
-                                                                                Math.min(
-                                                                                    startCell.col,
-                                                                                    endCell.col,
-                                                                                ) &&
-                                                                            colIndex <=
-                                                                                Math.max(
-                                                                                    startCell.col,
-                                                                                    endCell.col,
-                                                                                )) ||
-                                                                        (mode ===
-                                                                            'block' &&
-                                                                            isInBlockedArea(
+                                <div className="flex justify-center">
+                                    {' '}
+                                    {/* Tambahkan wrapper flex centering */}
+                                    <div className="min-w-max p-2">
+                                        <div className="grid grid-flow-row gap-1">
+                                            {[...grid]
+                                                .reverse()
+                                                .map((row, reversedIndex) => {
+                                                    const actualRowIndex =
+                                                        grid.length -
+                                                        1 -
+                                                        reversedIndex;
+                                                    return (
+                                                        <div
+                                                            key={reversedIndex}
+                                                            className="flex gap-1"
+                                                        >
+                                                            {row.map(
+                                                                (
+                                                                    cell,
+                                                                    colIndex,
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            colIndex
+                                                                        }
+                                                                        onClick={() =>
+                                                                            handleCellClick(
                                                                                 actualRowIndex,
                                                                                 colIndex,
-                                                                            ))
-                                                                            ? 'ring-2 ring-blue-500'
-                                                                            : ''
-                                                                    }`}
-                                                                    draggable={
-                                                                        false
-                                                                    }
-                                                                >
-                                                                    {cell.type ===
-                                                                        'seat' &&
-                                                                        cell
-                                                                            .item
-                                                                            ?.seat_number}
-                                                                </div>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                    </div>
+                                                                            )
+                                                                        }
+                                                                        onMouseDown={() =>
+                                                                            handleMouseDown(
+                                                                                actualRowIndex,
+                                                                                colIndex,
+                                                                            )
+                                                                        }
+                                                                        onMouseOver={() =>
+                                                                            handleMouseOver(
+                                                                                actualRowIndex,
+                                                                                colIndex,
+                                                                            )
+                                                                        }
+                                                                        className={`flex h-8 w-8 cursor-pointer select-none items-center justify-center rounded text-xs font-medium ${getCellColor(cell)} ${
+                                                                            cell.isBlocked
+                                                                                ? 'border-2 border-gray-400'
+                                                                                : 'border border-gray-200'
+                                                                        } ${
+                                                                            (isDragging &&
+                                                                                mode ===
+                                                                                    'block' &&
+                                                                                startCell &&
+                                                                                endCell &&
+                                                                                actualRowIndex >=
+                                                                                    Math.min(
+                                                                                        startCell.row,
+                                                                                        endCell.row,
+                                                                                    ) &&
+                                                                                actualRowIndex <=
+                                                                                    Math.max(
+                                                                                        startCell.row,
+                                                                                        endCell.row,
+                                                                                    ) &&
+                                                                                colIndex >=
+                                                                                    Math.min(
+                                                                                        startCell.col,
+                                                                                        endCell.col,
+                                                                                    ) &&
+                                                                                colIndex <=
+                                                                                    Math.max(
+                                                                                        startCell.col,
+                                                                                        endCell.col,
+                                                                                    )) ||
+                                                                            (mode ===
+                                                                                'block' &&
+                                                                                isInBlockedArea(
+                                                                                    actualRowIndex,
+                                                                                    colIndex,
+                                                                                ))
+                                                                                ? 'ring-2 ring-blue-500'
+                                                                                : ''
+                                                                        }`}
+                                                                        draggable={
+                                                                            false
+                                                                        }
+                                                                    >
+                                                                        {cell.type ===
+                                                                            'seat' &&
+                                                                            cell
+                                                                                .item
+                                                                                ?.seat_number}
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
 
-                                    <div className="mx-auto mt-8 flex h-12 w-64 items-center justify-center rounded-lg border border-gray-400 bg-gray-200 font-medium text-gray-700">
-                                        <span className="flex items-center justify-center gap-2">
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="18"
-                                                height="18"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            >
-                                                <rect
-                                                    x="4"
-                                                    y="5"
-                                                    width="16"
-                                                    height="14"
-                                                    rx="2"
-                                                />
-                                            </svg>
-                                            Stage
-                                        </span>
+                                        {/* Stage */}
+                                        <div className="mx-auto mt-8 flex h-12 w-64 items-center justify-center rounded-lg border border-gray-400 bg-gray-200 font-medium text-gray-700">
+                                            <span className="flex items-center justify-center gap-2">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <rect
+                                                        x="4"
+                                                        y="5"
+                                                        width="16"
+                                                        height="14"
+                                                        rx="2"
+                                                    />
+                                                </svg>
+                                                Stage
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
