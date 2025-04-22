@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Admin\Resources\OrderResource\Pages;
 use App\Filament\Admin\Resources\OrderResource\RelationManagers\TicketsRelationManager;
+use App\Filament\Components\CustomPagination;
 use App\Models\Team;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
@@ -394,7 +395,8 @@ class OrderResource extends Resource
     {
         $user = session('auth_user');
 
-        return $table
+        return
+            CustomPagination::apply($table)
             ->defaultSort('order_date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('team.name')

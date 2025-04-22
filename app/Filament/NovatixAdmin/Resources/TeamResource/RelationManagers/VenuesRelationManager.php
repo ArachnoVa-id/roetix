@@ -6,17 +6,17 @@ use App\Filament\Admin\Resources\VenueResource;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class VenuesRelationManager extends RelationManager
 {
     protected static string $relationship = 'venues';
 
-    public function getTableRecords(): Collection
+    public function getTableQuery(): Builder
     {
-        $venues = $this->ownerRecord->venues;
-
-        return new Collection($venues);
+        return $this->ownerRecord
+            ->venues()
+            ->getQuery();
     }
 
     public function infolist(Infolist $infolist): Infolist

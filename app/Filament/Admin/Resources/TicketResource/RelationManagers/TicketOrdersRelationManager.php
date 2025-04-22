@@ -8,17 +8,17 @@ use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class TicketOrdersRelationManager extends RelationManager
 {
     protected static string $relationship = 'ticketOrders';
 
-    public function getTableRecords(): Collection
+    public function getTableQuery(): Builder
     {
-        $ticketOrders = $this->ownerRecord->ticketOrders;
-
-        return new Collection($ticketOrders);
+        return $this->ownerRecord
+            ->ticketOrders()
+            ->getQuery();
     }
 
     public function table(Table $table): Table

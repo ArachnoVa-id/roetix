@@ -22,6 +22,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use App\Filament\Components\CustomPagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Crypt;
 use Mews\Purifier\Facades\Purifier;
@@ -1636,7 +1637,8 @@ class EventResource extends Resource
         $defaultActions[] = Tables\Actions\DeleteAction::make()
             ->icon('heroicon-o-trash');
 
-        return $table
+        return
+            CustomPagination::apply($table)
             ->columns([
                 Tables\Columns\ImageColumn::make('eventVariables.logo')
                     ->label(''),

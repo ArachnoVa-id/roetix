@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Admin\Resources\TicketResource\Pages;
 use App\Filament\Admin\Resources\TicketResource\RelationManagers\TicketOrdersRelationManager;
+use App\Filament\Components\CustomPagination;
 use App\Models\Order;
 use App\Models\Team;
 use App\Models\User;
@@ -483,7 +484,8 @@ class TicketResource extends Resource
                 return $ticketOrder->order->user->email;
             });
 
-        return $table
+        return
+            CustomPagination::apply($table)
             ->columns([
                 Tables\Columns\TextColumn::make('team.name')
                     ->label('Team Name')

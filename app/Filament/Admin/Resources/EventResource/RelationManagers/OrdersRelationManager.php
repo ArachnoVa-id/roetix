@@ -6,17 +6,17 @@ use App\Filament\Admin\Resources\OrderResource;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class OrdersRelationManager extends RelationManager
 {
     protected static string $relationship = 'orders';
 
-    public function getTableRecords(): Collection
+    public function getTableQuery(): Builder
     {
-        $orders = $this->ownerRecord->orders;
-
-        return new Collection($orders);
+        return $this->ownerRecord
+            ->orders()
+            ->getQuery();
     }
 
     public function infolist(Infolist $infolist): Infolist
@@ -27,6 +27,7 @@ class OrdersRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return OrderResource::table($table, filterStatus: true, filterEvent: false, filterTeam: false)
+
             ->heading('');
     }
 }
