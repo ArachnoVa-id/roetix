@@ -130,7 +130,7 @@ jobs:
           cd ~/novatix/app/develop
           sudo rm -rf storage/app/public/*
           sudo rm -rf storage/app/private/*
-          php artisan migrate:fresh --force --seed
+          # php artisan migrate:fresh --force --seed
           php artisan config:clear
           sudo php artisan cache:clear
           php artisan route:cache
