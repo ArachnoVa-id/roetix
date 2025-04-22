@@ -6,18 +6,17 @@ use App\Filament\Admin\Resources\EventResource;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class EventsRelationManager extends RelationManager
 {
     protected static string $relationship = 'events';
 
-
-    public function getTableRecords(): Collection
+    public function getTableQuery(): Builder
     {
-        $events = $this->ownerRecord->events;
-
-        return new Collection($events);
+        return $this->ownerRecord
+            ->events()
+            ->getQuery();
     }
 
     public function infolist(Infolist $infolist): Infolist

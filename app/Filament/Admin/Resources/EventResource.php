@@ -22,6 +22,7 @@ use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\EventResource\Pages;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
+use App\Filament\Components\CustomPagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Crypt;
 use Mews\Purifier\Facades\Purifier;
@@ -737,7 +738,8 @@ class EventResource extends Resource
 
                                         // Preserve other category attributes
                                         $newCategories[] = [
-                                            'ticket_category_id' => $category['ticket_category_id'] ?? '-',
+                                            'id' => $category['id'] ?? '-',
+                                            'event_id' => $category['event_id'] ?? null,
                                             'name' => $category['name'] ?? '',
                                             'color' => $category['color'] ?? '',
                                             'event_category_timebound_prices' => $reorderedPrices
@@ -1184,7 +1186,7 @@ class EventResource extends Resource
 
                                         // update
                                         $newCategories[] = [
-                                            'ticket_category_id' => $category['ticket_category_id'] ?? '-',
+                                            'id' => $category['id'] ?? '-',
                                             'name' => $category['name'] ?? '',
                                             'color' => $category['color'] ?? '',
                                             'event_category_timebound_prices' => $reorderedPrices
@@ -1201,7 +1203,7 @@ class EventResource extends Resource
                                             'md' => 2,
                                         ])
                                         ->schema([
-                                            Forms\Components\Hidden::make('ticket_category_id')
+                                            Forms\Components\Hidden::make('id')
                                                 ->default('-'),
                                             Forms\Components\TextInput::make('name')
                                                 ->default('')
@@ -1285,7 +1287,7 @@ class EventResource extends Resource
                                         ->schema([
                                             Forms\Components\Repeater::make('event_category_timebound_prices')
                                                 ->relationship('eventCategoryTimeboundPrices')
-                                                ->defaultItems(0)
+                                                ->minItems(1)
                                                 ->grid(3)
                                                 ->label('')
                                                 ->reorderable(false)
@@ -1635,7 +1637,8 @@ class EventResource extends Resource
         $defaultActions[] = Tables\Actions\DeleteAction::make()
             ->icon('heroicon-o-trash');
 
-        return $table
+        return
+            CustomPagination::apply($table)
             ->columns([
                 Tables\Columns\ImageColumn::make('eventVariables.logo')
                     ->label(''),

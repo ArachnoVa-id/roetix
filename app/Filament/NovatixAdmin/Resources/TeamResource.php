@@ -3,6 +3,7 @@
 namespace App\Filament\NovatixAdmin\Resources;
 
 use App\Enums\UserRole;
+use App\Filament\Components\CustomPagination;
 use App\Filament\NovatixAdmin\Resources\TeamResource\Pages;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\EventsRelationManager;
 use App\Filament\NovatixAdmin\Resources\TeamResource\RelationManagers\UsersRelationManager;
@@ -284,7 +285,8 @@ class TeamResource extends Resource
 
         $actions[] = Tables\Actions\DeleteAction::make();
 
-        return $table
+        return
+            CustomPagination::apply($table)
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()

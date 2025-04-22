@@ -6,7 +6,6 @@ use App\Filament\Admin\Resources\TicketResource;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class TicketsRelationManager extends RelationManager
 {

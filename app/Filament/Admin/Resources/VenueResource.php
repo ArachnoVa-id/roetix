@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Filament\Admin\Resources\VenueResource\Pages;
 use App\Filament\Admin\Resources\VenueResource\RelationManagers\EventsRelationManager;
+use App\Filament\Components\CustomPagination;
 use Filament\Support\Colors\Color;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -384,7 +385,8 @@ class VenueResource extends Resources\Resource
     {
         $user = session('auth_user');
 
-        return $table
+        return
+            CustomPagination::apply($table)
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Venue Name')

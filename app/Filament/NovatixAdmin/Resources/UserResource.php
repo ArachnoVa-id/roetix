@@ -3,6 +3,7 @@
 namespace App\Filament\NovatixAdmin\Resources;
 
 use App\Enums\UserRole;
+use App\Filament\Components\CustomPagination;
 use App\Filament\NovatixAdmin\Resources\UserResource\Pages;
 use App\Filament\NovatixAdmin\Resources\UserResource\RelationManagers\TeamsRelationManager;
 use App\Models\User;
@@ -432,7 +433,8 @@ class UserResource extends Resources\Resource
 
         $actions[] = Tables\Actions\DeleteAction::make();
 
-        return $table
+        return
+            CustomPagination::apply($table)
             ->columns([
                 Tables\Columns\TextColumn::make('first_name')
                     ->label('First Name')
