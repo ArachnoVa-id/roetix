@@ -91,7 +91,13 @@ class SeatController extends Controller
         try {
             // Retrieve seat data related to the model, assuming it's related by 'seats' relationship
             $venue = Venue::find(request()->route('venue'));
-            $seats = $venue->seats()->pluck('position');
+            $seats = Seat::where('venue_id', $venue->id)
+                ->orderBy('row')
+                ->orderBy('column')
+                ->get()
+                ->map(function ($seat) {
+                    return $seat->position;
+                });
 
             // Format the data
             $export = [
