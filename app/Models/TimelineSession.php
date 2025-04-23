@@ -61,6 +61,7 @@ class TimelineSession extends Model
     {
         return $this->hasMany(EventCategoryTimeboundPrice::class, 'timeline_id', 'id')
             ->join('timeline_sessions', 'event_category_timebound_prices.timeline_id', '=', 'timeline_sessions.id')
-            ->orderBy('timeline_sessions.created_at');
+            ->orderBy('timeline_sessions.created_at')
+            ->select('event_category_timebound_prices.*');
     }
 }

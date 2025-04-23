@@ -42,6 +42,7 @@ class TicketCategory extends Model
         return $this
             ->hasMany(EventCategoryTimeboundPrice::class, 'ticket_category_id', 'id')
             ->join('timeline_sessions', 'event_category_timebound_prices.timeline_id', '=', 'timeline_sessions.id')
-            ->orderBy('timeline_sessions.start_date');
+            ->orderBy('timeline_sessions.start_date')
+            ->select('event_category_timebound_prices.*');
     }
 }
