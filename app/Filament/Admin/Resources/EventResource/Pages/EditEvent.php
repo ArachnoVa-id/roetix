@@ -135,10 +135,11 @@ class EditEvent extends EditRecord
 
             // 3. Handle Timebound Prices
             foreach ($ticketCategories as &$category) {
-                if (empty($category['ticket_category_id'])) continue;
+                if (empty($category['id'])) continue;
 
                 foreach ($category['event_category_timebound_prices'] ?? [] as $priceIndex => $price) {
                     $priceData = collect($price)->except(['created_at', 'updated_at', 'title', 'name'])->toArray();
+
                     $priceData['ticket_category_id'] = $category['id'];
 
                     // Resolve timeline_id mapping

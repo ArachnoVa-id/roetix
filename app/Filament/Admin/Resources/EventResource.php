@@ -620,7 +620,7 @@ class EventResource extends Resource
                                     }
                                 )
                                 ->preload()
-                                ->disabled(!session('auth_user')->isAllowedInRoles([UserRole::ADMIN]) && $modelExists)
+                                ->disabled($modelExists)
                                 ->helperText(!session('auth_user')->isAllowedInRoles([UserRole::ADMIN]) && $modelExists ? 'You can\'t change the selected venue.' : 'Note: You can only set this once!')
                                 ->label('Venue')
                                 ->placeholder('Select Venue')
@@ -670,7 +670,6 @@ class EventResource extends Resource
                                         foreach ($eventTimelines as $timeline) {
                                             foreach (array_values($timeline) as $value) {
                                                 if ($value == null) {
-                                                    // dd($timeline);
                                                     $existsNull = true;
                                                     break;
                                                 }
