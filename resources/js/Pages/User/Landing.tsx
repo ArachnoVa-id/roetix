@@ -46,53 +46,58 @@ export default function Landing({
 
     // usestate untuk layout yang diterima dari mqtt
     const [layoutItems, setLayoutItems] = useState(layout.items);
+    const [layoutState, setLayoutState] = useState(layout);
 
     useEffect(() => {
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
-    
+
         mqttclient.on('connect', () => {
             console.log('Connected to MQTT broker');
             mqttclient.subscribe('novatix/midtrans/defaultcode');
         });
-    
+
         mqttclient.on('message', (topic, message) => {
             try {
                 const payload = JSON.parse(message.toString());
-    
-                // Jika payload berupa array
                 const updates = Array.isArray(payload) ? payload : [payload];
-    
-                setLayoutItems(prevItems =>
-                    prevItems.map(item => {
-                        if (!('id' in item)) return item;
-    
-                        const update = updates.find(updateItem =>
-                            updateItem.id.replace(/,/g, '') === item.id
-                        );
-    
-                        if (update) {
-                            return {
-                                ...item,
-                                seat_number: update.seat_number,
-                                status: update.status,
-                            };
-                        }
-    
-                        return item;
-                    })
-                );
+
+                const updatedItems = layoutItems.map(item => {
+                    if (!('id' in item)) return item;
+
+                    const update = updates.find(updateItem =>
+                        updateItem.id.replace(/,/g, '') === item.id
+                    );
+
+                    if (update) {
+                        return {
+                            ...item,
+                            status: update.status,
+                            seat_number: update.seat_number, // jika perlu
+                        };
+                    }
+
+                    return item;
+                });
+
+                setLayoutItems(updatedItems);
+                setLayoutState(prevLayout => ({
+                    ...prevLayout,
+                    items: updatedItems,
+                }));
+
             } catch (error) {
                 console.error('Error parsing MQTT message:', error);
             }
         });
-    
+
         return () => {
             mqttclient.end();
         };
-    }, []);    
+    }, []);
 
     useEffect(() => {
         console.log(layoutItems);
+        console.log(layoutState);
     }, [layoutItems, setLayoutItems])
 
     // Show error if it exists when component mounts

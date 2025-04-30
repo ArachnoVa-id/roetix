@@ -319,21 +319,19 @@ class PaymentController extends Controller
                     $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
                     $ticket->save();
                 }
-            }
-            $this->publishMqtt(data: [
-                "category" => "Trust",
-                "column" => 23,
-                "id" => "df943,1c8-86c8-4ad9-9791-1f306b04979f",
-                "price" => "115000.0,0",
-                // "row" => "AA",
-                "row" => "AB",
-                "seat_number" => "AA1",
-                "status" =>  "available",
-                "ticket_category_id" =>  "94d2d33c-ade2-4ccd-84,12-e9856952921e",
-                "ticket_type" => "Trust",
-                // 'message' => 'ini dari update status'
-            ]);
+            }      
             DB::commit();
+            $this->publishMqtt(data: [
+                "category" => $ticket->category,
+                "column" => $ticket->column,
+                "id" => $ticket->id,
+                "price" => number_format($ticket->price, 2, '.', ''),
+                "row" => $ticket->row,
+                "seat_number" => $ticket->seat_number,
+                "status" => $ticket->status,
+                "ticket_category_id" => $ticket->ticket_category_id,
+                "ticket_type" => $ticket->ticket_type,
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -520,7 +518,7 @@ class PaymentController extends Controller
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
         // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
-        $topic = 'novatix/midtrans/defaultclient/defaultcode/ticketpurchased';
+        $topic = 'novatix/midtrans/defaultcode';
 
         $conn_settings = (new ConnectionSettings)
             ->setUsername($usrname)
