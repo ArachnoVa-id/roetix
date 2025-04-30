@@ -1,5 +1,5 @@
 import React, { MouseEvent, ReactNode, RefObject } from 'react';
-import { Stage } from '../Layout';
+import { Stage } from '../Stage';
 
 interface SelectionBox {
     left: number;
