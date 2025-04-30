@@ -12,6 +12,19 @@ import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
+import mqtt from "mqtt";
+
+interface DataItem {
+    category: string;
+    column: number;
+    id: string;
+    price: string;
+    row: string;
+    seat_number: string;
+    status: string;
+    ticket_category_id: string;
+    ticket_type: string;
+}
 
 export default function Landing({
     client,
@@ -30,6 +43,57 @@ export default function Landing({
     const [pendingTransactions, setPendingTransactions] = useState<
         PendingTransactionResponseItem[]
     >([]);
+
+    // usestate untuk layout yang diterima dari mqtt
+    const [layoutItems, setLayoutItems] = useState(layout.items);
+
+    useEffect(() => {
+        const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+    
+        mqttclient.on('connect', () => {
+            console.log('Connected to MQTT broker');
+            mqttclient.subscribe('novatix/midtrans/defaultcode');
+        });
+    
+        mqttclient.on('message', (topic, message) => {
+            try {
+                const payload = JSON.parse(message.toString());
+    
+                // Jika payload berupa array
+                const updates = Array.isArray(payload) ? payload : [payload];
+    
+                setLayoutItems(prevItems =>
+                    prevItems.map(item => {
+                        if (!('id' in item)) return item;
+    
+                        const update = updates.find(updateItem =>
+                            updateItem.id.replace(/,/g, '') === item.id
+                        );
+    
+                        if (update) {
+                            return {
+                                ...item,
+                                seat_number: update.seat_number,
+                                status: update.status,
+                            };
+                        }
+    
+                        return item;
+                    })
+                );
+            } catch (error) {
+                console.error('Error parsing MQTT message:', error);
+            }
+        });
+    
+        return () => {
+            mqttclient.end();
+        };
+    }, []);    
+
+    useEffect(() => {
+        console.log(layoutItems);
+    }, [layoutItems, setLayoutItems])
 
     // Show error if it exists when component mounts
     useEffect(() => {
@@ -505,57 +569,56 @@ export default function Landing({
                                                         style={{
                                                             backgroundColor:
                                                                 event.status ===
-                                                                'active'
+                                                                    'active'
                                                                     ? 'rgba(34, 197, 94, 0.1)'
                                                                     : event.status ===
                                                                         'planned'
-                                                                      ? 'rgba(59, 130, 246, 0.1)'
-                                                                      : event.status ===
-                                                                          'completed'
-                                                                        ? 'rgba(107, 114, 128, 0.1)'
-                                                                        : 'rgba(239, 68, 68, 0.1)',
+                                                                        ? 'rgba(59, 130, 246, 0.1)'
+                                                                        : event.status ===
+                                                                            'completed'
+                                                                            ? 'rgba(107, 114, 128, 0.1)'
+                                                                            : 'rgba(239, 68, 68, 0.1)',
                                                         }}
                                                     >
                                                         <div
-                                                            className={`h-2 w-2 rounded-full ${
-                                                                event.status ===
+                                                            className={`h-2 w-2 rounded-full ${event.status ===
                                                                 'active'
-                                                                    ? 'bg-green-500'
+                                                                ? 'bg-green-500'
+                                                                : event.status ===
+                                                                    'planned'
+                                                                    ? 'bg-blue-500'
                                                                     : event.status ===
-                                                                        'planned'
-                                                                      ? 'bg-blue-500'
-                                                                      : event.status ===
-                                                                          'completed'
+                                                                        'completed'
                                                                         ? 'bg-gray-500'
                                                                         : 'bg-red-500'
-                                                            } mr-2 animate-pulse`}
+                                                                } mr-2 animate-pulse`}
                                                         ></div>
                                                         <span
                                                             className="text-sm font-medium"
                                                             style={{
                                                                 color:
                                                                     event.status ===
-                                                                    'active'
+                                                                        'active'
                                                                         ? '#16a34a'
                                                                         : event.status ===
                                                                             'planned'
-                                                                          ? '#2563eb'
-                                                                          : event.status ===
-                                                                              'completed'
-                                                                            ? '#4b5563'
-                                                                            : '#dc2626',
+                                                                            ? '#2563eb'
+                                                                            : event.status ===
+                                                                                'completed'
+                                                                                ? '#4b5563'
+                                                                                : '#dc2626',
                                                             }}
                                                         >
                                                             {event.status ===
-                                                            'active'
+                                                                'active'
                                                                 ? 'Active'
                                                                 : event.status ===
                                                                     'planned'
-                                                                  ? 'Planned'
-                                                                  : event.status ===
-                                                                      'completed'
-                                                                    ? 'Completed'
-                                                                    : 'Cancelled'}
+                                                                    ? 'Planned'
+                                                                    : event.status ===
+                                                                        'completed'
+                                                                        ? 'Completed'
+                                                                        : 'Cancelled'}
                                                         </span>
                                                     </div>
                                                 )}
@@ -844,9 +907,9 @@ export default function Landing({
                                                 categoryPrices.find(
                                                     (p) =>
                                                         p.ticket_category_id ===
-                                                            category.id &&
+                                                        category.id &&
                                                         p.timeline_id ===
-                                                            currentTimeline.id,
+                                                        currentTimeline.id,
                                                 );
                                             if (priceEntry) {
                                                 price = priceEntry.price;
@@ -867,7 +930,7 @@ export default function Landing({
                                                     style={{
                                                         backgroundColor:
                                                             ticketTypeColors[
-                                                                type
+                                                            type
                                                             ],
                                                     }}
                                                 />

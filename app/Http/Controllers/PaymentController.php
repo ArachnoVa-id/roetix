@@ -39,7 +39,8 @@ class PaymentController extends Controller
         $orderCount = Order::where('user_id', Auth::id())
             ->where('order_date', '>=', $timeSpan)
             ->count();
-        $limitPerTimeSpan = 5;
+        // $limitPerTimeSpan = 5;
+        $limitPerTimeSpan = 500000;
 
         if ($orderCount >= $limitPerTimeSpan) {
             return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 hour to do the next transaction.'], 429);
@@ -225,9 +226,9 @@ class PaymentController extends Controller
             $order->snap_token = $snapToken;
             $order->save();
 
-            $this->publishMqtt(data: [
-                'message' => 'hallo ini dari charge'
-            ]);
+            // $this->publishMqtt(data: [
+            //     'message' => 'hallo ini dari charge'
+            // ]);
 
             DB::commit();
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
@@ -320,12 +321,22 @@ class PaymentController extends Controller
                 }
             }
             $this->publishMqtt(data: [
-                'message' => 'ini dari update status'
+                "category" => "Trust",
+                "column" => 23,
+                "id" => "df943,1c8-86c8-4ad9-9791-1f306b04979f",
+                "price" => "115000.0,0",
+                // "row" => "AA",
+                "row" => "AB",
+                "seat_number" => "AA1",
+                "status" =>  "available",
+                "ticket_category_id" =>  "94d2d33c-ade2-4ccd-84,12-e9856952921e",
+                "ticket_type" => "Trust",
+                // 'message' => 'ini dari update status'
             ]);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            throw $e; // Re-throw the exception to ensure the outer transaction rolls back
+            throw $e;
         }
     }
 
