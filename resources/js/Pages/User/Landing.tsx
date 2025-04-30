@@ -481,7 +481,7 @@ export default function Landing({
         }, 0);
 
         // Calculate tax
-        const taxRate = 1; // 1%
+        const taxRate = 0; // 0%
         const taxAmount = (subtotal * taxRate) / 100;
 
         // Calculate total
@@ -1109,7 +1109,6 @@ export default function Landing({
                                                     ),
                                                 )}
                                                 {/* Subtotal, Tax, and Total */}
-
                                                 <div
                                                     className="mt-6 space-y-2 rounded-lg p-3"
                                                     style={{
@@ -1124,13 +1123,28 @@ export default function Landing({
                                                         </span>
                                                         <span>
                                                             {formatRupiah(
-                                                                subtotal,
+                                                                transaction.seats.reduce(
+                                                                    (
+                                                                        acc,
+                                                                        seat,
+                                                                    ) => {
+                                                                        const seatPrice =
+                                                                            getSafePrice(
+                                                                                seat.price,
+                                                                            );
+                                                                        return (
+                                                                            acc +
+                                                                            seatPrice
+                                                                        );
+                                                                    },
+                                                                    0,
+                                                                ),
                                                             )}
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span className="font-medium">
-                                                            Tax (1%):
+                                                            Tax (0%):
                                                         </span>
                                                         <span>
                                                             {formatRupiah(
@@ -1278,7 +1292,7 @@ export default function Landing({
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="font-medium">
-                                                Tax (1%):
+                                                Tax (0%):
                                             </span>
                                             <span>
                                                 {formatRupiah(taxAmount)}

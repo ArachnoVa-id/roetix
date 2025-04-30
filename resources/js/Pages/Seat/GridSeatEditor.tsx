@@ -468,7 +468,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
     };
 
     // Function to get row label from bottom-up position
-    const getAdjustedRowLabel = (index: number, totalRows: number): string => {
+    const getAdjustedRowLabel = (index: number): string => {
         // The problem is here - we need to properly map indices to Excel-style labels
         // No need to reverse from bottom-up
         // Convert to 1-based index for Excel-style labels
@@ -504,7 +504,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
     const addSeatAtPosition = (rowIndex: number, colIndex: number) => {
         const newGrid = [...grid];
         // Get the correct row label for this index
-        const rowLabel = getAdjustedRowLabel(rowIndex, totalRows);
+        const rowLabel = getAdjustedRowLabel(rowIndex);
         const adjustedColumn = colIndex + 1;
 
         const newSeat: SeatItem = {
@@ -560,7 +560,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                     const cell = newGrid[i][j];
                     if (cell.type === 'empty' && cell.isBlocked) {
                         changesMade = true;
-                        const rowLabel = getAdjustedRowLabel(i, totalRows);
+                        const rowLabel = getAdjustedRowLabel(i);
                         const adjustedColumn = j + 1;
 
                         const newSeat: SeatItem = {
@@ -633,7 +633,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         // Process all rows
         for (let i = 0; i < totalRows; i++) {
             // Get the proper row label for this index
-            const rowLabel = getAdjustedRowLabel(i, totalRows);
+            const rowLabel = getAdjustedRowLabel(i);
             seatCounters[rowLabel] = 1;
 
             for (let j = 0; j < totalColumns; j++) {
@@ -661,7 +661,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
         // Process from bottom to top correctly
         for (let i = totalRows - 1; i >= 0; i--) {
-            const rowLabel = getAdjustedRowLabel(i, totalRows);
+            const rowLabel = getAdjustedRowLabel(i);
             seatCounters[rowLabel] = 1;
 
             for (let j = 0; j < totalColumns; j++) {
@@ -678,7 +678,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         const items: SeatItem[] = [];
 
         for (let i = 0; i < totalRows; i++) {
-            const rowLabel = getAdjustedRowLabel(i, totalRows);
+            const rowLabel = getAdjustedRowLabel(i);
 
             for (let j = 0; j < totalColumns; j++) {
                 const cell = tempGrid[i][j];
@@ -1227,119 +1227,121 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
             </div>
 
             {/* Main content area */}
-            <div className="h-screen flex-1 overflow-auto bg-gray-50 max-md:order-1">
+            <div className="h-screen flex-1 bg-gray-50 max-md:order-1">
                 {/* Use a flex container to properly center and expand the content */}
                 <div className="flex h-full items-center justify-center">
                     <div className="h-full w-full p-4">
                         {/* The key container with dotted border that should expand */}
                         <div
                             className="relative h-full w-full rounded-3xl border-2 border-dashed border-gray-300 bg-white p-4"
-                            style={{ minHeight: '80vh' }}
                             onMouseUp={handleMouseUp}
                             onMouseLeave={handleMouseLeave}
                         >
                             <div
-                                className="overflow-auto rounded-lg"
+                                className="h-full overflow-auto"
                                 ref={gridContainerRef}
                                 onMouseMove={handleMouseMove}
                             >
-                                <div className="p-4">
-                                    {' '}
-                                    {/* Add padding all around */}
-                                    <div className="grid grid-flow-row gap-1">
-                                        {[...grid]
-                                            .reverse()
-                                            .map((row, reversedIndex) => {
-                                                const actualRowIndex =
-                                                    grid.length -
-                                                    1 -
-                                                    reversedIndex;
-                                                return (
-                                                    <div
-                                                        key={reversedIndex}
-                                                        className="flex gap-1"
-                                                    >
-                                                        {row.map(
-                                                            (
-                                                                cell,
-                                                                colIndex,
-                                                            ) => (
-                                                                <div
-                                                                    key={
-                                                                        colIndex
-                                                                    }
-                                                                    onClick={() =>
-                                                                        handleCellClick(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    onMouseDown={() =>
-                                                                        handleMouseDown(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    onMouseOver={() =>
-                                                                        handleMouseOver(
-                                                                            actualRowIndex,
-                                                                            colIndex,
-                                                                        )
-                                                                    }
-                                                                    className={`flex h-8 w-8 cursor-pointer select-none items-center justify-center rounded text-xs font-medium ${getCellColor(cell)} ${
-                                                                        cell.isBlocked
-                                                                            ? 'border-2 border-gray-400'
-                                                                            : 'border border-gray-200'
-                                                                    } ${
-                                                                        (isDragging &&
-                                                                            mode ===
-                                                                                'block' &&
-                                                                            startCell &&
-                                                                            endCell &&
-                                                                            actualRowIndex >=
-                                                                                Math.min(
-                                                                                    startCell.row,
-                                                                                    endCell.row,
-                                                                                ) &&
-                                                                            actualRowIndex <=
-                                                                                Math.max(
-                                                                                    startCell.row,
-                                                                                    endCell.row,
-                                                                                ) &&
-                                                                            colIndex >=
-                                                                                Math.min(
-                                                                                    startCell.col,
-                                                                                    endCell.col,
-                                                                                ) &&
-                                                                            colIndex <=
-                                                                                Math.max(
-                                                                                    startCell.col,
-                                                                                    endCell.col,
-                                                                                )) ||
-                                                                        (mode ===
-                                                                            'block' &&
-                                                                            isInBlockedArea(
+                                <div className="min-w-fit p-4">
+                                    {/* Grid rows */}
+                                    <div className="flex h-full items-center justify-center">
+                                        <div className="grid grid-flow-row gap-1">
+                                            {[...grid]
+                                                .reverse()
+                                                .map((row, reversedIndex) => {
+                                                    const actualRowIndex =
+                                                        grid.length -
+                                                        1 -
+                                                        reversedIndex;
+                                                    return (
+                                                        <div
+                                                            key={reversedIndex}
+                                                            className="flex gap-1"
+                                                        >
+                                                            {row.map(
+                                                                (
+                                                                    cell,
+                                                                    colIndex,
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            colIndex
+                                                                        }
+                                                                        onClick={() =>
+                                                                            handleCellClick(
                                                                                 actualRowIndex,
                                                                                 colIndex,
-                                                                            ))
-                                                                            ? 'ring-2 ring-blue-500'
-                                                                            : ''
-                                                                    }`}
-                                                                    draggable={
-                                                                        false
-                                                                    }
-                                                                >
-                                                                    {cell.type ===
-                                                                        'seat' &&
-                                                                        cell
-                                                                            .item
-                                                                            ?.seat_number}
-                                                                </div>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                                                            )
+                                                                        }
+                                                                        onMouseDown={() =>
+                                                                            handleMouseDown(
+                                                                                actualRowIndex,
+                                                                                colIndex,
+                                                                            )
+                                                                        }
+                                                                        onMouseOver={() =>
+                                                                            handleMouseOver(
+                                                                                actualRowIndex,
+                                                                                colIndex,
+                                                                            )
+                                                                        }
+                                                                        className={`flex h-8 w-8 cursor-pointer select-none items-center justify-center rounded text-xs font-medium ${getCellColor(
+                                                                            cell,
+                                                                        )} ${
+                                                                            cell.isBlocked
+                                                                                ? 'border-2 border-gray-400'
+                                                                                : 'border border-gray-200'
+                                                                        } ${
+                                                                            (isDragging &&
+                                                                                mode ===
+                                                                                    'block' &&
+                                                                                startCell &&
+                                                                                endCell &&
+                                                                                actualRowIndex >=
+                                                                                    Math.min(
+                                                                                        startCell.row,
+                                                                                        endCell.row,
+                                                                                    ) &&
+                                                                                actualRowIndex <=
+                                                                                    Math.max(
+                                                                                        startCell.row,
+                                                                                        endCell.row,
+                                                                                    ) &&
+                                                                                colIndex >=
+                                                                                    Math.min(
+                                                                                        startCell.col,
+                                                                                        endCell.col,
+                                                                                    ) &&
+                                                                                colIndex <=
+                                                                                    Math.max(
+                                                                                        startCell.col,
+                                                                                        endCell.col,
+                                                                                    )) ||
+                                                                            (mode ===
+                                                                                'block' &&
+                                                                                isInBlockedArea(
+                                                                                    actualRowIndex,
+                                                                                    colIndex,
+                                                                                ))
+                                                                                ? 'ring-2 ring-blue-500'
+                                                                                : ''
+                                                                        }`}
+                                                                        draggable={
+                                                                            false
+                                                                        }
+                                                                    >
+                                                                        {cell.type ===
+                                                                            'seat' &&
+                                                                            cell
+                                                                                .item
+                                                                                ?.seat_number}
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
                                     </div>
                                     {/* Stage */}
                                     <div className="mx-auto mt-8 flex h-12 w-64 items-center justify-center rounded-lg border border-gray-400 bg-gray-200 font-medium text-gray-700">
