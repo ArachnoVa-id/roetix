@@ -1025,7 +1025,7 @@ export default function Landing({
                             <div className="flex h-full w-full flex-1 overflow-hidden">
                                 <div className="flex w-full justify-center overflow-auto">
                                     <SeatMapDisplay
-                                        config={layout}
+                                        config={layoutState}
                                         props={props}
                                         onSeatClick={handleSeatClick}
                                         selectedSeats={selectedSeats}
