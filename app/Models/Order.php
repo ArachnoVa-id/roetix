@@ -79,7 +79,7 @@ class Order extends Model
     {
         $eventUniq = '';
         if ($event) {
-            $eventName = $event->event_name;
+            $eventName = $event->name;
             $eventName = preg_replace('/\s+/', '', $eventName);
             $eventName = substr($eventName, 0, 3);
             $eventUniq = strtoupper($eventName);

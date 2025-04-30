@@ -39,7 +39,8 @@ class PaymentController extends Controller
         $orderCount = Order::where('user_id', Auth::id())
             ->where('order_date', '>=', $timeSpan)
             ->count();
-        $limitPerTimeSpan = 5;
+        // $limitPerTimeSpan = 5;
+        $limitPerTimeSpan = 500000;
 
         if ($orderCount >= $limitPerTimeSpan) {
             return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 hour to do the next transaction.'], 429);
@@ -225,9 +226,9 @@ class PaymentController extends Controller
             $order->snap_token = $snapToken;
             $order->save();
 
-            $this->publishMqtt(data: [
-                'message' => 'hallo ini dari charge'
-            ]);
+            // $this->publishMqtt(data: [
+            //     'message' => 'hallo ini dari charge'
+            // ]);
 
             DB::commit();
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
@@ -318,14 +319,22 @@ class PaymentController extends Controller
                     $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
                     $ticket->save();
                 }
-            }
-            $this->publishMqtt(data: [
-                'message' => 'ini dari update status'
-            ]);
+            }      
             DB::commit();
+            $this->publishMqtt(data: [
+                "category" => $ticket->category,
+                "column" => $ticket->column,
+                "id" => $ticket->id,
+                "price" => number_format($ticket->price, 2, '.', ''),
+                "row" => $ticket->row,
+                "seat_number" => $ticket->seat_number,
+                "status" => $ticket->status,
+                "ticket_category_id" => $ticket->ticket_category_id,
+                "ticket_type" => $ticket->ticket_type,
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            throw $e; // Re-throw the exception to ensure the outer transaction rolls back
+            throw $e;
         }
     }
 
@@ -509,7 +518,7 @@ class PaymentController extends Controller
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
         // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
-        $topic = 'novatix/midtrans/defaultclient/defaultcode/ticketpurchased';
+        $topic = 'novatix/midtrans/defaultcode';
 
         $conn_settings = (new ConnectionSettings)
             ->setUsername($usrname)
