@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\VenueStatus;
 use App\Models\Team;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -20,13 +21,11 @@ class VenueFactory extends Factory
     public function definition(): array
     {
         return [
-            'venue_id' => (string) Str::uuid(),
             'name' => $this->faker->sentence(2),
             'location' => $this->faker->address,
-            'capacity' => $this->faker->numberBetween(100, 10000),
-            'team_id' => Team::inRandomOrder()->first()?->team_id,
+            'team_id' => Team::inRandomOrder()->first()?->id,
             'contact_info' => UserContact::factory(),
-            'status' => $this->faker->randomElement(['active', 'inactive', 'under_maintenance']),
+            'status' => $this->faker->randomElement(VenueStatus::values()),
         ];
     }
 }

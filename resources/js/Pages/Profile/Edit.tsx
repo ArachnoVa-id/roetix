@@ -1,43 +1,70 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PageProps } from '@/types';
+import { EventProps } from '@/types/front-end';
+import { EventInterface } from '@/types/ticket';
 import { Head } from '@inertiajs/react';
-import DeleteUserForm from './Partials/DeleteUserForm';
-import UpdatePasswordForm from './Partials/UpdatePasswordForm';
-import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
+import UpdateContactForm from './Partials/UpdateContactForm';
 
 export default function Edit({
-    mustVerifyEmail,
-    status,
+    event,
     client,
-}: PageProps<{ mustVerifyEmail: boolean; status?: string; client: string }>) {
+    props,
+}: PageProps<{
+    event: EventInterface;
+    mustVerifyEmail: boolean;
+    status?: string;
+    client: string;
+    props: EventProps;
+}>) {
     return (
-        <AuthenticatedLayout
-            client={client}
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Profile
-                </h2>
-            }
-        >
-            <Head title="Profile" />
-
+        <AuthenticatedLayout props={props} client={client}>
+            <Head title={'Profile | ' + event.name} />
             <div className="py-12">
-                <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-8 sm:px-6 md:flex-row lg:px-8">
+                    {/* <div
+                        className="h-full w-full p-4 shadow sm:rounded-lg sm:p-8"
+                        style={{
+                            backgroundColor: props.primary_color,
+                        }}
+                    >
                         <UpdateProfileInformationForm
                             mustVerifyEmail={mustVerifyEmail}
                             status={status}
+                            client={client}
+                            props={props}
+                        />
+                    </div> */}
+
+                    <div
+                        className="h-full w-full p-4 shadow sm:rounded-lg sm:p-8"
+                        style={{
+                            backgroundColor: props.primary_color,
+                        }}
+                    >
+                        <UpdateContactForm client={client} props={props} />
+                    </div>
+
+                    {/* <div
+                        className="p-4 shadow sm:rounded-lg sm:p-8"
+                        style={{ backgroundColor: props.primary_color }}
+                    >
+                        <UpdatePasswordForm
                             className="max-w-xl"
+                            client={client}
+                            props={props}
                         />
                     </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <UpdatePasswordForm className="max-w-xl" />
-                    </div>
-
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <DeleteUserForm className="max-w-xl" />
-                    </div>
+                    <div
+                        className="p-4 shadow sm:rounded-lg sm:p-8"
+                        style={{ backgroundColor: props.primary_color }}
+                    >
+                        <DeleteUserForm
+                            className="max-w-xl"
+                            client={client}
+                            props={props}
+                        />
+                    </div> */}
                 </div>
             </div>
         </AuthenticatedLayout>

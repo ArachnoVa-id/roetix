@@ -87,6 +87,16 @@ return [
     'livewire_loading_delay' => 'default',
 
     'auth' => [
-        'guard' => 'web'
-    ]
+        'guard' => 'web',
+    ],
+
+    'icons' => [
+        'default' => 'heroicon-o',
+        'sets' => [
+            'heroicon' => [
+                'path' => base_path('vendor/blade-ui-kit/blade-heroicons/resources/svg'),
+                'prefix' => 'heroicon',
+            ],
+        ],
+    ],
 ];

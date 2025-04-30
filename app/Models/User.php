@@ -4,45 +4,48 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\UserRole;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Panel;
 use Illuminate\Support\Str;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Models\Contracts\HasTenants;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
-use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements FilamentUser, HasName, HasTenants
+class User extends Authenticatable implements FilamentUser, HasName, HasTenants, HasAvatar
 {
-    use HasFactory, Notifiable, HasRoles, HasPanelShield;
+    use Notifiable;
 
     /**
-    * Get the user's name for Filament.
-    *
-    * @return string
-    */
+     * Get the user's name for Filament.
+     *
+     * @return string
+     */
     public function getFilamentName(): string
     {
         return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';
     }
 
-    /**
-    * Get the user's name for Filament.
-    *
-    * @return string
-    */
-    public function getUserName(): string
+    public function getFilamentAvatarUrl(): ?string
     {
-        return trim($this->first_name . ' ' . $this->last_name) ?: 'Unnamed User';
+        return $this->contactInfo?->avatar ?? null;
     }
 
-    protected $primaryKey = 'user_id';
+    public function getFullnameLastWord(): string
+    {
+        $fullname = self::getFilamentName();
+        $lastName = explode(' ', $fullname);
+        return end($lastName);
+    }
+
+    protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
 
@@ -54,10 +57,12 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
     protected $fillable = [
         'email',
         'password',
+        'role',
         'first_name',
         'last_name',
-        'role',
-        'google_id'
+        'google_id',
+        'email_verified_at',
+        'contact_info'
     ];
 
     /**
@@ -88,15 +93,48 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->user_id)) {
-                $model->user_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
 
+    public function getRoleLabel(): string
+    {
+        return UserRole::tryFrom($this->role)->getLabel() ?? 'Unknown';
+    }
+
+    /**
+     * @param UserRole[] $roles
+     */
+    public function isAllowedInRoles(array $roles): bool
+    {
+        return in_array(UserRole::tryFrom($this->role), $roles, strict: true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role == UserRole::ADMIN->value;
+    }
+
+    public function isEO(): bool
+    {
+        return $this->role == UserRole::EVENT_ORGANIZER->value;
+    }
+
+    public function isVendor(): bool
+    {
+        return $this->role == UserRole::VENDOR->value;
+    }
+
+    public function isUser(): bool
+    {
+        return $this->role == UserRole::USER->value;
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role == 'admin' || $this->role == 'vendor' || $this->role == 'event-orginizer';
+        return $this->role == UserRole::ADMIN->value || $this->role == UserRole::VENDOR->value || $this->role == UserRole::EVENT_ORGANIZER->value;
     }
 
     // has tenant things
@@ -104,6 +142,16 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class, 'user_team', 'user_id', 'team_id');
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'user_id', 'id');
+    }
+
+    public function contactInfo(): BelongsTo
+    {
+        return $this->belongsTo(UserContact::class, 'contact_info', 'id');
     }
 
     public function getTenants(Panel $panel): Collection

@@ -2,66 +2,129 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import { EventColorProps, EventProps } from '@/types/front-end';
 import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import styled from 'styled-components';
+
+const StyledLink = styled(Link)<{ $props: EventColorProps }>`
+    color: ${({ $props }) => $props.text_primary_color};
+    &:hover {
+        color: ${({ $props }) => $props.primary_color};
+    }
+`;
 
 export default function UpdateProfileInformation({
     mustVerifyEmail,
     status,
     className = '',
+    client,
+    props,
 }: {
     mustVerifyEmail: boolean;
     status?: string;
     className?: string;
+    client: string;
+    props: EventProps;
 }) {
     const user = usePage().props.auth.user;
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({
-            name: user.name,
-            email: user.email,
+            first_name: user.first_name,
+            last_name: user.last_name,
         });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        patch(route('profile.update'));
+        patch(route('profile.update', { client }), {
+            preserveScroll: true,
+        });
     };
 
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2
+                    className="text-lg font-medium"
+                    style={{
+                        color: props.text_primary_color,
+                    }}
+                >
                     Profile Information
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-600">
-                    Update your account's profile information and email address.
+                <p
+                    className="mt-1 text-sm"
+                    style={{ color: props.text_secondary_color }}
+                >
+                    Account's general profile.
                 </p>
             </header>
 
-            <form onSubmit={submit} className="mt-6 space-y-6">
+            <form onSubmit={submit} className="mt-6 flex flex-col gap-6">
                 <div>
-                    <InputLabel htmlFor="name" value="Name" />
-
-                    <TextInput
-                        id="name"
-                        className="mt-1 block w-full"
-                        value={data.name}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setData('name', e.target.value)
-                        }
-                        required
-                        isFocused
-                        autoComplete="name"
+                    <InputLabel
+                        htmlFor="first_name"
+                        value="First Name"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
                     />
 
-                    <InputError className="mt-2" message={errors.name} />
+                    <TextInput
+                        id="first_name"
+                        className="mt-1 block w-full"
+                        value={data.first_name}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('first_name', e.target.value)
+                        }
+                        required
+                        autoComplete="first_name"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
+                    />
+
+                    <InputError className="mt-2" message={errors.first_name} />
                 </div>
 
                 <div>
-                    <InputLabel htmlFor="email" value="Email" />
+                    <InputLabel
+                        htmlFor="last_name"
+                        value="Last Name"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
+                    />
+
+                    <TextInput
+                        id="last_name"
+                        className="mt-1 block w-full"
+                        value={data.last_name}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setData('last_name', e.target.value)
+                        }
+                        required
+                        autoComplete="last_name"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
+                    />
+
+                    <InputError className="mt-2" message={errors.last_name} />
+                </div>
+
+                {/* <div>
+                    <InputLabel
+                        htmlFor="email"
+                        value="Email"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
+                    />
 
                     <TextInput
                         id="email"
@@ -73,23 +136,30 @@ export default function UpdateProfileInformation({
                         }
                         required
                         autoComplete="username"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
                     />
 
                     <InputError className="mt-2" message={errors.email} />
-                </div>
+                </div> */}
 
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <div>
-                        <p className="mt-2 text-sm text-gray-800">
+                        <p
+                            className="mt-2 text-sm"
+                            style={{ color: props.text_primary_color }}
+                        >
                             Your email address is unverified.
-                            <Link
+                            <StyledLink
+                                $props={props}
                                 href={route('verification.send')}
                                 method="post"
                                 as="button"
-                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                className="rounded-md text-sm underline focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                             >
                                 Click here to re-send the verification email.
-                            </Link>
+                            </StyledLink>
                         </p>
 
                         {status === 'verification-link-sent' && (
@@ -111,7 +181,14 @@ export default function UpdateProfileInformation({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-gray-600">Saved.</p>
+                        <p
+                            className="text-sm"
+                            style={{
+                                color: props.text_secondary_color,
+                            }}
+                        >
+                            Saved.
+                        </p>
                     </Transition>
                 </div>
             </form>

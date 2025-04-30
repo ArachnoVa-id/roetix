@@ -5,29 +5,36 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Event extends Model
 {
     use HasFactory, Notifiable;
 
-    protected $primaryKey = 'event_id';
     public $incrementing = false;
     protected $keyType = 'string';
-
     protected $fillable = [
         'venue_id',
         'name',
         'slug',
-        'category',
         'start_date',
-        'end_date',
+        'event_date',
         'location',
         'status',
         'team_id',
+    ];
+
+    protected $casts = [
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'event_date' => 'datetime',
+    ];
+
+    protected $with = [
+        'team'
     ];
 
     protected static function boot()
@@ -35,29 +42,82 @@ class Event extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->event_id)) {
-                $model->event_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
 
-    public function tikcetcategory(): HasMany
+    public function eventYear(): string
     {
-        return $this->hasMany(TicketCategory::class, 'event_id', 'event_id');
+        return $this->start_date->format('Y');
+    }
+
+    public function getEventDate(): string
+    {
+        $months = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
+        ];
+
+        $day = $this->start_date->format('j');
+        $month = $months[(int)$this->start_date->format('n')];
+        $year = $this->start_date->format('Y');
+
+        return "{$day} {$month} {$year}";
+    }
+
+    public function getEventTime(): string
+    {
+        return $this->start_date->format('H:i') . ' WIB';
+    }
+
+    public function getAllTicketsPDFTitle()
+    {
+        return strtoupper($this->slug) . '-' . $this->eventYear() . '-TICKETS' . '.pdf';
+    }
+
+    public function timelineSessions(): HasMany
+    {
+        return $this
+            ->hasMany(TimelineSession::class, 'event_id', 'id')
+            ->orderBy('start_date');
+    }
+
+    public function ticketCategories(): HasMany
+    {
+        return $this
+            ->hasMany(TicketCategory::class, 'event_id', 'id')
+            ->orderBy('created_at');
+    }
+
+    public function eventVariables(): HasOne
+    {
+        return $this->hasOne(EventVariables::class, 'event_id', 'id');
     }
 
     public function team(): BelongsTo
     {
-        return $this->belongsTo(Team::class, 'team_id', 'team_id');
+        return $this->belongsTo(Team::class, 'team_id', 'id');
     }
 
-    public function venue(): BelongsTo
+    public function orders(): HasMany
     {
-        return $this->belongsTo(Venue::class, 'venue_id', 'venue_id');
+        return $this->hasMany(Order::class, 'event_id', 'id');
     }
 
-    public function orders(): BelongsToMany
+    public function tickets(): HasMany
     {
-        return $this->belongsToMany(Order::class, 'ticket_order', 'event_id', 'order_id');
+        return $this->hasMany(Ticket::class, 'event_id', 'id');
     }
 }

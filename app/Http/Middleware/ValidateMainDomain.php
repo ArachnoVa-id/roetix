@@ -2,10 +2,14 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Closure;
+use Illuminate\Container\Attributes\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Facade;
+use Illuminate\Support\Facades\Log as FacadesLog;
 
 class ValidateMainDomain
 {
@@ -14,28 +18,44 @@ class ValidateMainDomain
         $mainDomain = config('app.domain');
         $currentDomain = $request->getHost();
 
+        // Pastikan auth.google dan auth.google-authentication bisa diakses
+        if (in_array($request->route()->getName(), ['auth.google', 'auth.google-authentication', 'privacy_policy', 'terms_conditions'])) {
+            return $next($request);
+        }
+
         // Ensure subdomains are blocked from the main domain
         if ($currentDomain !== $mainDomain) {
-            abort(403, 'Access denied');
+            return redirect()->route('client.home', ['client' => $request->route('client')]);
         }
 
         // Check if user is authenticated before accessing properties
-        if (!Auth::check()) {
-            return redirect()->route('login'); // Redirect to login if unauthenticated
+        $user = Auth::user();
+
+        if (!$user) {
+            if ($request->route()->getName() !== 'login') {
+                return redirect()->route('login');
+            }
+            return $next($request);
         }
 
-        $user = Auth::user();
-        $user = User::find($user->user_id);
+        $user = User::find($user->id);
 
-        if ($user->role === 'user') {
+        if ($user->isUser()) {
             Auth::logout();
             return redirect()->route('login');
         }
 
-        $firstTeam = optional($user->teams()->first())->name;
+        $firstTeam = optional($user->teams()->first());
         if (!$firstTeam) {
             Auth::logout();
             return redirect()->route('login');
+        }
+
+        if ($request->route()->getName() === 'login' || $request->route()->getName() === 'home') {
+            if ($user->isAdmin()) {
+                return redirect()->route('filament.novatix-admin.pages.dashboard');
+            }
+            return redirect()->route('filament.admin.pages.dashboard', ['tenant' => $firstTeam->code]);
         }
 
         return $next($request);

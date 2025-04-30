@@ -11,16 +11,16 @@ use Illuminate\Support\Str;
 
 class Team extends Model
 {
-    /** @use HasFactory<\Database\Factories\TeamFactory> */
     use HasFactory;
 
-    protected $primaryKey = 'team_id';
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'name',
-        'code'
+        'code',
+        'vendor_quota',
+        'event_quota',
     ];
 
     protected static function boot()
@@ -28,8 +28,8 @@ class Team extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->team_id)) {
-                $model->team_id = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }
@@ -41,17 +41,21 @@ class Team extends Model
 
     public function events(): HasMany
     {
-        return $this->hasMany(Event::class, 'team_id', 'team_id');
+        return $this->hasMany(Event::class, 'team_id', 'id');
     }
 
     public function venues(): HasMany
     {
-        return $this->hasMany(Venue::class, 'team_id', 'team_id');
+        return $this->hasMany(Venue::class, 'team_id', 'id');
     }
 
     public function tickets(): HasMany
     {
-        return $this->hasMany(Ticket::class, 'team_id', 'team_id');
+        return $this->hasMany(Ticket::class, 'team_id', 'id');
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'team_id', 'id');
+    }
 }

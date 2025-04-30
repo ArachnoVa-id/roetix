@@ -9,6 +9,7 @@ declare global {
         snap?: {
             pay: (snapToken: string, callbacks: MidtransCallbacks) => void;
         };
+        eventTimelines?: Timeline[]; // Gunakan interface Timeline
     }
 
     /* eslint-disable no-var */

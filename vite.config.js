@@ -18,4 +18,7 @@ export default defineConfig({
     server: {
         cors: true,
     },
+    esbuild: {
+        loader: 'tsx',
+    },
 });

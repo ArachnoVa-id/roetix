@@ -2,26 +2,27 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\UserContact;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
-    {
+    private array $defaultUsers;
 
-        $data = [
+    public function __construct()
+    {
+        $this->defaultUsers = [
             // user
             [
                 'email' => 'user@example.com',
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'user',
-                'role' => 'user',
+                'role' => UserRole::USER->value,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // admin novatix
@@ -30,7 +31,8 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'admin',
-                'role' => 'admin',
+                'role' => UserRole::ADMIN->value,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // vendor 1
@@ -39,7 +41,8 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'vendor1',
-                'role' => 'vendor',
+                'role' => UserRole::VENDOR->value,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // vendor 2
@@ -48,7 +51,8 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'vendor2',
-                'role' => 'vendor',
+                'role' => UserRole::VENDOR->value,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // eo 1
@@ -57,7 +61,8 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'eo1',
-                'role' => 'event-orginizer',
+                'role' => UserRole::EVENT_ORGANIZER->value,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
 
             // eo2
@@ -66,22 +71,19 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('test123'),
                 'first_name' => 'test',
                 'last_name' => 'eo2',
-                'role' => 'event-orginizer',
+                'role' => UserRole::EVENT_ORGANIZER->value,
+                'contact_info' => UserContact::factory()->create()->id,
             ],
         ];
-        
-        foreach($data as $user)
-        {
-            $created_user = User::create([
-                'email' => $user['email'],
-                'password' => $user['password'],
-                'first_name' => $user['first_name'],
-                'last_name' => $user['last_name'],
-                'role' => $user['role'],
-            ]);
+    }
 
-            // assign rolenya disini lex
-            // $created_user->syncRoles([$user['role']]);
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        foreach ($this->defaultUsers as $user) {
+            User::create($user);
         }
     }
 }

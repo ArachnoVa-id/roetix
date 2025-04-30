@@ -1,62 +1,64 @@
+// GridEdit.tsx
+import Toaster from '@/Components/novatix/Toaster';
+import useToaster from '@/hooks/useToaster';
+import { GridEditorProps } from '@/types/editor';
+import { Layout, SeatItem } from '@/types/seatmap';
 import { Head, router } from '@inertiajs/react';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import GridSeatEditor from './GridSeatEditor';
-import { LabelItem, Layout, SeatItem } from './types';
 
-interface Props {
-    layout?: Layout;
-    venue_id: string;
-    errors?: { [key: string]: string };
-    flash?: { success?: string };
-}
-
-const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+const GridEdit: React.FC<GridEditorProps> = ({
+    layout,
+    venue_id,
+    errors,
+    flash,
+}) => {
+    const { toasterState, showSuccess, showError, hideToaster } = useToaster();
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
     useEffect(() => {
         if (errors && Object.keys(errors).length > 0) {
-            setError(Object.values(errors).join('\n'));
+            showError(Object.values(errors).join('\n'));
         }
 
         if (flash?.success) {
-            setSuccess(flash.success);
+            showSuccess(flash.success);
         }
-    }, [errors, flash]);
+    }, [errors, flash, showError, showSuccess]);
 
     const handleSave = async (updatedLayout: Layout) => {
+        setIsSubmitting(true);
+
         try {
             const convertedItems = updatedLayout.items.map((item) => {
-                if (item.type === 'seat') {
-                    const seatItem = item as SeatItem;
-                    const rowStr =
-                        typeof seatItem.row === 'string'
-                            ? seatItem.row
-                            : String.fromCharCode(65 + seatItem.row);
-                    return {
-                        type: 'seat',
-                        seat_id: seatItem.seat_id,
-                        seat_number: seatItem.seat_number,
-                        row: rowStr,
-                        column: seatItem.column,
-                        status: seatItem.status,
-                        category: seatItem.category,
-                        position: `${rowStr}${seatItem.column}`,
-                    };
-                }
+                // if (item.type === 'seat') {
 
-                const labelItem = item as LabelItem;
+                const seatItem = item as SeatItem;
                 const rowStr =
-                    typeof labelItem.row === 'string'
-                        ? labelItem.row
-                        : String.fromCharCode(65 + labelItem.row);
+                    typeof seatItem.row === 'string'
+                        ? seatItem.row
+                        : String.fromCharCode(65 + seatItem.row);
+
                 return {
-                    type: 'label',
+                    type: 'seat',
+                    id: seatItem.id,
+                    seat_number: seatItem.seat_number,
                     row: rowStr,
-                    column: labelItem.column,
-                    text: labelItem.text,
+                    column: seatItem.column,
+                    position: `${rowStr}${seatItem.column}`,
                 };
+
+                // const labelItem = item as LabelItem;
+                // const rowStr =
+                //     typeof labelItem.row === 'string'
+                //         ? labelItem.row
+                //         : String.fromCharCode(65 + labelItem.row);
+                // return {
+                //     type: 'label',
+                //     row: rowStr,
+                //     column: labelItem.column,
+                //     text: labelItem.text,
+                // };
             });
 
             const payload = {
@@ -66,64 +68,50 @@ const GridEdit: React.FC<Props> = ({ layout, venue_id, errors, flash }) => {
                 items: convertedItems,
             };
 
-            router.post('/seats/update-layout', payload, {
+            // Use Inertia router for the form submission
+            router.post('/seats/save-grid-layout', payload, {
                 preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    showSuccess('Layout saved sucessfully');
+                    setIsSubmitting(false);
+                },
+                onError: (errors) => {
+                    showError(Object.values(errors).join('\n'));
+                    setIsSubmitting(false);
+                },
+                onFinish: () => {
+                    setIsSubmitting(false);
+                },
             });
         } catch (err) {
             console.error('Error in handleSave:', err);
-            setError('Failed to process layout data');
-            setSuccess(null);
+            showError('Failed to process layout data');
+            setIsSubmitting(false);
         }
     };
 
     return (
         <>
-            <Head title="Grid Seat Editor" />
-            <div className="py-12">
-                <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-xl sm:rounded-lg">
-                        <div className="p-6">
-                            <h2 className="mb-4 text-2xl font-bold">
-                                Grid Seat Editor
-                            </h2>
-
-                            {error && (
-                                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-                                    <div className="flex items-center">
-                                        <AlertCircle className="mr-2 h-4 w-4 text-red-500" />
-                                        <p className="whitespace-pre-wrap text-red-500">
-                                            {error}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {success && (
-                                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
-                                    <div className="flex items-center">
-                                        <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                                        <p className="text-green-500">
-                                            {success}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="w-full overflow-x-auto">
-                                <div className="inline-block min-w-full">
-                                    <div className="flex justify-center">
-                                        <GridSeatEditor
-                                            initialLayout={layout}
-                                            onSave={handleSave}
-                                            venueId={venue_id}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <Head title="Venue Editor - NovaTix Vendor" />
+            {/* Take up full viewport without scrolling */}
+            <div className="fixed inset-0 overflow-hidden">
+                <div className="h-full w-full">
+                    <GridSeatEditor
+                        initialLayout={layout}
+                        onSave={handleSave}
+                        venueId={venue_id}
+                        isDisabled={isSubmitting}
+                    />
                 </div>
             </div>
+
+            <Toaster
+                message={toasterState.message}
+                type={toasterState.type}
+                isVisible={toasterState.isVisible}
+                onClose={hideToaster}
+            />
         </>
     );
 };

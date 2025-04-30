@@ -13,7 +13,7 @@ class SeatGridController extends Controller
     public function index(Request $request)
     {
         $venueId = $request->query('venue_id');
-        
+
         if (!$venueId) {
             return redirect()->back()->withErrors(['error' => 'Venue ID is required']);
         }
@@ -29,10 +29,10 @@ class SeatGridController extends Controller
             $layout = [
                 'totalRows' => $seats->isEmpty() ? 10 : count(array_unique($seats->pluck('row')->toArray())),
                 'totalColumns' => $seats->isEmpty() ? 15 : $seats->max('column'),
-                'items' => $seats->map(function($seat) {
+                'items' => $seats->map(function ($seat) {
                     return [
                         'type' => 'seat',
-                        'seat_id' => $seat->seat_id,
+                        'seat_id' => $seat->id,
                         'seat_number' => $seat->seat_number,
                         'row' => $seat->row,
                         'column' => $seat->column,
@@ -46,7 +46,6 @@ class SeatGridController extends Controller
                 'layout' => $layout,
                 'venue_id' => $venueId
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error in grid edit: ' . $e->getMessage());
             return redirect()->back()->withErrors(['error' => 'Failed to load seat layout']);
@@ -75,19 +74,19 @@ class SeatGridController extends Controller
 
             // Get existing seats
             $existingSeats = Seat::where('venue_id', $validated['venue_id'])
-                ->pluck('seat_id')
+                ->pluck('id')
                 ->toArray();
 
             // Filter seat items only
             $seatItems = collect($validated['items'])->filter(function ($item) {
                 return $item['type'] === 'seat';
             });
-            
+
             $updatedSeatIds = $seatItems->pluck('seat_id')->toArray();
 
             // Delete seats that are no longer in the layout
             Seat::where('venue_id', $validated['venue_id'])
-                ->whereNotIn('seat_id', $updatedSeatIds)
+                ->whereNotIn('id', $updatedSeatIds)
                 ->delete();
 
             // Update or create seats
@@ -102,7 +101,7 @@ class SeatGridController extends Controller
 
                 Seat::updateOrCreate(
                     [
-                        'seat_id' => $item['seat_id'],
+                        'id' => $item['seat_id'],
                         'venue_id' => $validated['venue_id']
                     ],
                     [
@@ -141,23 +140,22 @@ class SeatGridController extends Controller
                 'message' => 'Layout updated successfully',
                 'seats' => $seats
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating layout: ' . $e->getMessage());
-            
+
             return response()->json([
                 'error' => 'Failed to update layout: ' . $e->getMessage()
             ], 500);
         }
     }
 
-    private function generateUniqueSeatId(): string 
+    private function generateUniqueSeatId(): string
     {
         do {
             $seatId = 'ST-' . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
-        } while (Seat::where('seat_id', $seatId)->exists());
-        
+        } while (Seat::where('id', $seatId)->exists());
+
         return $seatId;
     }
 }

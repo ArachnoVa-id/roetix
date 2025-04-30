@@ -2,66 +2,48 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Tenancy\RegisterTeam;
+use App\Enums\UserRole;
 use App\Models\Team;
-use Filament\Http\Middleware\Authenticate;
-use Filament\Http\Middleware\AuthenticateSession;
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
-use Filament\Widgets;
-use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\Components;
+use App\Models\User;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Auth;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
-            ->id('admin')
-            ->domain(config('app.domain'))
-            ->path('admin')
-            ->colors([
-                'primary' => Color::Amber,
-            ])
-            ->tenant(Team::class, slugAttribute: 'name')
-            // ->tenantMiddleware([
-            //     \BezhanSalleh\FilamentShield\Middleware\SyncShieldTenant::class,
-            // ], isPersistent: true)
-            // ->plugins([
-            //     \BezhanSalleh\FilamentShield\FilamentShieldPlugin::make(),
-            // ])
-            ->tenantRegistration(RegisterTeam::class)
-            ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
-            ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
-            ->pages([
-                Pages\Dashboard::class,
-            ])
-            ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
-            ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
-            ])
-            ->middleware([
-                EncryptCookies::class,
-                AddQueuedCookiesToResponse::class,
-                StartSession::class,
-                AuthenticateSession::class,
-                ShareErrorsFromSession::class,
-                VerifyCsrfToken::class,
-                SubstituteBindings::class,
-                DisableBladeIconComponents::class,
-                DispatchServingFilamentEvent::class,
-            ])
-            ->authMiddleware([
-                Authenticate::class,
-            ]);
+        return
+            SharedPanelSetup::commonSetup(
+                $panel
+                    ->brandName(function () {
+                        $user = User::find(Auth::id());
+                        return 'NovaTix ' . UserRole::tryFrom($user->role)->getLabel() ?? 'Unknown';
+                    })
+                    ->default()
+                    ->id('admin')
+                    ->domain(config('app.domain'))
+                    ->path('admin')
+                    ->tenant(
+                        Team::class,
+                        slugAttribute: 'code'
+                    )
+                    ->discoverResources(
+                        in: app_path('Filament/Admin/Resources'),
+                        for: 'App\\Filament\\Admin\\Resources'
+                    )
+                    ->discoverPages(
+                        in: app_path('Filament/Admin/Pages'),
+                        for: 'App\\Filament\\Admin\\Pages'
+                    )
+                    ->pages([])
+                    ->discoverWidgets(
+                        in: app_path('Filament/Admin/Widgets'),
+                        for: 'App\\Filament\\Admin\\Widgets'
+                    )
+                    ->widgets([])
+            );
     }
 }

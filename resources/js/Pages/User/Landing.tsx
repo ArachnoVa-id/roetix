@@ -1,87 +1,364 @@
+import Toaster from '@/Components/novatix/Toaster'; // Import the Toaster component
+import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransactionButton';
-import SeatMapDisplay from '@/Pages/Seat/SeatMapDisplay';
-import { Layout, SeatItem } from '@/Pages/Seat/types';
+import {
+    LandingProps,
+    MidtransCallbacks,
+    PendingTransactionResponseItem,
+    SeatItem,
+} from '@/types/seatmap';
 import { Head } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
-
-interface Venue {
-    venue_id: string;
-    name: string;
-}
-
-interface Event {
-    event_id: string;
-    name: string;
-    date: string;
-    venue_id: string;
-}
-
-interface Props {
-    client: string;
-    layout: Layout;
-    event: Event;
-    venue: Venue;
-    ticketTypes: string[];
-    error?: string;
-}
+import axios from 'axios';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import SeatMapDisplay from '../Seat/SeatMapDisplay';
 
 export default function Landing({
     client,
     layout,
     event,
     venue,
-    ticketTypes = ['standard', 'VIP', 'Regular'],
+    ticketCategories = [],
+    currentTimeline,
+    categoryPrices = [],
     error,
-}: Props) {
-    // console.log('Landing component rendered with props:', {
-    //     client,
-    //     layout,
-    //     event,
-    //     venue,
-    //     ticketTypes,
-    //     error,
-    // });
-
+    props,
+    ownedTicketCount,
+}: LandingProps) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
+    const { toasterState, showSuccess, showError, hideToaster } = useToaster();
+    const [pendingTransactions, setPendingTransactions] = useState<
+        PendingTransactionResponseItem[]
+    >([]);
 
-    // Create a map of ticket types to colors for display
-    const ticketTypeColors: Record<string, string> = {};
-    ticketTypes.forEach((type, index) => {
-        const colorClasses = [
-            'bg-cyan-400', // For VIP or first type
-            'bg-yellow-400', // For standard or second type
-            'bg-green-400', // For third type
-            'bg-purple-400', // For fourth type
-            'bg-gray-300', // For any additional type
-        ];
-
-        ticketTypeColors[type] = colorClasses[index] || 'bg-gray-300';
-    });
-
-    const handleSeatClick = (seat: SeatItem) => {
-        if (seat.status !== 'available') {
-            return; // Only allow selecting available seats
+    // Show error if it exists when component mounts
+    useEffect(() => {
+        if (error) {
+            showError(error);
         }
+    }, [error, showError]);
 
-        const exists = selectedSeats.find((s) => s.seat_id === seat.seat_id);
-        if (exists) {
-            setSelectedSeats(
-                selectedSeats.filter((s) => s.seat_id !== seat.seat_id),
+    const refShowError = useRef(showError);
+    useEffect(() => {
+        const fetchPendingTransactions = async (): Promise<void> => {
+            try {
+                // Tambahkan timestamp untuk mencegah caching
+                const response = await fetch(route('payment.pending', client));
+
+                if (!response.ok) {
+                    console.error('Server response:', await response.text());
+                    throw new Error(
+                        `Failed to fetch pending transactions: ${response.status} ${response.statusText}`,
+                    );
+                }
+
+                const data = (await response.json()) as {
+                    success: boolean;
+                    pendingTransactions: PendingTransactionResponseItem[];
+                };
+                if (data.success && data.pendingTransactions.length > 0) {
+                    // Set pending transactions
+                    setPendingTransactions(data.pendingTransactions);
+                }
+            } catch (error) {
+                console.error('Error fetching pending transactions:', error);
+                refShowError.current(
+                    'Failed to load pending transactions. Please refresh the page.',
+                );
+            }
+        };
+
+        fetchPendingTransactions();
+    }, [client]);
+
+    const [snapInitialized, setSnapInitialized] = useState<boolean>(false);
+    // Initialize Midtrans Snap on component mount
+    const showErrorRef = useRef(showError);
+    const showSuccessRef = useRef(showSuccess);
+
+    useEffect(() => {
+        const fetchAndInitializeSnap = async () => {
+            setSnapInitialized(false);
+
+            let clientKey = null;
+            let isProduction = null;
+
+            try {
+                const response = await axios.get('api/payment/get-client');
+                clientKey = response.data.client_key;
+                isProduction = response.data.is_production;
+            } catch (error) {
+                console.error('Failed to fetch client key:', error);
+                showErrorRef.current(
+                    'Failed to fetch client key. Please try again later.',
+                );
+                return;
+            }
+
+            if (!clientKey) {
+                showErrorRef.current(
+                    'System payment is not yet activated. Please contact admin.',
+                );
+                return;
+            }
+
+            showSuccessRef.current(
+                'System payment has been activated. You may purchase your tickets.',
             );
-        } else {
-            if (selectedSeats.length < 5) {
-                setSelectedSeats([...selectedSeats, seat]);
+
+            // Load Snap.js
+            const snapScript = document.createElement('script');
+            snapScript.src = isProduction
+                ? 'https://app.midtrans.com/snap/snap.js'
+                : 'https://app.sandbox.midtrans.com/snap/snap.js';
+            snapScript.setAttribute('data-client-key', clientKey);
+            snapScript.onload = () => {
+                setSnapInitialized(true);
+            };
+            snapScript.onerror = () => {
+                console.error('Failed to load Midtrans Snap');
+                showErrorRef.current(
+                    'Payment system could not be loaded. Please try again later.',
+                );
+            };
+
+            document.head.appendChild(snapScript);
+        };
+
+        fetchAndInitializeSnap();
+    }, []); // Only run once when the component mounts
+
+    const createCallbacks = (): MidtransCallbacks => {
+        return {
+            onSuccess: () => {
+                showSuccess('Payment successful!');
+                window.location.reload();
+            },
+            onPending: () => {
+                showSuccess(
+                    'Your payment is pending. Please complete the payment.',
+                );
+                window.location.reload();
+            },
+            onError: () => {
+                showError('Payment failed. Please try again.');
+            },
+            onClose: () => {
+                showSuccess(
+                    'Payment window closed. You can resume your payment using the "Resume Payment" button below.',
+                );
+                window.location.reload();
+            },
+        };
+    };
+
+    const resumePayment = async (token: string) => {
+        if (!window.snap) return;
+
+        showSuccess('Preparing your payment...');
+
+        try {
+            window.snap.pay(token, createCallbacks());
+        } catch (err) {
+            console.error('Failed to resume payment:', err);
+
+            if (axios.isAxiosError(err)) {
+                const errorMsg =
+                    err.response?.data?.message ||
+                    'Failed to connect to payment server';
+                showError(errorMsg);
+            } else {
+                showError('Failed to resume payment. Please try again.');
             }
         }
+    };
+
+    interface CancellingStack {
+        order_id: string;
+        cancelling: boolean;
+    }
+    const [cancellingStack, setCancellingStack] = useState<CancellingStack[]>(
+        [],
+    );
+
+    const addItemToStack = (orderId: string) => {
+        const newItem = {
+            order_id: orderId,
+            cancelling: true,
+        };
+        setCancellingStack((prevStack) => [...prevStack, newItem]);
+    };
+
+    const removeItemFromStack = (orderId: string) => {
+        setCancellingStack((prevStack) =>
+            prevStack.filter((item) => item.order_id !== orderId),
+        );
+    };
+
+    const cancelPayment = async (order_ids: string[]) => {
+        if (!order_ids) return;
+
+        showSuccess('Cancelling your payment...');
+
+        try {
+            const response = await axios.post(route('payment.cancel', client), {
+                order_ids,
+            });
+
+            if (response.data.success) {
+                showSuccess('Payment cancelled successfully');
+                window.location.reload();
+            } else {
+                showError(response.data.message || 'Failed to cancel payment');
+            }
+        } catch (err) {
+            console.error('Failed to cancel payment:', err);
+
+            if (axios.isAxiosError(err)) {
+                const errorMsg =
+                    err.response?.data?.message ||
+                    'Failed to connect to payment server';
+                showError(errorMsg);
+            } else {
+                showError('Failed to cancel payment. Please try again.');
+            }
+        }
+    };
+
+    // Tentukan apakah booking diperbolehkan berdasarkan status event
+    const isBookingAllowed = useMemo(() => {
+        return event && event.status === 'active';
+    }, [event]);
+
+    // Tambahkan pesan status yang akan ditampilkan jika booking tidak diizinkan
+    const eventStatusMessage = useMemo(() => {
+        if (!event) return '';
+
+        switch (event.status) {
+            case 'planned':
+                return 'This event is not yet ready for booking';
+            case 'completed':
+                return 'This event does not accept booking anymore';
+            case 'cancelled':
+                return 'This event has been cancelled';
+            default:
+                return '';
+        }
+    }, [event]);
+
+    // Extract ticket types from categories
+    const ticketTypes = useMemo(
+        () =>
+            ticketCategories.length > 0
+                ? ticketCategories.map((cat) => cat.name)
+                : ['unset'],
+        [ticketCategories],
+    );
+
+    // Create a map of ticket types to colors for display
+    const ticketTypeColors: Record<string, string> = useMemo(() => {
+        const colors: Record<string, string> = {};
+
+        // Jika ada kategori tiket dengan warna, gunakan itu
+        if (ticketCategories.length > 0) {
+            ticketCategories.forEach((category) => {
+                // Gunakan nilai hex langsung dari database
+                colors[category.name] = category.color;
+            });
+        } else {
+            // Fallback colors dalam hex
+            colors['unset'] = '#FFF';
+        }
+
+        return colors;
+    }, [ticketCategories]);
+
+    // Function to get price for a seat based on its category and current timeline
+    const getSeatPrice = (seat: SeatItem): number => {
+        if (!seat.ticket_type || !currentTimeline) {
+            return typeof seat.price === 'number'
+                ? seat.price
+                : parseFloat(seat.price as string) || 0;
+        }
+
+        // Find the ticket category ID for this seat's ticket type
+        const category = ticketCategories.find(
+            (cat) => cat.name === seat.ticket_type,
+        );
+        if (!category) {
+            return typeof seat.price === 'number'
+                ? seat.price
+                : parseFloat(seat.price as string) || 0;
+        }
+
+        // Find the price for this category in the current timeline
+        const priceEntry = categoryPrices.find(
+            (p) =>
+                p.ticket_category_id === category.id &&
+                p.timeline_id === currentTimeline.id,
+        );
+
+        if (priceEntry) {
+            return priceEntry.price;
+        }
+
+        return typeof seat.price === 'number'
+            ? seat.price
+            : parseFloat(seat.price as string) || 0;
+    };
+
+    const handleSeatClick = (seat: SeatItem) => {
+        const exists = selectedSeats.find((s) => s.id === seat.id);
+        if (exists) {
+            setSelectedSeats(selectedSeats.filter((s) => s.id !== seat.id));
+            showSuccess(`Seat ${seat.seat_number} removed from selection`);
+
+            return;
+        }
+
+        if (!isBookingAllowed) {
+            showError('Booking is not allowed at this time');
+            return;
+        }
+
+        if (seat.status !== 'available') {
+            showError('This seat is not available');
+            return;
+        }
+
+        if (pendingTransactions.length != 0) {
+            showError(
+                'You have pending transactions. Please complete or cancel them first.',
+            );
+            return;
+        }
+
+        const selectedTicketCount = selectedSeats.length;
+        const ticketLimit = props.ticket_limit || 0; // Fallback to 0 if not set
+        if (selectedTicketCount + 1 + ownedTicketCount > ticketLimit) {
+            showError(
+                'You have reached the maximum number of tickets you can purchase',
+            );
+            return;
+        }
+
+        // Calculate correct price based on category and timeline
+        const updatedSeat = {
+            ...seat,
+            price: getSeatPrice(seat),
+        };
+        setSelectedSeats([...selectedSeats, updatedSeat]);
+        showSuccess(`Seat ${seat.seat_number} added to selection`);
+    };
+
+    const deselectAllSeats = () => {
+        setSelectedSeats([]);
+        showSuccess('All selected seats have been deselected');
     };
 
     // Fixed price conversion function that preserves decimal places correctly
     const getSafePrice = (price: string | number | undefined): number => {
         if (price === undefined || price === null) return 0;
-
-        // For debugging
-        // console.log('Original price value:', price, 'Type:', typeof price);
 
         // If it's already a number, return it directly
         if (typeof price === 'number') {
@@ -105,15 +382,6 @@ export default function Landing({
             }
 
             const numericPrice = parseFloat(cleaned);
-
-            // Log the cleaned string and the resulting number
-            // console.log(
-            //     'Cleaned string:',
-            //     cleaned,
-            //     'Parsed number:',
-            //     numericPrice,
-            // );
-
             return isNaN(numericPrice) ? 0 : numericPrice;
         }
 
@@ -123,12 +391,8 @@ export default function Landing({
     // Format currency with proper Indonesian formatting without multiplying the value
     const formatRupiah = (value: number): string => {
         if (isNaN(value) || value === null || value === undefined) {
-            // console.error('Attempting to format invalid value:', value);
             return 'Rp 0,00';
         }
-
-        // Log the value we're about to format for debugging
-        // console.log('Formatting value:', value);
 
         // Format with Indonesian locale (uses period for thousands, comma for decimal)
         return new Intl.NumberFormat('id-ID', {
@@ -141,48 +405,44 @@ export default function Landing({
 
     // Calculate prices using useMemo to avoid recalculating on every render
     const { subtotal, taxAmount, total } = useMemo(() => {
-        // Calculate subtotal with detailed logging
+        // Calculate subtotal
         const subtotal = selectedSeats.reduce((acc, seat) => {
             const seatPrice = getSafePrice(seat.price);
-            // console.log(
-            //     `Seat ${seat.seat_number} price: ${seat.price} → ${seatPrice}`,
-            // );
             return acc + seatPrice;
         }, 0);
-
-        // console.log('Calculated subtotal:', subtotal);
 
         // Calculate tax
         const taxRate = 1; // 1%
         const taxAmount = (subtotal * taxRate) / 100;
 
-        // console.log('Calculated tax amount:', taxAmount);
-
         // Calculate total
         const total = subtotal + taxAmount;
-
-        // console.log('Calculated total:', total);
 
         return { subtotal, taxAmount, total };
     }, [selectedSeats]);
 
     // Status legend
     const statusLegends = [
+        { label: 'Available', color: 'bg-white' },
         { label: 'Booked', color: 'bg-red-500' },
         { label: 'In Transaction', color: 'bg-yellow-500' },
         { label: 'Reserved', color: 'bg-gray-400' },
     ];
 
-    // If we have an error, show it
     if (error) {
         return (
-            <AuthenticatedLayout client={client}>
+            <AuthenticatedLayout client={client} props={props}>
                 <Head title="Error" />
                 <div className="py-8">
                     <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                        <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                        <div
+                            className="overflow-hidden shadow-sm sm:rounded-lg"
+                            style={{
+                                backgroundColor: props.primary_color,
+                            }}
+                        >
                             <div className="p-6 text-gray-900">
-                                <h1 className="text-2xl font-bold text-red-600">
+                                <h1 className="text-lg font-bold text-red-600">
                                     Error
                                 </h1>
                                 <p className="mt-4">{error}</p>
@@ -195,127 +455,723 @@ export default function Landing({
     }
 
     return (
-        <AuthenticatedLayout client={client}>
-            <Head title="Book Tickets" />
-            <div className="py-8">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            {event && venue ? (
-                                <>
-                                    <h1 className="text-2xl font-bold">
-                                        {event.name}
-                                    </h1>
-                                    <p className="text-lg text-gray-600">
-                                        Venue: {venue.name}
+        <AuthenticatedLayout client={client} props={props}>
+            <Head title={'Book Tickets | ' + event.name} />
+            <div className="flex w-full flex-col gap-4 py-4">
+                {/* Tampilkan pesan status event jika tidak active */}
+                {!isBookingAllowed && event && (
+                    <div className="mx-auto w-fit sm:px-6 lg:px-8">
+                        <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
+                            <p className="text-center font-medium text-yellow-800">
+                                {eventStatusMessage}
+                            </p>
+                        </div>
+                    </div>
+                )}
+                <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
+                    <div
+                        className="flex flex-col rounded-lg p-6 shadow-xl"
+                        style={{
+                            backgroundColor: props.primary_color,
+                            color: props.text_primary_color,
+                        }}
+                    >
+                        {/* Three-column grid for A, B, C sections */}
+                        <div className="mb-6 flex w-full flex-col gap-4 md:flex-row">
+                            {/* Column A: Event Info */}
+                            <div
+                                className="flex w-full flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg md:w-[35%]"
+                                style={{
+                                    backgroundColor: props.secondary_color,
+                                    borderRight: `4px solid ${props.primary_color}`,
+                                }}
+                            >
+                                {event && venue ? (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <h2
+                                                className="text-xl font-bold"
+                                                style={{
+                                                    color: props.text_primary_color,
+                                                }}
+                                            >
+                                                {event.name}
+                                            </h2>
+                                            {/* Status section */}
+                                            <div className="w-fit">
+                                                {event && (
+                                                    <div
+                                                        className="flex w-full items-center justify-center rounded-lg bg-opacity-50 px-2"
+                                                        style={{
+                                                            backgroundColor:
+                                                                event.status ===
+                                                                'active'
+                                                                    ? 'rgba(34, 197, 94, 0.1)'
+                                                                    : event.status ===
+                                                                        'planned'
+                                                                      ? 'rgba(59, 130, 246, 0.1)'
+                                                                      : event.status ===
+                                                                          'completed'
+                                                                        ? 'rgba(107, 114, 128, 0.1)'
+                                                                        : 'rgba(239, 68, 68, 0.1)',
+                                                        }}
+                                                    >
+                                                        <div
+                                                            className={`h-2 w-2 rounded-full ${
+                                                                event.status ===
+                                                                'active'
+                                                                    ? 'bg-green-500'
+                                                                    : event.status ===
+                                                                        'planned'
+                                                                      ? 'bg-blue-500'
+                                                                      : event.status ===
+                                                                          'completed'
+                                                                        ? 'bg-gray-500'
+                                                                        : 'bg-red-500'
+                                                            } mr-2 animate-pulse`}
+                                                        ></div>
+                                                        <span
+                                                            className="text-sm font-medium"
+                                                            style={{
+                                                                color:
+                                                                    event.status ===
+                                                                    'active'
+                                                                        ? '#16a34a'
+                                                                        : event.status ===
+                                                                            'planned'
+                                                                          ? '#2563eb'
+                                                                          : event.status ===
+                                                                              'completed'
+                                                                            ? '#4b5563'
+                                                                            : '#dc2626',
+                                                            }}
+                                                        >
+                                                            {event.status ===
+                                                            'active'
+                                                                ? 'Active'
+                                                                : event.status ===
+                                                                    'planned'
+                                                                  ? 'Planned'
+                                                                  : event.status ===
+                                                                      'completed'
+                                                                    ? 'Completed'
+                                                                    : 'Cancelled'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex grow items-start">
+                                            <div className="flex w-full flex-col items-stretch gap-4">
+                                                <div className="flex w-full justify-between gap-1 text-sm">
+                                                    <div className="flex">
+                                                        <svg
+                                                            className="mr-1 mt-[2px] h-4 w-4"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                                            />
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                                            />
+                                                        </svg>
+                                                        <div className="flex flex-col">
+                                                            <p
+                                                                className="font-bold"
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                Venue
+                                                            </p>
+                                                            <p
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                {venue.name}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end text-end">
+                                                        <div className="flex flex-col">
+                                                            <p
+                                                                className="font-bold"
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                D-Day
+                                                            </p>
+                                                            <p
+                                                                style={{
+                                                                    color: props.text_secondary_color,
+                                                                }}
+                                                            >
+                                                                {new Date(
+                                                                    event.event_date,
+                                                                ).toLocaleString(
+                                                                    'en-US',
+                                                                    {
+                                                                        weekday:
+                                                                            'short',
+                                                                        day: 'numeric',
+                                                                        month: 'long',
+                                                                        year: 'numeric',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit',
+                                                                        hour12: false,
+                                                                    },
+                                                                )}{' '}
+                                                                WIB
+                                                            </p>
+                                                        </div>
+                                                        <svg
+                                                            className="ml-1 mt-[2px] h-4 w-4"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                {/* Timeline section */}
+                                                {currentTimeline && (
+                                                    <div
+                                                        className="w-full rounded-lg p-1 px-3"
+                                                        style={{
+                                                            backgroundColor:
+                                                                'rgba(59, 130, 246, 0.1)',
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center justify-end text-sm font-semibold text-blue-600">
+                                                            <p>
+                                                                {
+                                                                    currentTimeline.name
+                                                                }
+                                                            </p>
+                                                            <svg
+                                                                className="ml-2 h-4 w-4"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={
+                                                                        2
+                                                                    }
+                                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                                />
+                                                            </svg>
+                                                        </div>
+                                                        <div
+                                                            className="flex w-full items-center justify-end text-xs text-blue-500"
+                                                            style={{
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            {new Date(
+                                                                currentTimeline.start_date,
+                                                            ).toLocaleString(
+                                                                'en-US',
+                                                                {
+                                                                    weekday:
+                                                                        'short',
+                                                                    day: 'numeric',
+                                                                    month: 'long',
+                                                                    year: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    hour12: false,
+                                                                },
+                                                            )}{' '}
+                                                            WIB -{' '}
+                                                            {new Date(
+                                                                currentTimeline.end_date,
+                                                            ).toLocaleString(
+                                                                'en-US',
+                                                                {
+                                                                    weekday:
+                                                                        'short',
+                                                                    day: 'numeric',
+                                                                    month: 'long',
+                                                                    year: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    hour12: false,
+                                                                },
+                                                            )}{' '}
+                                                            WIB
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Additional content for section A */}
+                                        <hr
+                                            className="border-[1.5px]"
+                                            style={{
+                                                borderColor:
+                                                    props.text_primary_color,
+                                            }}
+                                        />
+                                        <div className="flex justify-between">
+                                            <div className="flex items-center">
+                                                <svg
+                                                    className="-mb-1 -mt-1 ml-1 mr-2 h-4 w-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    style={{
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                                                    />
+                                                </svg>
+
+                                                <p
+                                                    className="text-xs leading-[1.1]"
+                                                    style={{
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    {isBookingAllowed
+                                                        ? 'Available for booking'
+                                                        : 'Unavailable for booking'}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex items-center">
+                                                <p
+                                                    className="text-right text-xs leading-[1.1]"
+                                                    style={{
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    You can select up to{' '}
+                                                    {props.ticket_limit || 0}{' '}
+                                                    seats
+                                                </p>
+
+                                                <svg
+                                                    className="-mb-1 -mt-1 ml-2 mr-1 h-4 w-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    style={{
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"
+                                                    />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <h2 className="text-lg font-bold">
+                                        {(client ? client + ' : ' : '') +
+                                            'Buy Tickets Here'}
+                                    </h2>
+                                )}
+                            </div>
+
+                            {/* Column B: Ticket Categories */}
+                            <div
+                                className="flex w-full flex-col justify-start gap-3 overflow-hidden rounded-xl bg-gradient-to-br p-3 shadow-lg md:w-[65%]"
+                                style={{
+                                    backgroundColor: props.secondary_color,
+                                    borderRight: `4px solid ${props.primary_color}`,
+                                }}
+                            >
+                                {/* Ticket Categories with Prices */}
+                                <h3
+                                    className="text-center text-lg font-semibold"
+                                    style={{
+                                        color: props.text_primary_color,
+                                    }}
+                                >
+                                    Category & Price
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {ticketTypes.map((type) => {
+                                        // Find the category and price information
+                                        const category = ticketCategories.find(
+                                            (cat) => cat.name === type,
+                                        );
+                                        let price = 0;
+
+                                        if (category && currentTimeline) {
+                                            const priceEntry =
+                                                categoryPrices.find(
+                                                    (p) =>
+                                                        p.ticket_category_id ===
+                                                            category.id &&
+                                                        p.timeline_id ===
+                                                            currentTimeline.id,
+                                                );
+                                            if (priceEntry) {
+                                                price = priceEntry.price;
+                                            }
+                                        }
+
+                                        return (
+                                            <div
+                                                key={type}
+                                                className="flex grow rounded-lg p-3 shadow-sm"
+                                                style={{
+                                                    backgroundColor: `${ticketTypeColors[type]}20`,
+                                                    borderLeft: `3px solid ${ticketTypeColors[type]}`,
+                                                }}
+                                            >
+                                                <div
+                                                    className="mr-2 h-4 w-4 rounded-full"
+                                                    style={{
+                                                        backgroundColor:
+                                                            ticketTypeColors[
+                                                                type
+                                                            ],
+                                                    }}
+                                                />
+                                                <div className="flex w-full flex-col gap-1">
+                                                    <span
+                                                        className="text-xs font-medium leading-[.8]"
+                                                        style={{
+                                                            color: props.text_secondary_color,
+                                                        }}
+                                                    >
+                                                        {type
+                                                            .charAt(0)
+                                                            .toUpperCase() +
+                                                            type.slice(1)}
+                                                    </span>
+                                                    <div
+                                                        className="text-xs font-bold leading-[.8]"
+                                                        style={{
+                                                            color: props.text_primary_color,
+                                                        }}
+                                                    >
+                                                        {formatRupiah(price)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <hr
+                                    className="border-[1.5px]"
+                                    style={{
+                                        borderColor: props.text_primary_color,
+                                    }}
+                                />
+                                {/* Add the status legends */}
+                                <div className="flex w-full items-center justify-center gap-4">
+                                    <p className="text-xs leading-[.8]">
+                                        Border Color:{' '}
                                     </p>
-                                    <p className="text-gray-600">
-                                        Date:{' '}
-                                        {new Date(
-                                            event.date,
-                                        ).toLocaleDateString()}
-                                    </p>
-                                </>
-                            ) : (
-                                <h1 className="text-2xl font-bold">
-                                    {(client ? client + ' : ' : '') +
-                                        'Buy Tickets Here'}
-                                </h1>
-                            )}
+                                    {statusLegends.map((legend, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center"
+                                        >
+                                            <div
+                                                className={`h-3 w-3 ${legend.color} mr-1.5 rounded-full`}
+                                            ></div>
+                                            <span
+                                                className="text-xs leading-[.8]"
+                                                style={{
+                                                    color: props.text_secondary_color,
+                                                }}
+                                            >
+                                                {legend.label}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        {/* Seat Map Section - takes up more vertical space */}
+                        <div
+                            className="relative flex h-[80vh] flex-col items-center gap-2 rounded-lg p-3"
+                            style={{
+                                backgroundColor: props.secondary_color,
+                            }}
+                        >
+                            {/* Header + Button */}
+                            <div className="flex w-full flex-col items-center justify-center">
+                                <button
+                                    className={
+                                        'absolute left-4 top-4 rounded-lg bg-red-500 px-4 text-lg text-white duration-200 hover:bg-red-600 max-md:static ' +
+                                        (selectedSeats.length > 0
+                                            ? 'opacity-100 max-md:mt-1'
+                                            : 'pointer-events-none h-0 opacity-0')
+                                    }
+                                    onClick={deselectAllSeats}
+                                >
+                                    Clear Selection
+                                </button>
+                                <h3 className="h-fit text-center text-lg font-bold">
+                                    Seat Map
+                                </h3>
+                            </div>
+
+                            {/* Scrollable Seat Map */}
+                            <div className="flex h-full w-full flex-1 overflow-hidden">
+                                <div className="flex w-full justify-center overflow-auto">
+                                    <SeatMapDisplay
+                                        config={layout}
+                                        props={props}
+                                        onSeatClick={handleSeatClick}
+                                        selectedSeats={selectedSeats}
+                                        ticketTypeColors={ticketTypeColors}
+                                        eventStatus={event?.status}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="py-6">
-                <div className="mx-auto w-full sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white p-6 shadow-xl sm:rounded-lg">
-                        {/* Legend Section */}
-                        <div className="mb-8">
-                            <h3 className="mb-4 text-center text-2xl font-bold">
-                                Seat Map
-                            </h3>
-                            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                                {/* Ticket Type Legend */}
-                                <div className="rounded-lg bg-gray-50 p-4 shadow">
-                                    <h4 className="mb-2 text-center text-lg font-semibold">
-                                        Ticket Types
-                                    </h4>
-                                    <div className="flex flex-wrap items-center justify-center gap-4">
-                                        {ticketTypes.map((type) => (
-                                            <div
-                                                key={type}
-                                                className="flex flex-col items-center"
-                                            >
-                                                <div
-                                                    className={`h-8 w-8 ${ticketTypeColors[type]} rounded-full shadow-lg`}
-                                                ></div>
-                                                <span className="mt-2 text-sm font-medium">
-                                                    {type
-                                                        .charAt(0)
-                                                        .toUpperCase() +
-                                                        type.slice(1)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Status Legend */}
-                                <div className="rounded-lg bg-gray-50 p-4 shadow">
-                                    <h4 className="mb-2 text-center text-lg font-semibold">
-                                        Status
-                                    </h4>
-                                    <div className="flex flex-wrap items-center justify-center gap-4">
-                                        {statusLegends.map((legend, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex flex-col items-center"
-                                            >
-                                                <div
-                                                    className={`h-8 w-8 ${legend.color} rounded-full shadow-lg`}
-                                                ></div>
-                                                <span className="mt-2 text-sm font-medium">
-                                                    {legend.label}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-center overflow-x-auto">
-                            <div className="flex items-center justify-center">
-                                <SeatMapDisplay
-                                    config={layout}
-                                    onSeatClick={handleSeatClick}
-                                    selectedSeats={selectedSeats}
-                                    ticketTypeColors={ticketTypeColors}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Selected Seats Section */}
-                        <div className="mt-8 rounded border p-4">
-                            <h3 className="mb-4 text-xl font-semibold">
-                                Selected Seats
-                            </h3>
-                            {selectedSeats.length === 0 ? (
-                                <p>No seats selected.</p>
+            {/* Keep the selected seats section below */}
+            <div className="w-full pb-4">
+                <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
+                    <div
+                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        style={{
+                            backgroundColor: props.primary_color,
+                            color: props.text_primary_color,
+                        }}
+                    >
+                        <h3 className="mb-4 text-lg font-semibold">
+                            {pendingTransactions.length > 0 ? (
+                                <span>Pending Transactions</span>
                             ) : (
+                                <span>Selected Seats</span>
+                            )}
+                        </h3>
+
+                        {pendingTransactions.length > 0 ? (
+                            <div className="space-y-4">
+                                {pendingTransactions.map(
+                                    (transaction, transactionIndex) => {
+                                        return (
+                                            <div
+                                                key={transactionIndex}
+                                                className="space-y-4"
+                                            >
+                                                <h4 className="text-base font-semibold">
+                                                    {'Transaction: ' +
+                                                        transaction.order_code}
+                                                </h4>
+                                                {transaction.seats.map(
+                                                    (seat) => (
+                                                        <div
+                                                            key={seat.id}
+                                                            className="flex items-center justify-between rounded-lg p-3"
+                                                            style={{
+                                                                backgroundColor:
+                                                                    props.secondary_color,
+                                                                color: props.text_secondary_color,
+                                                            }}
+                                                        >
+                                                            <div>
+                                                                <p className="font-semibold">
+                                                                    Ticket Type:{' '}
+                                                                    {seat.ticket_type ||
+                                                                        seat.category ||
+                                                                        'Unset'}
+                                                                </p>
+                                                                <p className="text-sm">
+                                                                    Seat:{' '}
+                                                                    {
+                                                                        seat.seat_number
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-semibold">
+                                                                    Price:{' '}
+                                                                    {formatRupiah(
+                                                                        getSafePrice(
+                                                                            seat.price,
+                                                                        ),
+                                                                    )}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ),
+                                                )}
+                                                {/* Subtotal, Tax, and Total */}
+
+                                                <div
+                                                    className="mt-6 space-y-2 rounded-lg p-3"
+                                                    style={{
+                                                        backgroundColor:
+                                                            props.secondary_color,
+                                                        color: props.text_secondary_color,
+                                                    }}
+                                                >
+                                                    <div className="flex justify-between">
+                                                        <span className="font-medium">
+                                                            Subtotal:
+                                                        </span>
+                                                        <span>
+                                                            {formatRupiah(
+                                                                subtotal,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="font-medium">
+                                                            Tax (1%):
+                                                        </span>
+                                                        <span>
+                                                            {formatRupiah(
+                                                                taxAmount,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between text-lg font-semibold">
+                                                        <span>Total:</span>
+                                                        <span>
+                                                            {formatRupiah(
+                                                                total,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-4 flex gap-2">
+                                                    {/* Resume Button */}
+                                                    {isBookingAllowed && (
+                                                        <button
+                                                            className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                                            onClick={() =>
+                                                                resumePayment(
+                                                                    transaction.snap_token,
+                                                                )
+                                                            }
+                                                        >
+                                                            Resume Payment
+                                                        </button>
+                                                    )}
+                                                    {/* Cancel Button */}
+                                                    {isBookingAllowed && (
+                                                        <div className="flex gap-2">
+                                                            {cancellingStack.some(
+                                                                (item) =>
+                                                                    item.order_id ===
+                                                                    transaction.order_id,
+                                                            ) ? (
+                                                                <>
+                                                                    <button
+                                                                        className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                                        onClick={() =>
+                                                                            cancelPayment(
+                                                                                [
+                                                                                    transaction.order_id,
+                                                                                ],
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Confirm
+                                                                        Cancel
+                                                                    </button>
+                                                                    <button
+                                                                        className="rounded bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
+                                                                        onClick={() =>
+                                                                            removeItemFromStack(
+                                                                                transaction.order_id,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Abort
+                                                                        Cancellation
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <button
+                                                                        className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                                                                        onClick={() =>
+                                                                            addItemToStack(
+                                                                                transaction.order_id,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Cancel
+                                                                        Payment
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    },
+                                )}
+                            </div>
+                        ) : selectedSeats.length === 0 ? (
+                            <p>No seats selected.</p>
+                        ) : (
+                            <>
                                 <div className="space-y-4">
                                     {selectedSeats.map((seat) => (
                                         <div
-                                            key={seat.seat_id}
-                                            className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+                                            key={seat.id}
+                                            className="flex items-center justify-between rounded-lg p-3"
+                                            style={{
+                                                backgroundColor:
+                                                    props.secondary_color,
+                                                color: props.text_secondary_color,
+                                            }}
                                         >
                                             <div>
                                                 <p className="font-semibold">
                                                     Ticket Type:{' '}
                                                     {seat.ticket_type ||
                                                         seat.category ||
-                                                        'Standard'}
+                                                        'Unset'}
                                                 </p>
                                                 <p className="text-sm">
                                                     Seat: {seat.seat_number}
@@ -334,40 +1190,69 @@ export default function Landing({
                                         </div>
                                     ))}
                                 </div>
-                            )}
+                                {/* Subtotal, Tax, and Total */}
+                                {selectedSeats.length > 0 && (
+                                    <div
+                                        className="mt-6 space-y-2 rounded-lg p-3"
+                                        style={{
+                                            backgroundColor:
+                                                props.secondary_color,
+                                            color: props.text_secondary_color,
+                                        }}
+                                    >
+                                        <div className="flex justify-between">
+                                            <span className="font-medium">
+                                                Subtotal:
+                                            </span>
+                                            <span>
+                                                {formatRupiah(subtotal)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-medium">
+                                                Tax (1%):
+                                            </span>
+                                            <span>
+                                                {formatRupiah(taxAmount)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-lg font-semibold">
+                                            <span>Total:</span>
+                                            <span>{formatRupiah(total)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
 
-                            {/* Subtotal, Tax, and Total */}
-                            {selectedSeats.length > 0 && (
-                                <div className="mt-6 space-y-2 rounded-lg bg-gray-50 p-4">
-                                    <div className="flex justify-between">
-                                        <span className="font-medium">
-                                            Subtotal:
-                                        </span>
-                                        <span>{formatRupiah(subtotal)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="font-medium">
-                                            Tax (1%):
-                                        </span>
-                                        <span>{formatRupiah(taxAmount)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-lg font-semibold">
-                                        <span>Total:</span>
-                                        <span>{formatRupiah(total)}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Proceed Button */}
-                            {selectedSeats.length > 0 && (
+                        {/* Proceed Button */}
+                        {pendingTransactions.length === 0 &&
+                            selectedSeats.length > 0 &&
+                            isBookingAllowed && (
                                 <ProceedTransactionButton
+                                    client={client}
                                     selectedSeats={selectedSeats}
+                                    taxAmount={taxAmount}
+                                    subtotal={subtotal}
+                                    total={total}
+                                    toasterFunction={{
+                                        toasterState,
+                                        showSuccess,
+                                        showError,
+                                        hideToaster,
+                                    }}
+                                    snapInitialized={snapInitialized}
                                 />
                             )}
-                        </div>
                     </div>
                 </div>
             </div>
+            <Toaster
+                message={toasterState.message}
+                type={toasterState.type}
+                isVisible={toasterState.isVisible}
+                onClose={hideToaster}
+            />
         </AuthenticatedLayout>
     );
 }

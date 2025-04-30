@@ -1,4 +1,4 @@
-import { Position, SeatMapSection } from '../types';
+import { Position, SeatMapSection } from '@/types/seatmap';
 
 export const updateSeatPositions = (
     sections: SeatMapSection[],
@@ -8,7 +8,7 @@ export const updateSeatPositions = (
     return sections.map((section) => ({
         ...section,
         seats: section.seats.map((seat) =>
-            seat.seat_id === seatId ? { ...seat, position: newPosition } : seat,
+            seat.id === seatId ? { ...seat, position: newPosition } : seat,
         ),
     }));
 };
