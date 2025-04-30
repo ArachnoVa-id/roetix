@@ -136,7 +136,9 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 subtotal || calculateTotalAmount(groupedItems);
 
             // Calculate tax if not provided
-            const calculatedTaxAmount = taxAmount || calculatedSubtotal * 0.01; // 1% tax
+            // const tax = 0.01; // 1% tax
+            const tax = 0;
+            const calculatedTaxAmount = taxAmount || calculatedSubtotal * tax;
 
             // Calculate total with tax if not provided
             const calculatedTotal =
