@@ -72,7 +72,6 @@ export default function Landing({
                         return {
                             ...item,
                             status: update.status,
-                            seat_number: update.seat_number, // jika perlu
                         };
                     }
 
