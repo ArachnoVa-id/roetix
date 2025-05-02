@@ -138,7 +138,7 @@ export default function Authenticated({
                                 >
                                     <img
                                         src={
-                                            user.contact_info.avatar ??
+                                            user?.contact_info?.avatar ??
                                             'images/default-avatar/default-avatar.png'
                                         }
                                         alt={'Avatar'}
@@ -257,7 +257,7 @@ export default function Authenticated({
                             >
                                 <img
                                     src={
-                                        user.contact_info.avatar ??
+                                        user?.contact_info?.avatar ??
                                         'images/default-avatar/default-avatar.png'
                                     }
                                     alt={'Avatar'}
