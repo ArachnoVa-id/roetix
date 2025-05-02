@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <!-- Check if the user has a profile photo, otherwise show initials -->
-        @if ($user->contactInfo->avatar)
+        @if ($user->contactInfo != null && $user->contactInfo->avatar != null)
           <img class="aspect-square rounded-full object-cover" src="{{ $user->contactInfo->avatar }}"
             style="width: 3.25rem" alt="{{ $user->first_name }}'s Profile Picture">
         @else
