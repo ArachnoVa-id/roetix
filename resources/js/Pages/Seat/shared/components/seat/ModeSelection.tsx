@@ -2,7 +2,9 @@ import { MousePointer, Square, Trash2 } from 'lucide-react';
 import React, { ReactNode } from 'react';
 import { Card } from '../Card';
 
-type ModeType = string;
+export type EditorMode = 'add' | 'delete' | 'block';
+export type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
+export type ModeType = EditorMode | SelectionMode;
 
 interface ModeInfo {
     icon: ReactNode;
@@ -12,7 +14,7 @@ interface ModeInfo {
 }
 
 interface ModeSelectionProps {
-    mode: string;
+    mode: ModeType;
     onModeChange: (mode: ModeType) => void;
     modes: ModeType[];
 }

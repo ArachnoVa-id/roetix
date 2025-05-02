@@ -92,12 +92,12 @@ export default function Landing({
         return () => {
             mqttclient.end();
         };
-    }, []);
+    }, [layoutItems]);
 
     useEffect(() => {
         console.log(layoutItems);
         console.log(layoutState);
-    }, [layoutItems, setLayoutItems]);
+    }, [layoutItems, layoutState]);
 
     // Show error if it exists when component mounts
     useEffect(() => {

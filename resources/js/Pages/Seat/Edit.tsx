@@ -1,9 +1,10 @@
 import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
 import { EditorProps } from '@/types/editor';
-import { Layout, SeatItem, Timeline, UpdatedSeats } from '@/types/seatmap';
+import { SeatItem, Timeline } from '@/types/seatmap';
 import { Head } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
+import { Layout } from './GridSeatEditor';
 import SeatMapEditor from './SeatMapEditor';
 
 const Edit: React.FC<EditorProps> = ({
@@ -160,7 +161,7 @@ const Edit: React.FC<EditorProps> = ({
         }
     }, [activeTimeline, ticketCategories, categoryPrices]);
 
-    const handleSave = (updatedSeats: UpdatedSeats[]) => {
+    const handleSave = (updatedSeats: Partial<SeatItem>[]) => {
         // Optimistically update the UI immediately
         const updatedLayout = { ...currentLayout };
         updatedSeats.forEach((update) => {
@@ -170,7 +171,7 @@ const Edit: React.FC<EditorProps> = ({
                     (item as SeatItem).id === update.id,
             ) as SeatItem | undefined;
 
-            if (seatToUpdate) {
+            if (seatToUpdate && update.status) {
                 seatToUpdate.status = update.status;
                 seatToUpdate.ticket_type = update.ticket_type;
                 seatToUpdate.price = update.price;
@@ -238,7 +239,7 @@ const Edit: React.FC<EditorProps> = ({
                         onSave={handleSave}
                         ticketTypes={ticketTypes}
                         categoryColors={categoryColorMap}
-                        currentTimeline={activeTimeline}
+                        // currentTimeline={activeTimeline}
                         categoryPrices={categoryNameToPriceMap}
                     />
                 </div>

@@ -1,4 +1,4 @@
-import { Button } from '@/Components/ui/button';
+import { Button, ButtonVariants } from '@/Components/ui/button';
 import React, { ReactNode } from 'react';
 
 interface EditorButtonProps {
@@ -6,7 +6,7 @@ interface EditorButtonProps {
     onClick: () => void;
     isActive?: boolean;
     icon?: ReactNode;
-    variant?: string;
+    variant?: ButtonVariants;
     className?: string;
     // [x: string]: any; // For additional props
 }
