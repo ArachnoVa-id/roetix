@@ -2,10 +2,10 @@
 import Toaster from '@/Components/novatix/Toaster';
 import useToaster from '@/hooks/useToaster';
 import { GridEditorProps } from '@/types/editor';
-import { Layout, SeatItem } from '@/types/seatmap';
+import { SeatItem } from '@/types/seatmap';
 import { Head, router } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
-import GridSeatEditor from './GridSeatEditor';
+import GridSeatEditor, { Layout } from './GridSeatEditor';
 
 const GridEdit: React.FC<GridEditorProps> = ({
     layout,
@@ -26,11 +26,11 @@ const GridEdit: React.FC<GridEditorProps> = ({
         }
     }, [errors, flash, showError, showSuccess]);
 
-    const handleSave = async (updatedLayout: Layout) => {
+    const handleSave = async (layout: Layout) => {
         setIsSubmitting(true);
 
         try {
-            const convertedItems = updatedLayout.items.map((item) => {
+            const convertedItems = layout.items.map((item) => {
                 // if (item.type === 'seat') {
 
                 const seatItem = item as SeatItem;
@@ -63,8 +63,8 @@ const GridEdit: React.FC<GridEditorProps> = ({
 
             const payload = {
                 venue_id,
-                totalRows: updatedLayout.totalRows,
-                totalColumns: updatedLayout.totalColumns,
+                totalRows: layout.totalRows,
+                totalColumns: layout.totalColumns,
                 items: convertedItems,
             };
 
@@ -100,7 +100,7 @@ const GridEdit: React.FC<GridEditorProps> = ({
                     <GridSeatEditor
                         initialLayout={layout}
                         onSave={handleSave}
-                        venueId={venue_id}
+                        // venueId={venue_id}
                         isDisabled={isSubmitting}
                     />
                 </div>

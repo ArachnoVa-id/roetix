@@ -17,7 +17,7 @@ interface SeatCellProps {
     item?: SeatItem | null;
     isBlocked?: boolean;
     isSelected?: boolean;
-    isInBlockedArea?: boolean;
+    isInBlockedArea: boolean | null;
     isEditable?: boolean;
     onClick?: () => void;
     onMouseDown?: (event: MouseEvent<HTMLDivElement>) => void;

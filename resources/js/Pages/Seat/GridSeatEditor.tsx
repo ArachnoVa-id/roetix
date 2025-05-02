@@ -7,7 +7,10 @@ import { SaveButton } from './shared/components/SaveButton';
 import { BlockActions } from './shared/components/seat/BlockActions';
 import { DimensionsPanel } from './shared/components/seat/DimensionPanel';
 import { Grid } from './shared/components/seat/Grid';
-import { ModeSelection } from './shared/components/seat/ModeSelection';
+import {
+    ModeSelection,
+    ModeType,
+} from './shared/components/seat/ModeSelection';
 import { SeatCell, SeatItem } from './shared/components/seat/SeatCell';
 import {
     findHighestColumn,
@@ -18,8 +21,6 @@ import {
 } from './shared/utils/gridHelpers';
 
 // Types
-type EditorMode = 'add' | 'delete' | 'block';
-
 interface GridCell {
     type: 'empty' | 'seat' | 'label';
     item?: SeatItem;
@@ -43,7 +44,7 @@ interface AutoScrollDirection {
     vertical: number;
 }
 
-interface Layout {
+export interface Layout {
     totalRows: number;
     totalColumns: number;
     items: SeatItem[];
@@ -51,7 +52,7 @@ interface Layout {
 
 interface GridSeatEditorProps {
     initialLayout: Layout;
-    onSave: (layout: Layout) => void;
+    onSave: (layout: Layout) => Promise<void>;
     isDisabled?: boolean;
 }
 
@@ -67,10 +68,10 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         right: 15,
     });
 
-    const [setShowSaveSuccess] = useState<boolean>(false);
+    // const [showSaveSuccess, setShowSaveSuccess] = useState<boolean>(false);
     const [hasChanges, setHasChanges] = useState<boolean>(false);
     const [grid, setGrid] = useState<GridCell[][]>([]);
-    const [mode, setMode] = useState<EditorMode>('add');
+    const [mode, setMode] = useState<ModeType>('add');
     const [isMouseDown, setIsMouseDown] = useState<boolean>(false);
     const [startCell, setStartCell] = useState<StartEndCell | null>(null);
     const [endCell, setEndCell] = useState<StartEndCell | null>(null);
@@ -116,12 +117,12 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
     // };
 
     // Handle mode change with cleanup
-    const handleModeChange = (newMode: EditorMode) => {
+    const handleModeChange = (mode: ModeType) => {
         // Clear blocked areas when switching out of block mode
         if (mode === 'block') {
             setBlockedAreas([]);
         }
-        setMode(newMode);
+        setMode(mode);
     };
 
     const initializeGrid = useCallback(() => {
@@ -657,12 +658,12 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         setHasChanges(false);
         setBlockedAreas([]);
         // Show success notification
-        setShowSaveSuccess(true);
+        // setShowSaveSuccess(true);
 
         // Hide notification after 3 seconds
-        setTimeout(() => {
-            setShowSaveSuccess(false);
-        }, 3000);
+        // setTimeout(() => {
+        //     setShowSaveSuccess(false);
+        // }, 3000);
     };
 
     const getCellColor = (cell: GridCell): string => {

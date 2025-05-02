@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 // Import shared components
+import { SelectionMode } from '@/types/seatmap';
 import { EditorLayout } from './shared/components/Layout';
 import { CategorySelection } from './shared/components/seat/CategorySelection';
 import { DragInstructions } from './shared/components/seat/DragInstructions';
@@ -12,8 +13,6 @@ import { SelectedSeatsInfo } from './shared/components/seat/SelectedSeatsInfo';
 import { Stage } from './shared/components/Stage';
 
 // Types
-type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
-
 interface Layout {
     totalRows: number;
     totalColumns: number;
