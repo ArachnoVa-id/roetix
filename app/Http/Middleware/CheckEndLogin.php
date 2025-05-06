@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use App\Models\Traffic;
 use App\Models\Event;
 use App\Models\TrafficNumbersSlug;
+use Inertia\Inertia;
 
 class CheckEndLogin
 {
@@ -37,7 +38,23 @@ class CheckEndLogin
         $trafficNumber = TrafficNumbersSlug::where('event_id', $event_id)->first();
 
         if ($trafficNumber->active_sessions >= 2) {
-            dd("kuota lebih dari satu", $trafficNumber->active_sessions);
+            $client = $request->route('client');
+            $props = $request->get('props');
+
+            // Check if the event is in overload mode
+            return Inertia::render('User/Overload', [
+                'client' => $client,
+                'event' => [
+                    'name' => $event->name,
+                    'slug' => $event->slug
+                ],
+                'maintenance' => [
+                    'title' => 'Overload user',
+                    'message' => $props->maintenance_message ?: 'Try again latter',
+                    'expected_finish' => $props->maintenance_expected_finish ? Carbon::parse($props->maintenance_expected_finish)->format('F j, Y, g:i a') : null,
+                ],
+                'props' => $props->getSecure()
+            ]);
         }
 
         // dd("kuota belom lewat batas satu", $trafficNumber->active_sessions);
