@@ -59,6 +59,7 @@ class SocialiteController extends Controller
                 if ($event) {
                     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
                     $trafficNumber->increment('active_sessions');
+                    $trafficNumber->save();
                 }
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);

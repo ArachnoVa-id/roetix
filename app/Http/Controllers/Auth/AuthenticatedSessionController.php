@@ -79,12 +79,9 @@ class AuthenticatedSessionController extends Controller
             $event = \App\Models\Event::where('slug', $request->client)->first();
 
             if ($event) {
-                $trafficNumber = \App\Models\TrafficNumbersSlug::firstOrCreate(
-                    ['event_id' => $event->id],
-                    ['active_sessions' => 0]
-                );
-
+                $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
                 $trafficNumber->increment('active_sessions');
+                $trafficNumber->save();
             }
 
             // redirecting to
@@ -124,6 +121,23 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $host = $request->getHost(); // hasil: client1.dev-staging-novatix.id
+        $subdomain = explode('.', $host)[0]; // hasil: 'client1'
+
+        $event = Event::where('slug', $subdomain)->first();
+
+        Traffic::where('user_id', Auth::id())
+            ->whereNull('stop_at')
+            ->latest()
+            ->update(['stop_at' => now()]);
+
+        if ($event) {
+            $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+            $trafficNumber->decrement('active_sessions');
+            $trafficNumber->save();
+        }
+
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
