@@ -76,6 +76,17 @@ class AuthenticatedSessionController extends Controller
                 'stop_at' => null,
             ]);
 
+            $event = \App\Models\Event::where('slug', $request->client)->first();
+
+            if ($event) {
+                $trafficNumber = \App\Models\TrafficNumbersSlug::firstOrCreate(
+                    ['event_id' => $event->id],
+                    ['active_sessions' => 0]
+                );
+
+                $trafficNumber->increment('active_sessions');
+            }
+
             // redirecting to
             $redirectProps = [
                 'route' => ($user ? 'client.home' : 'client.login'),

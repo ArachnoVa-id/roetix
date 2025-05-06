@@ -53,7 +53,13 @@ class SocialiteController extends Controller
                     'end_login' => Carbon::now()->addMinutes(1)->format('H:i:s'), // 1 menit sesi
                     'stop_at' => null,
                 ]);
-                
+
+                $event = \App\Models\Event::where('slug', $client)->first();
+
+                if ($event) {
+                    $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+                    $trafficNumber->increment('active_sessions');
+                }
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
