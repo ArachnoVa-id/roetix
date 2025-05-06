@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
+use App\Models\Traffic;
+use Carbon\Carbon;
+
+
 
 class SocialiteController extends Controller
 {
@@ -42,6 +46,14 @@ class SocialiteController extends Controller
                 ]);
 
                 Auth::login($user);
+
+                Traffic::create([
+                    'user_id' => $user->id,
+                    'start_login' => Carbon::now()->format('H:i:s'),
+                    'end_login' => Carbon::now()->addMinutes(1)->format('H:i:s'), // 1 menit sesi
+                    'stop_at' => null,
+                ]);
+                
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {

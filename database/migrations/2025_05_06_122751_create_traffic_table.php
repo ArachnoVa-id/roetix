@@ -17,6 +17,8 @@ return new class extends Migration
             $table->time('start_login');
             $table->time('end_login');
             $table->time('stop_at')->nullable();
+
+            $table->timestamps(); // created_at dan updated_at
         
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });

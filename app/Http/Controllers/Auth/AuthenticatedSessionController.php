@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Event;
 use App\Models\EventVariables;
 use App\Models\User;
+use App\Models\Traffic;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Carbon\Carbon;
+
 
 class AuthenticatedSessionController extends Controller
 {
@@ -63,6 +66,14 @@ class AuthenticatedSessionController extends Controller
         if ($request->client) {
             session([
                 'auth_user' => $userModel,
+            ]);
+
+            Traffic::create([
+                'user_id' => $user->id,
+                'start_login' => Carbon::now()->format('H:i:s'),
+                // 'end_login' => Carbon::now()->addHours(2)->format('H:i:s'), // contoh 2 jam sesi
+                'end_login' => Carbon::now()->addMinutes(1)->format('H:i:s'),
+                'stop_at' => null,
             ]);
 
             // redirecting to
