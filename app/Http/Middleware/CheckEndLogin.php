@@ -17,22 +17,24 @@ class CheckEndLogin
             return $next($request);
         }
 
-        // $traffic = \App\Models\Traffic::where('user_id', $user->id)->latest()->first();
-
         $traffic = \App\Models\Traffic::where('user_id', $user->id)
             ->whereNull('stop_at')
             ->latest()
             ->first();
 
-        // dd($user);
-        dd($traffic);
+        // dd($traffic);
 
         if ($traffic && Carbon::now()->gte(Carbon::parse($traffic->end_login))) {
-            $traffic->update([
-                'stop_at' => Carbon::now()->format('H:i:s'),
-            ]);
+            // Update stop_at saat logout
+            $traffic->stop_at = Carbon::now();
+            $traffic->save();
 
+            // Hapus semua sesi dan logout
             Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            session()->flush();
+
             return redirect()->route('login')->withErrors(['expired' => 'Sesi Anda telah berakhir.']);
         }
 

@@ -18,7 +18,7 @@ class Traffic extends Model
         'stop_at',
     ];
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $casts = [
         'start_login' => 'datetime:H:i:s',
