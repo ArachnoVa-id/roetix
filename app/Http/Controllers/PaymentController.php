@@ -322,12 +322,8 @@ class PaymentController extends Controller
             }      
             DB::commit();
             $this->publishMqtt(data: [
-                "category" => $ticket->category,
-                "column" => $ticket->column,
                 "id" => $ticket->id,
                 "price" => number_format($ticket->price, 2, '.', ''),
-                "row" => $ticket->row,
-                "seat_number" => $ticket->seat_number,
                 "status" => $ticket->status,
                 "ticket_category_id" => $ticket->ticket_category_id,
                 "ticket_type" => $ticket->ticket_type,
