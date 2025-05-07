@@ -30,7 +30,7 @@ class CheckEndLogin
         }
 
         $event_id = $event->id;
-        $trafficNumber = TrafficNumbersSlug::where('event_id', $event_id)->first();
+        // $trafficNumber = TrafficNumbersSlug::where('event_id', $event_id)->first();
 
         // if ($trafficNumber->active_sessions >= 2) {
         //     return Inertia::render('User/Overload', [
