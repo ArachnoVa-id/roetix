@@ -78,16 +78,16 @@ class AuthenticatedSessionController extends Controller
             $eventId = (int) $event->id; // pastikan ini integer
             $path = storage_path("sql/events/{$eventId}.db");
 
-            // if (File::exists($path)) {
-            // } else {
-            //     abort(404, 'Event database not found.');
-            // }
+            if (File::exists($path)) {
+            } else {
+                abort(404, 'Event database not found.');
+            }
 
-            // if ($event) {
-            //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            //     $trafficNumber->increment('active_sessions');
-            //     $trafficNumber->save();
-            // }
+            if ($event) {
+                $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+                $trafficNumber->increment('active_sessions');
+                $trafficNumber->save();
+            }
 
             // redirecting to
             $redirectProps = [
@@ -135,30 +135,30 @@ class AuthenticatedSessionController extends Controller
         if ($event) {
             $path = storage_path("sql/events/{$event->id}.db");
 
-            // $pdo = new PDO("sqlite:" . $path);
+            $pdo = new PDO("sqlite:" . $path);
 
-            // // Update end_login untuk login terakhir user
-            // $stmt = $pdo->prepare("
-            //     UPDATE user_logs
-            //     SET end_login = datetime('now')
-            //     WHERE user_id = ? AND end_login IS NULL
-            //     ORDER BY start_login DESC
-            //     LIMIT 1
-            // ");
-            // $stmt->execute([$user->id]);
+            // Update end_login untuk login terakhir user
+            $stmt = $pdo->prepare("
+                UPDATE user_logs
+                SET end_login = datetime('now')
+                WHERE user_id = ? AND end_login IS NULL
+                ORDER BY start_login DESC
+                LIMIT 1
+            ");
+            $stmt->execute([$user->id]);
 
-            // $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            // if ($trafficNumber && $trafficNumber->active_sessions > 0) {
-            //     $trafficNumber->decrement('active_sessions');
-            // }
-            // $mqttData = [
-            //     'event' => 'user_logout',
-            //     'user_id' => $user->id,
-            //     'event_id' => $event->id,
-            //     'timestamp' => now()->toDateTimeString(),
-            // ];
+            $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+            if ($trafficNumber && $trafficNumber->active_sessions > 0) {
+                $trafficNumber->decrement('active_sessions');
+            }
+            $mqttData = [
+                'event' => 'user_logout',
+                'user_id' => $user->id,
+                'event_id' => $event->id,
+                'timestamp' => now()->toDateTimeString(),
+            ];
 
-            // $this->publishMqtt($mqttData);
+            $this->publishMqtt($mqttData);
         }
 
         Auth::guard('web')->logout();

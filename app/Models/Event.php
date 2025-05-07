@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 use Illuminate\Support\Facades\File;
+use PDO;
 
 class Event extends Model
 {
@@ -41,14 +42,25 @@ class Event extends Model
 
     protected static function createSql($event)
     {
-        $filePath = storage_path("sql/events/{$event->id}.sql");
-        // $filePath = storage_path("sql/events/{$event->id}.sql");
+        $filePath = storage_path("sql/events/{$event->id}.db");
         File::ensureDirectoryExists(dirname($filePath));
 
-        // Tambahkan isi file SQL sebagai contoh
-        $sql = "-- Event SQL Template for ID: {$event->id}";
-        File::put($filePath, $sql);
+        // Membuat koneksi SQLite ke file DB baru
+        $pdo = new PDO("sqlite:" . $filePath);
+
+        // Buat tabel logins
+        $query = "
+        CREATE TABLE IF NOT EXISTS user_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            start_login DATETIME DEFAULT CURRENT_TIMESTAMP,
+            end_login DATETIME
+        )
+    ";
+
+        $pdo->exec($query);
     }
+
 
     protected static function boot()
     {
