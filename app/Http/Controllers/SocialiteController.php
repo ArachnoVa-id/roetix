@@ -17,7 +17,6 @@ use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
 
 use App\Models\Traffic;
-use App\Models\EventLog;
 use Carbon\Carbon;
 use PDO;
 
@@ -39,6 +38,7 @@ class SocialiteController extends Controller
             $google_resp = Socialite::driver('google')->user();
             $google_user = $google_resp->user;
 
+
             $user = User::where('email', $google_resp->email)
                 ->first();
 
@@ -55,19 +55,13 @@ class SocialiteController extends Controller
 
                 Auth::login($user);
 
-                if (File::exists($path)) {
-                    config(['database.connections.sqlite.database' => $path]);
-                    DB::purge('sqlite');
-                    DB::reconnect('sqlite');
-                    EventLog::create([
-                        'user_id'     => $user->id,
-                        'event_id'    => $event->id,
-                        'start_login' => now(),
-                        'end_at'      => null,
-                    ]);
-                } else {
-                    abort(404, 'Event database not found.');
-                }
+                // if (File::exists($path)) {
+                //     $pdo = new PDO("sqlite:" . $path);
+                //     $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, start_login) VALUES (?, datetime('now'))");
+                //     $stmt->execute([$user->id]);
+                // } else {
+                //     abort(404, 'Event database not found.');
+                // }
 
                 if ($event) {
                     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();

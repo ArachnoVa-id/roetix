@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Event;
-use App\Models\EventLog;
 use App\Models\EventVariables;
 use App\Models\User;
 use App\Models\Traffic;
@@ -23,7 +22,7 @@ use Illuminate\Support\Facades\File;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
-
+use PDO;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -79,13 +78,10 @@ class AuthenticatedSessionController extends Controller
             $eventId = (int) $event->id; // pastikan ini integer
             $path = storage_path("sql/events/{$eventId}.db");
 
-            if (File::exists($path)) {
-                config(['database.connections.sqlite.database' => $path]);
-                DB::purge('sqlite');
-                DB::reconnect('sqlite');
-            } else {
-                abort(404, 'Event database not found.');
-            }
+            // if (File::exists($path)) {
+            // } else {
+            //     abort(404, 'Event database not found.');
+            // }
 
             if ($event) {
                 $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
@@ -138,9 +134,18 @@ class AuthenticatedSessionController extends Controller
 
         if ($event) {
             $path = storage_path("sql/events/{$event->id}.db");
-            config(['database.connections.sqlite.database' => $path]);
-            DB::purge('sqlite');
-            DB::reconnect('sqlite');
+
+            // $pdo = new PDO("sqlite:" . $path);
+
+            // // Update end_login untuk login terakhir user
+            // $stmt = $pdo->prepare("
+            //     UPDATE user_logs
+            //     SET end_login = datetime('now')
+            //     WHERE user_id = ? AND end_login IS NULL
+            //     ORDER BY start_login DESC
+            //     LIMIT 1
+            // ");
+            // $stmt->execute([$user->id]);
 
             $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
             if ($trafficNumber && $trafficNumber->active_sessions > 0) {
