@@ -86,12 +86,6 @@ class AuthenticatedSessionController extends Controller
                 abort(404, 'Event database not found.');
             }
 
-            // if ($event) {
-            //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            //     $trafficNumber->increment('active_sessions');
-            //     $trafficNumber->save();
-            // }
-
             // redirecting to
             $redirectProps = [
                 'route' => ($user ? 'client.home' : 'client.login'),
@@ -141,7 +135,7 @@ class AuthenticatedSessionController extends Controller
             $pdo = new PDO("sqlite:" . $path);
 
             // Update end_login untuk login terakhir user
-            $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ? AND status = 'offline'");
+            $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
             $stmt->execute([$user->id]);
 
             $mqttData = [
