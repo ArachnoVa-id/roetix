@@ -131,16 +131,20 @@ class AuthenticatedSessionController extends Controller
 
         if ($event) {
             $path = storage_path("sql/events/{$event->id}.db");
-
             $pdo = new PDO("sqlite:" . $path);
 
-            // Update end_login untuk login terakhir user
+            // Hapus user logs
             $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
             $stmt->execute([$user->id]);
 
+            // Cari user 'waiting' paling awal (berdasarkan created_at)
+            $stmt = $pdo->prepare("SELECT user_id FROM user_logs WHERE status = 'waiting' ORDER BY created_at ASC LIMIT 1");
+            $stmt->execute();
+            $nextUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
             $mqttData = [
                 'event' => 'user_logout',
-                'next_user_id' => $user->id,
+                'next_user_id' => $nextUser['user_id'] ?? '',
             ];
 
             $this->publishMqtt($mqttData, $event->slug);
