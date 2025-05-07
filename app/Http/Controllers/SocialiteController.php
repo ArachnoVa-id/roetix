@@ -51,9 +51,9 @@ class SocialiteController extends Controller
                 ]);
                 $event = \App\Models\Event::where('slug', $client)->first();
 
-                $path = storage_path("sql/events/{$event->id}.db");
+                // $path = storage_path("sql/events/{$event->id}.db");
 
-                Auth::login($user);
+                // Auth::login($user);
 
                 // if (File::exists($path)) {
                 //     $pdo = new PDO("sqlite:" . $path);
@@ -63,11 +63,11 @@ class SocialiteController extends Controller
                 //     abort(404, 'Event database not found.');
                 // }
 
-                if ($event) {
-                    $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-                    $trafficNumber->increment('active_sessions');
-                    $trafficNumber->save();
-                }
+                // if ($event) {
+                //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+                //     $trafficNumber->increment('active_sessions');
+                //     $trafficNumber->save();
+                // }
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {

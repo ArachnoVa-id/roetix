@@ -83,11 +83,11 @@ class AuthenticatedSessionController extends Controller
             //     abort(404, 'Event database not found.');
             // }
 
-            if ($event) {
-                $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-                $trafficNumber->increment('active_sessions');
-                $trafficNumber->save();
-            }
+            // if ($event) {
+            //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+            //     $trafficNumber->increment('active_sessions');
+            //     $trafficNumber->save();
+            // }
 
             // redirecting to
             $redirectProps = [
@@ -147,18 +147,18 @@ class AuthenticatedSessionController extends Controller
             // ");
             // $stmt->execute([$user->id]);
 
-            $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            if ($trafficNumber && $trafficNumber->active_sessions > 0) {
-                $trafficNumber->decrement('active_sessions');
-            }
-            $mqttData = [
-                'event' => 'user_logout',
-                'user_id' => $user->id,
-                'event_id' => $event->id,
-                'timestamp' => now()->toDateTimeString(),
-            ];
+            // $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+            // if ($trafficNumber && $trafficNumber->active_sessions > 0) {
+            //     $trafficNumber->decrement('active_sessions');
+            // }
+            // $mqttData = [
+            //     'event' => 'user_logout',
+            //     'user_id' => $user->id,
+            //     'event_id' => $event->id,
+            //     'timestamp' => now()->toDateTimeString(),
+            // ];
 
-            $this->publishMqtt($mqttData);
+            // $this->publishMqtt($mqttData);
         }
 
         Auth::guard('web')->logout();
