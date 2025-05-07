@@ -49,11 +49,10 @@ class CheckEndLogin
                     'slug' => $event->slug
                 ],
                 'maintenance' => [
-                    'title' => 'Overload user',
-                    'message' => $props->maintenance_message ?: 'Try again latter',
-                    'expected_finish' => $props->maintenance_expected_finish ? Carbon::parse($props->maintenance_expected_finish)->format('F j, Y, g:i a') : null,
+                    'title' => 'Overload user ' . $trafficNumber->active_sessions,
+                    'message' => 'Try again latter',
+                    'expected_finish' => Carbon::now()->format('F j, Y, g:i a'),
                 ],
-                'props' => $props->getSecure()
             ]);
         }
 
