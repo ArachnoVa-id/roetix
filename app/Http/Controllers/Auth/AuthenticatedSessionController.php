@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Event;
 use App\Models\EventVariables;
 use App\Models\User;
+use App\Models\Traffic;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Carbon\Carbon;
+use PDO;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -65,6 +68,14 @@ class AuthenticatedSessionController extends Controller
                 'auth_user' => $userModel,
             ]);
 
+            $event = \App\Models\Event::where('slug', $request->client)->first();
+
+            if ($event) {
+                $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+                $trafficNumber->increment('active_sessions');
+                $trafficNumber->save();
+            }
+
             // redirecting to
             $redirectProps = [
                 'route' => ($user ? 'client.home' : 'client.login'),
@@ -102,6 +113,18 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $host = $request->getHost();
+        $subdomain = explode('.', $host)[0];
+
+        $event = Event::where('slug', $subdomain)->first();
+
+        if ($event) {
+            $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+            if ($trafficNumber && $trafficNumber->active_sessions > 0) {
+                $trafficNumber->decrement('active_sessions');
+            }
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
