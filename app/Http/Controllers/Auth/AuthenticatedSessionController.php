@@ -17,7 +17,12 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Carbon\Carbon;
-use PDO;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use PhpMqtt\Client\MqttClient;
+use PhpMqtt\Client\ConnectionSettings;
+use Illuminate\Support\Facades\Log;
+
 
 class AuthenticatedSessionController extends Controller
 {
@@ -70,6 +75,26 @@ class AuthenticatedSessionController extends Controller
 
             $event = \App\Models\Event::where('slug', $request->client)->first();
 
+            // queque dulu
+            $path = storage_path("sql/events/{$event->id}.db");
+
+            if (!File::exists($path)) {
+                return response()->json(['error' => 'SQL file not found'], 404);
+            }
+
+            $sql = File::get($path);
+            $startLogin = Carbon::now()->format('Y-m-d H:i:s');
+
+            $appendSql = "\n-- Login Queue\n";
+            $appendSql .= "INSERT INTO event_logs (user_id, event_id, start_login, end_at) VALUES (\n";
+            $appendSql .= "  '{$user->id}',\n";
+            $appendSql .= "  '{$event->id}',\n";
+            $appendSql .= "  '{$startLogin}',\n";
+            $appendSql .= "  NULL\n";
+            $appendSql .= ");\n";
+
+            File::put($path, $sql . $appendSql);
+
             if ($event) {
                 $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
                 $trafficNumber->increment('active_sessions');
@@ -119,6 +144,25 @@ class AuthenticatedSessionController extends Controller
         $event = Event::where('slug', $subdomain)->first();
 
         if ($event) {
+            $user = Auth::user();
+            if ($user) {
+                $path = storage_path("sql/events/{$event->id}.sql");
+
+                // dd($path);
+    
+                if (File::exists($path)) {
+                    $sql = File::get($path);
+                    $endLogin = Carbon::now()->format('Y-m-d H:i:s');
+    
+                    // Tambahkan SQL update
+                    $appendSql = "\n-- Logout Queue\n";
+                    $appendSql .= "UPDATE event_logs SET end_at = '{$endLogin}'\n";
+                    $appendSql .= "WHERE user_id = '{$user->id}' AND event_id = '{$event->id}' AND end_at IS NULL;\n";
+    
+                    File::put($path, $sql . $appendSql);
+                }
+            }
+
             $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
             if ($trafficNumber && $trafficNumber->active_sessions > 0) {
                 $trafficNumber->decrement('active_sessions');
@@ -131,5 +175,39 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/login');
+    }
+
+    public function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
+    {
+        $server = 'broker.emqx.io';
+        $port = 1883;
+        $clientId = 'novatix_midtrans' . rand(100, 999);
+        $usrname = 'emqx';
+        $password = 'public';
+        $mqtt_version = MqttClient::MQTT_3_1_1;
+        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
+        $topic = 'novatix/logs/defaultcode';
+
+        $conn_settings = (new ConnectionSettings)
+            ->setUsername($usrname)
+            ->setPassword($password)
+            ->setLastWillMessage('client disconnected')
+            ->setLastWillTopic('emqx/last-will')
+            ->setLastWillQualityOfService(1);
+
+        $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
+
+        try {
+            $mqtt->connect($conn_settings, true);
+            $mqtt->publish(
+                $topic,
+                json_encode($data),
+                0
+            );
+            $mqtt->disconnect();
+        } catch (\Throwable $th) {
+            // biarin lewat aja biar ga bikin masalah di payment controller flow nya
+            Log::error('MQTT Publish Failed: ' . $th->getMessage());
+        }
     }
 }

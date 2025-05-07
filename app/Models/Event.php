@@ -10,6 +10,8 @@ use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+use Illuminate\Support\Facades\File;
+
 class Event extends Model
 {
     use HasFactory, Notifiable;
@@ -37,6 +39,17 @@ class Event extends Model
         'team'
     ];
 
+    protected static function createSql($event)
+    {
+        $filePath = storage_path("sql/events/{$event->id}.db");
+        // $filePath = storage_path("sql/events/{$event->id}.sql");
+        File::ensureDirectoryExists(dirname($filePath));
+
+        // Tambahkan isi file SQL sebagai contoh
+        $sql = "-- Event SQL Template for ID: {$event->id}";
+        File::put($filePath, $sql);
+    }
+
     protected static function boot()
     {
         parent::boot();
@@ -45,6 +58,10 @@ class Event extends Model
             if (empty($model->id)) {
                 $model->id = (string) Str::uuid();
             }
+        });
+
+        static::created(function ($model) {
+            static::createSql($model);
         });
     }
 

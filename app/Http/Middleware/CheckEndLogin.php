@@ -32,7 +32,6 @@ class CheckEndLogin
         $trafficNumber = TrafficNumbersSlug::where('event_id', $event_id)->first();
 
         if ($trafficNumber->active_sessions >= 2) {
-
             return Inertia::render('User/Overload', [
                 'client' => $subdomain,
                 'event' => [
@@ -45,6 +44,7 @@ class CheckEndLogin
                     'expected_finish' => Carbon::now()->addMinutes(1)->format('H:i:s'),
                 ],
             ]);
+
         }
 
         return $next($request);

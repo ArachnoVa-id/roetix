@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
+use Illuminate\Support\Facades\File;
+use PhpMqtt\Client\MqttClient;
+use PhpMqtt\Client\ConnectionSettings;
+use Illuminate\Support\Facades\Log;
+
 use App\Models\Traffic;
 use Carbon\Carbon;
 use PDO;
@@ -43,10 +48,29 @@ class SocialiteController extends Controller
                 session([
                     'auth_user' => $user,
                 ]);
+                $event = \App\Models\Event::where('slug', $client)->first();
+
+                // queque dulu
+                $path = storage_path("sql/events/{$event->id}.sql");
+
+                // dd($path);
 
                 Auth::login($user);
-                
-                $event = \App\Models\Event::where('slug', $client)->first();
+
+                if (!File::exists($path)) {
+                    $sql = File::get($path);
+                    $startLogin = Carbon::now()->format('Y-m-d H:i:s');
+
+                    $appendSql = "\n-- Login Queue\n";
+                    $appendSql .= "INSERT INTO event_logs (user_id, event_id, start_login, end_at) VALUES (\n";
+                    $appendSql .= "  '{$user->id}',\n";
+                    $appendSql .= "  '{$event->id}',\n";
+                    $appendSql .= "  '{$startLogin}',\n";
+                    $appendSql .= "  NULL\n";
+                    $appendSql .= ");\n";
+
+                    File::put($path, $sql . $appendSql);
+                }
 
                 if ($event) {
                     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
