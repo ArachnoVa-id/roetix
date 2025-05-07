@@ -49,11 +49,11 @@ class SocialiteController extends Controller
                 session([
                     'auth_user' => $user,
                 ]);
-                $event = \App\Models\Event::where('slug', $client)->first();
+                // $event = \App\Models\Event::where('slug', $client)->first();
 
                 // $path = storage_path("sql/events/{$event->id}.db");
 
-                // Auth::login($user);
+                Auth::login($user);
 
                 // if (File::exists($path)) {
                 //     $pdo = new PDO("sqlite:" . $path);
@@ -71,6 +71,7 @@ class SocialiteController extends Controller
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
+                dd("no");
                 DB::beginTransaction();
                 // Socialite resp structure: (var: $google_resp)
                 //   Laravel\Socialite\Two\User {#2066 ▼ // app/Http/Controllers/SocialiteController.php:38
