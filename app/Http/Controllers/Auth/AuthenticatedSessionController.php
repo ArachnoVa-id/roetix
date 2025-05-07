@@ -121,8 +121,8 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        $host = $request->getHost(); // hasil: client1.dev-staging-novatix.id
-        $subdomain = explode('.', $host)[0]; // hasil: 'client1'
+        $host = $request->getHost();
+        $subdomain = explode('.', $host)[0];
 
         $event = Event::where('slug', $subdomain)->first();
 

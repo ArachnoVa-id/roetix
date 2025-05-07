@@ -51,7 +51,8 @@ class CheckEndLogin
                 'maintenance' => [
                     'title' => 'Overload user ' . $trafficNumber->active_sessions,
                     'message' => 'Try again latter',
-                    'expected_finish' => Carbon::now()->format('F j, Y, g:i a'),
+                    'expected_finish' => Carbon::now()->addMinutes(1)->format('H:i:s'),
+
                 ],
             ]);
         }

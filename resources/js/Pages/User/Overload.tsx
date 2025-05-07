@@ -1,4 +1,3 @@
-import NavLink from '@/Components/NavLink';
 import { Head } from '@inertiajs/react';
 import React from 'react';
 
@@ -100,7 +99,8 @@ export default function Maintenance({
                                 <div
                                     className="text-sm"
                                     style={{
-                                        color: text_secondary_color || '#b45309',
+                                        color:
+                                            text_secondary_color || '#b45309',
                                     }}
                                 >
                                     <p>{maintenance.expected_finish}</p>
