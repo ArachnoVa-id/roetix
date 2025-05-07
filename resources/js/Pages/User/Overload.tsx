@@ -2,8 +2,8 @@
 import { useEffect } from 'react';
 
 import { Head } from '@inertiajs/react';
-import React from 'react';
 import mqtt from 'mqtt';
+import React from 'react';
 
 interface MaintenanceProps {
     client: string;
@@ -11,7 +11,7 @@ interface MaintenanceProps {
         name: string;
         slug: string;
         event_slug: string;
-        next_user_id: string;
+        user_id: string;
     };
     maintenance: {
         title: string;
@@ -38,7 +38,6 @@ export default function Maintenance({
     logo,
     logo_alt,
 }: MaintenanceProps): React.ReactElement {
-
     useEffect(() => {
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
@@ -46,7 +45,6 @@ export default function Maintenance({
             console.log('Connected to MQTT broker');
             const sanitizedUserId = event.event_slug.replace(/-/g, '');
             mqttclient.subscribe(`novatix/logs/${sanitizedUserId}`);
-
         });
 
         mqttclient.on('message', (topic, message) => {
@@ -57,10 +55,12 @@ export default function Maintenance({
                 console.log('Received MQTT:', updates);
 
                 const logoutEvent = updates.find(
-                    (e) => e.event === 'user_logout' && e.next_user_id === event.next_user_id
+                    (e) =>
+                        e.event === 'user_logout' &&
+                        e.next_user_id === event.user_id,
                 );
 
-                console.log(logoutEvent, event.next_user_id);
+                console.log(logoutEvent, event.user_id);
 
                 if (logoutEvent) {
                     // Tambahkan delay kecil agar DB update selesai
@@ -68,16 +68,28 @@ export default function Maintenance({
                         window.location.reload();
                     }, 1000);
                 }
-
             } catch (error) {
                 console.error('Error parsing MQTT message:', error);
             }
         });
 
+        // ⬇️ Tambahkan blok ini setelah MQTT handling
+        if (maintenance.expected_finish) {
+            const expectedTime = new Date(maintenance.expected_finish);
+            const now = new Date();
+            const diffMs = expectedTime.getTime() - now.getTime();
+
+            if (diffMs > 0) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, diffMs);
+            }
+        }
+
         return () => {
             mqttclient.end();
         };
-    }, []);
+    });
 
     return (
         <div

@@ -33,59 +33,6 @@ class UserEndTimeMiddleware
         $event_id = $event->id;
         $path = storage_path("sql/events/{$event_id}.db");
 
-        $pdo = new PDO("sqlite:" . $path);
-        $stmt = $pdo->query("
-            SELECT * FROM user_logs
-            WHERE user_id = ?
-            AND status = 'online'
-            ORDER BY created_at DESC
-            LIMIT 1
-        ");
-
-        $stmt->execute([$user->id]);
-        $user_log = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // if (!$user_log) {
-        //     $current_time = Carbon::now();
-
-        //     // Check if user is not in page or close the web or other reaseon  [tolerance 3 minutes]
-        //     $tolerance = Carbon::parse($user_log['expected_end_time'])->addMinutes(3);
-        //     if ($current_time->greaterThanOrEqualTo($tolerance)) {
-
-        //         // Auth::guard('web')->logout();
-
-        //         $request->session()->invalidate();
-        //         $request->session()->regenerateToken();
-
-        //         return redirect('/login');
-        //     }
-        // }
-
-        // dd($user_log, $user->id);
-
-        // if ($user_log) {
-        //     $current_time = Carbon::now();
-
-        //     // Check if user is not in page or close the web or other reaseon  [tolerance 3 minutes]
-        //     $tolerance = Carbon::parse($user_log['expected_end_time'])->addMinutes(3);
-        //     if ($current_time->greaterThanOrEqualTo($tolerance)) {
-
-        //         // dd($user_log);
-        //         // Update end_login untuk login terakhir user
-        //         $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ? AND status = 'online'");
-        //         $stmt->execute([$user->id]);
-
-        //         Auth::guard('web')->logout();
-
-        //         $request->session()->invalidate();
-        //         $request->session()->regenerateToken();
-
-        //         return redirect('/login');
-        //     }
-        // }
-
-        // dd($user_log);
-
         return $next($request);
     }
 

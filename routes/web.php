@@ -114,7 +114,7 @@ Route::domain('{client}.' . config('app.domain'))
             ->name('client.verify-event-password');
 
         // User Page
-        Route::middleware(['event.props', 'event.maintenance', 'event.lock', 'user.queue', 'user.end.time'])->group(function () {
+        Route::middleware(['event.props', 'event.maintenance', 'event.lock', 'user.queue'])->group(function () {
             Route::controller(UserPageController::class)->group(function () {
                 // Home Page
                 Route::get('/', 'landing')
