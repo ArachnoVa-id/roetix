@@ -47,7 +47,6 @@ class SocialiteController extends Controller
                     'auth_user' => $user,
                 ]);
                 $event = \App\Models\Event::where('slug', $client)->first();
-
                 $path = storage_path("sql/events/{$event->id}.db");
 
                 if (File::exists($path)) {
@@ -68,6 +67,7 @@ class SocialiteController extends Controller
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
+                dd("no");
                 DB::beginTransaction();
                 $given_name = $google_user['given_name'] ?? null;
                 $family_name = $google_user['family_name'] ?? null;
