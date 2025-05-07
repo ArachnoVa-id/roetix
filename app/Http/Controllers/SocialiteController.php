@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
+use App\Models\Traffic;
+use Carbon\Carbon;
+use PDO;
 
 class SocialiteController extends Controller
 {
@@ -42,6 +45,14 @@ class SocialiteController extends Controller
                 ]);
 
                 Auth::login($user);
+                
+                $event = \App\Models\Event::where('slug', $client)->first();
+
+                if ($event) {
+                    $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+                    $trafficNumber->increment('active_sessions');
+                    $trafficNumber->save();
+                }
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {

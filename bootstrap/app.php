@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'event.props' => \App\Http\Middleware\LoadEventProps::class,
             'event.maintenance'  => \App\Http\Middleware\CheckEventMaintenance::class,
             'event.lock'  => \App\Http\Middleware\CheckEventLock::class,
+            'check.end.login' => \App\Http\Middleware\CheckEndLogin::class,
         ]);
     })
 

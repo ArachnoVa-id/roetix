@@ -10,21 +10,21 @@ import {
 } from '@/types/seatmap';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
+import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
-import mqtt from "mqtt";
 
-interface DataItem {
-    category: string;
-    column: number;
-    id: string;
-    price: string;
-    row: string;
-    seat_number: string;
-    status: string;
-    ticket_category_id: string;
-    ticket_type: string;
-}
+// interface DataItem {
+//     category: string;
+//     column: number;
+//     id: string;
+//     price: string;
+//     row: string;
+//     seat_number: string;
+//     status: string;
+//     ticket_category_id: string;
+//     ticket_type: string;
+// }
 
 export default function Landing({
     client,
@@ -61,18 +61,23 @@ export default function Landing({
                 const payload = JSON.parse(message.toString());
                 const updates = Array.isArray(payload) ? payload : [payload];
 
-                const updatedItems = layoutItems.map(item => {
+                console.log('Received updated MQTT message:', updates);
+                console.log('Received payload MQTT message:', payload);
+
+                const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
 
-                    const update = updates.find(updateItem =>
-                        updateItem.id.replace(/,/g, '') === item.id
+                    const update = updates.find(
+                        (updateItem) =>
+                            updateItem.id?.replace(/,/g, '') === item.id,
                     );
+
+                    console.log('find item tobe update', update);
 
                     if (update) {
                         return {
                             ...item,
                             status: update.status,
-                            seat_number: update.seat_number, // jika perlu
                         };
                     }
 
@@ -80,11 +85,10 @@ export default function Landing({
                 });
 
                 setLayoutItems(updatedItems);
-                setLayoutState(prevLayout => ({
+                setLayoutState((prevLayout) => ({
                     ...prevLayout,
                     items: updatedItems,
                 }));
-
             } catch (error) {
                 console.error('Error parsing MQTT message:', error);
             }
@@ -93,12 +97,12 @@ export default function Landing({
         return () => {
             mqttclient.end();
         };
-    }, []);
+    }, [layoutItems]);
 
     useEffect(() => {
         console.log(layoutItems);
         console.log(layoutState);
-    }, [layoutItems, setLayoutItems])
+    }, [layoutItems, layoutState]);
 
     // Show error if it exists when component mounts
     useEffect(() => {
@@ -574,56 +578,57 @@ export default function Landing({
                                                         style={{
                                                             backgroundColor:
                                                                 event.status ===
-                                                                    'active'
+                                                                'active'
                                                                     ? 'rgba(34, 197, 94, 0.1)'
                                                                     : event.status ===
                                                                         'planned'
-                                                                        ? 'rgba(59, 130, 246, 0.1)'
-                                                                        : event.status ===
-                                                                            'completed'
-                                                                            ? 'rgba(107, 114, 128, 0.1)'
-                                                                            : 'rgba(239, 68, 68, 0.1)',
+                                                                      ? 'rgba(59, 130, 246, 0.1)'
+                                                                      : event.status ===
+                                                                          'completed'
+                                                                        ? 'rgba(107, 114, 128, 0.1)'
+                                                                        : 'rgba(239, 68, 68, 0.1)',
                                                         }}
                                                     >
                                                         <div
-                                                            className={`h-2 w-2 rounded-full ${event.status ===
+                                                            className={`h-2 w-2 rounded-full ${
+                                                                event.status ===
                                                                 'active'
-                                                                ? 'bg-green-500'
-                                                                : event.status ===
-                                                                    'planned'
-                                                                    ? 'bg-blue-500'
+                                                                    ? 'bg-green-500'
                                                                     : event.status ===
-                                                                        'completed'
+                                                                        'planned'
+                                                                      ? 'bg-blue-500'
+                                                                      : event.status ===
+                                                                          'completed'
                                                                         ? 'bg-gray-500'
                                                                         : 'bg-red-500'
-                                                                } mr-2 animate-pulse`}
+                                                            } mr-2 animate-pulse`}
                                                         ></div>
                                                         <span
                                                             className="text-sm font-medium"
                                                             style={{
                                                                 color:
                                                                     event.status ===
-                                                                        'active'
+                                                                    'active'
                                                                         ? '#16a34a'
                                                                         : event.status ===
                                                                             'planned'
-                                                                            ? '#2563eb'
-                                                                            : event.status ===
-                                                                                'completed'
-                                                                                ? '#4b5563'
-                                                                                : '#dc2626',
+                                                                          ? '#2563eb'
+                                                                          : event.status ===
+                                                                              'completed'
+                                                                            ? '#4b5563'
+                                                                            : '#dc2626',
                                                             }}
                                                         >
                                                             {event.status ===
-                                                                'active'
+                                                            'active'
                                                                 ? 'Active'
                                                                 : event.status ===
                                                                     'planned'
-                                                                    ? 'Planned'
-                                                                    : event.status ===
-                                                                        'completed'
-                                                                        ? 'Completed'
-                                                                        : 'Cancelled'}
+                                                                  ? 'Planned'
+                                                                  : event.status ===
+                                                                      'completed'
+                                                                    ? 'Completed'
+                                                                    : 'Cancelled'}
                                                         </span>
                                                     </div>
                                                 )}
@@ -912,9 +917,9 @@ export default function Landing({
                                                 categoryPrices.find(
                                                     (p) =>
                                                         p.ticket_category_id ===
-                                                        category.id &&
+                                                            category.id &&
                                                         p.timeline_id ===
-                                                        currentTimeline.id,
+                                                            currentTimeline.id,
                                                 );
                                             if (priceEntry) {
                                                 price = priceEntry.price;
@@ -935,7 +940,7 @@ export default function Landing({
                                                     style={{
                                                         backgroundColor:
                                                             ticketTypeColors[
-                                                            type
+                                                                type
                                                             ],
                                                     }}
                                                 />
@@ -1025,7 +1030,7 @@ export default function Landing({
                             <div className="flex h-full w-full flex-1 overflow-hidden">
                                 <div className="flex w-full justify-center overflow-auto">
                                     <SeatMapDisplay
-                                        config={layout}
+                                        config={layoutState}
                                         props={props}
                                         onSeatClick={handleSeatClick}
                                         selectedSeats={selectedSeats}

@@ -224,11 +224,7 @@ class PaymentController extends Controller
 
             // Update snap_token to order
             $order->snap_token = $snapToken;
-            $order->save();
-
-            // $this->publishMqtt(data: [
-            //     'message' => 'hallo ini dari charge'
-            // ]);
+            $order->save();        
 
             DB::commit();
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
@@ -322,12 +318,7 @@ class PaymentController extends Controller
             }      
             DB::commit();
             $this->publishMqtt(data: [
-                "category" => $ticket->category,
-                "column" => $ticket->column,
-                "id" => $ticket->id,
-                "price" => number_format($ticket->price, 2, '.', ''),
-                "row" => $ticket->row,
-                "seat_number" => $ticket->seat_number,
+                "id" => $ticket->seat_id,
                 "status" => $ticket->status,
                 "ticket_category_id" => $ticket->ticket_category_id,
                 "ticket_type" => $ticket->ticket_type,
