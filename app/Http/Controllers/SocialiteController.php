@@ -52,8 +52,6 @@ class SocialiteController extends Controller
 
                 $path = storage_path("sql/events/{$event->id}.db");
 
-                Auth::login($user);
-
                 if (File::exists($path)) {
                     $pdo = new PDO("sqlite:" . $path);
                     $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, start_login) VALUES (?, datetime('now'))");
@@ -67,6 +65,8 @@ class SocialiteController extends Controller
                     $trafficNumber->increment('active_sessions');
                     $trafficNumber->save();
                 }
+
+                Auth::login($user);
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
