@@ -17,6 +17,11 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use PhpMqtt\Client\MqttClient;
+use PhpMqtt\Client\ConnectionSettings;
+use Illuminate\Support\Facades\Log;
 use PDO;
 
 class AuthenticatedSessionController extends Controller
@@ -70,11 +75,19 @@ class AuthenticatedSessionController extends Controller
 
             $event = \App\Models\Event::where('slug', $request->client)->first();
 
-            if ($event) {
-                $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-                $trafficNumber->increment('active_sessions');
-                $trafficNumber->save();
-            }
+            $eventId = (int) $event->id; // pastikan ini integer
+            $path = storage_path("sql/events/{$eventId}.db");
+
+            // if (File::exists($path)) {
+            // } else {
+            //     abort(404, 'Event database not found.');
+            // }
+
+            // if ($event) {
+            //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+            //     $trafficNumber->increment('active_sessions');
+            //     $trafficNumber->save();
+            // }
 
             // redirecting to
             $redirectProps = [
@@ -115,14 +128,37 @@ class AuthenticatedSessionController extends Controller
     {
         $host = $request->getHost();
         $subdomain = explode('.', $host)[0];
+        $user = Auth::user();
 
         $event = Event::where('slug', $subdomain)->first();
 
         if ($event) {
-            $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            if ($trafficNumber && $trafficNumber->active_sessions > 0) {
-                $trafficNumber->decrement('active_sessions');
-            }
+            $path = storage_path("sql/events/{$event->id}.db");
+
+            // $pdo = new PDO("sqlite:" . $path);
+
+            // // Update end_login untuk login terakhir user
+            // $stmt = $pdo->prepare("
+            //     UPDATE user_logs
+            //     SET end_login = datetime('now')
+            //     WHERE user_id = ? AND end_login IS NULL
+            //     ORDER BY start_login DESC
+            //     LIMIT 1
+            // ");
+            // $stmt->execute([$user->id]);
+
+            // $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+            // if ($trafficNumber && $trafficNumber->active_sessions > 0) {
+            //     $trafficNumber->decrement('active_sessions');
+            // }
+            // $mqttData = [
+            //     'event' => 'user_logout',
+            //     'user_id' => $user->id,
+            //     'event_id' => $event->id,
+            //     'timestamp' => now()->toDateTimeString(),
+            // ];
+
+            // $this->publishMqtt($mqttData);
         }
 
         Auth::guard('web')->logout();
@@ -131,5 +167,39 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/login');
+    }
+
+    public function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
+    {
+        $server = 'broker.emqx.io';
+        $port = 1883;
+        $clientId = 'novatix_midtrans' . rand(100, 999);
+        $usrname = 'emqx';
+        $password = 'public';
+        $mqtt_version = MqttClient::MQTT_3_1_1;
+        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
+        $topic = 'novatix/logs/defaultcode';
+
+        $conn_settings = (new ConnectionSettings)
+            ->setUsername($usrname)
+            ->setPassword($password)
+            ->setLastWillMessage('client disconnected')
+            ->setLastWillTopic('emqx/last-will')
+            ->setLastWillQualityOfService(1);
+
+        $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
+
+        try {
+            $mqtt->connect($conn_settings, true);
+            $mqtt->publish(
+                $topic,
+                json_encode($data),
+                0
+            );
+            $mqtt->disconnect();
+        } catch (\Throwable $th) {
+            // biarin lewat aja biar ga bikin masalah di payment controller flow nya
+            Log::error('MQTT Publish Failed: ' . $th->getMessage());
+        }
     }
 }
