@@ -17,6 +17,7 @@ use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
 
 use App\Models\Traffic;
+use App\Models\EventLog;
 use Carbon\Carbon;
 use PDO;
 
@@ -50,26 +51,22 @@ class SocialiteController extends Controller
                 ]);
                 $event = \App\Models\Event::where('slug', $client)->first();
 
-                // queque dulu
-                $path = storage_path("sql/events/{$event->id}.sql");
-
-                // dd($path);
+                $path = storage_path("sql/events/{$event->id}.db");
 
                 Auth::login($user);
 
-                if (!File::exists($path)) {
-                    $sql = File::get($path);
-                    $startLogin = Carbon::now()->format('Y-m-d H:i:s');
-
-                    $appendSql = "\n-- Login Queue\n";
-                    $appendSql .= "INSERT INTO event_logs (user_id, event_id, start_login, end_at) VALUES (\n";
-                    $appendSql .= "  '{$user->id}',\n";
-                    $appendSql .= "  '{$event->id}',\n";
-                    $appendSql .= "  '{$startLogin}',\n";
-                    $appendSql .= "  NULL\n";
-                    $appendSql .= ");\n";
-
-                    File::put($path, $sql . $appendSql);
+                if (File::exists($path)) {
+                    config(['database.connections.sqlite.database' => $path]);
+                    DB::purge('sqlite');
+                    DB::reconnect('sqlite');
+                    EventLog::create([
+                        'user_id'     => $user->id,
+                        'event_id'    => $event->id,
+                        'start_login' => now(),
+                        'end_at'      => null,
+                    ]);
+                } else {
+                    abort(404, 'Event database not found.');
                 }
 
                 if ($event) {

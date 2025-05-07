@@ -41,7 +41,7 @@ class Event extends Model
 
     protected static function createSql($event)
     {
-        $filePath = storage_path("sql/events/{$event->id}.db");
+        $filePath = storage_path("sql/events/{$event->id}.sql");
         // $filePath = storage_path("sql/events/{$event->id}.sql");
         File::ensureDirectoryExists(dirname($filePath));
 

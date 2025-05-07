@@ -10,6 +10,7 @@ use App\Models\Traffic;
 use App\Models\Event;
 use App\Models\TrafficNumbersSlug;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\File;
 
 class CheckEndLogin
 {
@@ -44,7 +45,6 @@ class CheckEndLogin
                     'expected_finish' => Carbon::now()->addMinutes(1)->format('H:i:s'),
                 ],
             ]);
-
         }
 
         return $next($request);
