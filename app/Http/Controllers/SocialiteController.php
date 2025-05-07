@@ -52,7 +52,7 @@ class SocialiteController extends Controller
 
                 if (File::exists($path)) {
                     $pdo = new PDO("sqlite:" . $path);
-                    $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, online) VALUES (?, 1)");
+                    $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
                     $stmt->execute([$user->id]);
                 } else {
                     abort(404, 'Event database not found.');

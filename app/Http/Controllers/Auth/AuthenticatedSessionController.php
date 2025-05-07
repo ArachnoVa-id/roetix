@@ -80,7 +80,7 @@ class AuthenticatedSessionController extends Controller
 
             if (File::exists($path)) {
                 $pdo = new PDO("sqlite:" . $path);
-                $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, online) VALUES (?, 1)");
+                $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
                 $stmt->execute([$user->id]);
             } else {
                 abort(404, 'Event database not found.');
@@ -141,7 +141,7 @@ class AuthenticatedSessionController extends Controller
             $pdo = new PDO("sqlite:" . $path);
 
             // Update end_login untuk login terakhir user
-            $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ? AND online = 1");
+            $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ? AND status = 'offline'");
             $stmt->execute([$user->id]);
 
             $mqttData = [

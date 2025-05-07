@@ -53,10 +53,11 @@ class Event extends Model
             CREATE TABLE IF NOT EXISTS user_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
-                online BOOLEAN NULL DEFAULT 0,
+                status TEXT NULL,
+                start_time DATETIME NULL,
+                expected_end_time DATETIME NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )";
-
         $pdo->exec($query);
     }
 
