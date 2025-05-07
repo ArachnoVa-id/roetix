@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
+use Illuminate\Support\Facades\File;
+use PhpMqtt\Client\MqttClient;
+use PhpMqtt\Client\ConnectionSettings;
+use Illuminate\Support\Facades\Log;
+
 use App\Models\Traffic;
 use Carbon\Carbon;
 use PDO;
@@ -33,6 +38,7 @@ class SocialiteController extends Controller
             $google_resp = Socialite::driver('google')->user();
             $google_user = $google_resp->user;
 
+
             $user = User::where('email', $google_resp->email)
                 ->first();
 
@@ -43,16 +49,25 @@ class SocialiteController extends Controller
                 session([
                     'auth_user' => $user,
                 ]);
-
-                Auth::login($user);
-                
                 $event = \App\Models\Event::where('slug', $client)->first();
 
-                if ($event) {
-                    $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-                    $trafficNumber->increment('active_sessions');
-                    $trafficNumber->save();
-                }
+                // $path = storage_path("sql/events/{$event->id}.db");
+
+                // Auth::login($user);
+
+                // if (File::exists($path)) {
+                //     $pdo = new PDO("sqlite:" . $path);
+                //     $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, start_login) VALUES (?, datetime('now'))");
+                //     $stmt->execute([$user->id]);
+                // } else {
+                //     abort(404, 'Event database not found.');
+                // }
+
+                // if ($event) {
+                //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+                //     $trafficNumber->increment('active_sessions');
+                //     $trafficNumber->save();
+                // }
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {

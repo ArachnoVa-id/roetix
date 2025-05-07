@@ -1,5 +1,9 @@
+'use client';
+import { useEffect } from 'react';
+
 import { Head } from '@inertiajs/react';
 import React from 'react';
+import mqtt from 'mqtt';
 
 interface MaintenanceProps {
     client: string;
@@ -31,6 +35,35 @@ export default function Maintenance({
     logo,
     logo_alt,
 }: MaintenanceProps): React.ReactElement {
+    useEffect(() => {
+        const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+
+        mqttclient.on('connect', () => {
+            console.log('Connected to MQTT broker');
+            mqttclient.subscribe('novatix/logs/defaultcode');
+        });
+
+        mqttclient.on('message', (topic, message) => {
+            try {
+                const payload = JSON.parse(message.toString());
+                const updates = Array.isArray(payload) ? payload : [payload];
+
+                console.log('Received updated MQTT message:', updates);
+                console.log('Received payload MQTT message:', payload);
+
+                // ✅ Reload the page
+                window.location.reload();
+
+            } catch (error) {
+                console.error('Error parsing MQTT message:', error);
+            }
+        });
+
+        return () => {
+            mqttclient.end();
+        };
+    }, []);
+
     return (
         <div
             className="flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8"
