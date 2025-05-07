@@ -51,7 +51,7 @@ class UserQueueMiddleware
                         'name' => $event->name,
                         'slug' => $event->slug,
                         'event_slug' => $event->slug,
-                        'next_user_id' => $current_user['user_id'],
+                        'user_id' => $current_user['user_id'],
                     ],
                     'maintenance' => [
                         'title' => "Overload User Capacity",
