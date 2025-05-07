@@ -17,7 +17,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Carbon\Carbon;
-
+use PDO;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -66,14 +66,6 @@ class AuthenticatedSessionController extends Controller
         if ($request->client) {
             session([
                 'auth_user' => $userModel,
-            ]);
-
-            Traffic::create([
-                'user_id' => $user->id,
-                'start_login' => Carbon::now()->format('H:i:s'),
-                // 'end_login' => Carbon::now()->addHours(2)->format('H:i:s'), // contoh 2 jam sesi
-                'end_login' => Carbon::now()->addMinutes(1)->format('H:i:s'),
-                'stop_at' => null,
             ]);
 
             $event = \App\Models\Event::where('slug', $request->client)->first();
@@ -126,17 +118,12 @@ class AuthenticatedSessionController extends Controller
 
         $event = Event::where('slug', $subdomain)->first();
 
-        Traffic::where('user_id', Auth::id())
-            ->whereNull('stop_at')
-            ->latest()
-            ->update(['stop_at' => now()]);
-
         if ($event) {
             $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            $trafficNumber->decrement('active_sessions');
-            $trafficNumber->save();
+            if ($trafficNumber && $trafficNumber->active_sessions > 0) {
+                $trafficNumber->decrement('active_sessions');
+            }
         }
-
 
         Auth::guard('web')->logout();
 

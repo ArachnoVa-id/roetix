@@ -41,7 +41,7 @@ export default function Maintenance({
                 backgroundSize: 'auto',
             }}
         >
-            <Head title={'Maintenance:  ' + maintenance.title} />
+            <Head title={'in queue:  ' + maintenance.title} />
 
             <div
                 className="flex w-full max-w-md flex-col items-center justify-center gap-4 rounded-lg p-8 shadow-md"
@@ -61,7 +61,7 @@ export default function Maintenance({
                     className="text-2xl font-extrabold"
                     style={{ color: text_primary_color || '#1f2937' }}
                 >
-                    Event is Under Maintenance
+                    Event is Overloaded you are in queue
                 </h2>
                 <div className="flex flex-col text-center">
                     <h2

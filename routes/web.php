@@ -101,12 +101,14 @@ Route::domain(config('app.domain'))
     });
 
 Route::domain('{client}.' . config('app.domain'))
-    ->middleware(['verify.subdomain', 'check.end.login'])
+    ->middleware(['verify.subdomain'])
     ->group(function () {
         // Socialite Authentication
-        Route::controller(SocialiteController::class)->group(function () {
-            Route::get('/auth/google', 'googleLogin')
-                ->name('client-auth.google');
+        Route::middleware(['check.end.login'])->group(function () {
+            Route::controller(SocialiteController::class)->group(function () {
+                Route::get('/auth/google', 'googleLogin')
+                    ->name('client-auth.google');
+            });
         });
 
         Route::post('/verify-event-password', [UserPageController::class, 'verifyEventPassword'])
@@ -114,7 +116,7 @@ Route::domain('{client}.' . config('app.domain'))
             ->name('client.verify-event-password');
 
         // User Page
-        Route::middleware(['event.props', 'event.maintenance', 'event.lock'])->group(function () {
+        Route::middleware(['event.props', 'event.maintenance', 'event.lock', 'check.end.login'])->group(function () {
             Route::controller(UserPageController::class)->group(function () {
                 // Home Page
                 Route::get('/', 'landing')
