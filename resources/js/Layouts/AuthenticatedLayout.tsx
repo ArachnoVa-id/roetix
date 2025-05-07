@@ -127,13 +127,15 @@ export default function Authenticated({
                         <div className="flex">
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
+                                    href="#"
+                                    active={false}
                                     eventProps={props}
-                                    href={
-                                        client
-                                            ? route('profile.edit', client)
-                                            : ''
-                                    }
-                                    active={route().current('profile.edit')}
+                                    // href={
+                                    //     client
+                                    //         ? route('profile.edit', client)
+                                    //         : ''
+                                    // }
+                                    // active={route().current('profile.edit')}
                                     className="flex gap-3"
                                 >
                                     <img
@@ -271,9 +273,10 @@ export default function Authenticated({
                         <div className="mt-3 space-y-1">
                             <ResponsiveNavLink
                                 eventProps={props}
-                                href={
-                                    client ? route('profile.edit', client) : ''
-                                }
+                                href="#"
+                                // href={
+                                //     client ? route('profile.edit', client) : ''
+                                // }
                             >
                                 Profile
                             </ResponsiveNavLink>
@@ -349,7 +352,7 @@ export default function Authenticated({
                                         className="h-8 rounded-lg"
                                     />
                                 </Link>
-                                <div className="z-0 flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
+                                <div className="z-0 hidden h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
                                     <Link
                                         href={route(
                                             'client.privacy_policy',

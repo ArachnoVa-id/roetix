@@ -161,14 +161,20 @@ Route::domain('{client}.' . config('app.domain'))
             // Profile
             Route::controller(ProfileController::class)
                 ->group(function () {
-                    Route::get('/profile', 'edit')
-                        ->name('profile.edit');
+                    // Route::get('/profile', 'edit')
+                    //     ->name('profile.edit');
+
+                    
                     // Route::patch('/profile', 'update')
                     //     ->name('profile.update');
                     // Route::put('/profile', 'updatePassword')
                     //     ->name('profile.password_update');
-                    Route::put('/profile', 'updateContact')
-                        ->name('profile.contact_update');
+
+
+                    // Route::put('/profile', 'updateContact')
+                    //     ->name('profile.contact_update');
+
+
                     // Route::delete('/profile', 'destroy')
                     //     ->name('profile.destroy');
                 });

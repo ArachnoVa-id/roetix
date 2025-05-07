@@ -50,7 +50,10 @@ export default function Guest({
                 {children}
             </div>
             <div
-                className="flex w-fit items-center justify-center rounded-full px-3"
+                className={
+                    'flex w-fit items-center justify-center rounded-full px-3 ' +
+                    (client && 'hidden')
+                }
                 style={{
                     backgroundColor: props.secondary_color,
                 }}
