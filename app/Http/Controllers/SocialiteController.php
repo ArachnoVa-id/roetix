@@ -12,8 +12,6 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
 use Illuminate\Support\Facades\File;
-use PhpMqtt\Client\MqttClient;
-use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
 
 use App\Models\Traffic;
@@ -54,17 +52,17 @@ class SocialiteController extends Controller
 
                 if (File::exists($path)) {
                     $pdo = new PDO("sqlite:" . $path);
-                    $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, start_login) VALUES (?, datetime('now'))");
+                    $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, online) VALUES (?, 1)");
                     $stmt->execute([$user->id]);
                 } else {
                     abort(404, 'Event database not found.');
                 }
 
-                if ($event) {
-                    $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-                    $trafficNumber->increment('active_sessions');
-                    $trafficNumber->save();
-                }
+                // if ($event) {
+                //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+                //     $trafficNumber->increment('active_sessions');
+                //     $trafficNumber->save();
+                // }
 
                 Auth::login($user);
 

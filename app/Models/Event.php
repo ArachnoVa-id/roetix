@@ -50,13 +50,12 @@ class Event extends Model
 
         // Buat tabel logins
         $query = "
-        CREATE TABLE IF NOT EXISTS user_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            start_login DATETIME DEFAULT CURRENT_TIMESTAMP,
-            end_login DATETIME
-        )
-    ";
+            CREATE TABLE IF NOT EXISTS user_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                online BOOLEAN NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )";
 
         $pdo->exec($query);
     }

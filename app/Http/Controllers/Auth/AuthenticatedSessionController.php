@@ -79,15 +79,18 @@ class AuthenticatedSessionController extends Controller
             $path = storage_path("sql/events/{$eventId}.db");
 
             if (File::exists($path)) {
+                $pdo = new PDO("sqlite:" . $path);
+                $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, online) VALUES (?, 1)");
+                $stmt->execute([$user->id]);
             } else {
                 abort(404, 'Event database not found.');
             }
 
-            if ($event) {
-                $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-                $trafficNumber->increment('active_sessions');
-                $trafficNumber->save();
-            }
+            // if ($event) {
+            //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
+            //     $trafficNumber->increment('active_sessions');
+            //     $trafficNumber->save();
+            // }
 
             // redirecting to
             $redirectProps = [
@@ -138,27 +141,15 @@ class AuthenticatedSessionController extends Controller
             $pdo = new PDO("sqlite:" . $path);
 
             // Update end_login untuk login terakhir user
-            $stmt = $pdo->prepare("
-                UPDATE user_logs
-                SET end_login = datetime('now')
-                WHERE user_id = ? AND end_login IS NULL
-                ORDER BY start_login DESC
-                LIMIT 1
-            ");
+            $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ? AND online = 1");
             $stmt->execute([$user->id]);
 
-            $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            if ($trafficNumber && $trafficNumber->active_sessions > 0) {
-                $trafficNumber->decrement('active_sessions');
-            }
             $mqttData = [
                 'event' => 'user_logout',
-                'user_id' => $user->id,
-                'event_id' => $event->id,
-                'timestamp' => now()->toDateTimeString(),
+                'next_user_id' => $user->id,
             ];
 
-            $this->publishMqtt($mqttData);
+            $this->publishMqtt($mqttData, $event->slug);
         }
 
         Auth::guard('web')->logout();
@@ -177,8 +168,8 @@ class AuthenticatedSessionController extends Controller
         $usrname = 'emqx';
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
-        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
-        $topic = 'novatix/logs/defaultcode';
+        $sanitized_mqtt_code = str_replace('-', '', $mqtt_code);
+        $topic = 'novatix/logs/' . $sanitized_mqtt_code;
 
         $conn_settings = (new ConnectionSettings)
             ->setUsername($usrname)
@@ -198,7 +189,7 @@ class AuthenticatedSessionController extends Controller
             );
             $mqtt->disconnect();
         } catch (\Throwable $th) {
-            // biarin lewat aja biar ga bikin masalah di payment controller flow nya
+            dd($th);
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }

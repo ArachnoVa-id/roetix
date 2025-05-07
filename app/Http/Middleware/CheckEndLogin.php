@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\TrafficNumbersSlug;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\File;
+use PDO;
 
 class CheckEndLogin
 {
@@ -30,22 +31,38 @@ class CheckEndLogin
         }
 
         $event_id = $event->id;
-        // $trafficNumber = TrafficNumbersSlug::where('event_id', $event_id)->first();
+        $path = storage_path("sql/events/{$event_id}.db");
+        $pdo = new PDO("sqlite:" . $path);
+        $stmt = $pdo->query("SELECT COUNT(*) FROM user_logs WHERE online = 1");
+        $trafficNumber = $stmt->fetchColumn();
 
-        // if ($trafficNumber->active_sessions >= 2) {
-        //     return Inertia::render('User/Overload', [
-        //         'client' => $subdomain,
-        //         'event' => [
-        //             'name' => $event->name,
-        //             'slug' => $event->slug
-        //         ],
-        //         'maintenance' => [
-        //             'title' => 'Total Number of user ' . $trafficNumber->active_sessions,
-        //             'message' => 'Try again latter',
-        //             'expected_finish' => Carbon::now()->addMinutes(1)->format('H:i:s'),
-        //         ],
-        //     ]);
-        // }
+        $stmt = $pdo->query("
+            SELECT * FROM user_logs
+            WHERE online = 1
+            ORDER BY created_at ASC
+            LIMIT 1
+        ");
+        $firstOnlineUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $nextUserIdInQueue = $firstOnlineUser['user_id'] ?? null;
+
+        if ($nextUserIdInQueue != $user->id && $trafficNumber >= 2) {
+            return Inertia::render('User/Overload', [
+                'client' => $subdomain,
+                'event' => [
+                    'name' => $event->name,
+                    'slug' => $event->slug,
+                    'event_slug' => $event->slug,
+                    'next_user_id' => $nextUserIdInQueue,
+                ],
+                'maintenance' => [
+                    'title' => "Total user online: $trafficNumber",
+                    'message' => 'Please wait...',
+                    'expected_finish' => Carbon::now()->addSeconds(10)->format('H:i:s'),
+                ],
+            ]);
+        }
+
 
         return $next($request);
     }
