@@ -39,7 +39,6 @@ export default function Landing({
     ownedTicketCount,
     userEndSessionDatetime,
 }: LandingProps) {
-    console.log(userEndSessionDatetime);
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
     const [pendingTransactions, setPendingTransactions] = useState<

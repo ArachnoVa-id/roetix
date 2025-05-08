@@ -13,12 +13,11 @@ use Illuminate\Http\Request;
 use App\Models\TicketCategory;
 use App\Models\TimelineSession;
 use App\Enums\TicketOrderStatus;
+use App\Models\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\EventCategoryTimeboundPrice;
-use App\Models\User;
-use PDO;
 
 class UserPageController extends Controller
 {
@@ -141,13 +140,7 @@ class UserPageController extends Controller
                 })
                 ->count();
 
-            // use pdo to find current user and get expected_end_time
-            $path = storage_path("sql/events/{$event->id}.db");
-            $pdo = new PDO("sqlite:" . $path);
-            $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
-            $stmt->execute([Auth::id()]);
-            $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
-            $current_user = (object)$current_user;
+            $current_user = Event::getUserQueueSqlite($event, Auth::user());
 
             return Inertia::render('User/Landing', [
                 'client' => $client,

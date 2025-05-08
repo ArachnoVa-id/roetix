@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Event;
 use App\Models\EventVariables;
 use App\Models\User;
-use App\Models\Traffic;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,13 +14,9 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
-use PDO;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -73,19 +67,6 @@ class AuthenticatedSessionController extends Controller
                 'auth_user' => $userModel,
             ]);
 
-            $event = \App\Models\Event::where('slug', $request->client)->first();
-
-            $eventId = (int) $event->id; // pastikan ini integer
-            $path = storage_path("sql/events/{$eventId}.db");
-
-            if (File::exists($path)) {
-                $pdo = new PDO("sqlite:" . $path);
-                $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
-                $stmt->execute([$user->id]);
-            } else {
-                abort(404, 'Event database not found.');
-            }
-
             // redirecting to
             $redirectProps = [
                 'route' => ($user ? 'client.home' : 'client.login'),
@@ -130,24 +111,7 @@ class AuthenticatedSessionController extends Controller
         $event = Event::where('slug', $subdomain)->first();
 
         if ($event) {
-            $path = storage_path("sql/events/{$event->id}.db");
-            $pdo = new PDO("sqlite:" . $path);
-
-            // Hapus user logs
-            $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
-            $stmt->execute([$user->id]);
-
-            // Cari user 'waiting' paling awal (berdasarkan created_at)
-            $stmt = $pdo->prepare("SELECT user_id FROM user_logs WHERE status = 'waiting' ORDER BY created_at ASC LIMIT 1");
-            $stmt->execute();
-            $nextUser = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            $mqttData = [
-                'event' => 'user_logout',
-                'next_user_id' => $nextUser['user_id'] ?? '',
-            ];
-
-            $this->publishMqtt($mqttData, $event->slug);
+            Event::logoutAndPromoteQueueSqlite($event, $user, $this);
         }
 
         Auth::guard('web')->logout();

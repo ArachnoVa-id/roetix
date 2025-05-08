@@ -5,18 +5,13 @@ namespace App\Http\Controllers;
 use Exception;
 use App\Models\User;
 use App\Enums\UserRole;
+use App\Models\Event;
 use App\Models\UserContact;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
-
-use App\Models\Traffic;
-use Carbon\Carbon;
-use PDO;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class SocialiteController extends Controller
@@ -44,39 +39,17 @@ class SocialiteController extends Controller
 
             if ($userHasCorrectGoogleId) {
                 $event = \App\Models\Event::where('slug', $client)->first();
-                $path = storage_path("sql/events/{$event->id}.db");
 
-                if (File::exists($path)) {
-                    try {
-                        $pdo = new PDO("sqlite:" . $path, null, null, [
-                            PDO::ATTR_TIMEOUT => 2,
-                            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-                        ]);
-                    } catch (Exception $e) {
-                        abort(500, 'Queue connection error: ' . $e->getMessage());
-                    }
-
-                    // Check if the user id is already in the sqlite
-                    $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
-                    $stmt->execute([$user->id]);
-                    $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                    // if user already exists, reject login
-                    if ($current_user)
-                        abort(403, 'You have already queued in another device. Please wait for your turn.');
-
-                    $pdo->beginTransaction();
-                    $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
-                    $stmt->execute([$user->id]);
-                    $pdo->commit();
-
-                    session([
-                        'auth_user' => $user,
-                    ]);
-                    Auth::login($user);
-                } else {
-                    abort(404, 'Event database not found.');
+                try {
+                    Event::loginQueueSqlite($event, $user);
+                } catch (\Throwable $e) {
+                    return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client]);
                 }
+
+                session([
+                    'auth_user' => $user,
+                ]);
+                Auth::login($user);
 
                 // if ($event) {
                 //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();

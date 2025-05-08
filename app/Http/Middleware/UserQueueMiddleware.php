@@ -9,7 +9,6 @@ use Carbon\Carbon;
 use App\Models\Event;
 use Exception;
 use Inertia\Inertia;
-use PDO;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
@@ -31,21 +30,11 @@ class UserQueueMiddleware
             abort(404, 'Event tidak ditemukan.');
         }
 
-        $event_id = $event->id;
-
-        $treshold = 1;
+        $threshold = 1;
         $loginDuration = 5;
 
-        $path = storage_path("sql/events/{$event_id}.db");
-        $pdo = new PDO("sqlite:" . $path);
-
-        // Hitung jumlah user online
-        $stmt = $pdo->query("SELECT COUNT(*) FROM user_logs WHERE status = 'online'");
-        $trafficNumber = $stmt->fetchColumn();
-
-        $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
-        $stmt->execute([$user->id]);
-        $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $trafficNumber = Event::getOnlineQueueSqlite($event);
+        $current_user = Event::getUserQueueSqlite($event, $user);
 
         // user sudah tidak online
         if (!$current_user) {
@@ -57,16 +46,12 @@ class UserQueueMiddleware
             return redirect()->route('client.login', ['client' => $client]);
         }
 
-        if ($current_user['status'] == 'online') {
+        if ($current_user->status == 'online') {
             $current_time = Carbon::now();
-            $expected_end_time = Carbon::parse($current_user['expected_end_time']);
-            // $tolerance = Carbon::parse($current_user['expected_end_time'])->addMinutes(1);
+            $expected_end_time = Carbon::parse($current_user->expected_end_time);
 
-            // ebih dari expected_end_time + 1 menit (tolarance) => logout
-            // if ($current_time->greaterThanOrEqualTo($tolerance)) {
             if ($current_time->greaterThanOrEqualTo($expected_end_time)) {
-                $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
-                $stmt->execute([$user->id]);
+                Event::logoutAndPromoteQueueSqlite($event, $user, $this);
                 Auth::guard('web')->logout();
 
                 $request->session()->invalidate();
@@ -78,49 +63,25 @@ class UserQueueMiddleware
             }
         }
 
-        if ($trafficNumber >= $treshold) {
+        if ($trafficNumber >= $threshold) {
             // user sekarang waiting ? ttp waiting
-            if ($current_user['status'] == 'waiting') {
+            if ($current_user->status == 'waiting') {
 
                 // check apakah ada user yang kemungkinan pending di web (udah habis sesinya tapi ga reload page)
                 $current_time = Carbon::now();
 
                 // Validate the limit (ensure it's a positive integer)
-                if (!filter_var($treshold, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]])) {
+                if (!filter_var($threshold, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]])) {
                     throw new Exception("Invalid limit value.");
                 }
 
-                $stmt = $pdo->prepare("
-                    SELECT * FROM user_logs
-                    WHERE status = 'online' AND expected_end_time < ?
-                    ORDER BY created_at ASC
-                    LIMIT $treshold
-                ");
-                $stmt->execute([$current_time->toDateTimeString()]);
-                $offline_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                foreach ($offline_users as $offline_user) {
-                    $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
-                    $stmt->execute([$offline_user['user_id']]);
-
-                    $this->publishMqtt([
-                        'event' => 'user_logout',
-                        'next_user_id' => $user->id,
-                    ], $event->slug);
-                }
+                Event::kickOutdatedQueueSqlite($event, $user, $this, $threshold);
 
                 // Get the user's position in the queue
-                $stmt = $pdo->prepare("
-                    SELECT COUNT(*) FROM user_logs
-                    WHERE status = 'waiting' AND id < :id
-                ");
-                $stmt->execute([
-                    'id' => $current_user['id'],
-                ]);
-                $position = $stmt->fetchColumn() + 1;
+                $position = Event::getUserPositionQueueSqlite($event, $user);
 
                 // Calculate total minutes by max divide of traffic number to the position + 1 time traffic number (to predict the worst case of waiting online users)
-                $batch = ceil($position / $treshold);
+                $batch = ceil($position / $threshold);
                 $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
                 $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
 
@@ -130,7 +91,7 @@ class UserQueueMiddleware
                     'event' => [
                         'name' => $event->name,
                         'slug' => $event->slug,
-                        'user_id' => $current_user['user_id'],
+                        'user_id' => $current_user->user_id,
                     ],
                     'queue' => [
                         'title' => "You are in a queue number " . $position,
@@ -142,15 +103,7 @@ class UserQueueMiddleware
         }
 
         // user sekarang waiting => traffic number lebih dari treshold
-        $start = Carbon::now();
-        $end = Carbon::now()->addMinutes($loginDuration);
-        $pdo = new PDO("sqlite:" . $path);
-        $stmt = $pdo->prepare("
-            UPDATE user_logs
-            SET status = 'online', start_time = ?, expected_end_time = ?
-            WHERE user_id = ?
-        ");
-        $stmt->execute([$start, $end, $user->id]);
+        Event::gettingTurnQueueSqlite($event, $user, $loginDuration);
 
         return $next($request);
     }
