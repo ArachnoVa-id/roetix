@@ -566,12 +566,40 @@ export default function Landing({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title={'Book Tickets | ' + event.name} />
+            <p className="fixed left-0 top-0 z-[1000] flex w-screen justify-center">
+                <div className="relative mt-4 rounded-lg px-4 py-2 shadow-lg">
+                    {/* Blurred background layer */}
+                    <div
+                        className="absolute inset-0 rounded-lg backdrop-blur"
+                        style={{
+                            backgroundColor: props.secondary_color,
+                            opacity: 0.7,
+                        }}
+                    />
+                    {/* Text layer (above the blur) */}
+                    <span
+                        className="relative font-bold"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
+                    >
+                        Remaining Time: {formatCountdown(countdown)}
+                    </span>
+                </div>
+            </p>
+
             <div className="flex w-full flex-col gap-4 py-4">
                 {/* Tampilkan pesan status event jika tidak active */}
                 {!isBookingAllowed && event && (
                     <div className="mx-auto w-fit sm:px-6 lg:px-8">
-                        <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
-                            <p className="text-center font-medium text-yellow-800">
+                        <div
+                            className="overflow-hidden p-3 shadow-md sm:rounded-lg"
+                            style={{
+                                backgroundColor: props.secondary_color,
+                                color: props.text_primary_color,
+                            }}
+                        >
+                            <p className="text-center font-medium">
                                 {eventStatusMessage}
                             </p>
                         </div>
@@ -1046,7 +1074,6 @@ export default function Landing({
                         >
                             {/* Header + Button */}
                             <div className="flex w-full flex-col items-center justify-center">
-                                <p>COUNTDOWN {formatCountdown(countdown)}</p>
                                 <button
                                     className={
                                         'absolute left-4 top-4 rounded-lg bg-red-500 px-4 text-lg text-white duration-200 hover:bg-red-600 max-md:static ' +

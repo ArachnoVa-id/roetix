@@ -140,7 +140,7 @@ class UserPageController extends Controller
                 })
                 ->count();
 
-            $current_user = Event::getUser($event, Auth::user());
+            $current_user = (object) Event::getUser($event, Auth::user());
 
             return Inertia::render('User/Landing', [
                 'client' => $client,

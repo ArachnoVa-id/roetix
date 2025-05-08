@@ -91,9 +91,12 @@ class Event extends Model
         $stmt->execute([$user->id]);
     }
 
-    public static function promoteUser($event, $user, $duration)
+    public static function promoteUser($event, $user)
     {
         $pdo = self::getPdo($event);
+
+        $eventVariables = $event->eventVariables;
+        $duration = $eventVariables->active_users_duration;
 
         $start = Carbon::now();
         $end = $start->copy()->addMinutes($duration);
@@ -108,7 +111,9 @@ class Event extends Model
 
         $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
         $stmt->execute([$user->id]);
-        return (object) $stmt->fetch(PDO::FETCH_ASSOC);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user ?: null;
     }
 
     public static function getUserPosition($event, $user)
@@ -147,10 +152,12 @@ class Event extends Model
         $mqtt->publishMqtt($mqttData, $event->slug);
     }
 
-    public static function removeExpiredUsers($event, $mqtt, $threshold)
+    public static function removeExpiredUsers($event, $mqtt)
     {
         $pdo = self::getPdo($event);
 
+        $eventVariables = $event->eventVariables;
+        $threshold = $eventVariables->active_users_threshold;
         $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE status = 'online' AND expected_end_time < ? ORDER BY created_at ASC LIMIT $threshold");
         $stmt->execute([Carbon::now()->toDateTimeString()]);
         $expiredUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);

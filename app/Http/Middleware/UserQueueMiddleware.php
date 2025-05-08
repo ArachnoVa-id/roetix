@@ -30,27 +30,39 @@ class UserQueueMiddleware
             abort(404, 'Event tidak ditemukan.');
         }
 
-        $threshold = 1;
-        $loginDuration = 5;
+        $eventVariables = $event->eventVariables;
 
+        if (!$eventVariables) {
+            abort(404, 'Event Variables tidak ditemukan.');
+        }
+
+        $threshold = $eventVariables->active_users_threshold;
+        $loginDuration = $eventVariables->active_users_duration;
+
+        // ✅ Validate threshold once
+        if (!is_numeric($threshold) || $threshold < 1) {
+            throw new \Exception("Invalid active_users_threshold value.");
+        }
+
+        // ✅ Clean up expired users first
+        Event::removeExpiredUsers($event, $this);
+
+        // ✅ Always work with latest data
         $trafficNumber = Event::countOnlineUsers($event);
-        $current_user = Event::getUser($event, $user);
+        $current_user = (object) Event::getUser($event, $user);
 
-        // user sudah tidak online
-        if (!$current_user) {
-            Auth::guard('web')->logout();
-
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
+        // ✅ Ensure valid user
+        if (!isset($current_user->id)) {
+            Auth::logout();
             return redirect()->route('client.login', ['client' => $client]);
         }
 
-        if ($current_user->status == 'online') {
-            $current_time = Carbon::now();
-            $expected_end_time = Carbon::parse($current_user->expected_end_time);
+        // ✅ If online, check session timeout
+        if ($current_user->status === 'online') {
+            $now = Carbon::now();
+            $expectedEnd = Carbon::parse($current_user->expected_end_time);
 
-            if ($current_time->greaterThanOrEqualTo($expected_end_time)) {
+            if ($now->gte($expectedEnd)) {
                 Event::logoutUserAndPromoteNext($event, $user, $this);
                 Auth::guard('web')->logout();
 
@@ -58,53 +70,41 @@ class UserQueueMiddleware
                 $request->session()->regenerateToken();
 
                 return redirect()->route('client.login', ['client' => $client]);
-            } else {
+            }
+
+            return $next($request);
+        }
+
+        // ✅ If waiting, check if next in queue
+        if ($current_user->status === 'waiting') {
+            $position = Event::getUserPosition($event, $user);
+
+            if ($position === 1 && $trafficNumber < $threshold) {
+                Event::promoteUser($event, $user);
                 return $next($request);
             }
+
+            // Estimate waiting time
+            $batch = ceil($position / $threshold);
+            $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
+            $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
+
+            return Inertia::render('User/Overload', [
+                'client' => $client,
+                'event' => [
+                    'name' => $event->name,
+                    'slug' => $event->slug,
+                    'user_id' => $current_user->user_id,
+                ],
+                'queue' => [
+                    'title' => "You are in a queue number " . $position,
+                    'message' => 'Please wait...',
+                    'expected_finish' => $expected_end,
+                ],
+            ]);
         }
 
-        if ($trafficNumber >= $threshold) {
-            // user sekarang waiting ? ttp waiting
-            if ($current_user->status == 'waiting') {
-
-                // check apakah ada user yang kemungkinan pending di web (udah habis sesinya tapi ga reload page)
-                $current_time = Carbon::now();
-
-                // Validate the limit (ensure it's a positive integer)
-                if (!filter_var($threshold, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]])) {
-                    throw new Exception("Invalid limit value.");
-                }
-
-                Event::removeExpiredUsers($event, $this, $threshold);
-
-                // Get the user's position in the queue
-                $position = Event::getUserPosition($event, $user);
-
-                // Calculate total minutes by max divide of traffic number to the position + 1 time traffic number (to predict the worst case of waiting online users)
-                $batch = ceil($position / $threshold);
-                $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
-                $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
-
-                // hapus sesinya
-                return Inertia::render('User/Overload', [
-                    'client' => $client,
-                    'event' => [
-                        'name' => $event->name,
-                        'slug' => $event->slug,
-                        'user_id' => $current_user->user_id,
-                    ],
-                    'queue' => [
-                        'title' => "You are in a queue number " . $position,
-                        'message' => 'Please wait...',
-                        'expected_finish' => $expected_end,
-                    ],
-                ]);
-            }
-        }
-
-        // user sekarang waiting => traffic number lebih dari treshold
-        Event::promoteUser($event, $user, $loginDuration);
-
+        // ✅ Unknown case fallback
         return $next($request);
     }
 

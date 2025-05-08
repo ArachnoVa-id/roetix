@@ -283,6 +283,10 @@ class EventResource extends Resource
                                             ->schema([
                                                 Infolists\Components\TextEntry::make('ticket_limit')
                                                     ->label('Purchase Limit'),
+                                                Infolists\Components\TextEntry::make('active_users_threshold')
+                                                    ->label('Active Users Threshold'),
+                                                Infolists\Components\TextEntry::make('active_users_duration')
+                                                    ->label('Active Users Duration'),
                                             ]),
                                     ])
                                         ->columnSpan(1),
@@ -1427,7 +1431,7 @@ class EventResource extends Resource
                         ->columns([
                             'default' => 1,
                             'sm' => 1,
-                            'md' => 2,
+                            'md' => 3,
                         ])
                         ->schema([
                             Forms\Components\TextInput::make('ticket_limit')
@@ -1453,6 +1457,62 @@ class EventResource extends Resource
                                             Notification::make()
                                                 ->title('Ticket Purchase Limit Rejected')
                                                 ->body('Ticket Purchase Limit must be a number')
+                                                ->info()
+                                                ->send();
+                                        }
+                                    }
+                                ),
+                            Forms\Components\TextInput::make('active_users_threshold')
+                                ->placeholder('Active Users Threshold')
+                                ->default(100)
+                                ->minValue(1)
+                                ->maxValue(20)
+                                ->required()
+                                ->validationAttribute('Active Users Threshold')
+                                ->validationMessages([
+                                    'required' => 'Active Users Threshold is required',
+                                    'numeric' => 'Active Users Threshold must be a number',
+                                    'min' => 'Active Users Threshold must be at least 1',
+                                    'max' => 'Active Users Threshold must not exceed 20',
+                                ])
+                                ->label('Active Users Threshold')
+                                ->helperText('Maximum number of active users allowed at once')
+                                ->afterStateUpdated(
+                                    function (Forms\Set $set, $state) {
+                                        if (!is_numeric($state)) {
+                                            $set('active_users_threshold', 1);
+
+                                            Notification::make()
+                                                ->title('Active Users Threshold Rejected')
+                                                ->body('Active Users Threshold must be a number')
+                                                ->info()
+                                                ->send();
+                                        }
+                                    }
+                                ),
+                            Forms\Components\TextInput::make('active_users_duration')
+                                ->placeholder('Active Users Duration')
+                                ->default(10)
+                                ->minValue(1)
+                                ->maxValue(20)
+                                ->required()
+                                ->validationAttribute('Active Users Duration')
+                                ->validationMessages([
+                                    'required' => 'Active Users Duration is required',
+                                    'numeric' => 'Active Users Duration must be a number',
+                                    'min' => 'Active Users Duration must be at least 1',
+                                    'max' => 'Active Users Duration must not exceed 20',
+                                ])
+                                ->label('Active Users Duration')
+                                ->helperText('Duration in minutes for active users threshold')
+                                ->afterStateUpdated(
+                                    function (Forms\Set $set, $state) {
+                                        if (!is_numeric($state)) {
+                                            $set('active_users_duration', 1);
+
+                                            Notification::make()
+                                                ->title('Active Users Duration Rejected')
+                                                ->body('Active Users Duration must be a number')
                                                 ->info()
                                                 ->send();
                                         }
