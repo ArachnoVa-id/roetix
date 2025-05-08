@@ -41,11 +41,11 @@ export const Grid: React.FC<GridProps> = ({
                     onMouseLeave={onMouseLeave}
                 >
                     <div
-                        className="h-full overflow-auto"
+                        className="h-full w-full overflow-auto"
                         ref={usedGridRef}
                         onMouseMove={onMouseMove}
                     >
-                        <div className="min-w-fit p-4">
+                        <div className="w-fit p-4">
                             {/* Grid content */}
                             <div className="flex h-full items-center justify-center">
                                 <div className="grid grid-flow-row gap-1">

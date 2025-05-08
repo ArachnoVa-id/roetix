@@ -728,6 +728,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                 onMouseLeave={handleMouseLeave}
                 gridRef={gridContainerRef}
                 isDragging={isDragging}
+                className="overflow-x-auto" // This is already correct
                 selectionBox={
                     isDragging && startCell && endCell
                         ? {

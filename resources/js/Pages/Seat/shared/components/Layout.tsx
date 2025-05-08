@@ -98,9 +98,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
             </div>
 
             {/* Main content area */}
-            <div className="h-screen flex-1 bg-gray-50 max-md:order-1">
-                {content}
-            </div>
+            <div className="h-full flex-1 overflow-hidden">{content}</div>
         </div>
     );
 };
