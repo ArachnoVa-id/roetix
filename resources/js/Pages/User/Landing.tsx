@@ -69,7 +69,7 @@ export default function Landing({
 
                 if (timeLeft <= 0) {
                     clearInterval(interval);
-                    window.location.href = route('client.login', client);
+                    window.location.href = route('client.home', client);
                 }
             }, 1000);
 
