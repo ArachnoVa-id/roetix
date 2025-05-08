@@ -33,8 +33,8 @@ class UserQueueMiddleware
         $threshold = 1;
         $loginDuration = 5;
 
-        $trafficNumber = Event::getOnlineQueueSqlite($event);
-        $current_user = Event::getUserQueueSqlite($event, $user);
+        $trafficNumber = Event::countOnlineUsers($event);
+        $current_user = Event::getUser($event, $user);
 
         // user sudah tidak online
         if (!$current_user) {
@@ -51,7 +51,7 @@ class UserQueueMiddleware
             $expected_end_time = Carbon::parse($current_user->expected_end_time);
 
             if ($current_time->greaterThanOrEqualTo($expected_end_time)) {
-                Event::logoutAndPromoteQueueSqlite($event, $user, $this);
+                Event::logoutUserAndPromoteNext($event, $user, $this);
                 Auth::guard('web')->logout();
 
                 $request->session()->invalidate();
@@ -75,10 +75,10 @@ class UserQueueMiddleware
                     throw new Exception("Invalid limit value.");
                 }
 
-                Event::kickOutdatedQueueSqlite($event, $user, $this, $threshold);
+                Event::removeExpiredUsers($event, $this, $threshold);
 
                 // Get the user's position in the queue
-                $position = Event::getUserPositionQueueSqlite($event, $user);
+                $position = Event::getUserPosition($event, $user);
 
                 // Calculate total minutes by max divide of traffic number to the position + 1 time traffic number (to predict the worst case of waiting online users)
                 $batch = ceil($position / $threshold);
@@ -103,7 +103,7 @@ class UserQueueMiddleware
         }
 
         // user sekarang waiting => traffic number lebih dari treshold
-        Event::gettingTurnQueueSqlite($event, $user, $loginDuration);
+        Event::promoteUser($event, $user, $loginDuration);
 
         return $next($request);
     }

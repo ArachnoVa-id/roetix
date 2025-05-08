@@ -111,7 +111,7 @@ class AuthenticatedSessionController extends Controller
         $event = Event::where('slug', $subdomain)->first();
 
         if ($event) {
-            Event::logoutAndPromoteQueueSqlite($event, $user, $this);
+            Event::logoutUserAndPromoteNext($event, $user, $this);
         }
 
         Auth::guard('web')->logout();

@@ -41,7 +41,7 @@ class SocialiteController extends Controller
                 $event = \App\Models\Event::where('slug', $client)->first();
 
                 try {
-                    Event::loginQueueSqlite($event, $user);
+                    Event::loginUser($event, $user);
                 } catch (\Throwable $e) {
                     return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client]);
                 }
