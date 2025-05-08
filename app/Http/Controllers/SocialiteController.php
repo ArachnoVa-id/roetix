@@ -71,7 +71,7 @@ class SocialiteController extends Controller
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
-                dd("no");
+                
                 DB::beginTransaction();
                 // Socialite resp structure: (var: $google_resp)
                 //   Laravel\Socialite\Two\User {#2066 ▼ // app/Http/Controllers/SocialiteController.php:38
