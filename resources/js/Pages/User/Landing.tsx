@@ -37,7 +37,9 @@ export default function Landing({
     error,
     props,
     ownedTicketCount,
+    userEndSessionDatetime,
 }: LandingProps) {
+    console.log(userEndSessionDatetime);
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
     const [pendingTransactions, setPendingTransactions] = useState<
@@ -47,6 +49,52 @@ export default function Landing({
     // usestate untuk layout yang diterima dari mqtt
     const [layoutItems, setLayoutItems] = useState(layout.items);
     const [layoutState, setLayoutState] = useState(layout);
+
+    // State and effect for countdown to userEndSessionDatetime
+    function useCountdown(userEndSessionDatetime: string | null) {
+        const [countdown, setCountdown] = useState<number | null>(null);
+
+        useEffect(() => {
+            if (!userEndSessionDatetime) return;
+
+            const interval = setInterval(() => {
+                const endTime = new Date(userEndSessionDatetime).getTime();
+                const now = Date.now();
+                const timeLeft = Math.max(
+                    0,
+                    Math.floor((endTime - now) / 1000),
+                );
+
+                setCountdown(timeLeft);
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    window.location.href = route('client.login', client);
+                }
+            }, 1000);
+
+            return () => clearInterval(interval);
+        }, [userEndSessionDatetime]);
+
+        return countdown;
+    }
+
+    // Format helper
+    function formatCountdown(seconds: number | null): string {
+        if (seconds === null) return '--';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+
+        const parts = [];
+        if (h > 0) parts.push(`${h}h`);
+        if (m > 0 || h > 0) parts.push(`${m}m`);
+        parts.push(`${s}s`);
+
+        return parts.join(' ');
+    }
+
+    const countdown = useCountdown(userEndSessionDatetime);
 
     useEffect(() => {
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
@@ -999,6 +1047,7 @@ export default function Landing({
                         >
                             {/* Header + Button */}
                             <div className="flex w-full flex-col items-center justify-center">
+                                <p>COUNTDOWN {formatCountdown(countdown)}</p>
                                 <button
                                     className={
                                         'absolute left-4 top-4 rounded-lg bg-red-500 px-4 text-lg text-white duration-200 hover:bg-red-600 max-md:static ' +

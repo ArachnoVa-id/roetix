@@ -267,4 +267,5 @@ export interface LandingProps {
     error?: string;
     props: EventProps;
     ownedTicketCount: number;
+    userEndSessionDatetime: string;
 }
