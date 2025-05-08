@@ -67,7 +67,7 @@ class SocialiteController extends Controller
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
-                dd("no");
+                
                 DB::beginTransaction();
                 $given_name = $google_user['given_name'] ?? null;
                 $family_name = $google_user['family_name'] ?? null;
