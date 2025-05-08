@@ -24,8 +24,8 @@ class UserQueueMiddleware
             abort(404, 'Sesi User tidak ditemukan.');
         }
 
-        $subdomain = $request->route('client');
-        $event = Event::where('slug', $subdomain)->first();
+        $client = $request->route('client');
+        $event = Event::where('slug', $client)->first();
 
         if (!$event) {
             abort(404, 'Event tidak ditemukan.');
@@ -54,7 +54,28 @@ class UserQueueMiddleware
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect('/login');
+            return redirect()->route('client.login', ['client' => $client]);
+        }
+
+        if ($current_user['status'] == 'online') {
+            $current_time = Carbon::now();
+            $expected_end_time = Carbon::parse($current_user['expected_end_time']);
+            // $tolerance = Carbon::parse($current_user['expected_end_time'])->addMinutes(1);
+
+            // ebih dari expected_end_time + 1 menit (tolarance) => logout
+            // if ($current_time->greaterThanOrEqualTo($tolerance)) {
+            if ($current_time->greaterThanOrEqualTo($expected_end_time)) {
+                $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
+                $stmt->execute([$user->id]);
+                Auth::guard('web')->logout();
+
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('client.login', ['client' => $client]);
+            } else {
+                return $next($request);
+            }
         }
 
         if ($trafficNumber >= $treshold) {
@@ -75,61 +96,48 @@ class UserQueueMiddleware
                     ORDER BY created_at ASC
                     LIMIT $treshold
                 ");
-
                 $stmt->execute([$current_time->toDateTimeString()]);
+                $offline_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                $offline_suspected_user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($offline_suspected_user) {
-                    // hapus sesi offline_suspected_user
+                foreach ($offline_users as $offline_user) {
                     $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
-                    $stmt->execute([$offline_suspected_user['user_id']]);
+                    $stmt->execute([$offline_user['user_id']]);
 
-                    // publish mqtt
-                    $mqttData = [
+                    $this->publishMqtt([
                         'event' => 'user_logout',
                         'next_user_id' => $user->id,
-                    ];
-
-                    $this->publishMqtt($mqttData, $event->slug);
+                    ], $event->slug);
                 }
+
+                // Get the user's position in the queue
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM user_logs
+                    WHERE status = 'waiting' AND id < :id
+                ");
+                $stmt->execute([
+                    'id' => $current_user['id'],
+                ]);
+                $position = $stmt->fetchColumn() + 1;
+
+                // Calculate total minutes by max divide of traffic number to the position + 1 time traffic number (to predict the worst case of waiting online users)
+                $batch = ceil($position / $treshold);
+                $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
+                $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
 
                 // hapus sesinya
                 return Inertia::render('User/Overload', [
-                    'client' => $subdomain,
+                    'client' => $client,
                     'event' => [
                         'name' => $event->name,
                         'slug' => $event->slug,
                         'user_id' => $current_user['user_id'],
                     ],
                     'queue' => [
-                        'title' => "You are in a queue",
+                        'title' => "You are in a queue number " . $position,
                         'message' => 'Please wait...',
-                        'expected_finish' => Carbon::now()->addMinutes($loginDuration)->toDateTimeString(),
+                        'expected_finish' => $expected_end,
                     ],
                 ]);
-            }
-
-            // user sekarang online =>
-            if ($current_user['status'] == 'online') {
-                $current_time = Carbon::now();
-                $expected_end_time = Carbon::parse($current_user['expected_end_time']);
-                // $tolerance = Carbon::parse($current_user['expected_end_time'])->addMinutes(1);
-
-                // ebih dari expected_end_time + 1 menit (tolarance) => logout
-                // if ($current_time->greaterThanOrEqualTo($tolerance)) {
-                if ($current_time->greaterThanOrEqualTo($expected_end_time)) {
-                    $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
-                    $stmt->execute([$user->id]);
-                    Auth::guard('web')->logout();
-
-                    $request->session()->invalidate();
-                    $request->session()->regenerateToken();
-
-                    return redirect('/login');
-                } else {
-                    return $next($request);
-                }
             }
         }
 
@@ -176,7 +184,6 @@ class UserQueueMiddleware
             );
             $mqtt->disconnect();
         } catch (\Throwable $th) {
-            dd($th);
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }

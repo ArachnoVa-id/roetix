@@ -63,7 +63,7 @@ class SocialiteController extends Controller
 
                     // if user already exists, reject login
                     if ($current_user)
-                        abort(403, 'You have already queued. Please wait for your turn.');
+                        abort(403, 'You have already queued in another device. Please wait for your turn.');
 
                     $pdo->beginTransaction();
                     $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");

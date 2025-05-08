@@ -198,9 +198,7 @@ export default function Overload({
                     className="text-center text-sm"
                     style={{ color: text_secondary_color || '#6b7280' }}
                 >
-                    <p>
-                        Please wait until your turn comes. You will be notified.
-                    </p>
+                    <p>Keep this page open to stay in line.</p>
                 </div>
             </div>
         </div>

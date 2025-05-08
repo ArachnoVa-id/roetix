@@ -65,7 +65,6 @@ class UserEndTimeMiddleware
             );
             $mqtt->disconnect();
         } catch (\Throwable $th) {
-            dd($th);
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
