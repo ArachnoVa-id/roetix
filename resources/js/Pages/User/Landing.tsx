@@ -52,7 +52,6 @@ export default function Landing({
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
         mqttclient.on('connect', () => {
-            console.log('Connected to MQTT broker');
             mqttclient.subscribe('novatix/midtrans/defaultcode');
         });
 
@@ -61,9 +60,6 @@ export default function Landing({
                 const payload = JSON.parse(message.toString());
                 const updates = Array.isArray(payload) ? payload : [payload];
 
-                console.log('Received updated MQTT message:', updates);
-                console.log('Received payload MQTT message:', payload);
-
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
 
@@ -71,8 +67,6 @@ export default function Landing({
                         (updateItem) =>
                             updateItem.id?.replace(/,/g, '') === item.id,
                     );
-
-                    console.log('find item tobe update', update);
 
                     if (update) {
                         return {
@@ -98,11 +92,6 @@ export default function Landing({
             mqttclient.end();
         };
     }, [layoutItems]);
-
-    useEffect(() => {
-        console.log(layoutItems);
-        console.log(layoutState);
-    }, [layoutItems, layoutState]);
 
     // Show error if it exists when component mounts
     useEffect(() => {

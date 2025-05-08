@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use App\Models\Event;
+use Exception;
 use Inertia\Inertia;
 use PDO;
 use PhpMqtt\Client\MqttClient;
@@ -31,6 +32,10 @@ class UserQueueMiddleware
         }
 
         $event_id = $event->id;
+
+        $treshold = 1;
+        $loginDuration = 5;
+
         $path = storage_path("sql/events/{$event_id}.db");
         $pdo = new PDO("sqlite:" . $path);
 
@@ -42,33 +47,35 @@ class UserQueueMiddleware
         $stmt->execute([$user->id]);
         $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // dd($current_user, $user->id, $trafficNumber);
+        // user sudah tidak online
+        if (!$current_user) {
+            Auth::guard('web')->logout();
 
-        // jika trafic number lebih dari treshold =>
-        if ($trafficNumber >= 1) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
-            // user sudah tidak online
-            if (!$current_user) {
-                Auth::guard('web')->logout();
+            return redirect('/login');
+        }
 
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                return redirect('/login');
-            }
-            
+        if ($trafficNumber >= $treshold) {
             // user sekarang waiting ? ttp waiting
             if ($current_user['status'] == 'waiting') {
 
                 // check apakah ada user yang kemungkinan pending di web (udah habis sesinya tapi ga reload page)
                 $current_time = Carbon::now();
 
+                // Validate the limit (ensure it's a positive integer)
+                if (!filter_var($treshold, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]])) {
+                    throw new Exception("Invalid limit value.");
+                }
+
                 $stmt = $pdo->prepare("
-                    SELECT * FROM user_logs 
-                    WHERE status = 'online' AND expected_end_time < ? 
-                    ORDER BY created_at ASC 
-                    LIMIT 1
+                    SELECT * FROM user_logs
+                    WHERE status = 'online' AND expected_end_time < ?
+                    ORDER BY created_at ASC
+                    LIMIT $treshold
                 ");
+
                 $stmt->execute([$current_time->toDateTimeString()]);
 
                 $offline_suspected_user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -87,22 +94,18 @@ class UserQueueMiddleware
                     $this->publishMqtt($mqttData, $event->slug);
                 }
 
-
                 // hapus sesinya
-
                 return Inertia::render('User/Overload', [
                     'client' => $subdomain,
                     'event' => [
                         'name' => $event->name,
                         'slug' => $event->slug,
-                        'event_slug' => $event->slug,
                         'user_id' => $current_user['user_id'],
                     ],
-                    'maintenance' => [
-                        'title' => "Overload User Capacity",
+                    'queue' => [
+                        'title' => "You are in a queue",
                         'message' => 'Please wait...',
-                        'expected_finish' => Carbon::now()->addMinutes(1)->toIso8601String(),
-                        // 'expected_finish' => Carbon::now()->addMinutes(1)->format('H:i:s'),
+                        'expected_finish' => Carbon::now()->addMinutes($loginDuration)->toDateTimeString(),
                     ],
                 ]);
             }
@@ -110,10 +113,12 @@ class UserQueueMiddleware
             // user sekarang online =>
             if ($current_user['status'] == 'online') {
                 $current_time = Carbon::now();
-                $tolerance = Carbon::parse($current_user['expected_end_time'])->addMinutes(1);
+                $expected_end_time = Carbon::parse($current_user['expected_end_time']);
+                // $tolerance = Carbon::parse($current_user['expected_end_time'])->addMinutes(1);
 
                 // ebih dari expected_end_time + 1 menit (tolarance) => logout
-                if ($current_time->greaterThanOrEqualTo($tolerance)) {
+                // if ($current_time->greaterThanOrEqualTo($tolerance)) {
+                if ($current_time->greaterThanOrEqualTo($expected_end_time)) {
                     $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
                     $stmt->execute([$user->id]);
                     Auth::guard('web')->logout();
@@ -130,7 +135,7 @@ class UserQueueMiddleware
 
         // user sekarang waiting => traffic number lebih dari treshold
         $start = Carbon::now();
-        $end = Carbon::now()->addMinutes(1);
+        $end = Carbon::now()->addMinutes($loginDuration);
         $pdo = new PDO("sqlite:" . $path);
         $stmt = $pdo->prepare("
             UPDATE user_logs

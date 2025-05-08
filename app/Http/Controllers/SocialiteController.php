@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Traffic;
 use Carbon\Carbon;
 use PDO;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class SocialiteController extends Controller
 {
@@ -35,7 +36,6 @@ class SocialiteController extends Controller
             $google_resp = Socialite::driver('google')->user();
             $google_user = $google_resp->user;
 
-
             $user = User::where('email', $google_resp->email)
                 ->first();
 
@@ -43,16 +43,37 @@ class SocialiteController extends Controller
             $userHasCorrectGoogleId = $userExists && $user->google_id === $google_resp->id;
 
             if ($userHasCorrectGoogleId) {
-                session([
-                    'auth_user' => $user,
-                ]);
                 $event = \App\Models\Event::where('slug', $client)->first();
                 $path = storage_path("sql/events/{$event->id}.db");
 
                 if (File::exists($path)) {
-                    $pdo = new PDO("sqlite:" . $path);
+                    try {
+                        $pdo = new PDO("sqlite:" . $path, null, null, [
+                            PDO::ATTR_TIMEOUT => 2,
+                            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                        ]);
+                    } catch (Exception $e) {
+                        abort(500, 'Queue connection error: ' . $e->getMessage());
+                    }
+
+                    // Check if the user id is already in the sqlite
+                    $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
+                    $stmt->execute([$user->id]);
+                    $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    // if user already exists, reject login
+                    if ($current_user)
+                        abort(403, 'You have already queued. Please wait for your turn.');
+
+                    $pdo->beginTransaction();
                     $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
                     $stmt->execute([$user->id]);
+                    $pdo->commit();
+
+                    session([
+                        'auth_user' => $user,
+                    ]);
+                    Auth::login($user);
                 } else {
                     abort(404, 'Event database not found.');
                 }
@@ -63,11 +84,9 @@ class SocialiteController extends Controller
                 //     $trafficNumber->save();
                 // }
 
-                Auth::login($user);
-
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
-                
+
                 DB::beginTransaction();
                 $given_name = $google_user['given_name'] ?? null;
                 $family_name = $google_user['family_name'] ?? null;
@@ -129,8 +148,13 @@ class SocialiteController extends Controller
                 Auth::login($userData);
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             }
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
+
+            if ($e instanceof HttpException) {
+                throw $e; // rethrow abort(404) and similar
+            }
+
             return redirect()
                 ->route('auth.google')
                 ->with('error', 'Google login failed: ' . $e->getMessage());

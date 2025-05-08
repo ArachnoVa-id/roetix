@@ -1,19 +1,18 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Head } from '@inertiajs/react';
 import mqtt from 'mqtt';
 import React from 'react';
 
-interface MaintenanceProps {
+interface OverloadProps {
     client: string;
     event: {
         name: string;
         slug: string;
-        event_slug: string;
         user_id: string;
     };
-    maintenance: {
+    queue: {
         title: string;
         message: string;
         expected_finish: string | null;
@@ -27,9 +26,9 @@ interface MaintenanceProps {
     logo_alt?: string;
 }
 
-export default function Maintenance({
+export default function Overload({
     event,
-    maintenance,
+    queue,
     primary_color,
     secondary_color,
     text_primary_color,
@@ -37,13 +36,12 @@ export default function Maintenance({
     texture,
     logo,
     logo_alt,
-}: MaintenanceProps): React.ReactElement {
+}: OverloadProps): React.ReactElement {
     useEffect(() => {
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
         mqttclient.on('connect', () => {
-            console.log('Connected to MQTT broker');
-            const sanitizedUserId = event.event_slug.replace(/-/g, '');
+            const sanitizedUserId = event.slug.replace(/-/g, '');
             mqttclient.subscribe(`novatix/logs/${sanitizedUserId}`);
         });
 
@@ -52,15 +50,11 @@ export default function Maintenance({
                 const payload = JSON.parse(message.toString());
                 const updates = Array.isArray(payload) ? payload : [payload];
 
-                console.log('Received MQTT:', updates);
-
                 const logoutEvent = updates.find(
                     (e) =>
                         e.event === 'user_logout' &&
                         e.next_user_id === event.user_id,
                 );
-
-                console.log(logoutEvent, event.user_id);
 
                 if (logoutEvent) {
                     // Tambahkan delay kecil agar DB update selesai
@@ -74,8 +68,8 @@ export default function Maintenance({
         });
 
         // ⬇️ Tambahkan blok ini setelah MQTT handling
-        if (maintenance.expected_finish) {
-            const expectedTime = new Date(maintenance.expected_finish);
+        if (queue.expected_finish) {
+            const expectedTime = new Date(queue.expected_finish);
             const now = new Date();
             const diffMs = expectedTime.getTime() - now.getTime();
 
@@ -91,6 +85,36 @@ export default function Maintenance({
         };
     });
 
+    const [timeLeft, setTimeLeft] = useState('');
+
+    useEffect(() => {
+        if (!queue.expected_finish) {
+            return;
+        }
+        const target = new Date(
+            new Date(queue.expected_finish).toUTCString(),
+        ).getTime();
+
+        const interval = setInterval(() => {
+            const now = new Date(new Date().toUTCString()).getTime();
+            const diff = target - now;
+
+            if (diff <= 0) {
+                setTimeLeft("Time's up!");
+                clearInterval(interval);
+                return;
+            }
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [queue.expected_finish]);
+
     return (
         <div
             className="flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8"
@@ -101,7 +125,7 @@ export default function Maintenance({
                 backgroundSize: 'auto',
             }}
         >
-            <Head title={'in queue:  ' + maintenance.title} />
+            <Head title={'In Queue:  ' + queue.title} />
 
             <div
                 className="flex w-full max-w-md flex-col items-center justify-center gap-4 rounded-lg p-8 shadow-md"
@@ -118,17 +142,17 @@ export default function Maintenance({
                     />
                 )}
                 <h2
-                    className="text-2xl font-extrabold"
+                    className="text-center text-2xl font-extrabold"
                     style={{ color: text_primary_color || '#1f2937' }}
                 >
-                    Event is Overloaded you are in queue {event.event_slug}
+                    {event.name}
                 </h2>
                 <div className="flex flex-col text-center">
                     <h2
                         className="text-xl font-extrabold"
                         style={{ color: text_primary_color || '#1f2937' }}
                     >
-                        {maintenance.title}
+                        {queue.title}
                     </h2>
                     <p
                         className="text-sm"
@@ -136,10 +160,10 @@ export default function Maintenance({
                             color: text_secondary_color || '#4b5563',
                         }}
                     >
-                        {maintenance.message}
+                        {queue.message}
                     </p>
 
-                    {maintenance.expected_finish && (
+                    {queue.expected_finish && (
                         <div
                             className="mt-2 rounded-md p-4"
                             style={{
@@ -163,7 +187,7 @@ export default function Maintenance({
                                             text_secondary_color || '#b45309',
                                     }}
                                 >
-                                    <p>{maintenance.expected_finish}</p>
+                                    <p>{timeLeft}</p>
                                 </div>
                             </div>
                         </div>
@@ -175,8 +199,7 @@ export default function Maintenance({
                     style={{ color: text_secondary_color || '#6b7280' }}
                 >
                     <p>
-                        Please check back later. We apologize for the
-                        inconvenience.
+                        Please wait until your turn comes. You will be notified.
                     </p>
                 </div>
             </div>

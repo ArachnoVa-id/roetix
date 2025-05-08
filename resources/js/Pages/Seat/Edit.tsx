@@ -101,14 +101,8 @@ const Edit: React.FC<EditorProps> = ({
 
             if (active) {
                 setActiveTimeline(active);
-                // console.log(
-                //     `[${formatJakartaTime()}] Active timeline: ${active.name} (${active.start_date} to ${active.end_date})`,
-                // );
             } else {
                 // If no active timeline found, keep using the current one from props
-                // console.log(
-                //     `[${formatJakartaTime()}] No active timeline found based on current date, using provided default`,
-                // );
             }
         }
     }, [currentTimeline, ticketCategories, categoryPrices]);
@@ -126,10 +120,6 @@ const Edit: React.FC<EditorProps> = ({
             //         hour12: false,
             //     });
             // };
-
-            // console.log(
-            //     `[${formatJakartaTime()}] Updating price mappings for timeline: ${activeTimeline.name}`,
-            // );
 
             const priceMap: Record<string, number> = {};
             const colorMap: Record<string, string> = {};
