@@ -26,7 +26,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
         <div className="flex h-screen max-md:flex-col">
             {/* Panel Kontrol - Posisi absolut dengan lebar tetap di atas */}
             <div
-                className={`flex h-fit w-72 flex-col border-r border-gray-200 bg-white shadow-lg max-md:order-2 max-md:w-full md:h-full`}
+                className={`flex h-fit w-80 flex-col border-r border-gray-200 bg-white shadow-lg max-md:order-2 max-md:w-full md:h-full`}
             >
                 {/* Header */}
                 <div className="flex w-full justify-between border-b border-gray-200 bg-blue-600 p-4 text-white">

@@ -13,19 +13,18 @@ export const BlockActions: React.FC<BlockActionsProps> = ({
     onAddSeats,
     onDeleteSeats,
     onClearSelection,
-    blockedAreasCount,
+    // blockedAreasCount,
 }) => {
     return (
-        <div className="mb-6 overflow-hidden rounded-xl border border-blue-400 bg-gradient-to-r from-blue-100 to-indigo-100 shadow-md">
+        <div
+            className="mb-6 overflow-hidden rounded-xl border border-blue-400 bg-gradient-to-r from-blue-100 to-indigo-100 shadow-md"
+            id="block-actions-container"
+        >
             <div className="border-b border-blue-300 bg-blue-200/80 p-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-medium text-blue-800">
                         <Grid size={18} className="text-blue-700" />
-                        <span className="text-lg">
-                            {blockedAreasCount > 1
-                                ? `${blockedAreasCount} Areas Selected`
-                                : 'Area Selected'}
-                        </span>
+                        <span className="text-lg">Area Selected</span>
                     </div>
                     <Button
                         variant="ghost"

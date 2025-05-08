@@ -80,7 +80,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
     // State for improved block mode
     const [isDragging, setIsDragging] = useState<boolean>(false);
-    const [blockedArea, setBlockedArea] = useState<BlockedArea | null>(null);
+    const [, setBlockedArea] = useState<BlockedArea | null>(null);
     const [autoScrollDirection, setAutoScrollDirection] =
         useState<AutoScrollDirection>({
             horizontal: 0, // -1: left, 0: none, 1: right
@@ -93,7 +93,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
 
     const totalRows = dimensions.top + dimensions.bottom;
     const totalColumns = dimensions.left + dimensions.right;
-    const blockActionsRef = useRef<HTMLDivElement>(null);
+    // const blockActionsRef = useRef<HTMLDivElement>(null);
     const sidebarContentRef = useRef<HTMLDivElement>(null);
 
     // For mobile dropdown state
@@ -256,10 +256,11 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
     const handleMouseDown = (rowIndex: number, colIndex: number): void => {
         if (mode !== 'block') return;
 
-        // Clear previous selection area when starting a new selection
-        if (blockedArea !== null) {
-            setBlockedArea(null);
-        }
+        // Clear previous blocked areas when starting a new selection
+        setBlockedAreas([]);
+
+        // Clear the blockedArea state when starting a new selection
+        setBlockedArea(null);
 
         setIsMouseDown(true);
         setIsDragging(true);
@@ -322,6 +323,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         if (!isMouseDown || mode !== 'block' || !startCell || !endCell) return;
 
         setAutoScrollDirection({ horizontal: 0, vertical: 0 });
+
         // Process blocked area
         const minRow = Math.min(startCell.row, endCell.row);
         const maxRow = Math.max(startCell.row, endCell.row);
@@ -337,17 +339,28 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         // Flag to determine if any change occurred
         let changesMade = false;
 
-        for (let i = minRow; i <= maxRow; i++) {
-            for (let j = minCol; j <= maxCol; j++) {
-                // Check if the isBlocked status will actually change
-                if (newGrid[i][j].isBlocked !== isBlocking) {
-                    changesMade = true;
-                    // Toggle isBlocked flag
+        // First, clear all previously blocked cells
+        for (let i = 0; i < totalRows; i++) {
+            for (let j = 0; j < totalColumns; j++) {
+                if (newGrid[i][j].isBlocked) {
                     newGrid[i][j] = {
                         ...newGrid[i][j],
-                        isBlocked: isBlocking,
+                        isBlocked: false,
                     };
+                    changesMade = true;
                 }
+            }
+        }
+
+        // Now set the new blocked area
+        for (let i = minRow; i <= maxRow; i++) {
+            for (let j = minCol; j <= maxCol; j++) {
+                // Always set to the current blocking state
+                newGrid[i][j] = {
+                    ...newGrid[i][j],
+                    isBlocked: isBlocking,
+                };
+                changesMade = true;
             }
         }
 
@@ -356,9 +369,10 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
             setHasChanges(true);
         }
 
-        // Add the new blocked area to the array
+        // Replace all blocked areas with only the new one
         const newBlockedArea = { minRow, maxRow, minCol, maxCol };
-        setBlockedAreas((prev) => [...prev, newBlockedArea]);
+        // Replace instead of adding
+        setBlockedAreas(isBlocking ? [newBlockedArea] : []);
 
         setGrid(newGrid);
         setIsMouseDown(false);
@@ -366,10 +380,13 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
         setStartCell(null);
         setEndCell(null);
 
-        // Scroll sidebar to block actions after a short delay
+        // Add an ID to the BlockActions component for scroll targeting
         setTimeout(() => {
-            if (blockActionsRef.current && sidebarContentRef.current) {
-                blockActionsRef.current.scrollIntoView({
+            const blockActionsElement = document.getElementById(
+                'block-actions-container',
+            );
+            if (blockActionsElement && sidebarContentRef.current) {
+                blockActionsElement.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start',
                 });
@@ -435,24 +452,52 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
     const toggleBlockedCell = (rowIndex: number, colIndex: number): void => {
         const newGrid = [...grid];
         const currentCell = newGrid[rowIndex][colIndex];
+        const newIsBlocked = !currentCell.isBlocked;
 
-        // Toggle the isBlocked flag
+        // Clear all currently blocked cells first
+        for (let i = 0; i < totalRows; i++) {
+            for (let j = 0; j < totalColumns; j++) {
+                if (newGrid[i][j].isBlocked) {
+                    newGrid[i][j] = {
+                        ...newGrid[i][j],
+                        isBlocked: false,
+                    };
+                }
+            }
+        }
+
+        // Toggle the isBlocked flag for the clicked cell
         newGrid[rowIndex][colIndex] = {
             ...currentCell,
-            isBlocked: !currentCell.isBlocked,
+            isBlocked: newIsBlocked,
         };
 
         setGrid(newGrid);
         setHasChanges(true);
 
-        // Add this single cell as a new blocked area
+        // Replace the blocked areas with the new one
         const newBlockedArea = {
             minRow: rowIndex,
             maxRow: rowIndex,
             minCol: colIndex,
             maxCol: colIndex,
         };
-        setBlockedAreas((prev) => [...prev, newBlockedArea]);
+
+        // Replace instead of adding to the array
+        setBlockedAreas(newIsBlocked ? [newBlockedArea] : []);
+
+        // Scroll to block actions for the new selection
+        setTimeout(() => {
+            const blockActionsElement = document.getElementById(
+                'block-actions-container',
+            );
+            if (blockActionsElement && sidebarContentRef.current) {
+                blockActionsElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                });
+            }
+        }, 100);
     };
 
     // Function to add a seat at the specified position
@@ -708,7 +753,7 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                 modes={['add', 'delete', 'block']}
             />
 
-            {mode === 'block' && blockedAreas.length > 0 && (
+            {mode === 'block' && (
                 <BlockActions
                     onAddSeats={addSeatsToBlockedArea}
                     onDeleteSeats={deleteSeatsFromBlockedArea}
@@ -729,20 +774,20 @@ const GridSeatEditor: React.FC<GridSeatEditorProps> = ({
                 gridRef={gridContainerRef}
                 isDragging={isDragging}
                 className="overflow-x-auto" // This is already correct
-                selectionBox={
-                    isDragging && startCell && endCell
-                        ? {
-                              left: Math.min(startCell.col, endCell.col) * 40, // Approximate width of a cell
-                              top: Math.min(startCell.row, endCell.row) * 40, // Approximate height of a cell
-                              width:
-                                  (Math.abs(endCell.col - startCell.col) + 1) *
-                                  40,
-                              height:
-                                  (Math.abs(endCell.row - startCell.row) + 1) *
-                                  40,
-                          }
-                        : null
-                }
+                // selectionBox={
+                //     isDragging && startCell && endCell
+                //         ? {
+                //               left: Math.min(startCell.col, endCell.col) * 40, // Approximate width of a cell
+                //               top: Math.min(startCell.row, endCell.row) * 40, // Approximate height of a cell
+                //               width:
+                //                   (Math.abs(endCell.col - startCell.col) + 1) *
+                //                   40,
+                //               height:
+                //                   (Math.abs(endCell.row - startCell.row) + 1) *
+                //                   40,
+                //           }
+                //         : null
+                // }
             >
                 {[...grid].reverse().map((row, reversedIndex) => {
                     const actualRowIndex = grid.length - 1 - reversedIndex;
