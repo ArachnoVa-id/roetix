@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Event;
-use App\Models\EventLog;
 use App\Models\EventVariables;
 use App\Models\User;
 use App\Models\Traffic;
@@ -23,7 +22,7 @@ use Illuminate\Support\Facades\File;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
-
+use PDO;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -80,17 +79,11 @@ class AuthenticatedSessionController extends Controller
             $path = storage_path("sql/events/{$eventId}.db");
 
             if (File::exists($path)) {
-                config(['database.connections.sqlite.database' => $path]);
-                DB::purge('sqlite');
-                DB::reconnect('sqlite');
+                $pdo = new PDO("sqlite:" . $path);
+                $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
+                $stmt->execute([$user->id]);
             } else {
                 abort(404, 'Event database not found.');
-            }
-
-            if ($event) {
-                $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-                $trafficNumber->increment('active_sessions');
-                $trafficNumber->save();
             }
 
             // redirecting to
@@ -138,22 +131,23 @@ class AuthenticatedSessionController extends Controller
 
         if ($event) {
             $path = storage_path("sql/events/{$event->id}.db");
-            config(['database.connections.sqlite.database' => $path]);
-            DB::purge('sqlite');
-            DB::reconnect('sqlite');
+            $pdo = new PDO("sqlite:" . $path);
 
-            $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            if ($trafficNumber && $trafficNumber->active_sessions > 0) {
-                $trafficNumber->decrement('active_sessions');
-            }
+            // Hapus user logs
+            $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
+            $stmt->execute([$user->id]);
+
+            // Cari user 'waiting' paling awal (berdasarkan created_at)
+            $stmt = $pdo->prepare("SELECT user_id FROM user_logs WHERE status = 'waiting' ORDER BY created_at ASC LIMIT 1");
+            $stmt->execute();
+            $nextUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
             $mqttData = [
                 'event' => 'user_logout',
-                'user_id' => $user->id,
-                'event_id' => $event->id,
-                'timestamp' => now()->toDateTimeString(),
+                'next_user_id' => $nextUser['user_id'] ?? '',
             ];
 
-            $this->publishMqtt($mqttData);
+            $this->publishMqtt($mqttData, $event->slug);
         }
 
         Auth::guard('web')->logout();
@@ -172,8 +166,8 @@ class AuthenticatedSessionController extends Controller
         $usrname = 'emqx';
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
-        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
-        $topic = 'novatix/logs/defaultcode';
+        $sanitized_mqtt_code = str_replace('-', '', $mqtt_code);
+        $topic = 'novatix/logs/' . $sanitized_mqtt_code;
 
         $conn_settings = (new ConnectionSettings)
             ->setUsername($usrname)
@@ -193,7 +187,7 @@ class AuthenticatedSessionController extends Controller
             );
             $mqtt->disconnect();
         } catch (\Throwable $th) {
-            // biarin lewat aja biar ga bikin masalah di payment controller flow nya
+            dd($th);
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }

@@ -2,14 +2,16 @@
 import { useEffect } from 'react';
 
 import { Head } from '@inertiajs/react';
-import React from 'react';
 import mqtt from 'mqtt';
+import React from 'react';
 
 interface MaintenanceProps {
     client: string;
     event: {
         name: string;
         slug: string;
+        event_slug: string;
+        user_id: string;
     };
     maintenance: {
         title: string;
@@ -26,6 +28,7 @@ interface MaintenanceProps {
 }
 
 export default function Maintenance({
+    event,
     maintenance,
     primary_color,
     secondary_color,
@@ -40,7 +43,8 @@ export default function Maintenance({
 
         mqttclient.on('connect', () => {
             console.log('Connected to MQTT broker');
-            mqttclient.subscribe('novatix/logs/defaultcode');
+            const sanitizedUserId = event.event_slug.replace(/-/g, '');
+            mqttclient.subscribe(`novatix/logs/${sanitizedUserId}`);
         });
 
         mqttclient.on('message', (topic, message) => {
@@ -48,21 +52,44 @@ export default function Maintenance({
                 const payload = JSON.parse(message.toString());
                 const updates = Array.isArray(payload) ? payload : [payload];
 
-                console.log('Received updated MQTT message:', updates);
-                console.log('Received payload MQTT message:', payload);
+                console.log('Received MQTT:', updates);
 
-                // ✅ Reload the page
-                window.location.reload();
+                const logoutEvent = updates.find(
+                    (e) =>
+                        e.event === 'user_logout' &&
+                        e.next_user_id === event.user_id,
+                );
 
+                console.log(logoutEvent, event.user_id);
+
+                if (logoutEvent) {
+                    // Tambahkan delay kecil agar DB update selesai
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                }
             } catch (error) {
                 console.error('Error parsing MQTT message:', error);
             }
         });
 
+        // ⬇️ Tambahkan blok ini setelah MQTT handling
+        if (maintenance.expected_finish) {
+            const expectedTime = new Date(maintenance.expected_finish);
+            const now = new Date();
+            const diffMs = expectedTime.getTime() - now.getTime();
+
+            if (diffMs > 0) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, diffMs);
+            }
+        }
+
         return () => {
             mqttclient.end();
         };
-    }, []);
+    });
 
     return (
         <div
@@ -94,7 +121,7 @@ export default function Maintenance({
                     className="text-2xl font-extrabold"
                     style={{ color: text_primary_color || '#1f2937' }}
                 >
-                    Event is Overloaded you are in queue
+                    Event is Overloaded you are in queue {event.event_slug}
                 </h2>
                 <div className="flex flex-col text-center">
                     <h2

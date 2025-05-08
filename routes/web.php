@@ -104,11 +104,9 @@ Route::domain('{client}.' . config('app.domain'))
     ->middleware(['verify.subdomain'])
     ->group(function () {
         // Socialite Authentication
-        Route::middleware(['check.end.login'])->group(function () {
-            Route::controller(SocialiteController::class)->group(function () {
-                Route::get('/auth/google', 'googleLogin')
-                    ->name('client-auth.google');
-            });
+        Route::controller(SocialiteController::class)->group(function () {
+            Route::get('/auth/google', 'googleLogin')
+                ->name('client-auth.google');
         });
 
         Route::post('/verify-event-password', [UserPageController::class, 'verifyEventPassword'])
@@ -116,7 +114,7 @@ Route::domain('{client}.' . config('app.domain'))
             ->name('client.verify-event-password');
 
         // User Page
-        Route::middleware(['event.props', 'event.maintenance', 'event.lock', 'check.end.login'])->group(function () {
+        Route::middleware(['event.props', 'event.maintenance', 'event.lock', 'user.queue'])->group(function () {
             Route::controller(UserPageController::class)->group(function () {
                 // Home Page
                 Route::get('/', 'landing')
@@ -166,7 +164,7 @@ Route::domain('{client}.' . config('app.domain'))
                     // Route::get('/profile', 'edit')
                     //     ->name('profile.edit');
 
-                    
+
                     // Route::patch('/profile', 'update')
                     //     ->name('profile.update');
                     // Route::put('/profile', 'updatePassword')
