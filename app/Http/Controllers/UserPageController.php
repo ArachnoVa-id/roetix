@@ -13,11 +13,11 @@ use Illuminate\Http\Request;
 use App\Models\TicketCategory;
 use App\Models\TimelineSession;
 use App\Enums\TicketOrderStatus;
+use App\Models\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\EventCategoryTimeboundPrice;
-use App\Models\User;
 
 class UserPageController extends Controller
 {
@@ -140,6 +140,8 @@ class UserPageController extends Controller
                 })
                 ->count();
 
+            $current_user = (object) Event::getUser($event, Auth::user());
+
             return Inertia::render('User/Landing', [
                 'client' => $client,
                 'layout' => $layout,
@@ -158,6 +160,7 @@ class UserPageController extends Controller
                 'categoryPrices' => $categoryPrices,
                 'props' => $props->getSecure(),
                 'ownedTicketCount' => $ownedTicketCount,
+                'userEndSessionDatetime' => $current_user->expected_end_time,
             ]);
         } catch (\Exception $e) {
             return Inertia::render('User/Landing', [

@@ -37,7 +37,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.2
-          extensions: mbstring, bcmath, xml, pdo_mysql
+          extensions: mbstring, bcmath, xml, pdo_mysql, pdo_sqlite
           tools: composer, phpunit
 
       - name: 📦 Install Backend Dependencies
@@ -119,7 +119,16 @@ jobs:
           cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
           #!/bin/bash
           cd ~/novatix/app/develop
+
+          # Ensure PHP SQLite extension is installed
+          echo "Installing php8.2-sqlite3..."
+          sudo apt update
+          sudo apt install php8.2-sqlite3 -y
+          sudo systemctl restart php8.2-fpm
+
+          # Install Laravel dependencies
           composer install --no-interaction --prefer-dist
+
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
 
@@ -152,6 +161,14 @@ jobs:
 
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
+
+      - name: Enable PHP 8.2 FPM and restart Apache
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            sudo a2enmod proxy_fcgi setenvif
+            sudo a2enconf php8.2-fpm
+            sudo systemctl restart apache2
+          EOF
 
       - name: Deploy Laravel on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/deploy_laravel.sh"

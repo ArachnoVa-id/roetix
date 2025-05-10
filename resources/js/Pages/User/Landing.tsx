@@ -37,6 +37,7 @@ export default function Landing({
     error,
     props,
     ownedTicketCount,
+    userEndSessionDatetime,
 }: LandingProps) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
@@ -48,11 +49,56 @@ export default function Landing({
     const [layoutItems, setLayoutItems] = useState(layout.items);
     const [layoutState, setLayoutState] = useState(layout);
 
+    // State and effect for countdown to userEndSessionDatetime
+    function useCountdown(userEndSessionDatetime: string | null) {
+        const [countdown, setCountdown] = useState<number | null>(null);
+
+        useEffect(() => {
+            if (!userEndSessionDatetime) return;
+
+            const interval = setInterval(() => {
+                const endTime = new Date(userEndSessionDatetime).getTime();
+                const now = Date.now();
+                const timeLeft = Math.max(
+                    0,
+                    Math.floor((endTime - now) / 1000),
+                );
+
+                setCountdown(timeLeft);
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    window.location.href = route('client.home', client);
+                }
+            }, 1000);
+
+            return () => clearInterval(interval);
+        }, [userEndSessionDatetime]);
+
+        return countdown;
+    }
+
+    // Format helper
+    function formatCountdown(seconds: number | null): string {
+        if (seconds === null) return '--';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+
+        const parts = [];
+        if (h > 0) parts.push(`${h}h`);
+        if (m > 0 || h > 0) parts.push(`${m}m`);
+        parts.push(`${s}s`);
+
+        return parts.join(' ');
+    }
+
+    const countdown = useCountdown(userEndSessionDatetime);
+
     useEffect(() => {
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
         mqttclient.on('connect', () => {
-            console.log('Connected to MQTT broker');
             mqttclient.subscribe('novatix/midtrans/defaultcode');
         });
 
@@ -61,9 +107,6 @@ export default function Landing({
                 const payload = JSON.parse(message.toString());
                 const updates = Array.isArray(payload) ? payload : [payload];
 
-                console.log('Received updated MQTT message:', updates);
-                console.log('Received payload MQTT message:', payload);
-
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
 
@@ -71,8 +114,6 @@ export default function Landing({
                         (updateItem) =>
                             updateItem.id?.replace(/,/g, '') === item.id,
                     );
-
-                    console.log('find item tobe update', update);
 
                     if (update) {
                         return {
@@ -98,11 +139,6 @@ export default function Landing({
             mqttclient.end();
         };
     }, [layoutItems]);
-
-    useEffect(() => {
-        console.log(layoutItems);
-        console.log(layoutState);
-    }, [layoutItems, layoutState]);
 
     // Show error if it exists when component mounts
     useEffect(() => {
@@ -530,12 +566,40 @@ export default function Landing({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title={'Book Tickets | ' + event.name} />
+            <p className="fixed left-0 top-0 z-[1000] flex w-screen justify-center">
+                <div className="relative mt-4 rounded-lg px-4 py-2 shadow-lg">
+                    {/* Blurred background layer */}
+                    <div
+                        className="absolute inset-0 rounded-lg backdrop-blur"
+                        style={{
+                            backgroundColor: props.secondary_color,
+                            opacity: 0.7,
+                        }}
+                    />
+                    {/* Text layer (above the blur) */}
+                    <span
+                        className="relative font-bold"
+                        style={{
+                            color: props.text_primary_color,
+                        }}
+                    >
+                        Remaining Time: {formatCountdown(countdown)}
+                    </span>
+                </div>
+            </p>
+
             <div className="flex w-full flex-col gap-4 py-4">
                 {/* Tampilkan pesan status event jika tidak active */}
                 {!isBookingAllowed && event && (
                     <div className="mx-auto w-fit sm:px-6 lg:px-8">
-                        <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
-                            <p className="text-center font-medium text-yellow-800">
+                        <div
+                            className="overflow-hidden p-3 shadow-md sm:rounded-lg"
+                            style={{
+                                backgroundColor: props.secondary_color,
+                                color: props.text_primary_color,
+                            }}
+                        >
+                            <p className="text-center font-medium">
                                 {eventStatusMessage}
                             </p>
                         </div>

@@ -5,26 +5,19 @@ namespace App\Http\Controllers;
 use Exception;
 use App\Models\User;
 use App\Enums\UserRole;
+use App\Models\Event;
 use App\Models\UserContact;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
-use Illuminate\Support\Facades\File;
-use PhpMqtt\Client\MqttClient;
-use PhpMqtt\Client\ConnectionSettings;
-use Illuminate\Support\Facades\Log;
-
-use App\Models\Traffic;
-use Carbon\Carbon;
-use PDO;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class SocialiteController extends Controller
 {
     public function googleLogin(string $client = "")
     {
-        // dd($client);
         session(['client' => $client]);
 
         $redirect = Socialite::driver('google')->redirect();
@@ -38,7 +31,6 @@ class SocialiteController extends Controller
             $google_resp = Socialite::driver('google')->user();
             $google_user = $google_resp->user;
 
-
             $user = User::where('email', $google_resp->email)
                 ->first();
 
@@ -46,22 +38,18 @@ class SocialiteController extends Controller
             $userHasCorrectGoogleId = $userExists && $user->google_id === $google_resp->id;
 
             if ($userHasCorrectGoogleId) {
+                $event = \App\Models\Event::where('slug', $client)->first();
+
+                try {
+                    Event::loginUser($event, $user);
+                } catch (\Throwable $e) {
+                    return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client]);
+                }
+
                 session([
                     'auth_user' => $user,
                 ]);
-                // $event = \App\Models\Event::where('slug', $client)->first();
-
-                // $path = storage_path("sql/events/{$event->id}.db");
-
                 Auth::login($user);
-
-                // if (File::exists($path)) {
-                //     $pdo = new PDO("sqlite:" . $path);
-                //     $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, start_login) VALUES (?, datetime('now'))");
-                //     $stmt->execute([$user->id]);
-                // } else {
-                //     abort(404, 'Event database not found.');
-                // }
 
                 // if ($event) {
                 //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
@@ -71,46 +59,8 @@ class SocialiteController extends Controller
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
-                
-                DB::beginTransaction();
-                // Socialite resp structure: (var: $google_resp)
-                //   Laravel\Socialite\Two\User {#2066 ▼ // app/Http/Controllers/SocialiteController.php:38
-                //   +id: "11XXX55722XXX15454XXX"
-                //   +nickname: null
-                //   +name: "Yitzhak Edmund Tio Manalu"
-                //   +email: "yitzhaketmanalu@gmail.com"
-                //   +avatar: "https://lh3.googleusercontent.com/a/ACXXXXIQhRZvDovtmXXXXKtZZsJXXX0QESO2Ni1XXXXBfRCCnXXXXXkm=sXXXc"
-                //   +user: array:10 [▼
-                //     "sub" => "115455572242215454635"
-                //     "name" => "Yitzhak Edmund Tio Manalu"
-                //     "given_name" => "Yitzhak"
-                //     "family_name" => "Edmund Tio Manalu"
-                //     "picture" => "https://lh3.googleusercontent.com/a/ACXXXXIQhRZvDovtmXXXXKtZZsJXXX0QESO2Ni1XXXXBfRCCnXXXXXkm=sXXXc"
-                //     "email" => "yitzhaketmanalu@gmail.com"
-                //     "email_verified" => true
-                //     "id" => "11XXX55722XXX15454XXX"
-                //     "verified_email" => true
-                //     "link" => null
-                //   ]
-                //   +attributes: array:6 [▼
-                //     "id" => "11XXX55722XXX15454XXX"
-                //     "nickname" => null
-                //     "name" => "Yitzhak Edmund Tio Manalu"
-                //     "email" => "yitzhaketmanalu@gmail.com"
-                //     "avatar" => "https://lh3.googleusercontent.com/a/ACXXXXIQhRZvDovtmXXXXKtZZsJXXX0QESO2Ni1XXXXBfRCCnXXXXXkm=sXXXc"
-                //     "avatar_original" => "https://lh3.googleusercontent.com/a/ACXXXXIQhRZvDovtmXXXXKtZZsJXXX0QESO2Ni1XXXXBfRCCnXXXXXkm=sXXXc"
-                //   ]
-                //   +token: "ya29.aXXXXRPp5kUYqSAtkuzXXXXXbFdg3PNDXXXpzxZvrnQ02INToxNoXXXXXtcIoPHHsvCKiYY6o_FL-lXXXXyQuZPx4vS72-XXXfF0zm_PBdYfScSXXXX1zt9NK8B1AEv0BXTXXXXXpBn2e_d5OCr3kKMXXXA ▶"
-                //   +refreshToken: null
-                //   +expiresIn: 3599
-                //   +approvedScopes: array:3 [▼
-                //     0 => "openid"
-                //     1 => "https://www.googleapis.com/auth/userinfo.profile"
-                //     2 => "https://www.googleapis.com/auth/userinfo.email"
-                //   ]
-                // }
 
-                // Check if $google_user has given_name and family_name
+                DB::beginTransaction();
                 $given_name = $google_user['given_name'] ?? null;
                 $family_name = $google_user['family_name'] ?? null;
 
@@ -171,8 +121,13 @@ class SocialiteController extends Controller
                 Auth::login($userData);
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             }
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
+
+            if ($e instanceof HttpException) {
+                throw $e; // rethrow abort(404) and similar
+            }
+
             return redirect()
                 ->route('auth.google')
                 ->with('error', 'Google login failed: ' . $e->getMessage());

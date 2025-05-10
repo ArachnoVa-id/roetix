@@ -16,12 +16,14 @@ export default function Login({
     event,
     client,
     props,
+    message,
 }: {
     status?: string;
     canResetPassword: boolean;
     event: Event;
     client: string;
     props: EventProps;
+    message: string;
 }) {
     const { data, setData, post, processing, errors, reset } = useForm<{
         email: string;
@@ -45,6 +47,11 @@ export default function Login({
             onFinish: () => reset('password'),
         });
     };
+
+    // alert message if exist
+    if (message) {
+        alert(message);
+    }
 
     return (
         <GuestLayout props={props} client={client}>
