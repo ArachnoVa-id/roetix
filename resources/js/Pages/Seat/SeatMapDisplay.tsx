@@ -172,8 +172,10 @@ const SeatMapDisplay: React.FC<SeatMapDisplayProps> = ({
               seat.ticket_type.slice(1)
             : 'Unset';
 
-        const formattedStatus =
-            seat.status.charAt(0).toUpperCase() + seat.status.slice(1);
+        const formattedStatus = seat.status
+            .split('_')
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
 
         // Use the formatted variables in the title
         const title = `Seat: ${seat.seat_number} | Type: ${formattedTicketType} | Price: ${formattedPrice} | Status: ${formattedStatus}`;

@@ -11,28 +11,13 @@ use App\Http\Controllers\TicketController;
 use App\Models\EventVariables;
 use Inertia\Inertia;
 
-// Guest Routes for Authentication
-Route::middleware('guest')->group(function () {
-    // Main Domain Login
-    Route::domain(config('app.domain'))
-        ->middleware('verify.maindomain')
-        ->group(function () {
-            Route::get('login', [AuthenticatedSessionController::class, 'login'])
-                ->name('login');
-        });
-
-    // Subdomain Login
-    Route::domain('{client}.' . config('app.domain'))
-        ->middleware('verify.subdomain')
-        ->group(function () {
-            Route::get('login', [AuthenticatedSessionController::class, 'login'])
-                ->name('client.login');
-        });
-});
-
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
+        // Auth
+        Route::get('login', [AuthenticatedSessionController::class, 'login'])
+            ->name('login');
+
         // Socialite Authentication
         Route::controller(SocialiteController::class)->group(function () {
             Route::get('/auth/google', 'googleLogin')
@@ -103,6 +88,12 @@ Route::domain(config('app.domain'))
 Route::domain('{client}.' . config('app.domain'))
     ->middleware(['verify.subdomain'])
     ->group(function () {
+        // Auth
+        Route::get('login', [AuthenticatedSessionController::class, 'login'])
+            ->name('client.login');
+        Route::get('privateLogin', [AuthenticatedSessionController::class, 'privateLogin'])
+            ->name('client.privateLogin');
+
         // Socialite Authentication
         Route::controller(SocialiteController::class)->group(function () {
             Route::get('/auth/google', 'googleLogin')

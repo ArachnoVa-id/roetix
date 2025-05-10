@@ -17,6 +17,7 @@ export default function Login({
     client,
     props,
     message,
+    privateLogin,
 }: {
     status?: string;
     canResetPassword: boolean;
@@ -24,6 +25,7 @@ export default function Login({
     client: string;
     props: EventProps;
     message: string;
+    privateLogin: boolean;
 }) {
     const { data, setData, post, processing, errors, reset } = useForm<{
         email: string;
@@ -64,7 +66,7 @@ export default function Login({
             )}
 
             <div className="text-center font-bold">{event.name}</div>
-            {event.name === 'Admin NovaTix' ? (
+            {event.name === 'Admin NovaTix' || privateLogin ? (
                 <form onSubmit={submit} className="md:w-94 w-full">
                     <div>
                         <InputLabel htmlFor="email" value="Email" />

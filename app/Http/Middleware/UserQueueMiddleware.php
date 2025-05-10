@@ -64,7 +64,7 @@ class UserQueueMiddleware
 
             if ($now->gte($expectedEnd)) {
                 Event::logoutUserAndPromoteNext($event, $user, $this);
-                Auth::guard('web')->logout();
+                Auth::logout();
 
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();

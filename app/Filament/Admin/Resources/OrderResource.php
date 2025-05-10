@@ -399,6 +399,14 @@ class OrderResource extends Resource
             CustomPagination::apply($table)
             ->defaultSort('order_date', 'desc')
             ->columns([
+                Tables\Columns\TextColumn::make('events.name')
+                    ->label('Event')
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(function ($state) {
+                        $parsed = explode(',', $state);
+                        return $parsed[0];
+                    }),
                 Tables\Columns\TextColumn::make('team.name')
                     ->label('Team Name')
                     ->searchable()
@@ -437,15 +445,6 @@ class OrderResource extends Resource
                     ->color(fn($state) => OrderStatus::tryFrom($state)->getColor())
                     ->icon(fn($state) => OrderStatus::tryFrom($state)->getIcon())
                     ->badge(),
-                Tables\Columns\TextColumn::make('events.name')
-                    ->label('Event')
-                    ->searchable()
-                    ->sortable()
-                    ->formatStateUsing(function ($state) {
-                        $parsed = explode(',', $state);
-                        return $parsed[0];
-                    }),
-
             ])
             ->filters(
                 [

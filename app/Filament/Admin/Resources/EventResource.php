@@ -24,6 +24,7 @@ use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationMa
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
 use App\Filament\Components\CustomPagination;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Mews\Purifier\Facades\Purifier;
 

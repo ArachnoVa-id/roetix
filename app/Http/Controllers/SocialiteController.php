@@ -46,11 +46,6 @@ class SocialiteController extends Controller
                     return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client]);
                 }
 
-                session([
-                    'auth_user' => $user,
-                ]);
-                Auth::login($user);
-
                 // if ($event) {
                 //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
                 //     $trafficNumber->increment('active_sessions');

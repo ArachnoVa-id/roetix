@@ -49,6 +49,31 @@ class AuthenticatedSessionController extends Controller
             'event' => $event,
             'client' => $client,
             'props' => (is_array($props) ? $props : $props->getSecure()),
+            'privateLogin' => false
+        ]);
+    }
+
+    public function privateLogin(string $client = ''): Response
+    {
+        if ($client) {
+            // Get the event and associated venue
+            $event = Event::where('slug', $client)
+                ->first();
+
+            $props = $event->eventVariables;
+            $props->reconstructImgLinks();
+        } // else reject
+        else {
+            abort(403, 'Unauthorized action.');
+        }
+
+        return Inertia::render('Auth/Login', [
+            'canResetPassword' => Route::has('password.request'),
+            'status' => session('status'),
+            'event' => $event,
+            'client' => $client,
+            'props' => (is_array($props) ? $props : $props->getSecure()),
+            'privateLogin' => true
         ]);
     }
 
@@ -62,10 +87,15 @@ class AuthenticatedSessionController extends Controller
         $user = Auth::user();
         $userModel = User::find($user->id);
 
-        if ($request->client) {
-            session([
-                'auth_user' => $userModel,
-            ]);
+        // For subdomain login
+        $client = $request->client;
+        $event = Event::where('slug', $client)->first();
+        if ($client) {
+            try {
+                Event::loginUser($event, $user);
+            } catch (\Throwable $e) {
+                return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client]);
+            }
 
             // redirecting to
             $redirectProps = [
@@ -76,6 +106,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route($redirectProps['route'], $redirectProps['client']);
         }
 
+        // For main login
         $firstTeam = $userModel->teams()->first();
 
         if ($userModel->isAdmin()) {
