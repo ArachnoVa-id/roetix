@@ -425,13 +425,13 @@ export default function Authenticated({
                                         className="h-8 rounded-lg"
                                     />
                                 </Link>
-                                <div className="z-0 hidden h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
+                                <div className="z-0 flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
                                     <Link
                                         href={route(
                                             'client.privacy_policy',
                                             client,
                                         )}
-                                        className="text-sm hover:underline"
+                                        className="hidden text-sm hover:underline"
                                         style={{
                                             color: props?.text_primary_color,
                                         }}
@@ -439,7 +439,7 @@ export default function Authenticated({
                                         Privacy Policy
                                     </Link>
                                     <span
-                                        className="mx-2"
+                                        className="mx-2 hidden"
                                         style={{
                                             color: props?.text_primary_color,
                                         }}
@@ -451,13 +451,32 @@ export default function Authenticated({
                                             'client.terms_conditions',
                                             client,
                                         )}
-                                        className="text-sm hover:underline"
+                                        className="hidden text-sm hover:underline"
                                         style={{
                                             color: props?.text_primary_color,
                                         }}
                                     >
                                         Terms & Conditions
                                     </Link>
+                                    <span
+                                        className="mx-2 hidden"
+                                        style={{
+                                            color: props?.text_primary_color,
+                                        }}
+                                    >
+                                        •
+                                    </span>
+                                    <a
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        href={props.contact_person}
+                                        className="text-sm hover:underline"
+                                        style={{
+                                            color: props?.text_primary_color,
+                                        }}
+                                    >
+                                        Contact Support
+                                    </a>
                                 </div>
                                 <p
                                     className="z-10 text-sm"

@@ -311,10 +311,13 @@ class EventResource extends Resource
                                                 ->label('Expected Finish'),
                                         ]),
 
-                                    Infolists\Components\Section::make('Logo')
+                                    Infolists\Components\Section::make('Identity')
                                         ->relationship('eventVariables')
                                         ->columnSpan(1)
                                         ->schema([
+                                            Infolists\Components\TextEntry::make('contact_person')
+                                                ->label('Contact Person'),
+
                                             Infolists\Components\TextEntry::make('logo')
                                                 ->label('Logo'),
 
@@ -1531,6 +1534,20 @@ class EventResource extends Resource
                             'md' => 2,
                         ])
                         ->schema([
+                            Forms\Components\TextInput::make('contact_person')
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ])
+                                ->placeholder('Contact Person')
+                                ->maxLength(255)
+                                ->validationAttribute('Contact Person')
+                                ->validationMessages([
+                                    'max' => 'Contact Person must not exceed 255 characters',
+                                ])
+                                ->label('Contact Person'),
+
                             Forms\Components\FileUpload::make('logo')
                                 ->placeholder('Event Logo')
                                 ->label('Logo')
