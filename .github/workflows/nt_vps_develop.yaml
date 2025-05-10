@@ -41,7 +41,7 @@ jobs:
           tools: composer, phpunit
 
       - name: 📦 Install Backend Dependencies
-        run: composer install --optimize-autoloader --no-interaction
+        run: composer install --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
 
       - name: 🛠 Set Up Laravel Environment
         run: |
