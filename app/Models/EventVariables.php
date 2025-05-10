@@ -46,7 +46,8 @@ class EventVariables extends Model
         'midtrans_client_key',
         'midtrans_server_key',
         'midtrans_is_production',
-        'midtrans_use_novatix'
+        'midtrans_use_novatix',
+        'contact_person'
     ];
 
     public static function getDefaultValue()
@@ -140,6 +141,7 @@ class EventVariables extends Model
             'text_secondary_color' => $this->text_secondary_color,
             'terms_and_conditions' => $this->terms_and_conditions,
             'privacy_policy' => $this->privacy_policy,
+            'contact_person' => $this->contact_person
         ];
     }
 

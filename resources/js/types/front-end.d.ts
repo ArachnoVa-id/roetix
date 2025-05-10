@@ -28,12 +28,17 @@ export interface EventLogoProps {
     texture: string;
 }
 
+export interface EventMiscProps {
+    contact_person: string;
+}
+
 export interface EventProps
     extends EventTicketLimitProps,
         EventColorProps,
         EventMaintenanceProps,
         EventPasswordProps,
-        EventLogoProps {}
+        EventLogoProps,
+        EventMiscProps {}
 
 export interface Event {
     name: string;

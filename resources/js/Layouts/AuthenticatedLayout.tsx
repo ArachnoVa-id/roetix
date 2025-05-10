@@ -42,17 +42,65 @@ export default function Authenticated({
     footer,
     client,
     props,
+    userEndSessionDatetime,
 }: PropsWithChildren<{
     header?: ReactNode;
     footer?: ReactNode;
     client: string;
     props: EventProps;
+    userEndSessionDatetime?: string;
 }>) {
     const user = usePage().props.auth.user;
 
     const [eventColorProps, setEventColorProps] = useState<EventColorProps>(
         {} as EventColorProps,
     );
+
+    // State and effect for countdown to userEndSessionDatetime
+    function useCountdown(userEndSessionDatetime: string | undefined) {
+        const [countdown, setCountdown] = useState<number | null>(null);
+
+        useEffect(() => {
+            if (!userEndSessionDatetime) return;
+
+            const interval = setInterval(() => {
+                const endTime = new Date(userEndSessionDatetime).getTime();
+                const now = Date.now();
+                const timeLeft = Math.max(
+                    0,
+                    Math.floor((endTime - now) / 1000),
+                );
+
+                setCountdown(timeLeft);
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    window.location.href = route('client.home', client);
+                }
+            }, 1000);
+
+            return () => clearInterval(interval);
+        }, [userEndSessionDatetime]);
+
+        return countdown;
+    }
+
+    // Format helper
+    function formatCountdown(seconds: number | null): string {
+        if (seconds === null) return '--';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+
+        const parts = [];
+        if (h > 0) parts.push(`${h}h`);
+        if (m > 0 || h > 0) parts.push(`${m}m`);
+        parts.push(`${s}s`);
+
+        return parts.join(' ');
+    }
+
+    const countdown = useCountdown(userEndSessionDatetime);
 
     useEffect(() => {
         changeFavicon(props.favicon);
@@ -317,7 +365,31 @@ export default function Authenticated({
                 </header>
             )}
 
-            <main className="flex h-full w-full grow flex-col items-center justify-center">
+            <main className="relative flex h-full w-full grow flex-col items-center justify-center">
+                <p className="pointer-events-none fixed left-0 top-0 z-[10] flex w-screen justify-center">
+                    <div className="relative mt-4 rounded-lg px-4 py-2 shadow-lg">
+                        {/* Blurred background layer */}
+                        <div
+                            className="absolute inset-0 rounded-lg backdrop-blur"
+                            style={{
+                                backgroundColor: props.secondary_color,
+                                opacity: 0.7,
+                            }}
+                        />
+                        {/* Text layer (above the blur) */}
+
+                        <span
+                            className="relative font-bold"
+                            style={{
+                                color: props.text_primary_color,
+                            }}
+                        >
+                            {userEndSessionDatetime
+                                ? `Remaining Time: ${formatCountdown(countdown)}`
+                                : `Admin View`}
+                        </span>
+                    </div>
+                </p>
                 {children}
             </main>
 
@@ -353,13 +425,13 @@ export default function Authenticated({
                                         className="h-8 rounded-lg"
                                     />
                                 </Link>
-                                <div className="z-0 hidden h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
+                                <div className="z-0 flex h-full w-full items-center justify-center md:absolute md:left-0 md:top-0">
                                     <Link
                                         href={route(
                                             'client.privacy_policy',
                                             client,
                                         )}
-                                        className="text-sm hover:underline"
+                                        className="hidden text-sm hover:underline"
                                         style={{
                                             color: props?.text_primary_color,
                                         }}
@@ -367,7 +439,7 @@ export default function Authenticated({
                                         Privacy Policy
                                     </Link>
                                     <span
-                                        className="mx-2"
+                                        className="mx-2 hidden"
                                         style={{
                                             color: props?.text_primary_color,
                                         }}
@@ -379,13 +451,32 @@ export default function Authenticated({
                                             'client.terms_conditions',
                                             client,
                                         )}
-                                        className="text-sm hover:underline"
+                                        className="hidden text-sm hover:underline"
                                         style={{
                                             color: props?.text_primary_color,
                                         }}
                                     >
                                         Terms & Conditions
                                     </Link>
+                                    <span
+                                        className="mx-2 hidden"
+                                        style={{
+                                            color: props?.text_primary_color,
+                                        }}
+                                    >
+                                        •
+                                    </span>
+                                    <a
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        href={props.contact_person}
+                                        className="text-sm hover:underline"
+                                        style={{
+                                            color: props?.text_primary_color,
+                                        }}
+                                    >
+                                        Contact Support
+                                    </a>
                                 </div>
                                 <p
                                     className="z-10 text-sm"

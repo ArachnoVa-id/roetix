@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use App\Models\Event;
+use App\Models\User;
 use Exception;
 use Inertia\Inertia;
 use PhpMqtt\Client\MqttClient;
@@ -34,6 +35,12 @@ class UserQueueMiddleware
 
         if (!$eventVariables) {
             abort(404, 'Event Variables tidak ditemukan.');
+        }
+
+        // If user is admin, bypass
+        $userData = User::find($user->id);
+        if ($userData->isAdmin()) {
+            return $next($request);
         }
 
         $threshold = $eventVariables->active_users_threshold;

@@ -78,6 +78,16 @@ class Event extends Model
 
     public static function loginUser($event, $user)
     {
+        session([
+            'auth_user' => $user,
+        ]);
+        Auth::login($user);
+
+        // if user is admin, skip queue
+        if ($user->isAdmin()) {
+            return;
+        }
+
         $pdo = self::getPdo($event);
 
         $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
@@ -89,11 +99,6 @@ class Event extends Model
 
         $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
         $stmt->execute([$user->id]);
-
-        session([
-            'auth_user' => $user,
-        ]);
-        Auth::login($user);
     }
 
     public static function promoteUser($event, $user)
