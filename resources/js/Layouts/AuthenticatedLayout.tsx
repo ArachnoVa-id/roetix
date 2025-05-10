@@ -294,7 +294,8 @@ export default function Authenticated({
                                 eventProps={props}
                                 method="post"
                                 href={route('logout')}
-                                as="button"
+                                target="_blank"
+                                active={false}
                             >
                                 Log Out
                             </ResponsiveNavLink>
