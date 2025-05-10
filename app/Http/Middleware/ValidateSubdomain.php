@@ -6,7 +6,6 @@ use App\Models\Event;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class ValidateSubdomain
@@ -41,11 +40,12 @@ class ValidateSubdomain
             abort(404, 'Event not found! Please contact admin.', ['isRedirecting' => 'false']);
         }
 
+        $url = $request->route()->getName();
         if (!Auth::check()) {
-            if ($request->route()->getName() !== 'client.login') {
+            if ($url !== 'client.login' && $url !== 'client.privateLogin') {
                 return redirect()->route('client.login', ['client' => $event->slug]);
             }
-        } else if ($request->route()->getName() === 'client.login') {
+        } else if ($url === 'client.login' || $url === 'client.privateLogin') {
             return redirect()->route('client.home', ['client' => $event->slug]);
         }
 

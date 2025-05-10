@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use PDO;
 
@@ -89,6 +89,11 @@ class Event extends Model
 
         $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
         $stmt->execute([$user->id]);
+
+        session([
+            'auth_user' => $user,
+        ]);
+        Auth::login($user);
     }
 
     public static function promoteUser($event, $user)
