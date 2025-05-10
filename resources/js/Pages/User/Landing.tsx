@@ -566,7 +566,7 @@ export default function Landing({
     return (
         <AuthenticatedLayout client={client} props={props}>
             <Head title={'Book Tickets | ' + event.name} />
-            <p className="fixed left-0 top-0 z-[1000] flex w-screen justify-center">
+            <p className="pointer-events-none fixed left-0 top-0 z-[1000] flex w-screen justify-center">
                 <div className="relative mt-4 rounded-lg px-4 py-2 shadow-lg">
                     {/* Blurred background layer */}
                     <div
