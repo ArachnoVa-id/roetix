@@ -292,6 +292,8 @@ class PaymentController extends Controller
             $order->status = $status;
             $order->save();
 
+            $updatedTickets = [];
+
             // Update ticket statuses
             $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
             foreach ($ticketOrders as $ticketOrder) {
@@ -299,15 +301,18 @@ class PaymentController extends Controller
                 if ($ticket) { // Ensure the ticket exists before updating
                     $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
                     $ticket->save();
+
+                    $updatedTickets[] = [
+                        "id" => $ticket->id,
+                        "status" => $ticket->status,
+                        "seat_id" => $ticket->seat_id,
+                        "ticket_category_id" => $ticket->ticket_category_id,
+                        "ticket_type" => $ticket->ticket_type,
+                    ];
                 }
             }
             DB::commit();
-            $this->publishMqtt(data: [
-                "id" => $ticket->seat_id,
-                "status" => $ticket->status,
-                "ticket_category_id" => $ticket->ticket_category_id,
-                "ticket_type" => $ticket->ticket_type,
-            ]);
+            $this->publishMqtt(data: $updatedTickets);
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
