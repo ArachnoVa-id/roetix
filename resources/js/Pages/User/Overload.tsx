@@ -37,9 +37,13 @@ export default function Overload({
     logo,
     logo_alt,
 }: OverloadProps): React.ReactElement {
+
+    const [timeLeft, setTimeLeft] = useState('');
+
     useEffect(() => {
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
+        // Handle MQTT connection
         mqttclient.on('connect', () => {
             const sanitizedUserId = event.slug.replace(/-/g, '');
             mqttclient.subscribe(`novatix/logs/${sanitizedUserId}`);
@@ -67,7 +71,7 @@ export default function Overload({
             }
         });
 
-        // ⬇️ Tambahkan blok ini setelah MQTT handling
+        // Handle countdown logic for queue.expected_finish
         if (queue.expected_finish) {
             const expectedTime = new Date(queue.expected_finish);
             const now = new Date();
@@ -78,42 +82,33 @@ export default function Overload({
                     window.location.reload();
                 }, diffMs);
             }
+
+            const target = new Date(expectedTime.toUTCString()).getTime();
+
+            const interval = setInterval(() => {
+                const now = new Date().getTime();
+                const diff = target - now;
+
+                if (diff <= 0) {
+                    setTimeLeft("Time's up!");
+                    clearInterval(interval);
+                    return;
+                }
+
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+            }, 1000);
+
+            return () => clearInterval(interval);
         }
 
         return () => {
             mqttclient.end();
         };
-    });
-
-    const [timeLeft, setTimeLeft] = useState('');
-
-    useEffect(() => {
-        if (!queue.expected_finish) {
-            return;
-        }
-        const target = new Date(
-            new Date(queue.expected_finish).toUTCString(),
-        ).getTime();
-
-        const interval = setInterval(() => {
-            const now = new Date(new Date().toUTCString()).getTime();
-            const diff = target - now;
-
-            if (diff <= 0) {
-                setTimeLeft("Time's up!");
-                clearInterval(interval);
-                return;
-            }
-
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [queue.expected_finish]);
+    }, [event, queue]);
 
     return (
         <div
