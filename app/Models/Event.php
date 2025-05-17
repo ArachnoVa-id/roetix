@@ -160,6 +160,7 @@ class Event extends Model
         ];
 
         $mqtt->publishMqtt($mqttData, $event->slug);
+        $mqtt->publishMqtt($mqttData);
     }
 
     public static function removeExpiredUsers($event, $mqtt)

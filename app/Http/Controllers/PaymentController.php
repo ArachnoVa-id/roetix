@@ -238,6 +238,8 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
 
+        dd($data);
+
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
@@ -330,7 +332,7 @@ class PaymentController extends Controller
                     ];
                 }
             }
-            // $this->publishMqtt(data: $updatedTickets);
+            $this->publishMqtt(data: $updatedTickets);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
