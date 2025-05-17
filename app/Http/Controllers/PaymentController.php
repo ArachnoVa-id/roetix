@@ -325,12 +325,12 @@ class PaymentController extends Controller
             }
             DB::commit();
             $this->publishMqtt(data: [
-                'message' => $updatedTickets,
+                'message' => "kontol",
             ]);
             $this->publishMqtt(data: $updatedTickets);
         } catch (\Exception $e) {
             $this->publishMqtt(data: [
-                'message' => $updatedTickets,
+                'message' => $e,
             ]);
             DB::rollBack();
             throw $e;

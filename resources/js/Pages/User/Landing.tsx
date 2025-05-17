@@ -61,6 +61,8 @@ export default function Landing({
                 const payload = JSON.parse(message.toString());
                 const updates = Array.isArray(payload) ? payload : [payload];
 
+                console.log(payload)
+
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
 
