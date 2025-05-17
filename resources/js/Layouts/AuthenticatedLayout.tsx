@@ -48,9 +48,8 @@ export default function Authenticated({
     footer?: ReactNode;
     client: string;
     props: EventProps;
-    userEndSessionDatetime: string;
+    userEndSessionDatetime?: string;
 }>) {
-    console.log(userEndSessionDatetime);
     const user = usePage().props.auth.user;
 
     const [eventColorProps, setEventColorProps] = useState<EventColorProps>(

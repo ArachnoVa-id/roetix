@@ -59,7 +59,6 @@ export default function Landing({
         mqttclient.on('message', (topic, message) => {
             try {
                 const payload = JSON.parse(message.toString());
-                console.log(payload);
                 const updates = Array.isArray(payload) ? payload : [payload];
 
                 const updatedItems = layoutItems.map((item) => {
