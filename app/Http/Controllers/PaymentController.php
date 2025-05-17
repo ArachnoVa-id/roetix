@@ -238,10 +238,10 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
 
-        $this->publishMqtt(data: [
-            'id' => $identifier,
-            'status' => 'hallo callback',
-        ]);
+        // $this->publishMqtt(data: [
+        //     'id' => $identifier,
+        //     'status' => 'hallo callback',
+        // ]);
 
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
@@ -259,28 +259,16 @@ class PaymentController extends Controller
                 case 'capture':
                 case 'settlement':
                     $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
-                    $this->publishMqtt(data: [
-                        'id' => $identifier,
-                        'status' => 'hallo settlement',
-                    ]);
                     break;
 
                 case 'pending':
                     $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
-                    $this->publishMqtt(data: [
-                        'id' => $identifier,
-                        'status' => 'hallo pending',
-                    ]);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
                     $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
-                    $this->publishMqtt(data: [
-                        'id' => $identifier,
-                        'status' => 'hallo cencel',
-                    ]);
                     break;
             }
 
@@ -335,9 +323,15 @@ class PaymentController extends Controller
                     ];
                 }
             }
-            $this->publishMqtt(data: $updatedTickets);
             DB::commit();
+            $this->publishMqtt(data: [
+                'message' => $updatedTickets,
+            ]);
+            $this->publishMqtt(data: $updatedTickets);
         } catch (\Exception $e) {
+            $this->publishMqtt(data: [
+                'message' => $updatedTickets,
+            ]);
             DB::rollBack();
             throw $e;
         }
