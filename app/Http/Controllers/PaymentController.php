@@ -468,10 +468,10 @@ class PaymentController extends Controller
                 }
             }
 
-            $this->publishMqtt(data: [
-                'event' => "update_ticket_status",
-                'data' => $updatedTickets
-            ]);
+            // $this->publishMqtt(data: [
+            //     'event' => "update_ticket_status",
+            //     'data' => $updatedTickets
+            // ]);
             DB::commit();
             return response()->json([
                 'success' => true,
@@ -527,32 +527,42 @@ class PaymentController extends Controller
         $server = 'broker.emqx.io';
         $port = 1883;
         $clientId = 'novatix_midtrans' . rand(100, 999);
-        $usrname = 'emqx';
+        $username = 'emqx';
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
+    
         // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
+        // Atau fallback static jika belum support param client_name
         $topic = 'novatix/midtrans/defaultcode';
-
+    
         $conn_settings = (new ConnectionSettings)
-            ->setUsername($usrname)
+            ->setUsername($username)
             ->setPassword($password)
             ->setLastWillMessage('client disconnected')
             ->setLastWillTopic('emqx/last-will')
             ->setLastWillQualityOfService(1);
-
+    
         $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-
+    
         try {
             $mqtt->connect($conn_settings, true);
-            $mqtt->publish(
-                $topic,
-                json_encode($data),
-                0
-            );
+    
+            // Pastikan koneksi sukses sebelum publish
+            if ($mqtt->isConnected()) {
+                $mqtt->publish(
+                    $topic,
+                    json_encode($data),
+                    0 // QoS
+                );
+                Log::info('MQTT Publish success to topic: ' . $topic, $data);
+            } else {
+                Log::warning('MQTT not connected. Skipped publishing to topic: ' . $topic);
+            }
+    
             $mqtt->disconnect();
         } catch (\Throwable $th) {
-            // biarin lewat aja biar ga bikin masalah di payment controller flow nya
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
+    
 }
