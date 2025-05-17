@@ -219,12 +219,12 @@ class PaymentController extends Controller
             $order->update(['snap_token' => $snapToken]);
             DB::commit();
 
-            $this->publishMqtt(data: [
-                'event' => "update_ticket_status",
-                'data' => $updatedTickets
-            ]);
+            // $this->publishMqtt(data: [
+            //     'event' => "update_ticket_status",
+            //     'data' => $updatedTickets
+            // ]);
 
-            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
+            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode, 'updated_tickets' => $updatedTickets]);
         } catch (\Exception $e) {
             DB::rollBack();
             preg_match('/"error_messages":\["(.*?)"/', $e->getMessage(), $matches);
@@ -438,6 +438,8 @@ class PaymentController extends Controller
                 throw new \Exception('No pending orders found');
             }
 
+            $updatedTickets = [];
+
             foreach ($orders as $order) {
                 // Update order status
                 $order->status = OrderStatus::CANCELLED;
@@ -447,9 +449,17 @@ class PaymentController extends Controller
                 $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
                 foreach ($ticketOrders as $ticketOrder) {
                     $ticket = Ticket::find($ticketOrder->ticket_id);
-                    if ($ticket) { // Ensure the ticket exists before updating
+                    if ($ticket) {
                         $ticket->status = TicketStatus::AVAILABLE;
                         $ticket->save();
+
+                        $updatedTickets[] = [
+                            "id" => $ticket->id,
+                            "status" => $ticket->status,
+                            "seat_id" => $ticket->seat_id,
+                            "ticket_category_id" => $ticket->ticket_category_id,
+                            "ticket_type" => $ticket->ticket_type,
+                        ];
                     }
 
                     // Set current status to cancelled
@@ -458,6 +468,10 @@ class PaymentController extends Controller
                 }
             }
 
+            $this->publishMqtt(data: [
+                'event' => "update_ticket_status",
+                'data' => $updatedTickets
+            ]);
             DB::commit();
             return response()->json([
                 'success' => true,
