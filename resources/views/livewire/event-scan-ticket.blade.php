@@ -49,7 +49,7 @@
         // mulai pindai qr code
         scanQRCode();
       } catch (error) {
-        // console.log('Terjadi kesalahan dalam mengakses kamera: ', error.message);
+        
       }
     }
 

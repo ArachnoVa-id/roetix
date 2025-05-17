@@ -120,7 +120,7 @@ jobs:
           sudo chmod -R 775 /var/www/novatix/storage /var/www/novatix/bootstrap/cache
 
           # Run database migrations
-          php artisan migrate --force
+          php artisan migrate
           php artisan storage:link
 
           EOF

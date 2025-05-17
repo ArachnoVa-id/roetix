@@ -26,7 +26,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
         <div className="flex h-screen max-md:flex-col">
             {/* Panel Kontrol - Posisi absolut dengan lebar tetap di atas */}
             <div
-                className={`flex h-fit w-72 flex-col border-r border-gray-200 bg-white shadow-lg max-md:order-2 max-md:w-full md:h-full`}
+                className={`flex h-fit w-80 flex-col border-r border-gray-200 bg-white shadow-lg max-md:order-2 max-md:w-full md:h-full`}
             >
                 {/* Header */}
                 <div className="flex w-full justify-between border-b border-gray-200 bg-blue-600 p-4 text-white">
@@ -98,9 +98,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = ({
             </div>
 
             {/* Main content area */}
-            <div className="h-screen flex-1 bg-gray-50 max-md:order-1">
-                {content}
-            </div>
+            <div className="h-full flex-1 overflow-hidden">{content}</div>
         </div>
     );
 };

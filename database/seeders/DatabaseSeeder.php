@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
             VenueSeeder::class, // With seat generation
             EventSeeder::class, // With all event timelineing and ticket generation
             OrderSeeder::class, // Pick random ticket assignment
-            TrafficNumbersSlugSeeder::class,
+            // TrafficNumbersSlugSeeder::class,
         ]);
     }
 }

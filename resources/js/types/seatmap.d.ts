@@ -197,6 +197,8 @@ export interface Event {
     event_date: string;
     venue_id: string;
     status: string;
+    // ijin nambahin slug
+    slug: string;
 }
 
 export interface TicketCategory {
@@ -265,4 +267,5 @@ export interface LandingProps {
     error?: string;
     props: EventProps;
     ownedTicketCount: number;
+    userEndSessionDatetime: string;
 }

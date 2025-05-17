@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
+use Illuminate\Support\Facades\Cache;
 
 class PaymentController extends Controller
 {
@@ -34,116 +35,117 @@ class PaymentController extends Controller
     // disini nanti taro eventnya
     public function charge(Request $request, string $client = "")
     {
-        // Check if there's too much orders frequently, reject
-        $timeSpan = now()->subHour();
-        $orderCount = Order::where('user_id', Auth::id())
-            ->where('order_date', '>=', $timeSpan)
-            ->count();
-        // $limitPerTimeSpan = 5;
-        $limitPerTimeSpan = 500000;
+        $lock = Cache::lock('seat_lock_user_' . Auth::id(), 10);
 
-        if ($orderCount >= $limitPerTimeSpan) {
-            return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 hour to do the next transaction.'], 429);
+        if (! $lock->get()) {
+            return response()->json(['message' => 'System is processing your order. Please try again in a moment.'], 429);
         }
 
-        $secondTimeSpan = now()->subDay();
-        $orderCountSecond = Order::where('user_id', Auth::id())
-            ->where('order_date', '>=', $secondTimeSpan)
-            ->count();
-        $limitPerTimeSpanSecond = 10;
-
-        if ($orderCountSecond >= $limitPerTimeSpanSecond) {
-            return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 day to do the next transaction.'], 429);
-        }
-
-        // Validate the request
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'amount' => 'required|numeric|min:0',
-            'grouped_items' => 'required',
-            'tax_amount' => 'numeric',
-            'total_with_tax' => 'numeric',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Ensure user is authenticated
-        if (!Auth::check()) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-
-        $event = Event::where('slug', $client)->first();
-        if (!$event) {
-            return response()->json(['message' => 'Event not found'], 404);
-        }
-
-        // Check if there's still existing order
-        $existingOrders = User::find(Auth::id())
-            ->orders()
-            ->where('event_id', $event->id)
-            ->where('status', OrderStatus::PENDING)
-            ->get();
-
-        if ($existingOrders->isNotEmpty()) {
-            return response()->json(['message' => 'There is an existing pending order'], 400);
-        }
-
-        // Check Array
-        $groupedItems = $request->grouped_items;
-        if (!is_array($groupedItems)) {
-            return response()->json(['message' => 'Invalid grouped_items format'], 422);
-        }
-
-        // Get seats
-        $seats = collect();
-        foreach ($groupedItems as $category => $item) {
-            if (!empty($item['seatNumbers'])) {
-                $seats = $seats->merge(
-                    Seat::whereIn('seat_number', $item['seatNumbers'])
-                        ->where('venue_id', $event->venue_id)
-                        ->get()
-                );
-            }
-        }
-
-        if ($seats->isEmpty()) {
-            return response()->json(['message' => 'No seats available'], 400);
-        }
-
-        DB::beginTransaction();
         try {
+            // Order rate limiting
+            $hourlyLimit = 5;
+            $dailyLimit = 10;
+
+            $recentOrderCount = Order::where('user_id', Auth::id())
+                ->where('order_date', '>=', now()->subHour())
+                ->count();
+
+            if ($recentOrderCount >= $hourlyLimit) {
+                return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 hour.'], 429);
+            }
+
+            $dailyOrderCount = Order::where('user_id', Auth::id())
+                ->where('order_date', '>=', now()->subDay())
+                ->count();
+
+            if ($dailyOrderCount >= $dailyLimit) {
+                return response()->json(['message' => 'Too many orders today. Please try again tomorrow.'], 429);
+            }
+
+            // Request validation
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+                'amount' => 'required|numeric|min:0',
+                'grouped_items' => 'required|array',
+                'tax_amount' => 'numeric|nullable',
+                'total_with_tax' => 'numeric|nullable',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            if (! Auth::check()) {
+                return response()->json(['message' => 'Unauthorized'], 401);
+            }
+
+            $event = Event::where('slug', $client)->first();
+            if (! $event) {
+                return response()->json(['message' => 'Event not found'], 404);
+            }
+
+            $existingOrders = User::find(Auth::id())
+                ->orders()
+                ->where('event_id', $event->id)
+                ->where('status', OrderStatus::PENDING)
+                ->exists();
+
+            if ($existingOrders) {
+                return response()->json(['message' => 'There is an existing pending order'], 400);
+            }
+
+            // Collect seat info
+            $groupedItems = $request->grouped_items;
+            $seats = collect();
+
+            foreach ($groupedItems as $item) {
+                if (! empty($item['seatNumbers'])) {
+                    $seats = $seats->merge(
+                        Seat::whereIn('seat_number', $item['seatNumbers'])
+                            ->where('venue_id', $event->venue_id)
+                            ->get()
+                    );
+                }
+            }
+
+            if ($seats->isEmpty()) {
+                return response()->json(['message' => 'No seats available'], 400);
+            }
+
+            DB::beginTransaction();
+
             $seatIds = $seats->pluck('id')->toArray();
+
             $tickets = Ticket::whereIn('seat_id', $seatIds)
                 ->where('event_id', $event->id)
                 ->where('status', 'available')
-                ->distinct()
                 ->lockForUpdate()
                 ->get();
 
-            // Prepare transaction parameters
+            if ($tickets->count() !== $seats->count()) {
+                DB::rollBack();
+                return response()->json(['message' => 'Failed to lock seats'], 500);
+            }
+
             $itemDetails = [];
             foreach ($groupedItems as $category => $item) {
                 $seatLabel = isset($item['seatNumbers']) ? ' (' . implode(', ', $item['seatNumbers']) . ')' : '';
                 $itemDetails[] = [
                     'id' => 'TICKET-' . strtoupper($category),
-                    'price' => (int)$item['price'],
-                    'quantity' => (int)$item['quantity'],
+                    'price' => (int) $item['price'],
+                    'quantity' => (int) $item['quantity'],
                     'name' => ucfirst($category) . ' Ticket' . $seatLabel,
                 ];
             }
 
-            // Calculate total price with tax
-            $amount = (int)$request->amount;
+            $amount = (int) $request->amount;
             $defaultTaxRate = config('app.default_tax_rate', 1);
-            $taxAmount = (int)($request->tax_amount ?? ($amount * $defaultTaxRate / 100));
+            $taxAmount = (int) ($request->tax_amount ?? ($amount * $defaultTaxRate / 100));
             $totalWithTax = $amount + $taxAmount;
 
-            // Add tax item
             if ($taxAmount > 0) {
                 $itemDetails[] = [
                     'id' => 'TAX-' . $defaultTaxRate . 'PCT',
@@ -153,25 +155,14 @@ class PaymentController extends Controller
                 ];
             }
 
-            $team = Team::where('id', $event->team_id)->first();
-            if (!$team) {
+            $team = Team::find($event->team_id);
+            if (! $team) {
                 DB::rollBack();
                 return response()->json(['message' => 'Team not found'], 404);
             }
 
-            // Validate ticket availability
-            if ($tickets->count() !== $seats->count()) {
-                DB::rollBack();
-                return response()->json(['message' => 'Failed to lock seats'], 500);
-            }
-
-            // Lock tickets
-            $tickets->each(fn($ticket) => $ticket->update(['status' => TicketStatus::IN_TRANSACTION]));
-
-            // Generate order ID
             $orderCode = Order::keyGen(OrderType::AUTO, $event);
 
-            // Create order
             $order = Order::create([
                 'order_code' => $orderCode,
                 'event_id' => $event->id,
@@ -180,61 +171,62 @@ class PaymentController extends Controller
                 'order_date' => now(),
                 'total_price' => $totalWithTax,
                 'status' => OrderStatus::PENDING,
-                'expired_at' => now()->addMinutes(10)
+                'expired_at' => now()->addMinutes(10),
             ]);
 
-            if (!$order) {
+            if (! $order) {
                 DB::rollBack();
                 return response()->json(['message' => 'Failed to create order'], 500);
             }
 
-            // Create ticket orders
-            $ticketOrders = [];
             foreach ($tickets as $ticket) {
-                $ticketOrders[] = TicketOrder::create([
+                $ticket->update(['status' => TicketStatus::IN_TRANSACTION]);
+                TicketOrder::create([
                     'ticket_id' => $ticket->id,
                     'order_id' => $order->id,
                     'event_id' => $event->id,
                     'status' => TicketOrderStatus::ENABLED,
                 ]);
+                // $this->publishMqtt(data: [
+                //     'id' => $ticket->id,
+                //     'status' => TicketStatus::IN_TRANSACTION,
+                //     'seat_id' => $ticket->seat_id,
+                //     'ticket_category_id' => $ticket->ticket_category_id,
+                //     'ticket_type' => $ticket->ticket_type,
+                // ]);
             }
 
-            if (count($ticketOrders) !== $tickets->count()) {
-                DB::rollBack();
-                return response()->json(['message' => 'Failed to create ticket orders'], 500);
-            }
-
-            // Get Midtrans Snap Token
             Config::$serverKey = $event->eventVariables->getKey('server');
             Config::$isProduction = $event->eventVariables->midtrans_is_production;
             Config::$isSanitized = config('midtrans.is_sanitized', true);
             Config::$is3ds = config('midtrans.is_3ds', true);
 
             $snapToken = Snap::getSnapToken([
-                'transaction_details' => ['order_id' => $orderCode, 'gross_amount' => $totalWithTax],
+                'transaction_details' => [
+                    'order_id' => $orderCode,
+                    'gross_amount' => $totalWithTax
+                ],
                 'credit_card' => ['secure' => true],
                 'customer_details' => ['email' => $request->email],
                 'item_details' => $itemDetails,
             ]);
 
-            if (!$snapToken) {
+            if (! $snapToken) {
                 DB::rollBack();
                 return response()->json(['message' => 'Failed to get Snap token'], 500);
             }
 
-            // Update snap_token to order
-            $order->snap_token = $snapToken;
-            $order->save();        
-
+            $order->update(['snap_token' => $snapToken]);
             DB::commit();
+
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
         } catch (\Exception $e) {
             DB::rollBack();
-            $responseString = $e->getMessage();
-
-            preg_match('/"error_messages":\["(.*?)"/', $responseString, $matches);
+            preg_match('/"error_messages":\["(.*?)"/', $e->getMessage(), $matches);
             $firstErrorMessage = $matches[1] ?? null;
             return response()->json(['message' => 'System failed to process payment! ' . $firstErrorMessage . '.'], 500);
+        } finally {
+            optional($lock)->release();
         }
     }
 
@@ -245,6 +237,8 @@ class PaymentController extends Controller
     {
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
+
+        dd($data);
 
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
@@ -262,16 +256,28 @@ class PaymentController extends Controller
                 case 'capture':
                 case 'settlement':
                     $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    $this->publishMqtt(data: [
+                        'id' => $identifier,
+                        'status' => 'hallo settlement',
+                    ]);
                     break;
 
                 case 'pending':
                     $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    $this->publishMqtt(data: [
+                        'id' => $identifier,
+                        'status' => 'hallo pending',
+                    ]);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
                     $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    $this->publishMqtt(data: [
+                        'id' => $identifier,
+                        'status' => 'hallo cencel',
+                    ]);
                     break;
             }
 
@@ -307,6 +313,8 @@ class PaymentController extends Controller
             $order->status = $status;
             $order->save();
 
+            $updatedTickets = [];
+
             // Update ticket statuses
             $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
             foreach ($ticketOrders as $ticketOrder) {
@@ -314,15 +322,18 @@ class PaymentController extends Controller
                 if ($ticket) { // Ensure the ticket exists before updating
                     $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
                     $ticket->save();
+
+                    $updatedTickets[] = [
+                        "id" => $ticket->id,
+                        "status" => $ticket->status,
+                        "seat_id" => $ticket->seat_id,
+                        "ticket_category_id" => $ticket->ticket_category_id,
+                        "ticket_type" => $ticket->ticket_type,
+                    ];
                 }
-            }      
+            }
+            $this->publishMqtt(data: $updatedTickets);
             DB::commit();
-            $this->publishMqtt(data: [
-                "id" => $ticket->seat_id,
-                "status" => $ticket->status,
-                "ticket_category_id" => $ticket->ticket_category_id,
-                "ticket_type" => $ticket->ticket_type,
-            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;

@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Event;
 use App\Models\EventVariables;
 use App\Models\User;
-use App\Models\Traffic;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,13 +14,9 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Log;
-use PDO;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -55,6 +49,31 @@ class AuthenticatedSessionController extends Controller
             'event' => $event,
             'client' => $client,
             'props' => (is_array($props) ? $props : $props->getSecure()),
+            'privateLogin' => false
+        ]);
+    }
+
+    public function privateLogin(string $client = ''): Response
+    {
+        if ($client) {
+            // Get the event and associated venue
+            $event = Event::where('slug', $client)
+                ->first();
+
+            $props = $event->eventVariables;
+            $props->reconstructImgLinks();
+        } // else reject
+        else {
+            abort(403, 'Unauthorized action.');
+        }
+
+        return Inertia::render('Auth/Login', [
+            'canResetPassword' => Route::has('password.request'),
+            'status' => session('status'),
+            'event' => $event,
+            'client' => $client,
+            'props' => (is_array($props) ? $props : $props->getSecure()),
+            'privateLogin' => true
         ]);
     }
 
@@ -68,26 +87,15 @@ class AuthenticatedSessionController extends Controller
         $user = Auth::user();
         $userModel = User::find($user->id);
 
-        if ($request->client) {
-            session([
-                'auth_user' => $userModel,
-            ]);
-
-            $event = \App\Models\Event::where('slug', $request->client)->first();
-
-            $eventId = (int) $event->id; // pastikan ini integer
-            $path = storage_path("sql/events/{$eventId}.db");
-
-            // if (File::exists($path)) {
-            // } else {
-            //     abort(404, 'Event database not found.');
-            // }
-
-            // if ($event) {
-            //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            //     $trafficNumber->increment('active_sessions');
-            //     $trafficNumber->save();
-            // }
+        // For subdomain login
+        $client = $request->client;
+        $event = Event::where('slug', $client)->first();
+        if ($client) {
+            try {
+                Event::loginUser($event, $user);
+            } catch (\Throwable $e) {
+                return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client]);
+            }
 
             // redirecting to
             $redirectProps = [
@@ -98,6 +106,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route($redirectProps['route'], $redirectProps['client']);
         }
 
+        // For main login
         $firstTeam = $userModel->teams()->first();
 
         if ($userModel->isAdmin()) {
@@ -133,32 +142,7 @@ class AuthenticatedSessionController extends Controller
         $event = Event::where('slug', $subdomain)->first();
 
         if ($event) {
-            $path = storage_path("sql/events/{$event->id}.db");
-
-            // $pdo = new PDO("sqlite:" . $path);
-
-            // // Update end_login untuk login terakhir user
-            // $stmt = $pdo->prepare("
-            //     UPDATE user_logs
-            //     SET end_login = datetime('now')
-            //     WHERE user_id = ? AND end_login IS NULL
-            //     ORDER BY start_login DESC
-            //     LIMIT 1
-            // ");
-            // $stmt->execute([$user->id]);
-
-            // $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-            // if ($trafficNumber && $trafficNumber->active_sessions > 0) {
-            //     $trafficNumber->decrement('active_sessions');
-            // }
-            // $mqttData = [
-            //     'event' => 'user_logout',
-            //     'user_id' => $user->id,
-            //     'event_id' => $event->id,
-            //     'timestamp' => now()->toDateTimeString(),
-            // ];
-
-            // $this->publishMqtt($mqttData);
+            Event::logoutUserAndPromoteNext($event, $user, $this);
         }
 
         Auth::guard('web')->logout();
@@ -177,8 +161,8 @@ class AuthenticatedSessionController extends Controller
         $usrname = 'emqx';
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
-        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
-        $topic = 'novatix/logs/defaultcode';
+        $sanitized_mqtt_code = str_replace('-', '', $mqtt_code);
+        $topic = 'novatix/logs/' . $sanitized_mqtt_code;
 
         $conn_settings = (new ConnectionSettings)
             ->setUsername($usrname)
@@ -198,7 +182,6 @@ class AuthenticatedSessionController extends Controller
             );
             $mqtt->disconnect();
         } catch (\Throwable $th) {
-            // biarin lewat aja biar ga bikin masalah di payment controller flow nya
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }

@@ -37,6 +37,7 @@ export default function Landing({
     error,
     props,
     ownedTicketCount,
+    userEndSessionDatetime,
 }: LandingProps) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
@@ -52,17 +53,14 @@ export default function Landing({
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
         mqttclient.on('connect', () => {
-            console.log('Connected to MQTT broker');
             mqttclient.subscribe('novatix/midtrans/defaultcode');
         });
 
         mqttclient.on('message', (topic, message) => {
             try {
                 const payload = JSON.parse(message.toString());
+                console.log(payload);
                 const updates = Array.isArray(payload) ? payload : [payload];
-
-                console.log('Received updated MQTT message:', updates);
-                console.log('Received payload MQTT message:', payload);
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
@@ -71,8 +69,6 @@ export default function Landing({
                         (updateItem) =>
                             updateItem.id?.replace(/,/g, '') === item.id,
                     );
-
-                    console.log('find item tobe update', update);
 
                     if (update) {
                         return {
@@ -97,12 +93,7 @@ export default function Landing({
         return () => {
             mqttclient.end();
         };
-    }, [layoutItems]);
-
-    useEffect(() => {
-        console.log(layoutItems);
-        console.log(layoutState);
-    }, [layoutItems, layoutState]);
+    });
 
     // Show error if it exists when component mounts
     useEffect(() => {
@@ -504,7 +495,11 @@ export default function Landing({
 
     if (error) {
         return (
-            <AuthenticatedLayout client={client} props={props}>
+            <AuthenticatedLayout
+                client={client}
+                props={props}
+                userEndSessionDatetime={userEndSessionDatetime}
+            >
                 <Head title="Error" />
                 <div className="py-8">
                     <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -534,8 +529,14 @@ export default function Landing({
                 {/* Tampilkan pesan status event jika tidak active */}
                 {!isBookingAllowed && event && (
                     <div className="mx-auto w-fit sm:px-6 lg:px-8">
-                        <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
-                            <p className="text-center font-medium text-yellow-800">
+                        <div
+                            className="overflow-hidden p-3 shadow-md sm:rounded-lg"
+                            style={{
+                                backgroundColor: props.secondary_color,
+                                color: props.text_primary_color,
+                            }}
+                        >
+                            <p className="text-center font-medium">
                                 {eventStatusMessage}
                             </p>
                         </div>
