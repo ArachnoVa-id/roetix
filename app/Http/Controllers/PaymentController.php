@@ -325,10 +325,9 @@ class PaymentController extends Controller
             }
             DB::commit();
             $this->publishMqtt(data: [
-                'message' => "kontol",
+                'event' => "update_ticket_status",
                 'data' => $updatedTickets
             ]);
-            $this->publishMqtt(data: $updatedTickets);
         } catch (\Exception $e) {
             $this->publishMqtt(data: [
                 'message' => $e,
