@@ -200,7 +200,7 @@ class PaymentController extends Controller
             Config::$isProduction = $event->eventVariables->midtrans_is_production;
             Config::$isSanitized = config('midtrans.is_sanitized', true);
             Config::$is3ds = config('midtrans.is_3ds', true);
-            
+
             $snapToken = Snap::getSnapToken([
                 'transaction_details' => [
                     'order_id' => $orderCode,
@@ -218,6 +218,11 @@ class PaymentController extends Controller
 
             $order->update(['snap_token' => $snapToken]);
             DB::commit();
+
+            $this->publishMqtt(data: [
+                'event' => "update_ticket_status",
+                'data' => $updatedTickets
+            ]);
 
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
         } catch (\Exception $e) {
@@ -252,11 +257,6 @@ class PaymentController extends Controller
             // Process the callback based on transaction status
             switch ($data['transaction_status']) {
                 case 'capture':
-                    $this->publishMqtt(data: [
-                        'event' => "capture",
-                        ]
-                    );
-                    break;
                 case 'settlement':
                     $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
