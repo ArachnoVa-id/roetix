@@ -219,10 +219,10 @@ class PaymentController extends Controller
             $order->update(['snap_token' => $snapToken]);
             DB::commit();
 
-            $this->publishMqtt(data: [
-                'event' => "update_ticket_status",
-                'data' => $updatedTickets
-            ]);
+            // $this->publishMqtt(data: [
+            //     'event' => "update_ticket_status",
+            //     'data' => $updatedTickets
+            // ]);
 
             return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode, 'updated_tickets' => $updatedTickets]);
         } catch (\Exception $e) {
@@ -316,7 +316,7 @@ class PaymentController extends Controller
 
                     $updatedTickets[] = [
                         "id" => $ticket->id,
-                        "status" => $ticket->status,
+                        "status" => $status,
                         "seat_id" => $ticket->seat_id,
                         "ticket_category_id" => $ticket->ticket_category_id,
                         "ticket_type" => $ticket->ticket_type,
