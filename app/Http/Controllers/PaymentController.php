@@ -238,6 +238,11 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
 
+        $this->publishMqtt(data: [
+            'id' => $identifier,
+            'status' => 'hallo callback',
+        ]);
+
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }

@@ -176,6 +176,8 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     const token = response.data.snap_token;
                     const callbacks = createCallbacks();
 
+                    // console.log(callbacks);
+
                     // Open the Midtrans Snap payment page
                     window.snap.pay(token, callbacks);
 

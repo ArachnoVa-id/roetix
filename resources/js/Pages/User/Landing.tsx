@@ -523,7 +523,11 @@ export default function Landing({
     }
 
     return (
-        <AuthenticatedLayout client={client} props={props}>
+        <AuthenticatedLayout
+            client={client}
+            props={props}
+            userEndSessionDatetime={userEndSessionDatetime}
+        >
             <Head title={'Book Tickets | ' + event.name} />
             <div className="flex w-full flex-col gap-4 py-4">
                 {/* Tampilkan pesan status event jika tidak active */}
