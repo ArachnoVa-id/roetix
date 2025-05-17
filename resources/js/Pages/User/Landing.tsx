@@ -13,6 +13,7 @@ import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
+import { Layout } from 'lucide-react';
 
 // interface DataItem {
 //     category: string;
@@ -27,9 +28,9 @@ import SeatMapDisplay from '../Seat/SeatMapDisplay';
 // }
 
 interface TicketUpdate {
-    id: string | number;
+    id: string;
     status: string;
-    seat_id?: number;
+    seat_id?: string;
     ticket_category_id?: number;
     ticket_type?: string;
 }
@@ -68,39 +69,37 @@ export default function Landing({
         mqttclient.on('message', (topic, message) => {
             try {
                 const payload = JSON.parse(message.toString());
+                const updates = payload.data as TicketUpdate[];
 
-                console.log(payload);
-        
-                if (payload.event === "update_ticket_status" && Array.isArray(payload.data)) {
-                    const updates: TicketUpdate[] = payload.data;        
-                    const updatedItems = layoutItems.map((item) => {
-                        if (!('id' in item)) return item;
-        
-                        const update = updates.find(
-                            (updateItem) =>
-                                updateItem.id?.toString().replace(/,/g, '') === item.id,
-                        );
-        
-                        if (update) {
-                            return {
-                                ...item,
-                                status: update.status,
-                            };
-                        }
-        
-                        return item;
-                    });
-        
-                    setLayoutItems(updatedItems);
-                    setLayoutState((prevLayout) => ({
-                        ...prevLayout,
-                        items: updatedItems,
-                    }));
-                }
+                console.log(payload, updates)
+
+                const updatedItems = layoutItems.map((item) => {
+                    if (!('id' in item)) return item;
+
+                    const update = updates.find(
+                        (updateItem) =>
+                            updateItem.seat_id?.replace(/,/g, '') === item.id,
+                    );
+
+                    if (update) {
+                        return {
+                            ...item,
+                            status: update.status,
+                        };
+                    }
+
+                    return item;
+                });
+
+                setLayoutItems(updatedItems);
+                setLayoutState((prevLayout) => ({
+                    ...prevLayout,
+                    items: updatedItems,
+                }));
             } catch (error) {
                 console.error('Error parsing MQTT message:', error);
             }
-        });        
+        });
 
         return () => {
             mqttclient.end();

@@ -43,8 +43,8 @@ class PaymentController extends Controller
 
         try {
             // Order rate limiting
-            $hourlyLimit = 5;
-            $dailyLimit = 10;
+            $hourlyLimit = 50000;
+            $dailyLimit = 10000;
 
             $recentOrderCount = Order::where('user_id', Auth::id())
                 ->where('order_date', '>=', now()->subHour())
@@ -179,6 +179,7 @@ class PaymentController extends Controller
                 return response()->json(['message' => 'Failed to create order'], 500);
             }
 
+            $updatedTickets = [];
             foreach ($tickets as $ticket) {
                 $ticket->update(['status' => TicketStatus::IN_TRANSACTION]);
                 TicketOrder::create([
@@ -187,20 +188,19 @@ class PaymentController extends Controller
                     'event_id' => $event->id,
                     'status' => TicketOrderStatus::ENABLED,
                 ]);
-                // $this->publishMqtt(data: [
-                //     'id' => $ticket->id,
-                //     'status' => TicketStatus::IN_TRANSACTION,
-                //     'seat_id' => $ticket->seat_id,
-                //     'ticket_category_id' => $ticket->ticket_category_id,
-                //     'ticket_type' => $ticket->ticket_type,
-                // ]);
+
+                $updatedTickets[] = [
+                    "id" => $ticket->id,
+                    "status" => TicketStatus::IN_TRANSACTION,
+                    "seat_id" => $ticket->seat_id,
+                ];
             }
 
             Config::$serverKey = $event->eventVariables->getKey('server');
             Config::$isProduction = $event->eventVariables->midtrans_is_production;
             Config::$isSanitized = config('midtrans.is_sanitized', true);
             Config::$is3ds = config('midtrans.is_3ds', true);
-
+            
             $snapToken = Snap::getSnapToken([
                 'transaction_details' => [
                     'order_id' => $orderCode,
@@ -238,11 +238,6 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
 
-        // $this->publishMqtt(data: [
-        //     'id' => $identifier,
-        //     'status' => 'hallo callback',
-        // ]);
-
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
@@ -257,6 +252,11 @@ class PaymentController extends Controller
             // Process the callback based on transaction status
             switch ($data['transaction_status']) {
                 case 'capture':
+                    $this->publishMqtt(data: [
+                        'event' => "capture",
+                        ]
+                    );
+                    break;
                 case 'settlement':
                     $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
