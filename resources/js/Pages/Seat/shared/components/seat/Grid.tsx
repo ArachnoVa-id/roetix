@@ -41,18 +41,18 @@ export const Grid: React.FC<GridProps> = ({
                     onMouseLeave={onMouseLeave}
                 >
                     <div
-                        className="h-full overflow-auto"
+                        className="h-full w-full overflow-auto"
                         ref={usedGridRef}
                         onMouseMove={onMouseMove}
                     >
-                        <div className="min-w-fit p-4">
+                        <div className="w-fit p-4">
                             {/* Grid content */}
                             <div className="flex h-full items-center justify-center">
                                 <div className="grid grid-flow-row gap-1">
                                     {/* Visual selection box overlay */}
                                     {isDragging && selectionBox && (
                                         <div
-                                            className="pointer-events-none absolute z-10 border-2 border-blue-500 bg-blue-100 bg-opacity-20"
+                                            className="pointer-events-none absolute border-2 border-blue-500 bg-blue-200 bg-opacity-30"
                                             style={{
                                                 left: selectionBox.left + 'px',
                                                 top: selectionBox.top + 'px',

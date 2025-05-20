@@ -37,6 +37,8 @@ class EventVariables extends Model
         'text_primary_color',
         'text_secondary_color',
         'ticket_limit',
+        'active_users_threshold',
+        'active_users_duration',
         'terms_and_conditions',
         'privacy_policy',
         'midtrans_client_key_sb',
@@ -44,7 +46,8 @@ class EventVariables extends Model
         'midtrans_client_key',
         'midtrans_server_key',
         'midtrans_is_production',
-        'midtrans_use_novatix'
+        'midtrans_use_novatix',
+        'contact_person'
     ];
 
     public static function getDefaultValue()
@@ -65,6 +68,8 @@ class EventVariables extends Model
             'texture' => null,
             'favicon' => '/images/novatix-logo/favicon.ico',
             'ticket_limit' => 5,
+            'active_users_threshold' => 100,
+            'active_users_duration' => 10,
             'terms_and_conditions' => '',
             'privacy_policy' => '',
             'midtrans_client_key_sb' => '',
@@ -136,6 +141,7 @@ class EventVariables extends Model
             'text_secondary_color' => $this->text_secondary_color,
             'terms_and_conditions' => $this->terms_and_conditions,
             'privacy_policy' => $this->privacy_policy,
+            'contact_person' => $this->contact_person
         ];
     }
 

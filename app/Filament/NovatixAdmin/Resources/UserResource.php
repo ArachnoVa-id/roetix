@@ -232,7 +232,7 @@ class UserResource extends Resources\Resource
                                 ])
                                 ->afterStateUpdated(function ($state, $record, Forms\Set $set) {
                                     $find = User::where('email', $state)->first();
-                                    if ($record && $record->id === $find->id) return;
+                                    if ($record && $record->id === $find?->id) return;
                                     if ($find) {
                                         $set('email', null);
                                         Notification::make()

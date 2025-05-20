@@ -62,6 +62,14 @@ class SharedPanelSetup
                 Components\Widgets\NTEventChart::class,
                 Components\Widgets\NTVenueChart::class,
             ])
+            ->navigationItems([
+                \Filament\Navigation\NavigationItem::make()
+                    ->label('Support')
+                    ->url('https://wa.me/6287785917029')
+                    ->icon('heroicon-o-envelope')
+                    ->openUrlInNewTab()
+                    ->sort(1000),
+            ])
         ;
     }
 }

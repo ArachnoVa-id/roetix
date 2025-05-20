@@ -75,12 +75,12 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
         x: number;
         y: number;
     } | null>(null);
-    const [selectionBox, setSelectionBox] = useState<{
-        left: number;
-        top: number;
-        width: number;
-        height: number;
-    } | null>(null);
+    // const [selectionBox, setSelectionBox] = useState<{
+    //     left: number;
+    //     top: number;
+    //     width: number;
+    //     height: number;
+    // } | null>(null);
 
     const gridRef = useRef<HTMLDivElement>(null);
     const seatRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -218,7 +218,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
             setIsDragging(false);
             setDragStartSeat(null);
             setDragStartCoords(null);
-            setSelectionBox(null);
+            // setSelectionBox(null);
         }
     }, [isDragging]);
 
@@ -252,18 +252,18 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
     const handleGridMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
         if (!isDragging || selectionMode !== 'DRAG' || !gridRef.current) return;
 
-        const gridRect = gridRef.current.getBoundingClientRect();
+        // const gridRect = gridRef.current.getBoundingClientRect();
 
         // Ensure we have both starting coordinates
         if (!dragStartCoords) return;
 
         // Calculate the selection box coordinates relative to the grid
-        const left = Math.min(dragStartCoords.x, event.clientX) - gridRect.left;
-        const top = Math.min(dragStartCoords.y, event.clientY) - gridRect.top;
-        const width = Math.abs(event.clientX - dragStartCoords.x);
-        const height = Math.abs(event.clientY - dragStartCoords.y);
+        // const left = Math.min(dragStartCoords.x, event.clientX) - gridRect.left;
+        // const top = Math.min(dragStartCoords.y, event.clientY) - gridRect.top;
+        // const width = Math.abs(event.clientX - dragStartCoords.x);
+        // const height = Math.abs(event.clientY - dragStartCoords.y);
 
-        setSelectionBox({ left, top, width, height });
+        // setSelectionBox({ left, top, width, height });
 
         // Find all seats within the selection rectangle
         const newSelectedSeats = new Set<string>();
@@ -326,7 +326,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                 setIsDragging(false);
                 setDragStartSeat(null);
                 setDragStartCoords(null);
-                setSelectionBox(null);
+                // setSelectionBox(null);
                 setSelectedSeats(new Set());
             }
         };
@@ -489,7 +489,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
         setIsDragging(false);
         setDragStartSeat(null);
         setDragStartCoords(null);
-        setSelectionBox(null);
+        // setSelectionBox(null);
     };
 
     // Build sidebar content
@@ -557,22 +557,22 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                                 <div className="flex h-full items-center justify-center">
                                     <div className="grid grid-flow-row gap-1">
                                         {/* Visual selection box overlay */}
-                                        {isDragging && selectionBox && (
+                                        {isDragging && (
                                             <div
                                                 className="pointer-events-none absolute z-10 border-2 border-blue-500 bg-blue-100 bg-opacity-20"
-                                                style={{
-                                                    left:
-                                                        selectionBox.left +
-                                                        'px',
-                                                    top:
-                                                        selectionBox.top + 'px',
-                                                    width:
-                                                        selectionBox.width +
-                                                        'px',
-                                                    height:
-                                                        selectionBox.height +
-                                                        'px',
-                                                }}
+                                                // style={{
+                                                //     left:
+                                                //         selectionBox.left +
+                                                //         'px',
+                                                //     top:
+                                                //         selectionBox.top + 'px',
+                                                //     width:
+                                                //         selectionBox.width +
+                                                //         'px',
+                                                //     height:
+                                                //         selectionBox.height +
+                                                //         'px',
+                                                // }}
                                             />
                                         )}
 

@@ -49,25 +49,34 @@ class Ticket extends Model
             }
 
             if (empty($model->ticket_code)) {
-                // Ambil event jika ada
+                // Retrieve event if available
                 if (!empty($model->event_id)) {
                     $event = Event::find($model->event_id);
 
                     if ($event) {
                         $model->team_id = $event->team_id;
 
-                        // Dapatkan kode event dari slug
-                        $slug = strtoupper(Str::slug($event->name));
-                        $codeEvent = substr($slug, 0, 4);
+                        $initials = '';
+                        // Get first 8 characters of the event name
+                        if (isset($event->name)) {
+                            $initials = preg_replace('/[^A-Za-z0-9]/', '', substr($event->name, 0, 8));
+                        }
 
-                        // Jika kurang dari 4 karakter, tambahkan 0
-                        $codeEvent = str_pad($codeEvent, 4, '0');
+                        // Ensure initials are 8 characters long and pad with random alphanumeric characters if necessary
+                        $firstPart = '';
+                        if (strlen($initials) < 8) {
+                            $firstPart = str_pad($initials, 8, Str::random(4));
+                        } elseif (strlen($initials) > 8) {
+                            $firstPart = substr($initials, 0, 8);
+                        }
 
-                        // Buat 8 karakter alfanumerik acak
-                        $randomCode = Str::random(8);
+                        // Generate the remaining parts of the ticket code
+                        $secondPart = Str::random(8);
+                        $thirdPart = Str::random(8);
+                        $fourthPart = Str::random(8);
 
-                        // Kombinasikan
-                        $model->ticket_code = $codeEvent . $randomCode;
+                        // Combine all parts into the final ticket code
+                        $model->ticket_code = "{$firstPart}-{$secondPart}-{$thirdPart}-{$fourthPart}";
                     }
                 }
             }

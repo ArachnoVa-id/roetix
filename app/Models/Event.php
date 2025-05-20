@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,8 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use PDO;
 
 class Event extends Model
 {
@@ -39,15 +42,141 @@ class Event extends Model
         'team'
     ];
 
-    protected static function createSql($event)
+    protected static function getPdo($event)
     {
-        $filePath = storage_path("sql/events/{$event->id}.sql");
-        // $filePath = storage_path("sql/events/{$event->id}.sql");
-        File::ensureDirectoryExists(dirname($filePath));
+        $path = storage_path("sql/events/{$event->id}.db");
 
-        // Tambahkan isi file SQL sebagai contoh
-        $sql = "-- Event SQL Template for ID: {$event->id}";
-        File::put($filePath, $sql);
+        if (!file_exists($path)) {
+            self::createQueueSqlite($event);
+        }
+
+        return new PDO("sqlite:" . $path, null, null, [
+            PDO::ATTR_TIMEOUT => 2,
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]);
+    }
+
+    public static function createQueueSqlite($event)
+    {
+        $path = storage_path("sql/events/{$event->id}.db");
+        File::ensureDirectoryExists(dirname($path));
+
+        $pdo = new PDO("sqlite:" . $path);
+
+        $query = "
+            CREATE TABLE IF NOT EXISTS user_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                status TEXT NULL,
+                start_time DATETIME NULL,
+                expected_end_time DATETIME NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )";
+
+        $pdo->exec($query);
+    }
+
+    public static function loginUser($event, $user)
+    {
+        session([
+            'auth_user' => $user,
+        ]);
+        Auth::login($user);
+
+        // if user is admin, skip queue
+        if ($user->isAdmin()) {
+            return;
+        }
+
+        $pdo = self::getPdo($event);
+
+        $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
+        $stmt->execute([$user->id]);
+
+        if ($stmt->fetch(PDO::FETCH_ASSOC)) {
+            throw new Exception('User already queued or logged in.');
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
+        $stmt->execute([$user->id]);
+    }
+
+    public static function promoteUser($event, $user)
+    {
+        $pdo = self::getPdo($event);
+
+        $eventVariables = $event->eventVariables;
+        $duration = $eventVariables->active_users_duration;
+
+        $start = Carbon::now();
+        $end = $start->copy()->addMinutes($duration);
+
+        $stmt = $pdo->prepare("UPDATE user_logs SET status = 'online', start_time = ?, expected_end_time = ? WHERE user_id = ?");
+        $stmt->execute([$start, $end, $user->id]);
+    }
+
+    public static function getUser($event, $user)
+    {
+        $pdo = self::getPdo($event);
+
+        $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
+        $stmt->execute([$user->id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user ?: null;
+    }
+
+    public static function getUserPosition($event, $user)
+    {
+        $pdo = self::getPdo($event);
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM user_logs WHERE status = 'waiting' AND id < (SELECT id FROM user_logs WHERE user_id = ?)");
+        $stmt->execute([$user->id]);
+        return $stmt->fetchColumn() + 1;
+    }
+
+    public static function countOnlineUsers($event)
+    {
+        $pdo = self::getPdo($event);
+
+        $stmt = $pdo->query("SELECT COUNT(*) FROM user_logs WHERE status = 'online'");
+        return $stmt->fetchColumn();
+    }
+
+    public static function logoutUserAndPromoteNext($event, $user, $mqtt)
+    {
+        $pdo = self::getPdo($event);
+
+        $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
+        $stmt->execute([$user->id]);
+
+        $stmt = $pdo->prepare("SELECT user_id FROM user_logs WHERE status = 'waiting' ORDER BY created_at ASC LIMIT 1");
+        $stmt->execute();
+        $nextUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $mqttData = [
+            'event' => 'user_logout',
+            'next_user_id' => $nextUser['user_id'] ?? '',
+        ];
+
+        $mqtt->publishMqtt($mqttData, $event->slug);
+        $mqtt->publishMqtt($mqttData);
+    }
+
+    public static function removeExpiredUsers($event, $mqtt)
+    {
+        $pdo = self::getPdo($event);
+
+        $eventVariables = $event->eventVariables;
+        $threshold = $eventVariables->active_users_threshold;
+        $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE status = 'online' AND expected_end_time < ? ORDER BY created_at ASC LIMIT $threshold");
+        $stmt->execute([Carbon::now()->toDateTimeString()]);
+        $expiredUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($expiredUsers as $expiredUser) {
+            $userModel = User::find($expiredUser['user_id']);
+            self::logoutUserAndPromoteNext($event, $userModel, $mqtt);
+        }
     }
 
     protected static function boot()
@@ -61,7 +190,7 @@ class Event extends Model
         });
 
         static::created(function ($model) {
-            static::createSql($model);
+            static::createQueueSqlite($model);
         });
     }
 

@@ -13,6 +13,7 @@ import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
+import { Layout } from 'lucide-react';
 
 // interface DataItem {
 //     category: string;
@@ -26,6 +27,15 @@ import SeatMapDisplay from '../Seat/SeatMapDisplay';
 //     ticket_type: string;
 // }
 
+interface TicketUpdate {
+    id: string;
+    status: string;
+    seat_id?: string;
+    ticket_category_id?: number;
+    ticket_type?: string;
+}
+
+
 export default function Landing({
     client,
     layout,
@@ -37,6 +47,7 @@ export default function Landing({
     error,
     props,
     ownedTicketCount,
+    userEndSessionDatetime,
 }: LandingProps) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
@@ -52,27 +63,23 @@ export default function Landing({
         const mqttclient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
 
         mqttclient.on('connect', () => {
-            console.log('Connected to MQTT broker');
             mqttclient.subscribe('novatix/midtrans/defaultcode');
         });
 
         mqttclient.on('message', (topic, message) => {
             try {
                 const payload = JSON.parse(message.toString());
-                const updates = Array.isArray(payload) ? payload : [payload];
+                const updates = payload.data as TicketUpdate[];
 
-                console.log('Received updated MQTT message:', updates);
-                console.log('Received payload MQTT message:', payload);
+                console.log(payload, updates)
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
 
                     const update = updates.find(
                         (updateItem) =>
-                            updateItem.id?.replace(/,/g, '') === item.id,
+                            updateItem.seat_id?.replace(/,/g, '') === item.id,
                     );
-
-                    console.log('find item tobe update', update);
 
                     if (update) {
                         return {
@@ -97,12 +104,7 @@ export default function Landing({
         return () => {
             mqttclient.end();
         };
-    }, [layoutItems]);
-
-    useEffect(() => {
-        console.log(layoutItems);
-        console.log(layoutState);
-    }, [layoutItems, layoutState]);
+    });
 
     // Show error if it exists when component mounts
     useEffect(() => {
@@ -504,7 +506,11 @@ export default function Landing({
 
     if (error) {
         return (
-            <AuthenticatedLayout client={client} props={props}>
+            <AuthenticatedLayout
+                client={client}
+                props={props}
+                userEndSessionDatetime={userEndSessionDatetime}
+            >
                 <Head title="Error" />
                 <div className="py-8">
                     <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -528,14 +534,24 @@ export default function Landing({
     }
 
     return (
-        <AuthenticatedLayout client={client} props={props}>
+        <AuthenticatedLayout
+            client={client}
+            props={props}
+            userEndSessionDatetime={userEndSessionDatetime}
+        >
             <Head title={'Book Tickets | ' + event.name} />
             <div className="flex w-full flex-col gap-4 py-4">
                 {/* Tampilkan pesan status event jika tidak active */}
                 {!isBookingAllowed && event && (
                     <div className="mx-auto w-fit sm:px-6 lg:px-8">
-                        <div className="overflow-hidden bg-yellow-100 p-3 shadow-md sm:rounded-lg">
-                            <p className="text-center font-medium text-yellow-800">
+                        <div
+                            className="overflow-hidden p-3 shadow-md sm:rounded-lg"
+                            style={{
+                                backgroundColor: props.secondary_color,
+                                color: props.text_primary_color,
+                            }}
+                        >
+                            <p className="text-center font-medium">
                                 {eventStatusMessage}
                             </p>
                         </div>

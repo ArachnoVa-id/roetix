@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use App\Models\TicketCategory;
 use App\Models\TimelineSession;
 use App\Enums\TicketOrderStatus;
+use App\Models\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -140,7 +141,15 @@ class UserPageController extends Controller
                 })
                 ->count();
 
-            return Inertia::render('User/Landing', [
+            $current_user = (object) Event::getUser($event, Auth::user());
+
+            $user = Auth::user();
+            $userData = User::find($user->id);
+            if (!$userData) {
+                throw new \Exception('User not found.');
+            }
+
+            $content = [
                 'client' => $client,
                 'layout' => $layout,
                 'event' => [
@@ -158,7 +167,10 @@ class UserPageController extends Controller
                 'categoryPrices' => $categoryPrices,
                 'props' => $props->getSecure(),
                 'ownedTicketCount' => $ownedTicketCount,
-            ]);
+                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_end_time,
+            ];
+
+            return Inertia::render('User/Landing', $content);
         } catch (\Exception $e) {
             return Inertia::render('User/Landing', [
                 'client' => $client,

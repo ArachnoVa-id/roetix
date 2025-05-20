@@ -2,14 +2,10 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\UserRole;
 use App\Models\User;
 use Closure;
-use Illuminate\Container\Attributes\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Facade;
-use Illuminate\Support\Facades\Log as FacadesLog;
 
 class ValidateMainDomain
 {
