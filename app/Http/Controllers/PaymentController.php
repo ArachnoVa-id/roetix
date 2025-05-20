@@ -281,6 +281,161 @@ class PaymentController extends Controller
     }
 
     /**
+     * Handle Faspay payment callbacks
+     */
+    // public function handleFaspayCallback(Request $request)
+    // {
+    //     $data = $request->all();
+
+    //     $validator = Validator::make($data, [
+    //         'trx_id' => 'required|string|max:16',
+    //         'merchant_id' => 'required|numeric',
+    //         'merchant' => 'required|string|max:32',
+    //         'bill_no' => 'required|string|max:32',
+    //         'payment_reff' => 'nullable|string|max:32',
+    //         'payment_date' => 'required|date_format:Y-m-d H:i:s',
+    //         'payment_status_code' => 'required|in:0,1,2,3,4,5,7,8,9',
+    //         'payment_status_desc' => 'required|string|max:32',
+    //         'bill_total' => 'required|numeric',
+    //         'payment_total' => 'required|numeric',
+    //         'payment_channel_uid' => 'required|numeric',
+    //         'payment_channel' => 'required|string|max:32',
+    //         'signature' => 'required|string',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json(['error' => 'Invalid input', 'details' => $validator->errors()], 400);
+    //     }
+
+    //     // Example: Credentials used to compute signature
+    //     $userId = config('faspay.user_id');
+    //     $password = config('faspay.password');
+    //     $expectedSignature = sha1(md5($userId . $password . $data['bill_no'] . $data['payment_status_code']));
+
+    //     if ($data['signature'] !== $expectedSignature) {
+    //         return response()->json(['error' => 'Invalid signature'], 403);
+    //     }
+
+    //     DB::beginTransaction();
+    //     try {
+    //         // Example: Find the corresponding order
+    //         $order = Order::where('bill_no', $data['bill_no'])->first();
+
+    //         if (!$order) {
+    //             return response()->json(['error' => 'Order not found'], 404);
+    //         }
+
+    //         // Map status code to your internal status enum
+    //         $statusMap = [
+    //             '0' => OrderStatus::UNPROCESSED,
+    //             '1' => OrderStatus::PROCESSING,
+    //             '2' => OrderStatus::COMPLETED,
+    //             '3' => OrderStatus::FAILED,
+    //             '4' => OrderStatus::REVERSED,
+    //             '5' => OrderStatus::NOT_FOUND,
+    //             '7' => OrderStatus::EXPIRED,
+    //             '8' => OrderStatus::CANCELLED,
+    //             '9' => OrderStatus::UNKNOWN,
+    //         ];
+
+    //         $newStatus = $statusMap[$data['payment_status_code']] ?? OrderStatus::UNKNOWN;
+
+    //         // Update order
+    //         $order->update([
+    //             'status' => $newStatus->value,
+    //             'payment_reference' => $data['payment_reff'] ?? null,
+    //             'paid_at' => $data['payment_date'],
+    //             'payment_channel' => $data['payment_channel'],
+    //             'payment_status_desc' => $data['payment_status_desc'],
+    //             'payment_total' => $data['payment_total'],
+    //         ]);
+
+    //         DB::commit();
+    //         return response()->json(['message' => 'Payment callback processed']);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Faspay callback failed: ' . $e->getMessage());
+    //         return response()->json(['error' => 'Internal server error'], 500);
+    //     }
+    // }
+
+    public function faspayCallback(Request $request)
+    {
+        $data = $request->all();
+
+        return response()->json([
+            'response'       => 'Payment Notification',
+            'trx_id'         => $data['trx_id'] ?? null,
+            'merchant_id'    => $data['merchant_id'] ?? null,
+            'merchant'       => $data['merchant'] ?? null,
+            'bill_no'        => $data['bill_no'] ?? null,
+            'response_code'  => '00',
+            'response_desc'  => 'Success',
+            'response_date'  => now()->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function faspayReturn(Request $request)
+    {
+        // Retrieve all request data
+        $data = $request->all();
+
+        // Validate required parameters
+        $requiredParams = [
+            'merchant_id',
+            'bill_no',
+            'trx_id',
+            'bill_reff',
+            'payment_date',
+            'bank_user_name',
+            'status',
+            'signature'
+        ];
+
+        foreach ($requiredParams as $param) {
+            if (!isset($data[$param])) {
+                return response()->json([
+                    'response'       => 'Error',
+                    'response_code'  => '01',
+                    'response_desc'  => "Missing parameter: $param",
+                    'response_date'  => now()->format('Y-m-d H:i:s'),
+                ], 400);
+            }
+        }
+
+        // Here you can add signature verification logic if needed
+
+        // Abort for now
+        abort(403, "
+            This is a callback test. Your include such information:
+            trx_id: {$data['trx_id']}
+            merchant_id: {$data['merchant_id']}
+            bill_no: {$data['bill_no']}
+            bill_reff: {$data['bill_reff']}
+            payment_date: {$data['payment_date']}
+            bank_user_name: {$data['bank_user_name']}
+            status: {$data['status']}
+            signature: {$data['signature']}
+        ");
+
+        // Redirect to thank you page or any other page
+        return redirect()->route('thankYouPage', [
+            'trx_id'         => $data['trx_id'],
+            'merchant_id'    => $data['merchant_id'],
+            'bill_no'        => $data['bill_no'],
+            'bill_reff'      => $data['bill_reff'],
+            'payment_date'   => $data['payment_date'],
+            'bank_user_name' => $data['bank_user_name'],
+            'status'         => $data['status'],
+            'signature'      => $data['signature'],
+        ])->with([
+            'response_code'  => '00',
+            'response_desc'  => 'Success',
+            'response_date'  => now()->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
      * Update order status in the database
      */
     private function updateStatus($orderCode, $status, $transactionData)
@@ -530,23 +685,23 @@ class PaymentController extends Controller
         $username = 'emqx';
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
-    
+
         // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
         // Atau fallback static jika belum support param client_name
         $topic = 'novatix/midtrans/defaultcode';
-    
+
         $conn_settings = (new ConnectionSettings)
             ->setUsername($username)
             ->setPassword($password)
             ->setLastWillMessage('client disconnected')
             ->setLastWillTopic('emqx/last-will')
             ->setLastWillQualityOfService(1);
-    
+
         $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-    
+
         try {
             $mqtt->connect($conn_settings, true);
-    
+
             // Pastikan koneksi sukses sebelum publish
             if ($mqtt->isConnected()) {
                 $mqtt->publish(
@@ -558,11 +713,10 @@ class PaymentController extends Controller
             } else {
                 Log::warning('MQTT not connected. Skipped publishing to topic: ' . $topic);
             }
-    
+
             $mqtt->disconnect();
         } catch (\Throwable $th) {
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
-    
 }
