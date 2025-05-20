@@ -13,6 +13,7 @@ import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
+import { Layout } from 'lucide-react';
 
 // interface DataItem {
 //     category: string;
@@ -25,6 +26,15 @@ import SeatMapDisplay from '../Seat/SeatMapDisplay';
 //     ticket_category_id: string;
 //     ticket_type: string;
 // }
+
+interface TicketUpdate {
+    id: string;
+    status: string;
+    seat_id?: string;
+    ticket_category_id?: number;
+    ticket_type?: string;
+}
+
 
 export default function Landing({
     client,
@@ -59,15 +69,16 @@ export default function Landing({
         mqttclient.on('message', (topic, message) => {
             try {
                 const payload = JSON.parse(message.toString());
-                console.log(payload);
-                const updates = Array.isArray(payload) ? payload : [payload];
+                const updates = payload.data as TicketUpdate[];
+
+                console.log(payload, updates)
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
 
                     const update = updates.find(
                         (updateItem) =>
-                            updateItem.id?.replace(/,/g, '') === item.id,
+                            updateItem.seat_id?.replace(/,/g, '') === item.id,
                     );
 
                     if (update) {
@@ -523,7 +534,11 @@ export default function Landing({
     }
 
     return (
-        <AuthenticatedLayout client={client} props={props}>
+        <AuthenticatedLayout
+            client={client}
+            props={props}
+            userEndSessionDatetime={userEndSessionDatetime}
+        >
             <Head title={'Book Tickets | ' + event.name} />
             <div className="flex w-full flex-col gap-4 py-4">
                 {/* Tampilkan pesan status event jika tidak active */}

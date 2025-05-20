@@ -43,8 +43,8 @@ class PaymentController extends Controller
 
         try {
             // Order rate limiting
-            $hourlyLimit = 5;
-            $dailyLimit = 10;
+            $hourlyLimit = 50000;
+            $dailyLimit = 10000;
 
             $recentOrderCount = Order::where('user_id', Auth::id())
                 ->where('order_date', '>=', now()->subHour())
@@ -179,6 +179,7 @@ class PaymentController extends Controller
                 return response()->json(['message' => 'Failed to create order'], 500);
             }
 
+            $updatedTickets = [];
             foreach ($tickets as $ticket) {
                 $ticket->update(['status' => TicketStatus::IN_TRANSACTION]);
                 TicketOrder::create([
@@ -187,13 +188,12 @@ class PaymentController extends Controller
                     'event_id' => $event->id,
                     'status' => TicketOrderStatus::ENABLED,
                 ]);
-                // $this->publishMqtt(data: [
-                //     'id' => $ticket->id,
-                //     'status' => TicketStatus::IN_TRANSACTION,
-                //     'seat_id' => $ticket->seat_id,
-                //     'ticket_category_id' => $ticket->ticket_category_id,
-                //     'ticket_type' => $ticket->ticket_type,
-                // ]);
+
+                $updatedTickets[] = [
+                    "id" => $ticket->id,
+                    "status" => TicketStatus::IN_TRANSACTION,
+                    "seat_id" => $ticket->seat_id,
+                ];
             }
 
             Config::$serverKey = $event->eventVariables->getKey('server');
@@ -219,7 +219,12 @@ class PaymentController extends Controller
             $order->update(['snap_token' => $snapToken]);
             DB::commit();
 
-            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode]);
+            // $this->publishMqtt(data: [
+            //     'event' => "update_ticket_status",
+            //     'data' => $updatedTickets
+            // ]);
+
+            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode, 'updated_tickets' => $updatedTickets]);
         } catch (\Exception $e) {
             DB::rollBack();
             preg_match('/"error_messages":\["(.*?)"/', $e->getMessage(), $matches);
@@ -238,8 +243,6 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
 
-        dd($data);
-
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
@@ -256,28 +259,16 @@ class PaymentController extends Controller
                 case 'capture':
                 case 'settlement':
                     $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
-                    $this->publishMqtt(data: [
-                        'id' => $identifier,
-                        'status' => 'hallo settlement',
-                    ]);
                     break;
 
                 case 'pending':
                     $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
-                    $this->publishMqtt(data: [
-                        'id' => $identifier,
-                        'status' => 'hallo pending',
-                    ]);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
                     $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
-                    $this->publishMqtt(data: [
-                        'id' => $identifier,
-                        'status' => 'hallo cencel',
-                    ]);
                     break;
             }
 
@@ -325,16 +316,22 @@ class PaymentController extends Controller
 
                     $updatedTickets[] = [
                         "id" => $ticket->id,
-                        "status" => $ticket->status,
+                        "status" => $status,
                         "seat_id" => $ticket->seat_id,
                         "ticket_category_id" => $ticket->ticket_category_id,
                         "ticket_type" => $ticket->ticket_type,
                     ];
                 }
             }
-            $this->publishMqtt(data: $updatedTickets);
             DB::commit();
+            $this->publishMqtt(data: [
+                'event' => "update_ticket_status",
+                'data' => $updatedTickets
+            ]);
         } catch (\Exception $e) {
+            $this->publishMqtt(data: [
+                'message' => $e,
+            ]);
             DB::rollBack();
             throw $e;
         }
@@ -441,6 +438,8 @@ class PaymentController extends Controller
                 throw new \Exception('No pending orders found');
             }
 
+            $updatedTickets = [];
+
             foreach ($orders as $order) {
                 // Update order status
                 $order->status = OrderStatus::CANCELLED;
@@ -450,9 +449,17 @@ class PaymentController extends Controller
                 $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
                 foreach ($ticketOrders as $ticketOrder) {
                     $ticket = Ticket::find($ticketOrder->ticket_id);
-                    if ($ticket) { // Ensure the ticket exists before updating
+                    if ($ticket) {
                         $ticket->status = TicketStatus::AVAILABLE;
                         $ticket->save();
+
+                        $updatedTickets[] = [
+                            "id" => $ticket->id,
+                            "status" => $ticket->status,
+                            "seat_id" => $ticket->seat_id,
+                            "ticket_category_id" => $ticket->ticket_category_id,
+                            "ticket_type" => $ticket->ticket_type,
+                        ];
                     }
 
                     // Set current status to cancelled
@@ -461,6 +468,10 @@ class PaymentController extends Controller
                 }
             }
 
+            // $this->publishMqtt(data: [
+            //     'event' => "update_ticket_status",
+            //     'data' => $updatedTickets
+            // ]);
             DB::commit();
             return response()->json([
                 'success' => true,
@@ -516,32 +527,42 @@ class PaymentController extends Controller
         $server = 'broker.emqx.io';
         $port = 1883;
         $clientId = 'novatix_midtrans' . rand(100, 999);
-        $usrname = 'emqx';
+        $username = 'emqx';
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
+    
         // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
+        // Atau fallback static jika belum support param client_name
         $topic = 'novatix/midtrans/defaultcode';
-
+    
         $conn_settings = (new ConnectionSettings)
-            ->setUsername($usrname)
+            ->setUsername($username)
             ->setPassword($password)
             ->setLastWillMessage('client disconnected')
             ->setLastWillTopic('emqx/last-will')
             ->setLastWillQualityOfService(1);
-
+    
         $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-
+    
         try {
             $mqtt->connect($conn_settings, true);
-            $mqtt->publish(
-                $topic,
-                json_encode($data),
-                0
-            );
+    
+            // Pastikan koneksi sukses sebelum publish
+            if ($mqtt->isConnected()) {
+                $mqtt->publish(
+                    $topic,
+                    json_encode($data),
+                    0 // QoS
+                );
+                Log::info('MQTT Publish success to topic: ' . $topic, $data);
+            } else {
+                Log::warning('MQTT not connected. Skipped publishing to topic: ' . $topic);
+            }
+    
             $mqtt->disconnect();
         } catch (\Throwable $th) {
-            // biarin lewat aja biar ga bikin masalah di payment controller flow nya
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
+    
 }
