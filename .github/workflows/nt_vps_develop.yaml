@@ -154,7 +154,7 @@ jobs:
           mkdir -p storage/logs bootstrap/cache
 
           sudo chown -R www-data:www-data storage bootstrap/cache
-          sudo chmod -R 775 storage bootstrap/cache
+          sudo chmod -R 775 storage bootstrap/cache storage/*
 
           if ! command -v apache2 >/dev/null 2>&1; then
             echo "Apache2 not found. Installing apache2..."
