@@ -154,7 +154,7 @@ jobs:
           mkdir -p storage/logs bootstrap/cache
 
           sudo chown -R www-data:www-data storage bootstrap/cache
-          sudo chmod -R 775 storage bootstrap/cache storage/*
+          sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
 
           if ! command -v apache2 >/dev/null 2>&1; then
             echo "Apache2 not found. Installing apache2..."
@@ -219,7 +219,8 @@ jobs:
       - name: Link Staging Directory
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
-          set -e
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          
           sudo rm -rf /var/www/novatix_staging
           sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
           sudo chown -R www-data:www-data /var/www/novatix_staging
