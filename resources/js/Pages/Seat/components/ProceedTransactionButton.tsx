@@ -7,6 +7,7 @@ import {
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import React, { useState } from 'react';
+import Mqttclient from "@/Pages/Seat/components/Mqttclient";
 
 const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     client,
@@ -175,6 +176,23 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 if (window.snap) {
                     const token = response.data.snap_token;
                     const callbacks = createCallbacks();
+
+                    // logic publish
+                    const updated_tickets = response.data.updated_tickets;
+                    console.log(updated_tickets);
+
+                    const message = JSON.stringify({
+                        event: 'update_ticket_status',
+                        data: updated_tickets,
+                    });
+
+                    Mqttclient.publish('novatix/midtrans/defaultcode', message, { qos: 1 }, (err) => {
+                        if (err) {
+                            console.error('MQTT Publish Error:', err);
+                        } else {
+                            console.log('MQTT Message Sent:', message);
+                        }
+                    });
 
                     // Open the Midtrans Snap payment page
                     window.snap.pay(token, callbacks);
