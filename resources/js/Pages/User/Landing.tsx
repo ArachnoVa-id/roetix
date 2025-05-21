@@ -288,14 +288,20 @@ export default function Landing({
 
             if (response.data.success) {
                 // logic publish
-                const updated_tickets = selectedSeats.map((sS) => ({
-                    seat_id: sS.id,
-                    status: 'available',
-                }));
+                const updated_tickets: { seat_id: string; status: string }[] = [];
+
+                for (const transaction of pendingTransactions) {
+                    for (const seat of transaction.seats) {
+                        updated_tickets.push({
+                            seat_id: seat.seat_id,
+                            status: 'available',
+                        });
+                    }
+                }
 
                 const message = JSON.stringify({
                     event: 'update_ticket_status',
-                    data: selectedSeats,
+                    data: updated_tickets,
                 });
 
                 console.log(message);
@@ -634,15 +640,15 @@ export default function Landing({
                                                     >
                                                         <div
                                                             className={`h-2 w-2 rounded-full ${event.status ===
-                                                                    'active'
-                                                                    ? 'bg-green-500'
+                                                                'active'
+                                                                ? 'bg-green-500'
+                                                                : event.status ===
+                                                                    'planned'
+                                                                    ? 'bg-blue-500'
                                                                     : event.status ===
-                                                                        'planned'
-                                                                        ? 'bg-blue-500'
-                                                                        : event.status ===
-                                                                            'completed'
-                                                                            ? 'bg-gray-500'
-                                                                            : 'bg-red-500'
+                                                                        'completed'
+                                                                        ? 'bg-gray-500'
+                                                                        : 'bg-red-500'
                                                                 } mr-2 animate-pulse`}
                                                         ></div>
                                                         <span
