@@ -147,6 +147,9 @@ jobs:
           npm install
           npm run build
 
+          echo "Fixing Laravel directory permissions..."
+          cd ~/novatix/app/develop
+
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
 
