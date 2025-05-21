@@ -1,5 +1,6 @@
 name: NovaTix VPS Production
 
+# This workflow is designed to deploy the NovaTix application to a VPS server.
 on:
   push:
     branches:
