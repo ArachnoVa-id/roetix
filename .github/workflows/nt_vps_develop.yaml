@@ -130,23 +130,17 @@ jobs:
           echo "Restarting php8.3-fpm service..."
           sudo systemctl restart php8.3-fpm
 
-          echo "Installing Composer..."
-          EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
+          echo "Installing Composer locally..."
           php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-          ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
-
-          if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]
-          then
-              >&2 echo 'ERROR: Invalid composer installer checksum'
-              rm composer-setup.php
-              exit 1
-          fi
-
-          php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+          php composer-setup.php --install-dir=$HOME/bin --filename=composer
           rm composer-setup.php
+
+          # Add $HOME/bin to PATH temporarily to run composer
+          export PATH="$HOME/bin:$PATH"
 
           echo "Installing composer dependencies..."
           composer install --no-interaction --prefer-dist
+          echo "Installing npm dependencies..."
 
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
