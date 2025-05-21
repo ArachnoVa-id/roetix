@@ -147,15 +147,6 @@ jobs:
           npm install
           npm run build
 
-          echo "Fixing Laravel directory permissions..."
-          cd ~/novatix/app/develop
-
-          mkdir -p storage/framework/{cache,sessions,views}
-          mkdir -p storage/logs bootstrap/cache
-
-          sudo chown -R www-data:www-data storage bootstrap/cache
-          sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
-
           if ! command -v apache2 >/dev/null 2>&1; then
             echo "Apache2 not found. Installing apache2..."
             sudo apt install apache2 -y
@@ -166,6 +157,15 @@ jobs:
           sudo a2enmod proxy_fcgi setenvif
           sudo a2enconf php8.3-fpm
           sudo systemctl restart apache2
+
+          echo "Fixing Laravel directory permissions..."
+          cd ~/novatix/app/develop
+
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
+
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
 
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
@@ -211,16 +211,11 @@ jobs:
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
 
-  update-staging:
-    runs-on: ubuntu-latest
-    needs: vps-sync
-
-    steps:
       - name: Link Staging Directory
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
           ssh-keyscan github.com >> ~/.ssh/known_hosts
-          
+
           sudo rm -rf /var/www/novatix_staging
           sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
           sudo chown -R www-data:www-data /var/www/novatix_staging
