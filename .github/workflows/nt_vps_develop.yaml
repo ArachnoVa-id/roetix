@@ -139,8 +139,12 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
+          echo "Installing Node.js and npm..."
+          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+          sudo apt install -y nodejs
+
           echo "Installing npm dependencies..."
-          npm install --legacy-peer-deps
+          npm install
           npm run build
 
           mkdir -p storage/framework/{cache,sessions,views}
