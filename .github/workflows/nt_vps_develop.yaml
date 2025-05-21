@@ -116,27 +116,21 @@ jobs:
           echo "Creating install_dependencies.sh..."
           cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
           #!/bin/bash
+          set -e
           cd ~/novatix/app/develop
 
-          echo "Adding Ondřej Surý's PPA for PHP 8.3..."
+          echo "Installing PHP 8.3 and Composer dependencies..."
           sudo apt update
           sudo apt install software-properties-common -y
           sudo add-apt-repository ppa:ondrej/php -y
           sudo apt update
+          sudo apt install php8.3 php8.3-cli php8.3-fpm php8.3-sqlite3 unzip curl git -y
 
-          echo "Installing PHP 8.3 and sqlite3 extension..."
-          sudo apt install php8.3 php8.3-fpm php8.3-sqlite3 -y
-
-          echo "Restarting php8.3-fpm service..."
-          sudo systemctl restart php8.3-fpm
-
-          echo "Installing Composer locally..."
           php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
           php composer-setup.php --install-dir=/usr/local/bin --filename=composer
           rm composer-setup.php
 
-          echo "Installing composer dependencies..."
-          composer install --no-interaction --prefer-dist
+          composer install --no-interaction --prefer-dist --optimize-autoloader
           echo "Installing npm dependencies..."
 
           if ! command -v apache2 >/dev/null 2>&1; then
@@ -149,7 +143,6 @@ jobs:
           sudo a2enmod proxy_fcgi setenvif
           sudo a2enconf php8.3-fpm
           sudo systemctl restart apache2
-
 
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
