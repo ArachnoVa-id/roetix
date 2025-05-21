@@ -142,6 +142,18 @@ jobs:
           composer install --no-interaction --prefer-dist
           echo "Installing npm dependencies..."
 
+          if ! command -v apache2 >/dev/null 2>&1; then
+            echo "Apache2 not found. Installing apache2..."
+            sudo apt install apache2 -y
+          else
+            echo "Apache2 is already installed."
+          fi
+
+          sudo a2enmod proxy_fcgi setenvif
+          sudo a2enconf php8.3-fpm
+          sudo systemctl restart apache2
+
+
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
 
