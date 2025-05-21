@@ -126,8 +126,8 @@ jobs:
           sudo apt update
 
           echo "Installing required PHP extensions..."
-          sudo apt install php8.3 php8.3-cli php8.3-fpm php8.3-sqlite3 unzip curl git -y
-          sudo apt install -y php8.3-dom php8.3-xml
+          sudo apt install -y php8.3 php8.3-cli php8.3-fpm php8.3-sqlite3 unzip curl git \
+          php8.3-dom php8.3-xml php8.3-intl php8.3-curl php8.3-zip php8.3-gd
 
           echo "Installing Composer..."
           php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
