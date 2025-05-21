@@ -463,7 +463,7 @@ class EventResource extends Resource
                                     }
                                     $set('slug', $slug);
                                 })
-                                ->debounce(1000),
+                                ->live(debounce: 1000),
                             Forms\Components\TextInput::make('slug')
                                 ->required()
                                 ->placeholder('Event Slug')
@@ -663,7 +663,7 @@ class EventResource extends Resource
                                 ->validationMessages([
                                     'min' => 'At least one timeline is required',
                                 ])
-                                ->live(debounce: 500)
+                                ->live(debounce: 1000)
                                 ->reorderable(false)
                                 ->defaultItems(0)
                                 ->relationship('timelineSessions')
@@ -1327,8 +1327,9 @@ class EventResource extends Resource
                                                         }),
 
                                                     Forms\Components\TextInput::make('price')
-                                                        ->default(1)
+                                                        ->default(0)
                                                         ->placeholder('Timeline Price')
+                                                        ->helperText(fn($state) => $state == 0 ? "Disclaimer! This ticket is now free!" : "")
                                                         ->hidden(fn(Forms\Get $get) => !$get('is_active'))
                                                         ->prefix('Rp')
                                                         ->inputMode('decimal')
@@ -1338,9 +1339,9 @@ class EventResource extends Resource
                                                         ->validationMessages([
                                                             'required' => 'Timeline Price is required',
                                                             'numeric' => 'Timeline Price must be a number',
-                                                            'min' => 'Timeline Price must be greater than 0',
+                                                            'min' => 'Timeline Price must not be negative',
                                                         ])
-                                                        ->minValue(1)
+                                                        ->minValue(0)
                                                 ])
                                         ])
                                 ])

@@ -224,7 +224,7 @@ class UserResource extends Resources\Resource
                                 ->label('Personal Email')
                                 ->required()
                                 ->email()
-                                ->live(debounce: 500)
+                                ->live(debounce: 1000)
                                 ->validationAttribute('Email')
                                 ->validationMessages([
                                     'required' => 'The Email field is required.',

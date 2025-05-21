@@ -13,19 +13,6 @@ import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
-import { Layout } from 'lucide-react';
-
-// interface DataItem {
-//     category: string;
-//     column: number;
-//     id: string;
-//     price: string;
-//     row: string;
-//     seat_number: string;
-//     status: string;
-//     ticket_category_id: string;
-//     ticket_type: string;
-// }
 
 interface TicketUpdate {
     id: string;
@@ -34,7 +21,6 @@ interface TicketUpdate {
     ticket_category_id?: number;
     ticket_type?: string;
 }
-
 
 export default function Landing({
     client,
@@ -71,7 +57,7 @@ export default function Landing({
                 const payload = JSON.parse(message.toString());
                 const updates = payload.data as TicketUpdate[];
 
-                console.log(payload, updates)
+                console.log(payload, updates);
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
@@ -1177,7 +1163,23 @@ export default function Landing({
                                                         <span>Total:</span>
                                                         <span>
                                                             {formatRupiah(
-                                                                total,
+                                                                // total from pending
+                                                                transaction.seats.reduce(
+                                                                    (
+                                                                        acc,
+                                                                        seat,
+                                                                    ) => {
+                                                                        const seatPrice =
+                                                                            getSafePrice(
+                                                                                seat.price,
+                                                                            );
+                                                                        return (
+                                                                            acc +
+                                                                            seatPrice
+                                                                        );
+                                                                    },
+                                                                    0,
+                                                                ),
                                                             )}
                                                         </span>
                                                     </div>
