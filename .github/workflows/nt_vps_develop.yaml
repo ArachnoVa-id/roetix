@@ -79,6 +79,7 @@ jobs:
       - name: Ensure Folder Structure & Create Scripts
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
           set -e
 
           echo "Ensuring folder structure..."
