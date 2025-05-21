@@ -172,9 +172,9 @@ jobs:
           cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
           #!/bin/bash
           cd ~/novatix/app/develop
-          php artisan config:clear
+          sudo php artisan config:clear
           sudo php artisan cache:clear
-          php artisan route:cache
+          sudo php artisan route:cache
           EOT
           chmod +x ~/novatix/setups/deploy_laravel.sh
 
