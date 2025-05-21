@@ -98,7 +98,7 @@ jobs:
                   rm -rf app/develop
               fi
               echo "Cloning repository..."
-              git clone --branch develop ${{ variables.GIT_REPO }} app/develop
+              git clone --branch develop ${{ secrets.GIT_REPO }} app/develop
           else
               echo "Repository found. Pulling latest changes..."
               cd app/develop

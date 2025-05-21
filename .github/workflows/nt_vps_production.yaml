@@ -43,7 +43,7 @@ jobs:
                   rm -rf app/production
               fi
               echo "Cloning repository..."
-              git clone --branch main ${{ variables.GIT_REPO }} app/production
+              git clone --branch main ${{ secrets.GIT_REPO }} app/production
           else
               echo "Repository found. Pulling latest changes..."
               cd app/production
