@@ -132,11 +132,8 @@ jobs:
 
           echo "Installing Composer locally..."
           php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-          php composer-setup.php --install-dir=$HOME/bin --filename=composer
+          php composer-setup.php --install-dir=/usr/local/bin --filename=composer
           rm composer-setup.php
-
-          # Add $HOME/bin to PATH temporarily to run composer
-          export PATH="$HOME/bin:$PATH"
 
           echo "Installing composer dependencies..."
           composer install --no-interaction --prefer-dist
