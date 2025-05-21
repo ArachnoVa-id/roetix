@@ -1,5 +1,5 @@
 {
-	"authHost": "dev-staging-novatix.id",
+	"authHost": "dev-staging-roetix.com",
 	"authEndpoint": "/broadcasting/auth",
 	"clients": [],
 	"database": "redis",
