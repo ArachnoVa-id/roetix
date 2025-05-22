@@ -15,8 +15,28 @@ class VenueSeeder extends Seeder
     {
         // Create 10 venues
         Venue::factory()->count(10)->create()->each(function ($venue) {
-            // Generate 100 unique seats for each venue
-            Seat::factory()->count(100)->forVenue($venue->id)->create();
+            $usedSeats = [];
+
+            while (count($usedSeats) < 100) {
+                $row = fake()->randomElement(range('A', 'Z'));
+                $col = fake()->numberBetween(1, 15);
+                $seatNumber = $row . $col;
+
+                if (!in_array($seatNumber, $usedSeats)) {
+                    $usedSeats[] = $seatNumber;
+
+                    Seat::factory()
+                        ->state([
+                            'seat_number' => $seatNumber,
+                            'position' => $seatNumber,
+                            'row' => $row,
+                            'column' => $col,
+                            'venue_id' => $venue->id,
+                        ])
+                        ->make()
+                        ->save();
+                }
+            }
         });
     }
 }

@@ -127,7 +127,7 @@ jobs:
 
           echo "Installing required PHP extensions and PHP-FPM..."
           sudo apt install -y php8.3 php8.3-cli php8.3-fpm php8.3-sqlite3 unzip curl git \
-          php8.3-dom php8.3-xml php8.3-intl php8.3-curl php8.3-zip php8.3-gd
+          php8.3-dom php8.3-xml php8.3-intl php8.3-curl php8.3-zip php8.3-gd php8.3-mbstring
 
           echo "Installing Composer..."
           php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
@@ -136,8 +136,12 @@ jobs:
 
           composer install --no-interaction --prefer-dist --optimize-autoloader
           # Laravel setup
-          cp .env.example .env
-          php artisan key:generate
+          # If env not exist
+          if [ ! -f .env ]; then
+              echo "Creating .env file..."
+              cp .env.example .env
+              php artisan key:generate
+          fi
 
           echo "Installing Node.js and npm..."
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
