@@ -43,15 +43,15 @@ class PaymentController extends Controller
 
         try {
             // Order rate limiting
-            $hourlyLimit = 50000;
-            $dailyLimit = 10000;
+            $hourlyLimit = 5;
+            $dailyLimit = 10;
 
             $recentOrderCount = Order::where('user_id', Auth::id())
                 ->where('order_date', '>=', now()->subHour())
                 ->count();
 
             if ($recentOrderCount >= $hourlyLimit) {
-                return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 hour.'], 429);
+                throw new \Exception('Too many orders in a short time. Please wait for 1 hour.');
             }
 
             $dailyOrderCount = Order::where('user_id', Auth::id())
@@ -59,7 +59,7 @@ class PaymentController extends Controller
                 ->count();
 
             if ($dailyOrderCount >= $dailyLimit) {
-                return response()->json(['message' => 'Too many orders today. Please try again tomorrow.'], 429);
+                throw new \Exception('Too many orders today. Please try again tomorrow.');
             }
 
             // Request validation
@@ -79,12 +79,12 @@ class PaymentController extends Controller
             }
 
             if (! Auth::check()) {
-                return response()->json(['message' => 'Unauthorized'], 401);
+                throw new \Exception('Unauthorized');
             }
 
             $event = Event::where('slug', $client)->first();
             if (! $event) {
-                return response()->json(['message' => 'Event not found'], 404);
+                throw new \Exception('Event not found');
             }
 
             $existingOrders = User::find(Auth::id())
@@ -94,7 +94,7 @@ class PaymentController extends Controller
                 ->exists();
 
             if ($existingOrders) {
-                return response()->json(['message' => 'There is an existing pending order'], 400);
+                throw new \Exception('There is an existing pending order');
             }
 
             // Collect seat info
@@ -112,7 +112,7 @@ class PaymentController extends Controller
             }
 
             if ($seats->isEmpty()) {
-                return response()->json(['message' => 'No seats available'], 400);
+                throw new \Exception('No seats available');
             }
 
             DB::beginTransaction();
@@ -127,7 +127,7 @@ class PaymentController extends Controller
 
             if ($tickets->count() !== $seats->count()) {
                 DB::rollBack();
-                return response()->json(['message' => 'Failed to lock seats'], 500);
+                throw new \Exception('Failed to lock seats');
             }
 
             $itemDetails = [];
@@ -158,7 +158,7 @@ class PaymentController extends Controller
             $team = Team::find($event->team_id);
             if (! $team) {
                 DB::rollBack();
-                return response()->json(['message' => 'Team not found'], 404);
+                throw new \Exception('Team not found');
             }
 
             $orderCode = Order::keyGen(OrderType::AUTO, $event);
@@ -176,7 +176,7 @@ class PaymentController extends Controller
 
             if (! $order) {
                 DB::rollBack();
-                return response()->json(['message' => 'Failed to create order'], 500);
+                throw new \Exception('Failed to create order');
             }
 
             $updatedTickets = [];
@@ -196,35 +196,35 @@ class PaymentController extends Controller
                 ];
             }
 
-            Config::$serverKey = $event->eventVariables->getKey('server');
-            Config::$isProduction = $event->eventVariables->midtrans_is_production;
-            Config::$isSanitized = config('midtrans.is_sanitized', true);
-            Config::$is3ds = config('midtrans.is_3ds', true);
+            $snapToken = null;
+            if ($totalWithTax) {
+                $snapToken = $this->midtransCharge(
+                    $request,
+                    $orderCode,
+                    $totalWithTax,
+                    $itemDetails,
+                    $event
+                );
 
-            $snapToken = Snap::getSnapToken([
-                'transaction_details' => [
-                    'order_id' => $orderCode,
-                    'gross_amount' => $totalWithTax
-                ],
-                'credit_card' => ['secure' => true],
-                'customer_details' => ['email' => $request->email],
-                'item_details' => $itemDetails,
-            ]);
-
-            if (! $snapToken) {
-                DB::rollBack();
-                return response()->json(['message' => 'Failed to get Snap token'], 500);
+                if (! $snapToken) {
+                    DB::rollBack();
+                    throw new \Exception('Failed to get Snap token');
+                }
+            } else {
+                // Handle free order, auto complete
+                $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
+                $snapToken = 'free';
             }
 
             $order->update(['snap_token' => $snapToken]);
+
             DB::commit();
 
-            // $this->publishMqtt(data: [
-            //     'event' => "update_ticket_status",
-            //     'data' => $updatedTickets
-            // ]);
-
-            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode, 'updated_tickets' => $updatedTickets]);
+            return response()->json([
+                'snap_token' => $snapToken,
+                'transaction_id' => $orderCode,
+                'updated_tickets' => $updatedTickets
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             preg_match('/"error_messages":\["(.*?)"/', $e->getMessage(), $matches);
@@ -233,6 +233,36 @@ class PaymentController extends Controller
         } finally {
             optional($lock)->release();
         }
+    }
+
+    public function midtransCharge(
+        Request $request,
+        string $orderCode,
+        float $totalWithTax,
+        array $itemDetails,
+        Event $event
+    ) {
+        Config::$serverKey = $event->eventVariables->getKey('server');
+        Config::$isProduction = $event->eventVariables->midtrans_is_production;
+        Config::$isSanitized = config('midtrans.is_sanitized', true);
+        Config::$is3ds = config('midtrans.is_3ds', true);
+
+        $snapToken = Snap::getSnapToken([
+            'transaction_details' => [
+                'order_id' => $orderCode,
+                'gross_amount' => $totalWithTax
+            ],
+            'credit_card' => ['secure' => true],
+            'customer_details' => ['email' => $request->email],
+            'item_details' => $itemDetails,
+        ]);
+
+        if (! $snapToken) {
+            DB::rollBack();
+            throw new \Exception('Failed to get Snap token');
+        }
+
+        return $snapToken;
     }
 
     /**
@@ -450,7 +480,7 @@ class PaymentController extends Controller
 
             $currentStatus = $order->status;
             if ($currentStatus === $status || $currentStatus === OrderStatus::CANCELLED || $currentStatus === OrderStatus::COMPLETED) {
-                // No need to update if status is the same
+                // No need to update if status is the same and ignore completed/cancelled orders
                 DB::commit();
                 return;
             }

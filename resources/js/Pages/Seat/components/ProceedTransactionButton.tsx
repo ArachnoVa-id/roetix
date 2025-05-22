@@ -171,9 +171,16 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
             // Handle the response
             if (response.data && response.data.snap_token) {
+                const token = response.data.snap_token;
+                if (token === 'free') {
+                    toasterFunction.showSuccess(
+                        'Payment is free. No payment required.',
+                    );
+                    setIsLoading(false);
+                    window.location.reload();
+                }
                 // If Midtrans snap.js is loaded
-                if (window.snap) {
-                    const token = response.data.snap_token;
+                else if (window.snap) {
                     const callbacks = createCallbacks();
 
                     // Open the Midtrans Snap payment page
@@ -183,7 +190,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                         onTransactionStarted(selectedSeats);
                     }
                 } else {
-                    console.error('Snap.js is not properly initialized');
                     toasterFunction.showError(
                         'Payment gateway not loaded. Please refresh the page and try again.',
                     );
