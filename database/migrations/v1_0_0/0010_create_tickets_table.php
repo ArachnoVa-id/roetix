@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('ticket_type', 36);
             $table->string('ticket_category_id', 36)->nullable(); // Added without using 'after'
             $table->decimal('price', 10, 2);
-            $table->enum('status', TicketStatus::values())->default(TicketStatus::AVAILABLE);
+            $table->enum('status', TicketStatus::getByVersion('v1', 'array'))->default(TicketStatus::getByVersion('v1'));
 
             // foreign keys
             $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');

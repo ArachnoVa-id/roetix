@@ -25,7 +25,7 @@ return new class extends Migration
             $table->dateTime('start_date');
             $table->dateTime('event_date');
             $table->longText('location');
-            $table->enum('status', EventStatus::values())->default(EventStatus::PLANNED);
+            $table->enum('status', EventStatus::getByVersion('v1', 'array'))->default(EventStatus::getByVersion('v1'));
             $table->timestamps();
         });
     }

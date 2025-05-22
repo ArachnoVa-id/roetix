@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('team_id', 36);
             $table->dateTime('order_date');
             $table->decimal('total_price', 9, 2);
-            $table->enum('status', OrderStatus::values())->default(OrderStatus::PENDING);
+            $table->enum('status', OrderStatus::getByVersion('v1', 'array'))->default(OrderStatus::getByVersion('v1'));
             $table->dateTime('expired_at');
 
             $table->timestamps();
@@ -37,7 +37,7 @@ return new class extends Migration
             $table->string('ticket_id', 36);
             $table->string('order_id', 36);
             $table->string('event_id', 36);
-            $table->enum('status', TicketOrderStatus::values())->default(TicketOrderStatus::ENABLED);
+            $table->enum('status', TicketOrderStatus::getByVersion('v1', 'array'))->default(TicketOrderStatus::getByVersion('v1'));
             $table->timestamps();
 
             $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('cascade');

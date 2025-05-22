@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('name');
             $table->longText('location');
             $table->string('contact_info', 36);
-            $table->enum('status', VenueStatus::values())->default(VenueStatus::INACTIVE);
+            $table->enum('status', VenueStatus::getByVersion('v1', 'array'))->default(VenueStatus::getByVersion('v1'));
             $table->timestamps();
 
             $table->foreign('contact_info')->references('id')->on('user_contacts')->onDelete('cascade');

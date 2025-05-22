@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('id', 36)->primary(); // UUID as primary key
             $table->string('email')->unique();
             $table->string('password');
-            $table->enum('role', UserRole::values())->default(UserRole::USER);
+            $table->enum('role', UserRole::getByVersion('v1', 'array'))->default(UserRole::getByVersion('v1'));
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->string('google_id')->nullable();

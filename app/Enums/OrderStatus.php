@@ -11,6 +11,23 @@ enum OrderStatus: string implements HasLabel, HasColor
 {
     use BaseEnumTrait;
 
+    // Get by version
+    public static function getByVersion(string $version, string $mode = 'default'): array|string
+    {
+        return match ($version) {
+            'v1' => match ($mode) {
+                'array' => [
+                    'pending',
+                    'completed',
+                    'cancelled',
+                    'expired',
+                ],
+                'default' => 'pending',
+            },
+            default => throw new \InvalidArgumentException("Version {$version} not supported."),
+        };
+    }
+
     case PENDING = 'pending';
     case COMPLETED = 'completed';
     case CANCELLED = 'cancelled';
