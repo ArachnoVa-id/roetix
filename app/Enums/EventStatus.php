@@ -12,7 +12,7 @@ enum EventStatus: string implements HasLabel, HasColor
     use BaseEnumTrait;
 
     // Get by version
-    public static function getByVersion(string $version, string $mode = 'default'): array|string
+    public static function getByVersion(string $version, EnumVersionType $mode = EnumVersionType::DEFAULT): array|string
     {
         return match ($version) {
             'v1' => match ($mode) {

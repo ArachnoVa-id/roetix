@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\EnumVersionType;
 use App\Enums\UserRole;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -17,7 +18,7 @@ return new class extends Migration
             $table->string('id', 36)->primary(); // UUID as primary key
             $table->string('email')->unique();
             $table->string('password');
-            $table->enum('role', UserRole::getByVersion('v1', 'array'))->default(UserRole::getByVersion('v1'));
+            $table->enum('role', UserRole::getByVersion('v1', EnumVersionType::ARRAY))->default(UserRole::getByVersion('v1'));
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->string('google_id')->nullable();

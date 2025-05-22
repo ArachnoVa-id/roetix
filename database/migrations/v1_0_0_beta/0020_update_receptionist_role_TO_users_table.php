@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\EnumVersionType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -12,7 +13,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $enumValues = UserRole::getByVersion('v2', 'array');
+        $enumValues = UserRole::getByVersion('v2', EnumVersionType::ARRAY);
         $enumList = "'" . implode("','", $enumValues) . "'";
 
         DB::statement("ALTER TABLE users MODIFY role ENUM($enumList) DEFAULT '" . UserRole::getByVersion('v2') . "'");
@@ -23,7 +24,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $enumValues = UserRole::getByVersion('v1', 'array');
+        $enumValues = UserRole::getByVersion('v1', EnumVersionType::ARRAY);
         $enumList = "'" . implode("','", $enumValues) . "'";
 
         DB::statement("ALTER TABLE users MODIFY role ENUM($enumList) DEFAULT '" . UserRole::getByVersion('v1') . "'");
