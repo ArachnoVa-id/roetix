@@ -1,6 +1,5 @@
 name: NovaTix VPS Production
 
-# This workflow is designed to deploy the NovaTix application to a VPS server.
 on:
   push:
     branches:
@@ -48,12 +47,10 @@ jobs:
               echo "Repository found. Pulling latest changes..."
               cd app/production
 
+              git config --global --add safe.directory $(pwd)  # ✅ fix dubious ownership
+
               git reset --hard HEAD
               git clean -fd
-
-              # Enable pulling by marking as safe
-              git config --global --add safe.directory ~/novatix/app/production
-
               git pull origin main --force
           fi
 
@@ -94,14 +91,15 @@ jobs:
           # Ensure project directory exists
           sudo mkdir -p ~/novatix/app/production
 
-          # Change permissions to allow www-data
-          sudo chown -R www-data:www-data ~/novatix/app/production
+          # Change permissions to allow current user before composer
+          sudo chown -R $USER:$USER ~/novatix/app/production
 
-          # Remove old symlink if exists, then create a new one
+          # Use full path for symlink to avoid tilde (~) issues
+          SYMLINK_TARGET=$(realpath ~/novatix/app/production)
           sudo rm -rf /var/www/novatix
-          sudo ln -s ~/novatix/app/production /var/www/novatix
+          sudo ln -sfn "$SYMLINK_TARGET" /var/www/novatix
 
-          # Set proper ownership
+          # Set proper ownership for web access
           sudo chown -R www-data:www-data /var/www/novatix
 
           # Move into project directory
@@ -120,7 +118,7 @@ jobs:
           sudo chown -R www-data:www-data /var/www/novatix
           sudo chmod -R 775 /var/www/novatix/storage /var/www/novatix/bootstrap/cache
 
-          # Run database migrations
+          # Run database migrations and link storage
           php artisan migrate
           php artisan storage:link
 
