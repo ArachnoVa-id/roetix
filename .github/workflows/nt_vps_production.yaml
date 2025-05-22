@@ -86,40 +86,39 @@ jobs:
       - name: Deploy Laravel Project to VPS
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
-          set -e  # Exit immediately if any command fails
+          set -e
 
           # Ensure project directory exists
           sudo mkdir -p ~/novatix/app/production
 
-          # Change permissions to allow current user before composer
-          sudo chown -R $USER:$USER ~/novatix/app/production
+          # Change ownership to www-data for Laravel folders before installation
+          sudo chown -R www-data:www-data ~/novatix/app/production
 
-          # Use full path for symlink to avoid tilde (~) issues
+          # Link to /var/www/novatix
           SYMLINK_TARGET=$(realpath ~/novatix/app/production)
           sudo rm -rf /var/www/novatix
           sudo ln -sfn "$SYMLINK_TARGET" /var/www/novatix
-
-          # Set proper ownership for web access
           sudo chown -R www-data:www-data /var/www/novatix
 
-          # Move into project directory
           cd /var/www/novatix
 
-          # Install backend dependencies
-          composer install --no-interaction --prefer-dist --optimize-autoloader
+          # Prepare folders and fix permissions early
+          mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
+          sudo chown -R www-data:www-data bootstrap/cache storage
+          sudo chmod -R 775 bootstrap/cache storage
+          sudo chmod g+s bootstrap/cache storage
 
-          # Install frontend dependencies
-          npm install
+          # Run composer, npm and artisan as www-data user
+          sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader
+          sudo -u www-data npm install
+          sudo -u www-data npm run build
+          sudo -u www-data php artisan migrate
+          sudo -u www-data php artisan storage:link
 
-          # Build frontend assets
-          npm run build
-
-          # Set correct permissions
-          sudo chown -R www-data:www-data /var/www/novatix
-          sudo chmod -R 775 /var/www/novatix/storage /var/www/novatix/bootstrap/cache
-
-          # Run database migrations and link storage
-          php artisan migrate
-          php artisan storage:link
+          # Final ownership fix
+          sudo chown -R www-data:www-data bootstrap/cache storage
+          sudo chmod -R 775 bootstrap/cache storage
+          sudo chmod g+s bootstrap/cache storage
 
           EOF
+
