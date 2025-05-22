@@ -5,7 +5,7 @@ import './bootstrap';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
-import ErrorPage from './Pages/ErrorPage';
+import ErrorPage from './Components/ErrorPage';
 
 document.addEventListener('DOMContentLoaded', () => {
     const errorDiv = document.getElementById('error-page');
