@@ -225,6 +225,7 @@ export default function Landing({
                     window.snap.pay(accessor, createCallbacks());
                     break;
                 case 'faspay':
+                case 'tripay':
                     window.location.href = accessor;
                     break;
                 default:
@@ -1202,7 +1203,7 @@ export default function Landing({
                                                             className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
                                                             onClick={() =>
                                                                 resumePayment(
-                                                                    transaction.snap_token,
+                                                                    transaction.accessor,
                                                                 )
                                                             }
                                                         >

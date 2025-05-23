@@ -2,33 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\OrderStatus;
-use App\Enums\OrderType;
-use App\Enums\PaymentGateway;
-use App\Enums\TicketOrderStatus;
-use App\Enums\TicketStatus;
-use App\Exports\OrdersExport;
-use App\Models\DevNoSQLData;
-use App\Models\Event;
-use App\Models\Order;
+use Midtrans\Snap;
 use App\Models\Seat;
 use App\Models\Team;
-use App\Models\Ticket;
-use App\Models\TicketOrder;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
-use Midtrans\Snap;
+use App\Models\Event;
+use App\Models\Order;
+use App\Models\Ticket;
+use App\Enums\OrderType;
+use App\Enums\OrderStatus;
+use App\Enums\TicketStatus;
+use App\Models\TicketOrder;
+use Illuminate\Support\Str;
+use App\Models\DevNoSQLData;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Auth;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Enums\PaymentGateway;
+use App\Exports\OrdersExport;
 use PhpMqtt\Client\MqttClient;
-use PhpMqtt\Client\ConnectionSettings;
+use App\Enums\TicketOrderStatus;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Http;
+use PhpMqtt\Client\ConnectionSettings;
+use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
 {
@@ -208,11 +209,12 @@ class PaymentController extends Controller
                 ];
             }
 
-            $snapToken = null;
+            $accessor = null;
+            // Initiate pgs if totalWithTax is not null
             if ($totalWithTax) {
                 switch ($event->eventVariables->payment_gateway) {
                     case PaymentGateway::MIDTRANS->value:
-                        $snapToken = $this->midtransCharge(
+                        $accessor = $this->midtransCharge(
                             $request,
                             $orderCode,
                             $totalWithTax,
@@ -220,14 +222,24 @@ class PaymentController extends Controller
                             $event
                         );
 
-                        if (! $snapToken) {
+                        if (! $accessor) {
                             DB::rollBack();
                             throw new \Exception('Failed to get Snap token');
                         }
                         break;
 
                     case PaymentGateway::FASPAY->value:
-                        $snapToken = $this->faspayCharge(
+                        $accessor = $this->faspayCharge(
+                            $request,
+                            $orderCode,
+                            $totalWithTax,
+                            $itemDetails,
+                            $event
+                        );
+                        break;
+
+                    case PaymentGateway::TRIPAY->value:
+                        $accessor = $this->tripayCharge(
                             $request,
                             $orderCode,
                             $totalWithTax,
@@ -243,15 +255,15 @@ class PaymentController extends Controller
             } else {
                 // Handle free order, auto complete
                 $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
-                $snapToken = 'free';
+                $accessor = 'free';
             }
 
-            $order->update(['snap_token' => $snapToken]);
+            $order->update(['accessor' => $accessor]);
 
             DB::commit();
 
             return response()->json([
-                'snap_token' => $snapToken,
+                'accessor' => $accessor,
                 'transaction_id' => $orderCode,
                 'updated_tickets' => $updatedTickets
             ]);
@@ -285,7 +297,7 @@ class PaymentController extends Controller
         Config::$isSanitized = config('midtrans.is_sanitized', true);
         Config::$is3ds = config('midtrans.is_3ds', true);
 
-        $snapToken = Snap::getSnapToken([
+        $accessor = Snap::getSnapToken([
             'transaction_details' => [
                 'order_id' => $orderCode,
                 'gross_amount' => $totalWithTax
@@ -295,7 +307,7 @@ class PaymentController extends Controller
             'item_details' => $itemDetails,
         ]);
 
-        if (! $snapToken) {
+        if (! $accessor) {
             DB::rollBack();
             throw new \Exception('Failed to get Snap token');
         }
@@ -311,11 +323,11 @@ class PaymentController extends Controller
                 'status' => OrderStatus::PENDING,
                 'expired_at' => now()->addMinutes(10),
                 'payment_gateway' => $event->eventVariables->payment_gateway,
-                'snap_token' => $snapToken,
+                'accessor' => $accessor,
             ],
         ]);
 
-        return $snapToken;
+        return $accessor;
     }
 
     public function faspayCharge(
@@ -451,6 +463,172 @@ class PaymentController extends Controller
         //     "redirect_url": "https://debit-sandbox.faspay.co.id/pws/100003/0830000010100000/8d63ff3ea83287f3c76c9e95c7fc635ea45ee86d?trx_id=3625783606729649&merchant_id=36257&bill_no=1"
         // }
     }
+
+    public function tripayCharge(
+        Request $request,
+        string $orderCode,
+        float $totalWithTax,
+        array $itemDetails,
+        Event $event
+    ) {
+        $variables = $event->eventVariables;
+
+        // Select endpoint
+        $tripay_baseUrl = $variables->tripay_is_production ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
+        $endpoint = $tripay_baseUrl . '/transaction/create';
+
+        // Select keys
+        if ($variables->tripay_use_novatix) {
+            if ($variables->tripay_is_production) {
+                $apiKey = config('tripay.api_key');
+                $privateKey = config('tripay.private_key');
+                $merchantCode = config('tripay.merchant_code');
+            } else {
+                $apiKey = config('tripay.api_key_sb');
+                $privateKey = config('tripay.private_key_sb');
+                $merchantCode = config('tripay.merchant_code_sb');
+            }
+        } else {
+            if ($variables->tripay_is_production) {
+                $apiKey = Crypt::decryptString($variables->tripay_api_key_prod);
+                $privateKey = Crypt::decryptString($variables->tripay_private_key_prod);
+                $merchantCode = Crypt::decryptString($variables->tripay_merchant_code_prod);
+            } else {
+                $apiKey = Crypt::decryptString($variables->tripay_api_key_dev);
+                $privateKey = Crypt::decryptString($variables->tripay_private_key_dev);
+                $merchantCode = Crypt::decryptString($variables->tripay_merchant_code_dev);
+            }
+        }
+
+        // Generate signature
+        $customer = $request->user();
+        $timestamp = now()->addMinutes(10)->timestamp;
+        // tripay-sign-gen.cts
+        $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
+
+        // Construct payload
+        $payload = [
+            "method" => "QRISC",
+            "merchant_ref" => $orderCode,
+            "amount" => (int) $totalWithTax,
+            "customer_name" => $customer->name ?? 'Guest',
+            "customer_email" => $customer->email ?? '',
+            "customer_phone" => $request->phone ?? '',
+            "order_items" => collect($itemDetails)->map(function ($item) {
+                return [
+                    "sku" => $item['sku'] ?? Str::slug($item['name']),
+                    "name" => $item['name'],
+                    "price" => (int) $item['price'],
+                    "quantity" => (int) $item['quantity'],
+                    "product_url" => $item['product_url'] ?? null,
+                    "image_url" => $item['image_url'] ?? null,
+                ];
+            })->values()->toArray(),
+            "return_url" => route('client.my_tickets', ['client' => $event->slug]),
+            "expired_time" => $timestamp,
+            "signature" => $signature,
+        ];
+
+        // Send request
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+        ])->post($endpoint, $payload);
+
+        if (! $response->ok()) {
+            throw new \Exception("Tripay charge failed: " . $response->body());
+        }
+
+        $responseData = $response->json()['data'];
+
+        // Store transaction
+        DevNoSQLData::create([
+            'collection' => 'tripay_orders',
+            'data' => array_merge([
+                'order_code' => $orderCode,
+                'event_id' => $event->id,
+                'user_id' => Auth::id(),
+                'team_id' => $event->team_id,
+                'total_price' => $totalWithTax,
+                'status' => OrderStatus::PENDING,
+                'expired_at' => now()->addMinutes(10),
+                'payment_gateway' => $variables->payment_gateway,
+            ], $responseData),
+        ]);
+
+        return $responseData['checkout_url'] ?? null;
+    }
+
+    //     {
+    //     "success": true,
+    //     "message": "",
+    //     "data": {
+    //         "reference": "DEV-T3971823645996JA7",
+    //         "merchant_ref": "MencobaInvoiceNumber",
+    //         "payment_selection_type": "static",
+    //         "payment_method": "QRISC",
+    //         "payment_name": "QRIS (Customizable)",
+    //         "customer_name": "Nama Pelanggan",
+    //         "customer_email": "emailpelanggan@domain.com",
+    //         "customer_phone": "081234567890",
+    //         "callback_url": null,
+    //         "return_url": "https://domainanda.com/redirect",
+    //         "amount": 101450,
+    //         "fee_merchant": 0,
+    //         "fee_customer": 1450,
+    //         "total_fee": 1450,
+    //         "amount_received": 100000,
+    //         "pay_code": null,
+    //         "pay_url": null,
+    //         "checkout_url": "https://tripay.co.id/checkout/DEV-T3971823645996JA7",
+    //         "status": "UNPAID",
+    //         "expired_time": 1748035328,
+    //         "order_items": [
+    //             {
+    //                 "sku": "PRODUK1",
+    //                 "name": "Nama Produk 1",
+    //                 "price": 50000,
+    //                 "quantity": 1,
+    //                 "subtotal": 50000,
+    //                 "product_url": "https://tokokamu.com/product/nama-produk-1",
+    //                 "image_url": "https://tokokamu.com/product/nama-produk-1.jpg"
+    //             },
+    //             {
+    //                 "sku": "PRODUK2",
+    //                 "name": "Nama Produk 2",
+    //                 "price": 50000,
+    //                 "quantity": 1,
+    //                 "subtotal": 50000,
+    //                 "product_url": "https://tokokamu.com/product/nama-produk-2",
+    //                 "image_url": "https://tokokamu.com/product/nama-produk-2.jpg"
+    //             }
+    //         ],
+    //         "instructions": [
+    //             {
+    //                 "title": "Pembayaran via QRIS",
+    //                 "steps": [
+    //                     "Masuk ke aplikasi dompet digital Anda yang telah mendukung QRIS",
+    //                     "Pindai/Scan QR Code yang tersedia",
+    //                     "Akan muncul detail transaksi. Pastikan data transaksi sudah sesuai",
+    //                     "Selesaikan proses pembayaran Anda",
+    //                     "Transaksi selesai. Simpan bukti pembayaran Anda"
+    //                 ]
+    //             },
+    //             {
+    //                 "title": "Pembayaran via QRIS (Mobile)",
+    //                 "steps": [
+    //                     "Download QR Code pada invoice",
+    //                     "Masuk ke aplikasi dompet digital Anda yang telah mendukung QRIS",
+    //                     "Upload QR Code yang telah di download tadi",
+    //                     "Akan muncul detail transaksi. Pastikan data transaksi sudah sesuai",
+    //                     "Selesaikan proses pembayaran Anda",
+    //                     "Transaksi selesai. Simpan bukti pembayaran Anda"
+    //                 ]
+    //             }
+    //         ],
+    //         "qr_string": "SANDBOX MODE",
+    //         "qr_url": "https://tripay.co.id/qr/DEV-T3971823645996JA7"
+    //     }
+    // }
 
     /**
      * Handle Midtrans payment callbacks
@@ -594,6 +772,18 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function tripayCallback(Request $request)
+    {
+        $data = $request->all();
+
+        Http::post('https://webhook.site/03abd6ff-6711-4f8b-8c65-f67fafea5313', $data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Callback received successfully',
+        ]);
+    }
+
     public function faspayReturn(Request $request)
     {
         // Retrieve all request data
@@ -653,6 +843,8 @@ class PaymentController extends Controller
             'response_date'  => now()->format('Y-m-d H:i:s'),
         ]);
     }
+
+    // tripayReturn http://gmco.dev-staging-novatix.id/my_tickets?tripay_merchant_ref=ORD-EAQ-1748036025-6774&tripay_reference=DEV-T39718236477IVLBE
 
     /**
      * Update order status in the database
@@ -764,7 +956,7 @@ class PaymentController extends Controller
                 })->filter()->values(); // PERBAIKAN: Filter null values dan reset index array
 
                 $pendingTransactions[] = [
-                    'snap_token' => $order->snap_token,
+                    'accessor' => $order->accessor,
                     'order_id' => $order->id,
                     'order_code' => $order->order_code,
                     'total_price' => $order->total_price,

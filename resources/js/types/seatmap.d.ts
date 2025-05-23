@@ -122,7 +122,7 @@ export interface PaymentRequestPayload {
 }
 
 export interface PaymentResponse {
-    snap_token: string;
+    accessor: string;
     transaction_id: string;
     new_order_id?: string;
 }
@@ -216,7 +216,7 @@ export interface CategoryPrice {
 }
 
 export interface PendingTransactionResponseItem {
-    snap_token: string;
+    accessor: string;
     order_id: string;
     order_code: string;
     total_price: string;

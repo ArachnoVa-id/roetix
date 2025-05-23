@@ -171,8 +171,8 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             );
 
             // Handle the response
-            if (response.data && response.data.snap_token) {
-                const accessor = response.data.snap_token;
+            if (response.data && response.data.accessor) {
+                const accessor = response.data.accessor;
                 if (accessor === 'free') {
                     toasterFunction.showSuccess(
                         'Payment is free. No payment required.',
@@ -190,7 +190,10 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     if (onTransactionStarted) {
                         onTransactionStarted(selectedSeats);
                     }
-                } else if (paymentGateway === 'faspay') {
+                } else if (
+                    paymentGateway === 'faspay' ||
+                    paymentGateway === 'tripay'
+                ) {
                     window.location.href = accessor;
                 } else {
                     toasterFunction.showError(

@@ -443,6 +443,12 @@ class EventResource extends Resource
                                             Infolists\Components\TextEntry::make('tripay_private_key_prod')
                                                 ->label('Private Key Prod'),
 
+                                            Infolists\Components\TextEntry::make('tripay_merchant_code_dev')
+                                                ->label('Merchant Code Dev'),
+
+                                            Infolists\Components\TextEntry::make('tripay_merchant_code')
+                                                ->label('Merchant Code Prod'),
+
                                             Infolists\Components\TextEntry::make('tripay_is_production')
                                                 ->label('Production')
                                                 ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
@@ -1844,6 +1850,15 @@ class EventResource extends Resource
                                         ->validationMessages([
                                             'max' => 'Private Key must not exceed 65535 characters',
                                         ]),
+                                    Forms\Components\TextInput::make('tripay_merchant_code_dev')
+                                        ->label('Merchant Code Sandbox')
+                                        ->placeholder('Merchant Code Sandbox')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant Code Sandbox')
+                                        ->validationMessages([
+                                            'max' => 'Merchant Code must not exceed 65535 characters',
+                                        ]),
                                     Forms\Components\TextInput::make('tripay_api_key_prod')
                                         ->label('API Key')
                                         ->placeholder('API Key')
@@ -1861,6 +1876,15 @@ class EventResource extends Resource
                                         ->validationAttribute('Private Key')
                                         ->validationMessages([
                                             'max' => 'Private Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('tripay_merchant_code_prod')
+                                        ->label('Merchant Code')
+                                        ->placeholder('Merchant Code')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant Code')
+                                        ->validationMessages([
+                                            'max' => 'Merchant Code must not exceed 65535 characters',
                                         ]),
                                     Forms\Components\Toggle::make('tripay_is_production')
                                         ->label('Is Production'),
