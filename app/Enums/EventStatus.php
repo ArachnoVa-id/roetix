@@ -16,13 +16,14 @@ enum EventStatus: string implements HasLabel, HasColor
     {
         return match ($version) {
             'v1' => match ($mode) {
-                'array' => [
+                EnumVersionType::ARRAY => [
                     'planned',
                     'active',
                     'completed',
                     'cancelled',
                 ],
-                'default' => 'planned',
+                EnumVersionType::DEFAULT => 'planned',
+                default => throw new \InvalidArgumentException("Mode {$mode} not supported."),
             },
             default => throw new \InvalidArgumentException("Version {$version} not supported."),
         };

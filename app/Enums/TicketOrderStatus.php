@@ -16,12 +16,13 @@ enum TicketOrderStatus: string implements HasLabel, HasColor
     {
         return match ($version) {
             'v1' => match ($mode) {
-                'array' => [
+                EnumVersionType::ARRAY => [
                     'enabled',
                     'scanned',
                     'deactivated',
                 ],
-                'default' => 'enabled',
+                EnumVersionType::DEFAULT => 'enabled',
+                default => throw new \InvalidArgumentException("Mode {$mode} not supported."),
             },
             default => throw new \InvalidArgumentException("Version {$version} not supported."),
         };
