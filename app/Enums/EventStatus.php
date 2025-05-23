@@ -11,6 +11,24 @@ enum EventStatus: string implements HasLabel, HasColor
 {
     use BaseEnumTrait;
 
+    // Get by version
+    public static function getByVersion(string $version, EnumVersionType $mode = EnumVersionType::DEFAULT): array|string
+    {
+        return match ($version) {
+            'v1' => match ($mode) {
+                EnumVersionType::ARRAY => [
+                    'planned',
+                    'active',
+                    'completed',
+                    'cancelled',
+                ],
+                EnumVersionType::DEFAULT => 'planned',
+                default => throw new \InvalidArgumentException("Mode {$mode} not supported."),
+            },
+            default => throw new \InvalidArgumentException("Version {$version} not supported."),
+        };
+    }
+
     case PLANNED = 'planned';
     case ACTIVE = 'active';
     case COMPLETED = 'completed';

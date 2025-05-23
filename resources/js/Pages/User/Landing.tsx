@@ -36,7 +36,6 @@ interface TicketUpdate {
     ticket_type?: string;
 }
 
-
 export default function Landing({
     client,
     layout,
@@ -77,7 +76,7 @@ export default function Landing({
                 const payload = JSON.parse(message.toString());
                 const updates = payload.data as TicketUpdate[];
 
-                console.log(payload, updates)
+                console.log(payload, updates);
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
@@ -1209,7 +1208,23 @@ export default function Landing({
                                                         <span>Total:</span>
                                                         <span>
                                                             {formatRupiah(
-                                                                total,
+                                                                // total from pending
+                                                                transaction.seats.reduce(
+                                                                    (
+                                                                        acc,
+                                                                        seat,
+                                                                    ) => {
+                                                                        const seatPrice =
+                                                                            getSafePrice(
+                                                                                seat.price,
+                                                                            );
+                                                                        return (
+                                                                            acc +
+                                                                            seatPrice
+                                                                        );
+                                                                    },
+                                                                    0,
+                                                                ),
                                                             )}
                                                         </span>
                                                     </div>

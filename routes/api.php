@@ -3,6 +3,13 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PaymentController;
 
-// Midtrans Payment Callback
-Route::post('/payment/midtranscallback', [PaymentController::class, 'midtransCallback'])
-    ->name('payment.midtranscallback');
+// Midtrans
+Route::post('/payment/midtransCallback', [PaymentController::class, 'midtransCallback'])
+    ->name('payment.midtransCallback');
+
+// Fastpay
+Route::post('/payment/faspayCallback', [PaymentController::class, 'faspayCallback'])
+    ->name('payment.faspayCallback');
+
+Route::get('/payment/faspayReturn', [PaymentController::class, 'faspayReturn'])
+    ->name('payment.faspayReturn');

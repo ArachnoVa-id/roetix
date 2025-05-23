@@ -43,15 +43,15 @@ class PaymentController extends Controller
 
         try {
             // Order rate limiting
-            $hourlyLimit = 50000;
-            $dailyLimit = 10000;
+            $hourlyLimit = 5;
+            $dailyLimit = 10;
 
             $recentOrderCount = Order::where('user_id', Auth::id())
                 ->where('order_date', '>=', now()->subHour())
                 ->count();
 
             if ($recentOrderCount >= $hourlyLimit) {
-                return response()->json(['message' => 'Too many orders in a short time. Please wait for 1 hour.'], 429);
+                throw new \Exception('Too many orders in a short time. Please wait for 1 hour.');
             }
 
             $dailyOrderCount = Order::where('user_id', Auth::id())
@@ -59,7 +59,7 @@ class PaymentController extends Controller
                 ->count();
 
             if ($dailyOrderCount >= $dailyLimit) {
-                return response()->json(['message' => 'Too many orders today. Please try again tomorrow.'], 429);
+                throw new \Exception('Too many orders today. Please try again tomorrow.');
             }
 
             // Request validation
@@ -79,12 +79,12 @@ class PaymentController extends Controller
             }
 
             if (! Auth::check()) {
-                return response()->json(['message' => 'Unauthorized'], 401);
+                throw new \Exception('Unauthorized');
             }
 
             $event = Event::where('slug', $client)->first();
             if (! $event) {
-                return response()->json(['message' => 'Event not found'], 404);
+                throw new \Exception('Event not found');
             }
 
             $existingOrders = User::find(Auth::id())
@@ -94,7 +94,7 @@ class PaymentController extends Controller
                 ->exists();
 
             if ($existingOrders) {
-                return response()->json(['message' => 'There is an existing pending order'], 400);
+                throw new \Exception('There is an existing pending order');
             }
 
             // Collect seat info
@@ -112,7 +112,7 @@ class PaymentController extends Controller
             }
 
             if ($seats->isEmpty()) {
-                return response()->json(['message' => 'No seats available'], 400);
+                throw new \Exception('No seats available');
             }
 
             DB::beginTransaction();
@@ -127,7 +127,7 @@ class PaymentController extends Controller
 
             if ($tickets->count() !== $seats->count()) {
                 DB::rollBack();
-                return response()->json(['message' => 'Failed to lock seats'], 500);
+                throw new \Exception('Failed to lock seats');
             }
 
             $itemDetails = [];
@@ -158,7 +158,7 @@ class PaymentController extends Controller
             $team = Team::find($event->team_id);
             if (! $team) {
                 DB::rollBack();
-                return response()->json(['message' => 'Team not found'], 404);
+                throw new \Exception('Team not found');
             }
 
             $orderCode = Order::keyGen(OrderType::AUTO, $event);
@@ -176,7 +176,7 @@ class PaymentController extends Controller
 
             if (! $order) {
                 DB::rollBack();
-                return response()->json(['message' => 'Failed to create order'], 500);
+                throw new \Exception('Failed to create order');
             }
 
             $updatedTickets = [];
@@ -196,35 +196,35 @@ class PaymentController extends Controller
                 ];
             }
 
-            Config::$serverKey = $event->eventVariables->getKey('server');
-            Config::$isProduction = $event->eventVariables->midtrans_is_production;
-            Config::$isSanitized = config('midtrans.is_sanitized', true);
-            Config::$is3ds = config('midtrans.is_3ds', true);
+            $snapToken = null;
+            if ($totalWithTax) {
+                $snapToken = $this->midtransCharge(
+                    $request,
+                    $orderCode,
+                    $totalWithTax,
+                    $itemDetails,
+                    $event
+                );
 
-            $snapToken = Snap::getSnapToken([
-                'transaction_details' => [
-                    'order_id' => $orderCode,
-                    'gross_amount' => $totalWithTax
-                ],
-                'credit_card' => ['secure' => true],
-                'customer_details' => ['email' => $request->email],
-                'item_details' => $itemDetails,
-            ]);
-
-            if (! $snapToken) {
-                DB::rollBack();
-                return response()->json(['message' => 'Failed to get Snap token'], 500);
+                if (! $snapToken) {
+                    DB::rollBack();
+                    throw new \Exception('Failed to get Snap token');
+                }
+            } else {
+                // Handle free order, auto complete
+                $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
+                $snapToken = 'free';
             }
 
             $order->update(['snap_token' => $snapToken]);
+
             DB::commit();
 
-            // $this->publishMqtt(data: [
-            //     'event' => "update_ticket_status",
-            //     'data' => $updatedTickets
-            // ]);
-
-            return response()->json(['snap_token' => $snapToken, 'transaction_id' => $orderCode, 'updated_tickets' => $updatedTickets]);
+            return response()->json([
+                'snap_token' => $snapToken,
+                'transaction_id' => $orderCode,
+                'updated_tickets' => $updatedTickets
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             preg_match('/"error_messages":\["(.*?)"/', $e->getMessage(), $matches);
@@ -233,6 +233,36 @@ class PaymentController extends Controller
         } finally {
             optional($lock)->release();
         }
+    }
+
+    public function midtransCharge(
+        Request $request,
+        string $orderCode,
+        float $totalWithTax,
+        array $itemDetails,
+        Event $event
+    ) {
+        Config::$serverKey = $event->eventVariables->getKey('server');
+        Config::$isProduction = $event->eventVariables->midtrans_is_production;
+        Config::$isSanitized = config('midtrans.is_sanitized', true);
+        Config::$is3ds = config('midtrans.is_3ds', true);
+
+        $snapToken = Snap::getSnapToken([
+            'transaction_details' => [
+                'order_id' => $orderCode,
+                'gross_amount' => $totalWithTax
+            ],
+            'credit_card' => ['secure' => true],
+            'customer_details' => ['email' => $request->email],
+            'item_details' => $itemDetails,
+        ]);
+
+        if (! $snapToken) {
+            DB::rollBack();
+            throw new \Exception('Failed to get Snap token');
+        }
+
+        return $snapToken;
     }
 
     /**
@@ -281,6 +311,161 @@ class PaymentController extends Controller
     }
 
     /**
+     * Handle Faspay payment callbacks
+     */
+    // public function handleFaspayCallback(Request $request)
+    // {
+    //     $data = $request->all();
+
+    //     $validator = Validator::make($data, [
+    //         'trx_id' => 'required|string|max:16',
+    //         'merchant_id' => 'required|numeric',
+    //         'merchant' => 'required|string|max:32',
+    //         'bill_no' => 'required|string|max:32',
+    //         'payment_reff' => 'nullable|string|max:32',
+    //         'payment_date' => 'required|date_format:Y-m-d H:i:s',
+    //         'payment_status_code' => 'required|in:0,1,2,3,4,5,7,8,9',
+    //         'payment_status_desc' => 'required|string|max:32',
+    //         'bill_total' => 'required|numeric',
+    //         'payment_total' => 'required|numeric',
+    //         'payment_channel_uid' => 'required|numeric',
+    //         'payment_channel' => 'required|string|max:32',
+    //         'signature' => 'required|string',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json(['error' => 'Invalid input', 'details' => $validator->errors()], 400);
+    //     }
+
+    //     // Example: Credentials used to compute signature
+    //     $userId = config('faspay.user_id');
+    //     $password = config('faspay.password');
+    //     $expectedSignature = sha1(md5($userId . $password . $data['bill_no'] . $data['payment_status_code']));
+
+    //     if ($data['signature'] !== $expectedSignature) {
+    //         return response()->json(['error' => 'Invalid signature'], 403);
+    //     }
+
+    //     DB::beginTransaction();
+    //     try {
+    //         // Example: Find the corresponding order
+    //         $order = Order::where('bill_no', $data['bill_no'])->first();
+
+    //         if (!$order) {
+    //             return response()->json(['error' => 'Order not found'], 404);
+    //         }
+
+    //         // Map status code to your internal status enum
+    //         $statusMap = [
+    //             '0' => OrderStatus::UNPROCESSED,
+    //             '1' => OrderStatus::PROCESSING,
+    //             '2' => OrderStatus::COMPLETED,
+    //             '3' => OrderStatus::FAILED,
+    //             '4' => OrderStatus::REVERSED,
+    //             '5' => OrderStatus::NOT_FOUND,
+    //             '7' => OrderStatus::EXPIRED,
+    //             '8' => OrderStatus::CANCELLED,
+    //             '9' => OrderStatus::UNKNOWN,
+    //         ];
+
+    //         $newStatus = $statusMap[$data['payment_status_code']] ?? OrderStatus::UNKNOWN;
+
+    //         // Update order
+    //         $order->update([
+    //             'status' => $newStatus->value,
+    //             'payment_reference' => $data['payment_reff'] ?? null,
+    //             'paid_at' => $data['payment_date'],
+    //             'payment_channel' => $data['payment_channel'],
+    //             'payment_status_desc' => $data['payment_status_desc'],
+    //             'payment_total' => $data['payment_total'],
+    //         ]);
+
+    //         DB::commit();
+    //         return response()->json(['message' => 'Payment callback processed']);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Faspay callback failed: ' . $e->getMessage());
+    //         return response()->json(['error' => 'Internal server error'], 500);
+    //     }
+    // }
+
+    public function faspayCallback(Request $request)
+    {
+        $data = $request->all();
+
+        return response()->json([
+            'response'       => 'Payment Notification',
+            'trx_id'         => $data['trx_id'] ?? null,
+            'merchant_id'    => $data['merchant_id'] ?? null,
+            'merchant'       => $data['merchant'] ?? null,
+            'bill_no'        => $data['bill_no'] ?? null,
+            'response_code'  => '00',
+            'response_desc'  => 'Success',
+            'response_date'  => now()->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function faspayReturn(Request $request)
+    {
+        // Retrieve all request data
+        $data = $request->all();
+
+        // Validate required parameters
+        $requiredParams = [
+            'merchant_id',
+            'bill_no',
+            'trx_id',
+            'bill_reff',
+            'payment_date',
+            'bank_user_name',
+            'status',
+            'signature'
+        ];
+
+        foreach ($requiredParams as $param) {
+            if (!isset($data[$param])) {
+                return response()->json([
+                    'response'       => 'Error',
+                    'response_code'  => '01',
+                    'response_desc'  => "Missing parameter: $param",
+                    'response_date'  => now()->format('Y-m-d H:i:s'),
+                ], 400);
+            }
+        }
+
+        // Here you can add signature verification logic if needed
+
+        // Abort for now
+        abort(403, "
+            This is a callback test. Your include such information:
+            trx_id: {$data['trx_id']}
+            merchant_id: {$data['merchant_id']}
+            bill_no: {$data['bill_no']}
+            bill_reff: {$data['bill_reff']}
+            payment_date: {$data['payment_date']}
+            bank_user_name: {$data['bank_user_name']}
+            status: {$data['status']}
+            signature: {$data['signature']}
+        ");
+
+        // Redirect to thank you page or any other page
+        return redirect()->route('thankYouPage', [
+            'trx_id'         => $data['trx_id'],
+            'merchant_id'    => $data['merchant_id'],
+            'bill_no'        => $data['bill_no'],
+            'bill_reff'      => $data['bill_reff'],
+            'payment_date'   => $data['payment_date'],
+            'bank_user_name' => $data['bank_user_name'],
+            'status'         => $data['status'],
+            'signature'      => $data['signature'],
+        ])->with([
+            'response_code'  => '00',
+            'response_desc'  => 'Success',
+            'response_date'  => now()->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
      * Update order status in the database
      */
     private function updateStatus($orderCode, $status, $transactionData)
@@ -295,7 +480,7 @@ class PaymentController extends Controller
 
             $currentStatus = $order->status;
             if ($currentStatus === $status || $currentStatus === OrderStatus::CANCELLED || $currentStatus === OrderStatus::COMPLETED) {
-                // No need to update if status is the same
+                // No need to update if status is the same and ignore completed/cancelled orders
                 DB::commit();
                 return;
             }
@@ -530,23 +715,23 @@ class PaymentController extends Controller
         $username = 'emqx';
         $password = 'public';
         $mqtt_version = MqttClient::MQTT_3_1_1;
-    
+
         // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
         // Atau fallback static jika belum support param client_name
         $topic = 'novatix/midtrans/defaultcode';
-    
+
         $conn_settings = (new ConnectionSettings)
             ->setUsername($username)
             ->setPassword($password)
             ->setLastWillMessage('client disconnected')
             ->setLastWillTopic('emqx/last-will')
             ->setLastWillQualityOfService(1);
-    
+
         $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-    
+
         try {
             $mqtt->connect($conn_settings, true);
-    
+
             // Pastikan koneksi sukses sebelum publish
             if ($mqtt->isConnected()) {
                 $mqtt->publish(
@@ -558,11 +743,10 @@ class PaymentController extends Controller
             } else {
                 Log::warning('MQTT not connected. Skipped publishing to topic: ' . $topic);
             }
-    
+
             $mqtt->disconnect();
         } catch (\Throwable $th) {
             Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
-    
 }
