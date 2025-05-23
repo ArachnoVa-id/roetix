@@ -13,3 +13,7 @@ Route::post('/payment/faspayCallback', [PaymentController::class, 'faspayCallbac
 
 Route::get('/payment/faspayReturn', [PaymentController::class, 'faspayReturn'])
     ->name('payment.faspayReturn');
+
+// Tripay
+Route::post('/payment/tripayCallback', [PaymentController::class, 'tripayCallback'])
+    ->name('payment.tripayCallback');

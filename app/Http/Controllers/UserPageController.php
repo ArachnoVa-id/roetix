@@ -52,7 +52,7 @@ class UserPageController extends Controller
             $layout = [
                 'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
                 'totalColumns' => $seats->max('column'),
-                'items' => $seats->map(function ($seat) use ($ticketsBySeatId) {
+                'items' => $seats->map(function ($seat) use ($ticketsBySeatId, $event) {
                     $ticket = $ticketsBySeatId->get($seat->id);
 
                     if ($ticket) {
@@ -168,6 +168,7 @@ class UserPageController extends Controller
                 'props' => $props->getSecure(),
                 'ownedTicketCount' => $ownedTicketCount,
                 'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_end_time,
+                'paymentGateway' => $event->eventVariables->payment_gateway,
             ];
 
             return Inertia::render('User/Landing', $content);
