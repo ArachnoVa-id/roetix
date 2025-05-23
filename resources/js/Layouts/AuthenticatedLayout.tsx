@@ -6,6 +6,8 @@ import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 
+import { PageProps } from '@inertiajs/core'; // Import PageProps from core
+
 const StyledButton = styled.button<{ $props: EventColorProps }>`
     ${({ $props }) => `
     color: ${$props?.text_primary_color};
@@ -36,6 +38,15 @@ const changeFavicon = (faviconUrl: string) => {
     }
 };
 
+interface AuthenticatedLayoutProps {
+    header?: ReactNode;
+    footer?: ReactNode;
+    client: string;
+    props: EventProps;
+    userEndSessionDatetime?: string;
+    event?: { id: number; name: string };
+}
+
 export default function Authenticated({
     header,
     children,
@@ -43,20 +54,15 @@ export default function Authenticated({
     client,
     props,
     userEndSessionDatetime,
-}: PropsWithChildren<{
-    header?: ReactNode;
-    footer?: ReactNode;
-    client: string;
-    props: EventProps;
-    userEndSessionDatetime?: string;
-}>) {
-    const user = usePage().props.auth.user;
+    event, // This prop is crucial
+}: PropsWithChildren<AuthenticatedLayoutProps>) {
+    const { auth } = usePage<PageProps>().props;
+    const user = auth.user;
 
     const [eventColorProps, setEventColorProps] = useState<EventColorProps>(
         {} as EventColorProps,
     );
 
-    // State and effect for countdown to userEndSessionDatetime
     function useCountdown(userEndSessionDatetime: string | undefined) {
         const [countdown, setCountdown] = useState<number | null>(null);
 
@@ -79,13 +85,13 @@ export default function Authenticated({
                 }
             }, 1000);
 
+            // Removed 'client' from dependency array to fix ESLint warning
             return () => clearInterval(interval);
         }, [userEndSessionDatetime]);
 
         return countdown;
     }
 
-    // Format helper
     function formatCountdown(seconds: number | null): string {
         if (seconds === null) return '--';
         const h = Math.floor(seconds / 3600);
@@ -112,6 +118,9 @@ export default function Authenticated({
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState<boolean>(false);
+
+    // Condition: Only show for 'admin' role AND when an event context is available
+    const showScanTicketLink = user?.role === 'admin' && event?.id; // <-- Re-added event?.id
 
     return (
         <div
@@ -169,6 +178,30 @@ export default function Authenticated({
                                 >
                                     My Tickets
                                 </NavLink>
+                                {showScanTicketLink && ( // This determines if the link appears AT ALL
+                                    <NavLink
+                                        eventProps={props}
+                                        href={
+                                            // This ensures the href is only valid if event.id exists
+                                            client && event?.id
+                                                ? route(
+                                                      'client.events.scan.show',
+                                                      {
+                                                          client,
+                                                          // event must be defined here for route helper
+                                                          event_slug:
+                                                              event.slug, // Or event.slug, depending on route model binding
+                                                      },
+                                                  )
+                                                : '#' // Falls back to '#' if event?.id is undefined
+                                        }
+                                        active={route().current(
+                                            'client.events.scan.show',
+                                        )}
+                                    >
+                                        Scan Ticket
+                                    </NavLink>
+                                )}
                             </div>
                         </div>
 
@@ -178,12 +211,6 @@ export default function Authenticated({
                                     href="#"
                                     active={false}
                                     eventProps={props}
-                                    // href={
-                                    //     client
-                                    //         ? route('profile.edit', client)
-                                    //         : ''
-                                    // }
-                                    // active={route().current('profile.edit')}
                                     className="flex gap-3"
                                 >
                                     <img
@@ -290,6 +317,25 @@ export default function Authenticated({
                         >
                             My Tickets
                         </ResponsiveNavLink>
+                        {showScanTicketLink && (
+                            <ResponsiveNavLink
+                                eventProps={props}
+                                href={
+                                    client && event?.id
+                                        ? route('client.events.scan.show', {
+                                              client,
+                                              event_slug: event.slug, // Or event.slug
+                                          })
+                                        : '#'
+                                }
+                                active={route().current(
+                                    'client.events.scan.show',
+                                )}
+                            >
+                                Scan Ticket
+                            </ResponsiveNavLink>
+                        )}
+                        {/* ... */}
                     </div>
 
                     <div
@@ -319,13 +365,7 @@ export default function Authenticated({
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink
-                                eventProps={props}
-                                href="#"
-                                // href={
-                                //     client ? route('profile.edit', client) : ''
-                                // }
-                            >
+                            <ResponsiveNavLink eventProps={props} href="#">
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
