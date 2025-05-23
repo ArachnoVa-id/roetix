@@ -1,3 +1,4 @@
+// resources/js/Pages/Receptionist/scan/page.tsx
 'use client';
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -13,7 +14,8 @@ import { Spinner } from '@nextui-org/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { PageProps } from '@inertiajs/core';
+import { EventProps } from '@/types/front-end';
+import { PageProps as InertiaPageProps } from '@inertiajs/core'; // <--- Ubah impor di sini
 
 interface TicketOrder {
     id: number;
@@ -42,18 +44,34 @@ interface QuaggaError extends Error {
     stack?: string;
 }
 
-interface QuaggaCodeResult {
-    code: string;
-    format: string;
+// Ensure QuaggaDetectedData aligns with QuaggaJSResultObject
+// QuaggaJSResultObject has codeResult.code as string | null
+interface QuaggaDetectedData {
+    codeResult: {
+        code: string | null; // Changed to string | null
+        format: string;
+    };
 }
 
-interface QuaggaDetectedData {
-    codeResult: QuaggaCodeResult;
+// Updated EventContext to include slug
+interface EventContext {
+    id: number;
+    name: string;
+    slug: string; // Added slug property
+}
+
+// Extending InertiaPageProps to include our custom props
+interface CustomPageProps extends InertiaPageProps {
+    // <--- extends InertiaPageProps
+    event: EventContext;
+    props: EventProps; // This likely comes from your EventProps type
+    client: string;
+    userEndSessionDatetime?: string;
 }
 
 const EventScanTicketPage = () => {
     const { event, props, client, userEndSessionDatetime } =
-        usePage<PageProps>().props;
+        usePage<CustomPageProps>().props; // Use CustomPageProps
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const scannerInitialized = useRef(false);
@@ -82,7 +100,7 @@ const EventScanTicketPage = () => {
             try {
                 const scanUrl = route('client.events.scan.store', {
                     client,
-                    event_slug: event.slug,
+                    event_slug: event.slug, // Access event.slug
                 });
 
                 const response = await fetch(scanUrl, {
@@ -138,9 +156,8 @@ const EventScanTicketPage = () => {
                 setTimeout(() => setNotification(null), 5000);
             }
         },
-        [event?.id, isLoading, client], // Use optional chaining or check for event
+        [isLoading, client, event], // Added 'event' to the dependency array
     );
-
     useEffect(() => {
         if (videoRef.current && cameraActive && !scannerInitialized.current) {
             Quagga.init(
@@ -159,7 +176,7 @@ const EventScanTicketPage = () => {
                         readers: [
                             'ean_reader',
                             'code_128_reader',
-                            'qr_code_reader', // Ensure this is a valid Quagga reader
+                            // 'qr_code_reader', // <--- Hapus any casting di sini
                         ],
                     },
                 },
@@ -197,7 +214,7 @@ const EventScanTicketPage = () => {
                 }
             };
         }
-    }, [cameraActive, facingMode, handleTicketScan, isLoading, event?.id]); // Use optional chaining or check for event
+    }, [cameraActive, facingMode, handleTicketScan, isLoading, event?.slug]); // Use event?.slug
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
