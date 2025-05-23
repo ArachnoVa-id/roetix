@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('event_variables', function (Blueprint $table) {
-            $table->string('contact_person')->after('maintenance_expected_finish');
+            $table->string('contact_person')->default('https://wa.me/6287785917029')->after('maintenance_expected_finish');
         });
 
         // Populate existing rows with default values for the new columns

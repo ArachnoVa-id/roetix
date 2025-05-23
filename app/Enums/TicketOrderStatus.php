@@ -11,6 +11,22 @@ enum TicketOrderStatus: string implements HasLabel, HasColor
 {
     use BaseEnumTrait;
 
+    // Get by version
+    public static function getByVersion(string $version, EnumVersionType $mode = EnumVersionType::DEFAULT): array|string
+    {
+        return match ($version) {
+            'v1' => match ($mode) {
+                'array' => [
+                    'enabled',
+                    'scanned',
+                    'deactivated',
+                ],
+                'default' => 'enabled',
+            },
+            default => throw new \InvalidArgumentException("Version {$version} not supported."),
+        };
+    }
+
     case ENABLED = 'enabled';
     case SCANNED = 'scanned';
     case DEACTIVATED = 'deactivated';

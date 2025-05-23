@@ -11,6 +11,22 @@ enum VenueStatus: string implements HasLabel, HasColor
 {
     use BaseEnumTrait;
 
+    // Get by version
+    public static function getByVersion(string $version, EnumVersionType $mode = EnumVersionType::DEFAULT): array|string
+    {
+        return match ($version) {
+            'v1' => match ($mode) {
+                'array' => [
+                    'active',
+                    'inactive',
+                    'under_maintenance',
+                ],
+                'default' => 'inactive',
+            },
+            default => throw new \InvalidArgumentException("Version {$version} not supported."),
+        };
+    }
+
     case ACTIVE = 'active';
     case INACTIVE = 'inactive';
     case UNDER_MAINTENANCE = 'under_maintenance';

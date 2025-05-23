@@ -125,9 +125,9 @@ jobs:
           sudo add-apt-repository ppa:ondrej/php -y
           sudo apt update
 
-          echo "Installing required PHP extensions..."
+          echo "Installing required PHP extensions and PHP-FPM..."
           sudo apt install -y php8.3 php8.3-cli php8.3-fpm php8.3-sqlite3 unzip curl git \
-          php8.3-dom php8.3-xml php8.3-intl php8.3-curl php8.3-zip php8.3-gd
+          php8.3-dom php8.3-xml php8.3-intl php8.3-curl php8.3-zip php8.3-gd php8.3-mbstring
 
           echo "Installing Composer..."
           php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
@@ -136,31 +136,22 @@ jobs:
 
           composer install --no-interaction --prefer-dist --optimize-autoloader
           # Laravel setup
-          cp .env.example .env
-          php artisan key:generate
+          # If env not exist
+          if [ ! -f .env ]; then
+              echo "Creating .env file..."
+              cp .env.example .env
+              php artisan key:generate
+          fi
 
           echo "Installing Node.js and npm..."
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
           sudo apt install -y nodejs
 
-          echo "Installing npm dependencies..."
+          echo "Installing npm dependencies and building assets..."
           npm install
           npm run build
 
-          if ! command -v apache2 >/dev/null 2>&1; then
-            echo "Apache2 not found. Installing apache2..."
-            sudo apt install apache2 -y
-          else
-            echo "Apache2 is already installed."
-          fi
-
-          sudo a2enmod proxy_fcgi setenvif
-          sudo a2enconf php8.3-fpm
-          sudo systemctl restart apache2
-
           echo "Fixing Laravel directory permissions..."
-          cd ~/novatix/app/develop
-
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
 
@@ -197,12 +188,11 @@ jobs:
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
 
-      - name: Enable PHP 8.3 FPM and restart Apache
+      - name: Restart PHP-FPM and reload Nginx
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            sudo a2enmod proxy_fcgi setenvif
-            sudo a2enconf php8.3-fpm
-            sudo systemctl restart apache2
+            sudo systemctl restart php8.3-fpm
+            sudo systemctl reload nginx
           EOF
 
       - name: Deploy Laravel on VPS

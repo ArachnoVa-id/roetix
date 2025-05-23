@@ -11,10 +11,38 @@ enum UserRole: string implements HasLabel, HasColor
 {
     use BaseEnumTrait;
 
+    // Get by version
+    public static function getByVersion(string $version, EnumVersionType $mode = EnumVersionType::DEFAULT): array|string
+    {
+        return match ($version) {
+            'v1' => match ($mode) {
+                'array' => [
+                    'user',
+                    'admin',
+                    'vendor',
+                    'event-organizer',
+                ],
+                'default' => 'user',
+            },
+            'v2' => match ($mode) {
+                'array' => [
+                    'user',
+                    'admin',
+                    'vendor',
+                    'event-organizer',
+                    'receptionist',
+                ],
+                'default' => 'user',
+            },
+            default => throw new \InvalidArgumentException("Version {$version} not supported."),
+        };
+    }
+
     case USER = 'user';
     case ADMIN = 'admin';
     case VENDOR = 'vendor';
     case EVENT_ORGANIZER = 'event-organizer';
+    case RECEPTIONIST = 'receptionist';
 
     public function getLabel(): string
     {
@@ -22,7 +50,8 @@ enum UserRole: string implements HasLabel, HasColor
             self::USER => 'User',
             self::ADMIN => 'Admin',
             self::VENDOR => 'Vendor',
-            self::EVENT_ORGANIZER => 'EO'
+            self::EVENT_ORGANIZER => 'EO',
+            self::RECEPTIONIST => 'Receptionist'
         };
     }
 
@@ -32,7 +61,8 @@ enum UserRole: string implements HasLabel, HasColor
             self::USER => Color::Green,
             self::ADMIN => Color::Purple,
             self::VENDOR => Color::Blue,
-            self::EVENT_ORGANIZER => Color::Yellow
+            self::EVENT_ORGANIZER => Color::Yellow,
+            self::RECEPTIONIST => Color::Orange
         };
     }
 
@@ -42,7 +72,8 @@ enum UserRole: string implements HasLabel, HasColor
             self::USER => 'heroicon-o-user',
             self::ADMIN => 'heroicon-o-check-badge',
             self::VENDOR => 'heroicon-o-building-library',
-            self::EVENT_ORGANIZER => 'heroicon-o-calendar-days'
+            self::EVENT_ORGANIZER => 'heroicon-o-calendar-days',
+            self::RECEPTIONIST => 'heroicon-o-user-plus'
         };
     }
 
@@ -53,6 +84,7 @@ enum UserRole: string implements HasLabel, HasColor
             self::ADMIN->value => self::ADMIN->getLabel(),
             self::VENDOR->value => self::VENDOR->getLabel(),
             self::EVENT_ORGANIZER->value => self::EVENT_ORGANIZER->getLabel(),
+            self::RECEPTIONIST->value => self::RECEPTIONIST->getLabel()
         ];
     }
 }
