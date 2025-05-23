@@ -16,12 +16,13 @@ enum VenueStatus: string implements HasLabel, HasColor
     {
         return match ($version) {
             'v1' => match ($mode) {
-                'array' => [
+                EnumVersionType::ARRAY => [
                     'active',
                     'inactive',
                     'under_maintenance',
                 ],
-                'default' => 'inactive',
+                EnumVersionType::DEFAULT => 'inactive',
+                default => throw new \InvalidArgumentException("Mode {$mode} not supported."),
             },
             default => throw new \InvalidArgumentException("Version {$version} not supported."),
         };
