@@ -1,12 +1,14 @@
 import { deconstructEventColorProps } from '@/types/deconstruct-front-end';
 import { EventColorProps, EventProps } from '@/types/front-end';
 import { InertiaLinkProps, Link } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import styled from 'styled-components';
 
 interface NavLinkProps extends InertiaLinkProps {
     active: boolean;
     eventProps: EventProps;
+    children?: ReactNode; // Explicitly declare children
+    className?: string; // Explicitly declare className
 }
 
 interface NavLinkEventProps extends EventColorProps {

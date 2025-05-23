@@ -1,7 +1,10 @@
+// resources/js/Layouts/AuthenticatedLayout.tsx
+
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { deconstructEventColorProps } from '@/types/deconstruct-front-end';
 import { EventColorProps, EventProps } from '@/types/front-end';
+import { PageProps as InertiaPageProps } from '@inertiajs/core'; // <--- Ubah impor di sini
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
@@ -36,6 +39,30 @@ const changeFavicon = (faviconUrl: string) => {
     }
 };
 
+// Updated Event type to include slug
+interface EventContext {
+    id: number;
+    name: string;
+    slug: string; // Added slug property
+}
+
+// Perluas InertiaPageProps untuk menyertakan properti kustom kamu
+interface CustomInertiaPageProps extends InertiaPageProps {
+    event: EventContext;
+    props: EventProps; // This likely comes from your EventProps type
+    client: string;
+    userEndSessionDatetime?: string;
+}
+
+interface AuthenticatedLayoutProps {
+    header?: ReactNode;
+    footer?: ReactNode;
+    client: string;
+    props: EventProps;
+    userEndSessionDatetime?: string;
+    event?: EventContext; // Use the updated EventContext type
+}
+
 export default function Authenticated({
     header,
     children,
@@ -43,20 +70,16 @@ export default function Authenticated({
     client,
     props,
     userEndSessionDatetime,
-}: PropsWithChildren<{
-    header?: ReactNode;
-    footer?: ReactNode;
-    client: string;
-    props: EventProps;
-    userEndSessionDatetime?: string;
-}>) {
-    const user = usePage().props.auth.user;
+    event, // This prop is crucial
+}: PropsWithChildren<AuthenticatedLayoutProps>) {
+    // Gunakan CustomInertiaPageProps di sini
+    const { auth } = usePage<CustomInertiaPageProps>().props;
+    const user = auth.user;
 
     const [eventColorProps, setEventColorProps] = useState<EventColorProps>(
         {} as EventColorProps,
     );
 
-    // State and effect for countdown to userEndSessionDatetime
     function useCountdown(userEndSessionDatetime: string | undefined) {
         const [countdown, setCountdown] = useState<number | null>(null);
 
@@ -79,13 +102,13 @@ export default function Authenticated({
                 }
             }, 1000);
 
+            // Removed 'client' from dependency array to fix ESLint warning
             return () => clearInterval(interval);
         }, [userEndSessionDatetime]);
 
         return countdown;
     }
 
-    // Format helper
     function formatCountdown(seconds: number | null): string {
         if (seconds === null) return '--';
         const h = Math.floor(seconds / 3600);
@@ -112,6 +135,9 @@ export default function Authenticated({
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState<boolean>(false);
+
+    // Condition: Only show for 'admin' role AND when an event context is available
+    const showScanTicketLink = user?.role === 'admin' && event?.id; // <-- Re-added event?.id
 
     return (
         <div
@@ -169,6 +195,29 @@ export default function Authenticated({
                                 >
                                     My Tickets
                                 </NavLink>
+                                {showScanTicketLink && ( // This determines if the link appears AT ALL
+                                    <NavLink
+                                        eventProps={props}
+                                        href={
+                                            // This ensures the href is only valid if event.id exists
+                                            client && event?.slug // Changed event?.id to event?.slug
+                                                ? route(
+                                                      'client.events.scan.show',
+                                                      {
+                                                          client,
+                                                          event_slug:
+                                                              event.slug, // Use event.slug
+                                                      },
+                                                  )
+                                                : '#' // Falls back to '#' if event?.id is undefined
+                                        }
+                                        active={route().current(
+                                            'client.events.scan.show',
+                                        )}
+                                    >
+                                        Scan Ticket
+                                    </NavLink>
+                                )}
                             </div>
                         </div>
 
@@ -176,14 +225,8 @@ export default function Authenticated({
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
                                     href="#"
-                                    active={false}
+                                    active={false} // <--- Tambahkan properti active={false}
                                     eventProps={props}
-                                    // href={
-                                    //     client
-                                    //         ? route('profile.edit', client)
-                                    //         : ''
-                                    // }
-                                    // active={route().current('profile.edit')}
                                     className="flex gap-3"
                                 >
                                     <img
@@ -203,7 +246,7 @@ export default function Authenticated({
                                     }
                                     eventProps={props}
                                     href="#"
-                                    active={false}
+                                    active={false} // <--- Tambahkan properti active={false}
                                     onClick={() => {
                                         window.location.href = route('home');
                                     }}
@@ -290,6 +333,25 @@ export default function Authenticated({
                         >
                             My Tickets
                         </ResponsiveNavLink>
+                        {showScanTicketLink && (
+                            <ResponsiveNavLink
+                                eventProps={props}
+                                href={
+                                    client && event?.slug // Changed event?.id to event?.slug
+                                        ? route('client.events.scan.show', {
+                                              client,
+                                              event_slug: event.slug, // Use event.slug
+                                          })
+                                        : '#'
+                                }
+                                active={route().current(
+                                    'client.events.scan.show',
+                                )}
+                            >
+                                Scan Ticket
+                            </ResponsiveNavLink>
+                        )}
+                        {/* ... */}
                     </div>
 
                     <div
@@ -319,13 +381,7 @@ export default function Authenticated({
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink
-                                eventProps={props}
-                                href="#"
-                                // href={
-                                //     client ? route('profile.edit', client) : ''
-                                // }
-                            >
+                            <ResponsiveNavLink eventProps={props} href="#">
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink

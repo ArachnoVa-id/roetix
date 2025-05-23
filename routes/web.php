@@ -8,6 +8,7 @@ use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TicketScanController;
 use App\Models\EventVariables;
 use Inertia\Inertia;
 
@@ -122,6 +123,19 @@ Route::domain('{client}.' . config('app.domain'))
             Route::middleware('auth')->group(function () {
                 Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
                     ->name('client.my_tickets');
+
+
+                Route::controller(TicketScanController::class)->group(function () {
+                    // Route to display the scanning page (Inertia render)
+                    Route::get('/events/{event_slug}/scan', 'show')
+                        ->name('client.events.scan.show');
+
+                    Route::post('/events/{event_slug}/scan', 'scan')
+                        ->name('client.events.scan.store');
+
+                    // (If you still have it, the selectEventForScan route)
+                    // Route::get('/scan-events', 'selectEventForScan')->name('client.scan.select-event');
+                });
 
                 Route::prefix('api')->group(function () {
                     // Use a simple GET route with no path parameters
