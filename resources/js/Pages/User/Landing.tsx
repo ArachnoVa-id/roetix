@@ -214,14 +214,13 @@ export default function Landing({
         };
     };
 
-    const resumePayment = async (accessor: string) => {
-        if (!window.snap) return;
-
+    const resumePayment = async (accessor: string, payment_gateway: string) => {
         showSuccess('Preparing your payment...');
 
         try {
-            switch (paymentGateway) {
+            switch (payment_gateway) {
                 case 'midtrans':
+                    if (!window.snap) return;
                     window.snap.pay(accessor, createCallbacks());
                     break;
                 case 'faspay':
@@ -1204,6 +1203,7 @@ export default function Landing({
                                                             onClick={() =>
                                                                 resumePayment(
                                                                     transaction.accessor,
+                                                                    transaction.payment_gateway
                                                                 )
                                                             }
                                                         >

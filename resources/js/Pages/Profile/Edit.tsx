@@ -1,5 +1,4 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { PageProps } from '@/types';
 import { EventProps } from '@/types/front-end';
 import { EventInterface } from '@/types/ticket';
 import { Head } from '@inertiajs/react';
@@ -9,13 +8,13 @@ export default function Edit({
     event,
     client,
     props,
-}: PageProps<{
+}: {
     event: EventInterface;
     mustVerifyEmail: boolean;
     status?: string;
     client: string;
     props: EventProps;
-}>) {
+}) {
     return (
         <AuthenticatedLayout props={props} client={client}>
             <Head title={'Profile | ' + event.name} />
