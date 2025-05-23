@@ -406,4 +406,9 @@ class UserPageController extends Controller
         // If the event is not locked or password is not required, proceed
         return Inertia::location(route('client.home', ['client' => $client]));
     }
+
+    public function roetixLanding(Request $request)
+    {
+        return Inertia::render('Roetix/RoetixLanding');
+    }
 }
