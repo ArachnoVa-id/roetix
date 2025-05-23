@@ -102,6 +102,7 @@ export interface ProceedTransactionButtonProps {
     onTransactionStarted?: (seats: SeatItem[]) => void;
     toasterFunction: Toaster;
     snapInitialized: boolean;
+    paymentGateway: string;
 }
 
 export interface GroupedItem {
@@ -268,4 +269,5 @@ export interface LandingProps {
     props: EventProps;
     ownedTicketCount: number;
     userEndSessionDatetime: string;
+    paymentGateway: string;
 }

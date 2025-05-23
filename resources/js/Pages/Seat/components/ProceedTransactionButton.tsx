@@ -17,6 +17,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     onTransactionStarted,
     toasterFunction,
     snapInitialized,
+    paymentGateway,
 }) => {
     const user = usePage().props?.auth.user;
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -171,8 +172,8 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
 
             // Handle the response
             if (response.data && response.data.snap_token) {
-                const token = response.data.snap_token;
-                if (token === 'free') {
+                const accessor = response.data.snap_token;
+                if (accessor === 'free') {
                     toasterFunction.showSuccess(
                         'Payment is free. No payment required.',
                     );
@@ -180,15 +181,17 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     window.location.reload();
                 }
                 // If Midtrans snap.js is loaded
-                else if (window.snap) {
+                else if (window.snap && paymentGateway === 'midtrans') {
                     const callbacks = createCallbacks();
 
                     // Open the Midtrans Snap payment page
-                    window.snap.pay(token, callbacks);
+                    window.snap.pay(accessor, callbacks);
 
                     if (onTransactionStarted) {
                         onTransactionStarted(selectedSeats);
                     }
+                } else if (paymentGateway === 'faspay') {
+                    window.location.href = accessor;
                 } else {
                     toasterFunction.showError(
                         'Payment gateway not loaded. Please refresh the page and try again.',

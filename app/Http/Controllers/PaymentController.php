@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\PaymentGateway;
 use App\Enums\TicketOrderStatus;
 use App\Enums\TicketStatus;
-use App\Events\TicketPurchased;
 use App\Exports\OrdersExport;
+use App\Models\DevNoSQLData;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Seat;
@@ -26,6 +27,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use PhpMqtt\Client\MqttClient;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
 
 class PaymentController extends Controller
 {
@@ -35,6 +38,15 @@ class PaymentController extends Controller
     // disini nanti taro eventnya
     public function charge(Request $request, string $client = "")
     {
+        // Validate
+        $request->validate([
+            'email' => 'required|email',
+            'amount' => 'required|numeric|min:0',
+            'grouped_items' => 'required|array',
+            'tax_amount' => 'numeric|nullable',
+            'total_with_tax' => 'numeric|nullable',
+        ]);
+
         $lock = Cache::lock('seat_lock_user_' . Auth::id(), 10);
 
         if (! $lock->get()) {
@@ -43,8 +55,8 @@ class PaymentController extends Controller
 
         try {
             // Order rate limiting
-            $hourlyLimit = 5;
-            $dailyLimit = 10;
+            $hourlyLimit = 5000;
+            $dailyLimit = 10000;
 
             $recentOrderCount = Order::where('user_id', Auth::id())
                 ->where('order_date', '>=', now()->subHour())
@@ -198,17 +210,35 @@ class PaymentController extends Controller
 
             $snapToken = null;
             if ($totalWithTax) {
-                $snapToken = $this->midtransCharge(
-                    $request,
-                    $orderCode,
-                    $totalWithTax,
-                    $itemDetails,
-                    $event
-                );
+                switch ($event->eventVariables->payment_gateway) {
+                    case PaymentGateway::MIDTRANS->value:
+                        $snapToken = $this->midtransCharge(
+                            $request,
+                            $orderCode,
+                            $totalWithTax,
+                            $itemDetails,
+                            $event
+                        );
 
-                if (! $snapToken) {
-                    DB::rollBack();
-                    throw new \Exception('Failed to get Snap token');
+                        if (! $snapToken) {
+                            DB::rollBack();
+                            throw new \Exception('Failed to get Snap token');
+                        }
+                        break;
+
+                    case PaymentGateway::FASPAY->value:
+                        $snapToken = $this->faspayCharge(
+                            $request,
+                            $orderCode,
+                            $totalWithTax,
+                            $itemDetails,
+                            $event
+                        );
+                        break;
+
+                    default:
+                        DB::rollBack();
+                        throw new \Exception('Invalid payment gateway');
                 }
             } else {
                 // Handle free order, auto complete
@@ -242,7 +272,15 @@ class PaymentController extends Controller
         array $itemDetails,
         Event $event
     ) {
-        Config::$serverKey = $event->eventVariables->getKey('server');
+        if ($event->eventVariables->midtrans_use_novatix) {
+            if ($event->eventVariables->midtrans_is_production) {
+                Config::$serverKey = config('midtrans.server_key');
+            } else {
+                Config::$serverKey = config('midtrans.server_key_sb');
+            }
+        } else {
+            Config::$serverKey = $event->eventVariables->getKey('server');
+        }
         Config::$isProduction = $event->eventVariables->midtrans_is_production;
         Config::$isSanitized = config('midtrans.is_sanitized', true);
         Config::$is3ds = config('midtrans.is_3ds', true);
@@ -262,7 +300,156 @@ class PaymentController extends Controller
             throw new \Exception('Failed to get Snap token');
         }
 
+        DevNoSQLData::create([
+            'collection' => 'midtrans_orders',
+            'data' => [
+                'order_code' => $orderCode,
+                'event_id' => $event->id,
+                'user_id' => Auth::id(),
+                'team_id' => $event->team_id,
+                'total_price' => $totalWithTax,
+                'status' => OrderStatus::PENDING,
+                'expired_at' => now()->addMinutes(10),
+                'payment_gateway' => $event->eventVariables->payment_gateway,
+                'snap_token' => $snapToken,
+            ],
+        ]);
+
         return $snapToken;
+    }
+
+    public function faspayCharge(
+        Request $request,
+        string $orderCode,
+        float $totalWithTax,
+        array $itemDetails,
+        Event $event
+    ) {
+        $variables = $event->eventVariables;
+
+        $faspay_baseUrl = $variables->faspay_is_production ? 'https://debit.faspay.co.id' : 'https://debit-sandbox.faspay.co.id';
+        $endpoint = $faspay_baseUrl . '/cvr/300011/10';
+
+        if ($variables->faspay_use_novatix) {
+            $merchantId = config('faspay.merchant_id');
+            $merchantName = config('faspay.merchant_name');
+            $userId = config('faspay.user_id');
+            $password = config('faspay.password');
+        } else {
+            $merchantId = Crypt::decryptString($variables->faspay_merchant_id);
+            $merchantName = Crypt::decryptString($variables->faspay_merchant_name);
+            $userId = Crypt::decryptString($variables->faspay_user_id);
+            $password = Crypt::decryptString($variables->faspay_password);
+        }
+
+        $signature = sha1(md5($userId . $password . $orderCode));
+
+        $now = now();
+        $billDate = $now->format('Y-m-d H:i:s');
+        $billExpired = $now->addMinutes(10)->format('Y-m-d H:i:s');
+
+        $payload = [
+            "request" => "Post Data Transaction",
+            "merchant_id" => $merchantId,
+            "merchant" => $merchantName,
+            "bill_no" => $orderCode,
+            "bill_reff" => $orderCode,
+            "bill_date" => $billDate,
+            "bill_expired" => $billExpired,
+            "bill_desc" => "Payment #$orderCode",
+            "bill_currency" => "IDR",
+            "bill_gross" => 0,
+            "bill_miscfee" => 0,
+            "bill_total" => (int) $totalWithTax * 100,
+            "cust_no" => $request->user()->id ?? '0',
+            "cust_name" => $request->user()->name ?? 'Guest',
+            "payment_channel" => "836", // Paydia QRIS
+            "pay_type" => "1",
+            "bank_userid" => "",
+            "msisdn" => $request->phone ?? '',
+            "email" => $request->email ?? '',
+            "terminal" => "10",
+
+            "billing_name" => '',
+            "billing_lastname" => '',
+            "billing_address" => '',
+            "billing_address_city" => "",
+            "billing_address_region" => "",
+            "billing_address_state" => "",
+            "billing_address_poscode" => "",
+            "billing_msisdn" => "",
+            "billing_address_country_code" => "ID",
+
+            "receiver_name_for_shipping" => '',
+            "shipping_lastname" => "",
+            "shipping_address" => '',
+            "shipping_address_city" => "",
+            "shipping_address_region" => "",
+            "shipping_address_state" => "",
+            "shipping_address_poscode" => "",
+            "shipping_msisdn" => "",
+            "shipping_address_country_code" => "ID",
+
+            "item" => collect($itemDetails)->map(function ($item) {
+                return [
+                    "product" => $item['name'],
+                    "qty" => (string) $item['quantity'],
+                    "amount" => (string) $item['price'] . '00',
+                ];
+            })->values()->toArray(),
+
+            "reserve1" => "",
+            "reserve2" => "",
+            "signature" => $signature,
+        ];
+
+        $response = Http::post($endpoint, $payload);
+
+        if (! $response->ok()) {
+            throw new \Exception("Faspay charge failed: " . $response->body());
+        }
+
+        $returnData = [
+            'order_code' => $orderCode,
+            'event_id' => $event->id,
+            'user_id' => Auth::id(),
+            'team_id' => $event->team_id,
+            'total_price' => $totalWithTax,
+            'status' => OrderStatus::PENDING,
+            'expired_at' => now()->addMinutes(10),
+            'payment_gateway' => $variables->payment_gateway,
+        ];
+
+        $responseData = $response->json();
+        $returnData = array_merge($returnData, $responseData, ['signature' => $signature]);
+
+        DevNoSQLData::create([
+            'collection' => 'faspay_orders',
+            'data' => $returnData,
+        ]);
+
+        return $responseData['web_url'] ?? null;
+
+        // {
+        //     "response": "Transmisi Info Detil Pembelian",
+        //     "trx_id": "3625783606729649",
+        //     "merchant_id": "36257",
+        //     "merchant": "Novatix",
+        //     "bill_no": "1",
+        //     "external_id": "",
+        //     "bill_items": [
+        //         {
+        //             "product": "Invoice No. inv-985/2017-03/1234567891",
+        //             "qty": "1",
+        //             "amount": "1000000"
+        //         }
+        //     ],
+        //     "response_code": "00",
+        //     "response_desc": "Sukses",
+        //     "web_url": "https://debit-sandbox.faspay.co.id/__assets/qr/paydia/36257-3625783606729649.png",
+        //     "qr_content": "00020101021226650013ID.PAYDIA.WWW011893600818022111600102152211160010000000303UBE5204653253033605405100005802ID5908  FASPAY6006BEKASI610517111625501258e48e61b92e449f39e57e4f8807152211160010000000803api6304EAE2",
+        //     "redirect_url": "https://debit-sandbox.faspay.co.id/pws/100003/0830000010100000/8d63ff3ea83287f3c76c9e95c7fc635ea45ee86d?trx_id=3625783606729649&merchant_id=36257&bill_no=1"
+        // }
     }
 
     /**
@@ -392,6 +579,8 @@ class PaymentController extends Controller
     public function faspayCallback(Request $request)
     {
         $data = $request->all();
+
+        Http::post('https://webhook.site/03abd6ff-6711-4f8b-8c65-f67fafea5313', $data);
 
         return response()->json([
             'response'       => 'Payment Notification',

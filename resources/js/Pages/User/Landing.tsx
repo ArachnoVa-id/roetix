@@ -34,6 +34,7 @@ export default function Landing({
     props,
     ownedTicketCount,
     userEndSessionDatetime,
+    paymentGateway,
 }: LandingProps) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
@@ -56,8 +57,6 @@ export default function Landing({
             try {
                 const payload = JSON.parse(message.toString());
                 const updates = payload.data as TicketUpdate[];
-
-                console.log(payload, updates);
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
@@ -132,7 +131,9 @@ export default function Landing({
         fetchPendingTransactions();
     }, [client]);
 
-    const [snapInitialized, setSnapInitialized] = useState<boolean>(false);
+    const [snapInitialized, setSnapInitialized] = useState<boolean>(
+        paymentGateway !== 'midtrans',
+    );
     // Initialize Midtrans Snap on component mount
     const showErrorRef = useRef(showError);
     const showSuccessRef = useRef(showSuccess);
@@ -186,8 +187,8 @@ export default function Landing({
             document.head.appendChild(snapScript);
         };
 
-        fetchAndInitializeSnap();
-    }, []); // Only run once when the component mounts
+        if (paymentGateway === 'midtrans') fetchAndInitializeSnap();
+    }, [paymentGateway]); // Only run once when the component mounts
 
     const createCallbacks = (): MidtransCallbacks => {
         return {
@@ -213,13 +214,22 @@ export default function Landing({
         };
     };
 
-    const resumePayment = async (token: string) => {
+    const resumePayment = async (accessor: string) => {
         if (!window.snap) return;
 
         showSuccess('Preparing your payment...');
 
         try {
-            window.snap.pay(token, createCallbacks());
+            switch (paymentGateway) {
+                case 'midtrans':
+                    window.snap.pay(accessor, createCallbacks());
+                    break;
+                case 'faspay':
+                    window.location.href = accessor;
+                    break;
+                default:
+                    throw new Error('Unsupported payment gateway');
+            }
         } catch (err) {
             console.error('Failed to resume payment:', err);
 
@@ -1347,6 +1357,7 @@ export default function Landing({
                                         hideToaster,
                                     }}
                                     snapInitialized={snapInitialized}
+                                    paymentGateway={paymentGateway}
                                 />
                             )}
                     </div>

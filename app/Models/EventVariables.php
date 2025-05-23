@@ -47,6 +47,20 @@ class EventVariables extends Model
         'midtrans_server_key',
         'midtrans_is_production',
         'midtrans_use_novatix',
+        'faspay_merchant_name',
+        'faspay_merchant_id',
+        'faspay_user_id',
+        'faspay_password',
+        'faspay_signature',
+        'faspay_is_production',
+        'faspay_use_novatix',
+        'tripay_api_key_dev',
+        'tripay_private_key_dev',
+        'tripay_api_key_prod',
+        'tripay_private_key_prod',
+        'tripay_is_production',
+        'tripay_use_novatix',
+        'payment_gateway',
         'contact_person'
     ];
 
@@ -77,7 +91,22 @@ class EventVariables extends Model
             'midtrans_client_key' => '',
             'midtrans_server_key' => '',
             'midtrans_is_production' => false,
-            'midtrans_use_novatix' => false
+            'midtrans_use_novatix' => false,
+            'faspay_merchant_name' => '',
+            'faspay_merchant_id' => '',
+            'faspay_user_id' => '',
+            'faspay_password' => '',
+            'faspay_signature' => '',
+            'faspay_is_production' => false,
+            'faspay_use_novatix' => false,
+            'tripay_api_key_dev' => '',
+            'tripay_private_key_dev' => '',
+            'tripay_api_key_prod' => '',
+            'tripay_private_key_prod' => '',
+            'tripay_is_production' => false,
+            'tripay_use_novatix' => false,
+            'payment_gateway' => 'midtrans',
+            'contact_person' => '',
         ];
         return $defaultValues;
     }
