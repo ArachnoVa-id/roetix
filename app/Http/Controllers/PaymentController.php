@@ -177,6 +177,7 @@ class PaymentController extends Controller
             $orderCode = Order::keyGen(OrderType::AUTO, $event);
 
             $order = Order::create([
+                'payment_gateway' => $event->eventVariables->payment_gateway,
                 'order_code' => $orderCode,
                 'event_id' => $event->id,
                 'user_id' => Auth::id(),
@@ -961,6 +962,7 @@ class PaymentController extends Controller
                     'order_code' => $order->order_code,
                     'total_price' => $order->total_price,
                     'seats' => $seatsData,
+                    'payment_gateway' => $order->payment_gateway,
                 ];
             }
 

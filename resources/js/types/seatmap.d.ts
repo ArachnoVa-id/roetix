@@ -221,6 +221,7 @@ export interface PendingTransactionResponseItem {
     order_code: string;
     total_price: string;
     seats: SeatItem[];
+    payment_gateway: string;
 }
 
 export type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
