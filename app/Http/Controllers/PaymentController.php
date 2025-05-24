@@ -237,6 +237,11 @@ class PaymentController extends Controller
                             $itemDetails,
                             $event
                         );
+
+                        if (! $accessor) {
+                            DB::rollBack();
+                            throw new \Exception('Failed to get Faspay token');
+                        }
                         break;
 
                     case PaymentGateway::TRIPAY->value:
@@ -247,6 +252,11 @@ class PaymentController extends Controller
                             $itemDetails,
                             $event
                         );
+
+                        if (! $accessor) {
+                            DB::rollBack();
+                            throw new \Exception('Failed to get Tripay token');
+                        }
                         break;
 
                     default:
@@ -434,12 +444,14 @@ class PaymentController extends Controller
         ];
 
         $responseData = $response->json();
+
         $returnData = array_merge($returnData, $responseData, ['signature' => $signature]);
 
         DevNoSQLData::create([
             'collection' => 'faspay_orders',
             'data' => $returnData,
         ]);
+
 
         return $responseData['redirect_url'] ?? null;
     }
@@ -504,7 +516,7 @@ class PaymentController extends Controller
                     "image_url" => $item['image_url'] ?? null,
                 ];
             })->values()->toArray(),
-            "return_url" => route('client.my_tickets', ['client' => $event->slug]),
+            "return_url" => route('payment.tripayReturn'),
             "expired_time" => $timestamp,
             "signature" => $signature,
         ];
@@ -546,6 +558,12 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
 
+        // Log the callback data
+        DevNoSQLData::create([
+            'collection' => 'midtrans_callbacks',
+            'data' => $data,
+        ]);
+
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
@@ -575,12 +593,6 @@ class PaymentController extends Controller
                     break;
             }
 
-            // Log the callback data
-            DevNoSQLData::create([
-                'collection' => 'midtrans_callbacks',
-                'data' => $data,
-            ]);
-
             DB::commit();
             return response()->json(['message' => 'Callback processed successfully']);
         } catch (\Exception $e) {
@@ -594,11 +606,15 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['bill_no'] ?? null;
 
+        // Log the callback data
+        DevNoSQLData::create([
+            'collection' => 'faspay_callbacks',
+            'data' => $data,
+        ]);
+
         if (!isset($identifier, $data['payment_status_code'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
-
-        Http::post('https://webhook.site/03abd6ff-6711-4f8b-8c65-f67fafea5313', $data);
 
         DB::beginTransaction();
         try {
@@ -623,12 +639,6 @@ class PaymentController extends Controller
                     throw new \Exception('Invalid status');
             }
 
-            // Log the callback data
-            DevNoSQLData::create([
-                'collection' => 'faspay_callbacks',
-                'data' => $data,
-            ]);
-
             DB::commit();
             return response()->json(['message' => 'Callback processed successfully']);
         } catch (\Exception $e) {
@@ -642,11 +652,15 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['merchant_ref'] ?? null;
 
+        // Log the callback data
+        DevNoSQLData::create([
+            'collection' => 'tripay_callbacks',
+            'data' => $data,
+        ]);
+
         if (!isset($identifier, $data['status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
-
-        Http::post('https://webhook.site/03abd6ff-6711-4f8b-8c65-f67fafea5313', $data);
 
         DB::beginTransaction();
         try {
@@ -669,18 +683,46 @@ class PaymentController extends Controller
                     throw new \Exception('Invalid status');
             }
 
-            // Log the callback data
-            DevNoSQLData::create([
-                'collection' => 'tripay_callbacks',
-                'data' => $data,
-            ]);
-
             DB::commit();
             return response()->json(['message' => 'Callback processed successfully']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Failed to process callback'], 500);
         }
+    }
+
+    public function midtransReturn(Request $request)
+    {
+        // Retrieve all request data
+        $data = $request->all();
+
+        // Validate required parameters
+        $validator = Validator::make($data, [
+            'order_id' => 'required|string|max:16',
+            'status_code' => 'required|string|max:32',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'error' => 'Callback return is not valid'], 404);
+        }
+
+        // Get orders from order_code => order_code and read the client slug
+        $order = Order::where('order_code', $data['order_id'])->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'error' => 'Order not found'], 404);
+        }
+
+        // Get event
+        $event = Event::find($order->event_id);
+        if (!$event) {
+            return response()->json(['success' => false, 'error' => 'Event not found'], 404);
+        }
+
+        // Redirect to my_tickets
+        return redirect()->route(
+            'client.my_tickets',
+            ['client' => $event->slug,]
+        );
     }
 
     public function faspayReturn(Request $request)
