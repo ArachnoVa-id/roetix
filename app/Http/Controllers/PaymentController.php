@@ -56,8 +56,8 @@ class PaymentController extends Controller
 
         try {
             // Order rate limiting
-            $hourlyLimit = 5000;
-            $dailyLimit = 10000;
+            $hourlyLimit = 5;
+            $dailyLimit = 10;
 
             $recentOrderCount = Order::where('user_id', Auth::id())
                 ->where('order_date', '>=', now()->subHour())
