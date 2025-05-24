@@ -7,6 +7,9 @@ use App\Http\Controllers\PaymentController;
 Route::post('/payment/midtransCallback', [PaymentController::class, 'midtransCallback'])
     ->name('payment.midtransCallback');
 
+Route::get('/payment/midtransReturn', [PaymentController::class, 'midtransReturn'])
+    ->name('payment.midtransReturn');
+
 // Fastpay
 Route::post('/payment/faspayCallback', [PaymentController::class, 'faspayCallback'])
     ->name('payment.faspayCallback');
@@ -17,3 +20,6 @@ Route::get('/payment/faspayReturn', [PaymentController::class, 'faspayReturn'])
 // Tripay
 Route::post('/payment/tripayCallback', [PaymentController::class, 'tripayCallback'])
     ->name('payment.tripayCallback');
+
+Route::get('/payment/tripayReturn', [PaymentController::class, 'tripayReturn'])
+    ->name('payment.tripayReturn');
