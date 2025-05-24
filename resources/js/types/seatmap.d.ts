@@ -14,6 +14,8 @@ export interface BaseItem {
 
 export interface SeatItem extends BaseItem {
     id: string;
+    // ijin nambahin ini soalnya id tuh ga diterima dari backend adanya seat_id
+    seat_id: string;
     seat_number: string;
     status: string;
     ticket_type?: string;

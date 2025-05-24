@@ -12,6 +12,8 @@ use App\Http\Controllers\TicketScanController;
 use App\Models\EventVariables;
 use Inertia\Inertia;
 
+Route::get('/', [UserPageController::class, 'roetixLanding'])->name('roetix');
+
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
     ->group(function () {
