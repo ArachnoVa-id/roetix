@@ -9,6 +9,7 @@ import {
 } from './termconditioncontent';
 
 interface Props {
+    appName: string;
     client: string;
     props: EventProps;
     event?: {
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function TermCondition({
+    appName,
     client,
     props,
     // event,
@@ -283,7 +285,11 @@ export default function TermCondition({
 
     if (user)
         return (
-            <AuthenticatedLayout client={client} props={props}>
+            <AuthenticatedLayout
+                appName={appName}
+                client={client}
+                props={props}
+            >
                 {content}
             </AuthenticatedLayout>
         );

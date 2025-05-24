@@ -55,6 +55,7 @@ interface CustomInertiaPageProps extends InertiaPageProps {
 }
 
 interface AuthenticatedLayoutProps {
+    appName: string;
     header?: ReactNode;
     footer?: ReactNode;
     client: string;
@@ -64,6 +65,7 @@ interface AuthenticatedLayoutProps {
 }
 
 export default function Authenticated({
+    appName,
     header,
     children,
     footer,
@@ -540,7 +542,8 @@ export default function Authenticated({
                                         color: props?.text_primary_color,
                                     }}
                                 >
-                                    &copy; 2025 ArachnoVa. All rights reserved.
+                                    &copy; {new Date().getFullYear()} {appName}.
+                                    All rights reserved.
                                 </p>
                             </div>
                         </div>

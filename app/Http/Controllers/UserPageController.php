@@ -150,6 +150,7 @@ class UserPageController extends Controller
             }
 
             $content = [
+                'appName' => config('app.name'),
                 'client' => $client,
                 'layout' => $layout,
                 'event' => [
@@ -247,6 +248,7 @@ class UserPageController extends Controller
                 $ticketStatus = $ticket->ticket_order_status ?? TicketOrderStatus::ENABLED->value;
 
                 return [
+                    'appName' => config('app.name'),
                     'id' => $ticket->id,
                     'type' => $typeName,
                     'code' => $ticket->ticket_code,
@@ -301,6 +303,7 @@ class UserPageController extends Controller
             $dbContent = $props->privacy_policy ?? null;
 
             return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
+                'appName' => config('app.name'),
                 'client' => $client,
                 'props' => $props->getSecure(),
                 'event' => [
@@ -330,6 +333,7 @@ class UserPageController extends Controller
             $dbContent = $props->terms_and_conditions ?? null;
 
             return Inertia::render('Legality/termcondition/TermCondition', [
+                'appName' => config('app.name'),
                 'client' => $client,
                 'props' => $props->getSecure(),
                 'event' => [

@@ -36,6 +36,7 @@ interface TicketUpdate {
 }
 
 export default function Landing({
+    appName,
     client,
     layout,
     event,
@@ -551,6 +552,7 @@ export default function Landing({
     if (error) {
         return (
             <AuthenticatedLayout
+                appName={appName}
                 client={client}
                 props={props}
                 userEndSessionDatetime={userEndSessionDatetime}
@@ -579,6 +581,7 @@ export default function Landing({
 
     return (
         <AuthenticatedLayout
+            appName={appName}
             client={client}
             props={props}
             userEndSessionDatetime={userEndSessionDatetime}

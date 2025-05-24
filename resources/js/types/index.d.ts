@@ -33,6 +33,7 @@ export interface EventContext {
 
 declare module '@inertiajs/core' {
     interface PageProps extends InertiaPageProps {
+        appName: string;
         auth: {
             user: User;
         };
