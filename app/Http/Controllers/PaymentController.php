@@ -574,6 +574,11 @@ class PaymentController extends Controller
             'data' => $data,
         ]);
 
+        // Only 172.68.164.43 (cloudflare midtrans)
+        if ($request->ip() != '172.68.164.43') {
+            return response()->json(['error' => 'Forbidden request origin'], 403);
+        }
+
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
@@ -673,6 +678,11 @@ class PaymentController extends Controller
             'collection' => 'tripay_callbacks',
             'data' => $data,
         ]);
+
+        // Only accept from 162.158.189.25 (cloudflare tripay)
+        if ($request->ip() != '162.158.189.25') {
+            return response()->json(['error' => 'Forbidden request origin'], 403);
+        }
 
         if (!isset($identifier, $data['status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
