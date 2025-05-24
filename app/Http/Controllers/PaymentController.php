@@ -558,6 +558,9 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
 
+        // Append the origin ip (host) of the request to data
+        $data['origin_ip'] = $request->ip();
+
         // Log the callback data
         DevNoSQLData::create([
             'collection' => 'midtrans_callbacks',
@@ -606,6 +609,9 @@ class PaymentController extends Controller
         $data = $request->all();
         $identifier = $data['bill_no'] ?? null;
 
+        // Append the origin ip (host) of the request to data
+        $data['origin_ip'] = $request->ip();
+
         // Log the callback data
         DevNoSQLData::create([
             'collection' => 'faspay_callbacks',
@@ -651,6 +657,9 @@ class PaymentController extends Controller
     {
         $data = $request->all();
         $identifier = $data['merchant_ref'] ?? null;
+
+        // Append the origin ip (host) of the request to data
+        $data['origin_ip'] = $request->ip();
 
         // Log the callback data
         DevNoSQLData::create([
