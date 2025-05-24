@@ -215,47 +215,59 @@ class PaymentController extends Controller
             if ($totalWithTax) {
                 switch ($event->eventVariables->payment_gateway) {
                     case PaymentGateway::MIDTRANS->value:
-                        $accessor = $this->midtransCharge(
-                            $request,
-                            $orderCode,
-                            $totalWithTax,
-                            $itemDetails,
-                            $event
-                        );
+                        try {
+                            $accessor = $this->midtransCharge(
+                                $request,
+                                $orderCode,
+                                $totalWithTax,
+                                $itemDetails,
+                                $event
+                            );
 
-                        if (! $accessor) {
+                            if (! $accessor) {
+                                throw new \Exception('Failed to get Snap token');
+                            }
+                        } catch (\Exception $e) {
                             DB::rollBack();
-                            throw new \Exception('Failed to get Snap token');
+                            throw new \Exception('Failed to process Midtrans charge: ' . $e->getMessage());
                         }
                         break;
 
                     case PaymentGateway::FASPAY->value:
-                        $accessor = $this->faspayCharge(
-                            $request,
-                            $orderCode,
-                            $totalWithTax,
-                            $itemDetails,
-                            $event
-                        );
+                        try {
+                            $accessor = $this->faspayCharge(
+                                $request,
+                                $orderCode,
+                                $totalWithTax,
+                                $itemDetails,
+                                $event
+                            );
 
-                        if (! $accessor) {
+                            if (! $accessor) {
+                                throw new \Exception('Failed to get Faspay token');
+                            }
+                        } catch (\Exception $e) {
                             DB::rollBack();
-                            throw new \Exception('Failed to get Faspay token');
+                            throw new \Exception('Failed to process Faspay charge: ' . $e->getMessage());
                         }
                         break;
 
                     case PaymentGateway::TRIPAY->value:
-                        $accessor = $this->tripayCharge(
-                            $request,
-                            $orderCode,
-                            $totalWithTax,
-                            $itemDetails,
-                            $event
-                        );
+                        try {
+                            $accessor = $this->tripayCharge(
+                                $request,
+                                $orderCode,
+                                $totalWithTax,
+                                $itemDetails,
+                                $event
+                            );
 
-                        if (! $accessor) {
+                            if (! $accessor) {
+                                throw new \Exception('Failed to get Tripay token');
+                            }
+                        } catch (\Exception $e) {
                             DB::rollBack();
-                            throw new \Exception('Failed to get Tripay token');
+                            throw new \Exception('Failed to process Tripay charge: ' . $e->getMessage());
                         }
                         break;
 
@@ -280,9 +292,7 @@ class PaymentController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            preg_match('/"error_messages":\["(.*?)"/', $e->getMessage(), $matches);
-            $firstErrorMessage = $matches[1] ?? null;
-            return response()->json(['message' => 'System failed to process payment! ' . $firstErrorMessage . '.'], 500);
+            return response()->json(['message' => 'System failed to process payment! ' . $e->getMessage() . '.'], 500);
         } finally {
             optional($lock)->release();
         }
@@ -429,7 +439,7 @@ class PaymentController extends Controller
         $response = Http::post($endpoint, $payload);
 
         if (! $response->ok()) {
-            throw new \Exception("Faspay charge failed: " . $response->body());
+            throw new \Exception("Faspay charge failed: " . $response->json());
         }
 
         $returnData = [
@@ -466,8 +476,7 @@ class PaymentController extends Controller
         $variables = $event->eventVariables;
 
         // Select endpoint
-        $tripay_baseUrl = $variables->tripay_is_production ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
-        $endpoint = $tripay_baseUrl . '/transaction/create';
+        $endpoint = $variables->tripay_is_production ? 'https://tripay.co.id/api/open-payment/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
 
         // Select keys
         if ($variables->tripay_use_novatix) {
@@ -495,7 +504,6 @@ class PaymentController extends Controller
         // Generate signature
         $customer = $request->user();
         $timestamp = now()->addMinutes(10)->timestamp;
-        // tripay-sign-gen.cts
         $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
 
         // Construct payload
@@ -527,11 +535,10 @@ class PaymentController extends Controller
         ])->post($endpoint, $payload);
 
         if (! $response->ok()) {
-            throw new \Exception("Tripay charge failed: " . $response->body());
+            throw new \Exception("Tripay charge failed: " . $response->json()['message']);
         }
 
         $responseData = $response->json()['data'];
-
         // Store transaction
         DevNoSQLData::create([
             'collection' => 'tripay_orders',
