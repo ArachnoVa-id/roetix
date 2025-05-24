@@ -3,14 +3,17 @@ import { EventProps } from '@/types/front-end';
 import { Head } from '@inertiajs/react';
 
 export default function Dashboard({
+    appName,
     client,
     props,
 }: {
+    appName: string;
     client: string;
     props: EventProps;
 }) {
     return (
         <AuthenticatedLayout
+            appName={appName}
             client={client}
             props={props}
             header={

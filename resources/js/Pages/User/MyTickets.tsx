@@ -12,6 +12,7 @@ import { Head } from '@inertiajs/react';
 import React, { useCallback, useEffect } from 'react';
 
 export default function MyTickets({
+    appName,
     client,
     props,
     tickets,
@@ -80,7 +81,7 @@ export default function MyTickets({
     };
 
     return (
-        <AuthenticatedLayout client={client} props={props}>
+        <AuthenticatedLayout appName={appName} client={client} props={props}>
             <Head title={'My Tickets | ' + event.name} />
             <div className="w-full py-8">
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">

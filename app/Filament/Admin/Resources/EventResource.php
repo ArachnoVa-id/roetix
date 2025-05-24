@@ -1734,15 +1734,6 @@ class EventResource extends Resource
                                         ->validationMessages([
                                             'max' => 'Client Key Sandbox must not exceed 65535 characters',
                                         ]),
-                                    Forms\Components\TextInput::make('midtrans_server_key_sb')
-                                        ->label('Server Key Sandbox')
-                                        ->placeholder('Server Key Sandbox')
-                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
-                                        ->maxLength(65535)
-                                        ->validationAttribute('Server Key Sandbox')
-                                        ->validationMessages([
-                                            'max' => 'Server Key Sandbox must not exceed 65535 characters',
-                                        ]),
                                     Forms\Components\TextInput::make('midtrans_client_key')
                                         ->label('Client Key')
                                         ->placeholder('Client Key')
@@ -1751,6 +1742,15 @@ class EventResource extends Resource
                                         ->validationAttribute('Client Key')
                                         ->validationMessages([
                                             'max' => 'Client Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('midtrans_server_key_sb')
+                                        ->label('Server Key Sandbox')
+                                        ->placeholder('Server Key Sandbox')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Server Key Sandbox')
+                                        ->validationMessages([
+                                            'max' => 'Server Key Sandbox must not exceed 65535 characters',
                                         ]),
                                     Forms\Components\TextInput::make('midtrans_server_key')
                                         ->label('Server Key')
@@ -1841,9 +1841,27 @@ class EventResource extends Resource
                                         ->validationMessages([
                                             'max' => 'API Key must not exceed 65535 characters',
                                         ]),
+                                    Forms\Components\TextInput::make('tripay_api_key_prod')
+                                        ->label('API Key')
+                                        ->placeholder('API Key')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('API Key')
+                                        ->validationMessages([
+                                            'max' => 'API Key must not exceed 65535 characters',
+                                        ]),
                                     Forms\Components\TextInput::make('tripay_private_key_dev')
                                         ->label('Private Key Sandbox')
                                         ->placeholder('Private Key Sandbox')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Private Key')
+                                        ->validationMessages([
+                                            'max' => 'Private Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('tripay_private_key_prod')
+                                        ->label('Private Key')
+                                        ->placeholder('Private Key')
                                         ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                         ->maxLength(65535)
                                         ->validationAttribute('Private Key')
@@ -1858,24 +1876,6 @@ class EventResource extends Resource
                                         ->validationAttribute('Merchant Code Sandbox')
                                         ->validationMessages([
                                             'max' => 'Merchant Code must not exceed 65535 characters',
-                                        ]),
-                                    Forms\Components\TextInput::make('tripay_api_key_prod')
-                                        ->label('API Key')
-                                        ->placeholder('API Key')
-                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
-                                        ->maxLength(65535)
-                                        ->validationAttribute('API Key')
-                                        ->validationMessages([
-                                            'max' => 'API Key must not exceed 65535 characters',
-                                        ]),
-                                    Forms\Components\TextInput::make('tripay_private_key_prod')
-                                        ->label('Private Key')
-                                        ->placeholder('Private Key')
-                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
-                                        ->maxLength(65535)
-                                        ->validationAttribute('Private Key')
-                                        ->validationMessages([
-                                            'max' => 'Private Key must not exceed 65535 characters',
                                         ]),
                                     Forms\Components\TextInput::make('tripay_merchant_code_prod')
                                         ->label('Merchant Code')

@@ -30,6 +30,7 @@ class Order extends Model
         'order_date',
         'total_price',
         'status',
+        'payment_gateway',
         'expired_at',
     ];
 

@@ -261,6 +261,7 @@ export interface SeatMapDisplayProps {
 }
 
 export interface LandingProps {
+    appName: string;
     client: string;
     layout: Layout;
     event: Event;

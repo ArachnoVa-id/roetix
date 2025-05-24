@@ -36,6 +36,7 @@ interface TicketUpdate {
 }
 
 export default function Landing({
+    appName,
     client,
     layout,
     event,
@@ -54,10 +55,6 @@ export default function Landing({
     const [pendingTransactions, setPendingTransactions] = useState<
         PendingTransactionResponseItem[]
     >([]);
-
-    useEffect(() => {
-        console.log(layout);
-    });
 
     // usestate untuk layout yang diterima dari mqtt
     const [layoutItems, setLayoutItems] = useState(layout.items);
@@ -133,6 +130,7 @@ export default function Landing({
                     success: boolean;
                     pendingTransactions: PendingTransactionResponseItem[];
                 };
+                console.log(data.pendingTransactions);
                 if (data.success && data.pendingTransactions.length > 0) {
                     // Set pending transactions
                     setPendingTransactions(data.pendingTransactions);
@@ -167,6 +165,7 @@ export default function Landing({
                 clientKey = response.data.client_key;
                 isProduction = response.data.is_production;
             } catch (error) {
+                if (paymentGateway !== 'midtrans') return;
                 console.error('Failed to fetch client key:', error);
                 showErrorRef.current(
                     'Failed to fetch client key. Please try again later.',
@@ -175,6 +174,7 @@ export default function Landing({
             }
 
             if (!clientKey) {
+                if (paymentGateway !== 'midtrans') return;
                 showErrorRef.current(
                     'System payment is not yet activated. Please contact admin.',
                 );
@@ -204,7 +204,7 @@ export default function Landing({
             document.head.appendChild(snapScript);
         };
 
-        if (paymentGateway === 'midtrans') fetchAndInitializeSnap();
+        fetchAndInitializeSnap();
     }, [paymentGateway]); // Only run once when the component mounts
 
     const createCallbacks = (): MidtransCallbacks => {
@@ -234,6 +234,7 @@ export default function Landing({
     const resumePayment = async (accessor: string, payment_gateway: string) => {
         showSuccess('Preparing your payment...');
 
+        console.log(accessor, payment_gateway);
         try {
             switch (payment_gateway) {
                 case 'midtrans':
@@ -312,8 +313,6 @@ export default function Landing({
                     data: updated_tickets,
                 });
 
-                console.log(message);
-
                 Mqttclient.publish(
                     'novatix/midtrans/defaultcode',
                     message,
@@ -322,7 +321,7 @@ export default function Landing({
                         if (err) {
                             console.error('MQTT Publish Error:', err);
                         } else {
-                            console.log('MQTT Message Sent:', message);
+                            // console.log('MQTT Message Sent:', message);
                         }
                     },
                 );
@@ -553,6 +552,7 @@ export default function Landing({
     if (error) {
         return (
             <AuthenticatedLayout
+                appName={appName}
                 client={client}
                 props={props}
                 userEndSessionDatetime={userEndSessionDatetime}
@@ -581,6 +581,7 @@ export default function Landing({
 
     return (
         <AuthenticatedLayout
+            appName={appName}
             client={client}
             props={props}
             userEndSessionDatetime={userEndSessionDatetime}

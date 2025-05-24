@@ -9,6 +9,7 @@ import {
 } from './privacypolicycontent';
 
 interface Props {
+    appName: string;
     client: string;
     props: EventProps;
     event?: {
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function PrivacyPolicy({
+    appName,
     client,
     props,
     // event,
@@ -311,7 +313,11 @@ export default function PrivacyPolicy({
 
     if (user)
         return (
-            <AuthenticatedLayout client={client} props={props}>
+            <AuthenticatedLayout
+                appName={appName}
+                client={client}
+                props={props}
+            >
                 {content}
             </AuthenticatedLayout>
         );
