@@ -15,7 +15,7 @@ class ValidateMainDomain
         $currentDomain = $request->getHost();
 
         // Pastikan auth.google dan auth.google-authentication bisa diakses
-        if (in_array($request->route()->getName(), ['auth.google', 'auth.google-authentication', 'privacy_policy', 'terms_conditions'])) {
+        if (in_array($request->route()->getName(), ['auth.google', 'auth.google-authentication', 'privacy_policy', 'terms_conditions', 'home'])) {
             return $next($request);
         }
 

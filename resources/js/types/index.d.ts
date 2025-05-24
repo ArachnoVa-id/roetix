@@ -1,3 +1,7 @@
+import { EventProps } from '@/types/front-end'; // Assuming this path is correct
+import { PageProps as InertiaPageProps } from '@inertiajs/core';
+import { Config } from 'ziggy-js';
+
 export interface User {
     id: number;
     first_name: string;
@@ -11,7 +15,7 @@ export interface User {
 export interface ContactInfo {
     nickname?: string;
     fullname?: string;
-    avatar?: string;
+    avatar?: string | null; // Accepts string or null
     phone_number?: string;
     email?: string;
     whatsapp_number?: string;
@@ -21,10 +25,32 @@ export interface ContactInfo {
     address?: string;
 }
 
-export type PageProps<
-    T extends Record<string, unknown> = Record<string, unknown>,
-> = T & {
-    auth: {
-        user: User;
-    };
-};
+export interface EventContext {
+    id: number;
+    name: string;
+    // Add other event properties if passed from Laravel
+}
+
+declare module '@inertiajs/core' {
+    interface PageProps extends InertiaPageProps {
+        appName: string;
+        auth: {
+            user: User;
+        };
+        event?: EventContext; // Optional event context
+        props: EventProps; // Your event-specific styling/logo props
+        client: string; // The client subdomain
+        userEndSessionDatetime?: string; // Optional countdown
+        ziggy: Config; // Assuming Ziggy is used
+        // Add any other top-level props you pass from Laravel
+    }
+}
+
+declare global {
+    interface Window {
+        Laravel: {
+            csrfToken: string;
+        };
+        route: (name: string, params?: Record<string, unknown>) => string;
+    }
+}

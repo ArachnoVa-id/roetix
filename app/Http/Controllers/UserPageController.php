@@ -52,7 +52,7 @@ class UserPageController extends Controller
             $layout = [
                 'totalRows' => count(array_unique($seats->pluck('row')->toArray())),
                 'totalColumns' => $seats->max('column'),
-                'items' => $seats->map(function ($seat) use ($ticketsBySeatId) {
+                'items' => $seats->map(function ($seat) use ($ticketsBySeatId, $event) {
                     $ticket = $ticketsBySeatId->get($seat->id);
 
                     if ($ticket) {
@@ -150,6 +150,7 @@ class UserPageController extends Controller
             }
 
             $content = [
+                'appName' => config('app.name'),
                 'client' => $client,
                 'layout' => $layout,
                 'event' => [
@@ -168,6 +169,7 @@ class UserPageController extends Controller
                 'props' => $props->getSecure(),
                 'ownedTicketCount' => $ownedTicketCount,
                 'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_end_time,
+                'paymentGateway' => $event->eventVariables->payment_gateway,
             ];
 
             return Inertia::render('User/Landing', $content);
@@ -246,6 +248,7 @@ class UserPageController extends Controller
                 $ticketStatus = $ticket->ticket_order_status ?? TicketOrderStatus::ENABLED->value;
 
                 return [
+                    'appName' => config('app.name'),
                     'id' => $ticket->id,
                     'type' => $typeName,
                     'code' => $ticket->ticket_code,
@@ -300,6 +303,7 @@ class UserPageController extends Controller
             $dbContent = $props->privacy_policy ?? null;
 
             return Inertia::render('Legality/privacypolicy/PrivacyPolicy', [
+                'appName' => config('app.name'),
                 'client' => $client,
                 'props' => $props->getSecure(),
                 'event' => [
@@ -329,6 +333,7 @@ class UserPageController extends Controller
             $dbContent = $props->terms_and_conditions ?? null;
 
             return Inertia::render('Legality/termcondition/TermCondition', [
+                'appName' => config('app.name'),
                 'client' => $client,
                 'props' => $props->getSecure(),
                 'event' => [
@@ -405,5 +410,10 @@ class UserPageController extends Controller
 
         // If the event is not locked or password is not required, proceed
         return Inertia::location(route('client.home', ['client' => $client]));
+    }
+
+    public function roetixLanding(Request $request)
+    {
+        return Inertia::render('Roetix/RoetixLanding');
     }
 }

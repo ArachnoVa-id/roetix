@@ -195,7 +195,25 @@ class EditEvent extends EditRecord
             $this->data['privacy_policy'] = Purifier::clean($this->data['privacy_policy'] ?? '');
 
             // Encrypt sensitive fields
-            foreach (['midtrans_client_key', 'midtrans_server_key', 'midtrans_client_key_sb', 'midtrans_server_key_sb'] as $keyField) {
+            foreach (
+                [
+                    'midtrans_client_key',
+                    'midtrans_server_key',
+                    'midtrans_client_key_sb',
+                    'midtrans_server_key_sb',
+                    'faspay_merchant_name',
+                    'faspay_merchant_id',
+                    'faspay_user_id',
+                    'faspay_password',
+                    'faspay_signature',
+                    'tripay_api_key_dev',
+                    'tripay_private_key_dev',
+                    'tripay_api_key_prod',
+                    'tripay_private_key_prod',
+                    'tripay_merchant_code_dev',
+                    'tripay_merchant_code_prod',
+                ] as $keyField
+            ) {
                 if (!empty($this->data[$keyField])) {
                     $this->data[$keyField] = Crypt::encryptString($this->data[$keyField]);
                 }

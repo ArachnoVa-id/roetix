@@ -1,15 +1,17 @@
 <?php
 
+use Inertia\Inertia;
+use Illuminate\Support\Str;
+use App\Models\EventVariables;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SeatController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
+use App\Http\Controllers\TicketScanController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\TicketController;
-use App\Models\EventVariables;
-use Inertia\Inertia;
 
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
@@ -27,7 +29,16 @@ Route::domain(config('app.domain'))
         });
 
         // Redirect Home to Tenant Dashboard
-        Route::get('/', function () {})->name('home');
+        if (config('app.name') !== 'NovaTix') {
+            Route::get('/', [
+                UserPageController::class,
+                Str::lower(config('app.name')) . 'Landing'
+
+            ])->name('home');
+        } else
+            Route::get('/', function () {
+                return redirect()->route('login');
+            });
 
         // Privacy Policy and Terms & Conditions pages
         Route::get('/privacy-policy', function () {
@@ -122,6 +133,19 @@ Route::domain('{client}.' . config('app.domain'))
             Route::middleware('auth')->group(function () {
                 Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
                     ->name('client.my_tickets');
+
+
+                Route::controller(TicketScanController::class)->group(function () {
+                    // Route to display the scanning page (Inertia render)
+                    Route::get('/events/{event_slug}/scan', 'show')
+                        ->name('client.events.scan.show');
+
+                    Route::post('/events/{event_slug}/scan', 'scan')
+                        ->name('client.events.scan.store');
+
+                    // (If you still have it, the selectEventForScan route)
+                    // Route::get('/scan-events', 'selectEventForScan')->name('client.scan.select-event');
+                });
 
                 Route::prefix('api')->group(function () {
                     // Use a simple GET route with no path parameters

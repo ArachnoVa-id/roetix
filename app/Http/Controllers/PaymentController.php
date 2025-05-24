@@ -2,30 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\OrderStatus;
-use App\Enums\OrderType;
-use App\Enums\TicketOrderStatus;
-use App\Enums\TicketStatus;
-use App\Events\TicketPurchased;
-use App\Exports\OrdersExport;
-use App\Models\Event;
-use App\Models\Order;
+use Midtrans\Snap;
 use App\Models\Seat;
 use App\Models\Team;
-use App\Models\Ticket;
-use App\Models\TicketOrder;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
-use Midtrans\Snap;
+use App\Models\Event;
+use App\Models\Order;
+use App\Models\Ticket;
+use App\Enums\OrderType;
+use App\Enums\OrderStatus;
+use App\Enums\TicketStatus;
+use App\Models\TicketOrder;
+use Illuminate\Support\Str;
+use App\Models\DevNoSQLData;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Auth;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Enums\PaymentGateway;
+use App\Exports\OrdersExport;
 use PhpMqtt\Client\MqttClient;
-use PhpMqtt\Client\ConnectionSettings;
+use App\Enums\TicketOrderStatus;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
+use PhpMqtt\Client\ConnectionSettings;
+use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
 {
@@ -35,6 +39,15 @@ class PaymentController extends Controller
     // disini nanti taro eventnya
     public function charge(Request $request, string $client = "")
     {
+        // Validate
+        $request->validate([
+            'email' => 'required|email',
+            'amount' => 'required|numeric|min:0',
+            'grouped_items' => 'required|array',
+            'tax_amount' => 'numeric|nullable',
+            'total_with_tax' => 'numeric|nullable',
+        ]);
+
         $lock = Cache::lock('seat_lock_user_' . Auth::id(), 10);
 
         if (! $lock->get()) {
@@ -164,6 +177,7 @@ class PaymentController extends Controller
             $orderCode = Order::keyGen(OrderType::AUTO, $event);
 
             $order = Order::create([
+                'payment_gateway' => $event->eventVariables->payment_gateway,
                 'order_code' => $orderCode,
                 'event_id' => $event->id,
                 'user_id' => Auth::id(),
@@ -196,40 +210,89 @@ class PaymentController extends Controller
                 ];
             }
 
-            $snapToken = null;
+            $accessor = null;
+            // Initiate pgs if totalWithTax is not null
             if ($totalWithTax) {
-                $snapToken = $this->midtransCharge(
-                    $request,
-                    $orderCode,
-                    $totalWithTax,
-                    $itemDetails,
-                    $event
-                );
+                switch ($event->eventVariables->payment_gateway) {
+                    case PaymentGateway::MIDTRANS->value:
+                        try {
+                            $accessor = $this->midtransCharge(
+                                $request,
+                                $orderCode,
+                                $totalWithTax,
+                                $itemDetails,
+                                $event
+                            );
 
-                if (! $snapToken) {
-                    DB::rollBack();
-                    throw new \Exception('Failed to get Snap token');
+                            if (! $accessor) {
+                                throw new \Exception('Failed to get Snap token');
+                            }
+                        } catch (\Exception $e) {
+                            DB::rollBack();
+                            throw new \Exception('Failed to process Midtrans charge: ' . $e->getMessage());
+                        }
+                        break;
+
+                    case PaymentGateway::FASPAY->value:
+                        try {
+                            $accessor = $this->faspayCharge(
+                                $request,
+                                $orderCode,
+                                $totalWithTax,
+                                $itemDetails,
+                                $event
+                            );
+
+                            if (! $accessor) {
+                                throw new \Exception('Failed to get Faspay token');
+                            }
+                        } catch (\Exception $e) {
+                            DB::rollBack();
+                            throw new \Exception('Failed to process Faspay charge: ' . $e->getMessage());
+                        }
+                        break;
+
+                    case PaymentGateway::TRIPAY->value:
+                        try {
+                            $accessor = $this->tripayCharge(
+                                $request,
+                                $orderCode,
+                                $totalWithTax,
+                                $itemDetails,
+                                $event
+                            );
+
+                            if (! $accessor) {
+                                throw new \Exception('Failed to get Tripay token');
+                            }
+                        } catch (\Exception $e) {
+                            DB::rollBack();
+                            throw new \Exception('Failed to process Tripay charge: ' . $e->getMessage());
+                        }
+                        break;
+
+                    default:
+                        DB::rollBack();
+                        throw new \Exception('Invalid payment gateway');
                 }
             } else {
                 // Handle free order, auto complete
                 $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
-                $snapToken = 'free';
+                $accessor = 'free';
             }
 
-            $order->update(['snap_token' => $snapToken]);
+            $order->update(['accessor' => $accessor]);
 
             DB::commit();
 
             return response()->json([
-                'snap_token' => $snapToken,
+                'accessor' => $accessor,
                 'transaction_id' => $orderCode,
                 'updated_tickets' => $updatedTickets
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            preg_match('/"error_messages":\["(.*?)"/', $e->getMessage(), $matches);
-            $firstErrorMessage = $matches[1] ?? null;
-            return response()->json(['message' => 'System failed to process payment! ' . $firstErrorMessage . '.'], 500);
+            return response()->json(['message' => 'System failed to process payment! ' . $e->getMessage() . '.'], 500);
         } finally {
             optional($lock)->release();
         }
@@ -242,12 +305,20 @@ class PaymentController extends Controller
         array $itemDetails,
         Event $event
     ) {
-        Config::$serverKey = $event->eventVariables->getKey('server');
+        if ($event->eventVariables->midtrans_use_novatix) {
+            if ($event->eventVariables->midtrans_is_production) {
+                Config::$serverKey = config('midtrans.server_key');
+            } else {
+                Config::$serverKey = config('midtrans.server_key_sb');
+            }
+        } else {
+            Config::$serverKey = $event->eventVariables->getKey('server');
+        }
         Config::$isProduction = $event->eventVariables->midtrans_is_production;
         Config::$isSanitized = config('midtrans.is_sanitized', true);
         Config::$is3ds = config('midtrans.is_3ds', true);
 
-        $snapToken = Snap::getSnapToken([
+        $accessor = Snap::getSnapToken([
             'transaction_details' => [
                 'order_id' => $orderCode,
                 'gross_amount' => $totalWithTax
@@ -257,12 +328,233 @@ class PaymentController extends Controller
             'item_details' => $itemDetails,
         ]);
 
-        if (! $snapToken) {
+        if (! $accessor) {
             DB::rollBack();
             throw new \Exception('Failed to get Snap token');
         }
 
-        return $snapToken;
+        DevNoSQLData::create([
+            'collection' => 'midtrans_orders',
+            'data' => [
+                'order_code' => $orderCode,
+                'event_id' => $event->id,
+                'user_id' => Auth::id(),
+                'team_id' => $event->team_id,
+                'total_price' => $totalWithTax,
+                'status' => OrderStatus::PENDING,
+                'expired_at' => now()->addMinutes(10),
+                'payment_gateway' => $event->eventVariables->payment_gateway,
+                'accessor' => $accessor,
+            ],
+        ]);
+
+        return $accessor;
+    }
+
+    public function faspayCharge(
+        Request $request,
+        string $orderCode,
+        float $totalWithTax,
+        array $itemDetails,
+        Event $event
+    ) {
+        $variables = $event->eventVariables;
+
+        $faspay_baseUrl = $variables->faspay_is_production ? 'https://debit.faspay.co.id' : 'https://debit-sandbox.faspay.co.id';
+        $endpoint = $faspay_baseUrl . '/cvr/300011/10';
+
+        if ($variables->faspay_use_novatix) {
+            $merchantId = config('faspay.merchant_id');
+            $merchantName = config('faspay.merchant_name');
+            $userId = config('faspay.user_id');
+            $password = config('faspay.password');
+        } else {
+            $merchantId = Crypt::decryptString($variables->faspay_merchant_id);
+            $merchantName = Crypt::decryptString($variables->faspay_merchant_name);
+            $userId = Crypt::decryptString($variables->faspay_user_id);
+            $password = Crypt::decryptString($variables->faspay_password);
+        }
+
+        $signature = sha1(md5($userId . $password . $orderCode));
+
+        $now = now();
+        $billDate = $now->format('Y-m-d H:i:s');
+        $billExpired = $now->addMinutes(10)->format('Y-m-d H:i:s');
+
+        $payload = [
+            "request" => "Post Data Transaction",
+            "merchant_id" => $merchantId,
+            "merchant" => $merchantName,
+            "bill_no" => $orderCode,
+            "bill_reff" => $orderCode,
+            "bill_date" => $billDate,
+            "bill_expired" => $billExpired,
+            "bill_desc" => "Payment #$orderCode",
+            "bill_currency" => "IDR",
+            "bill_gross" => 0,
+            "bill_miscfee" => 0,
+            "bill_total" => (int) $totalWithTax * 100,
+            "cust_no" => $request->user()->id ?? '0',
+            "cust_name" => $request->user()->name ?? 'Guest',
+            "payment_channel" => "836", // Paydia QRIS
+            "pay_type" => "1",
+            "bank_userid" => "",
+            "msisdn" => $request->phone ?? '',
+            "email" => $request->email ?? '',
+            "terminal" => "10",
+
+            "billing_name" => '',
+            "billing_lastname" => '',
+            "billing_address" => '',
+            "billing_address_city" => "",
+            "billing_address_region" => "",
+            "billing_address_state" => "",
+            "billing_address_poscode" => "",
+            "billing_msisdn" => "",
+            "billing_address_country_code" => "ID",
+
+            "receiver_name_for_shipping" => '',
+            "shipping_lastname" => "",
+            "shipping_address" => '',
+            "shipping_address_city" => "",
+            "shipping_address_region" => "",
+            "shipping_address_state" => "",
+            "shipping_address_poscode" => "",
+            "shipping_msisdn" => "",
+            "shipping_address_country_code" => "ID",
+
+            "item" => collect($itemDetails)->map(function ($item) {
+                return [
+                    "product" => $item['name'],
+                    "qty" => (string) $item['quantity'],
+                    "amount" => (string) $item['price'] . '00',
+                ];
+            })->values()->toArray(),
+
+            "reserve1" => "",
+            "reserve2" => "",
+            "signature" => $signature,
+        ];
+
+        $response = Http::post($endpoint, $payload);
+
+        if (! $response->ok()) {
+            throw new \Exception("Faspay charge failed: " . $response->json());
+        }
+
+        $returnData = [
+            'order_code' => $orderCode,
+            'event_id' => $event->id,
+            'user_id' => Auth::id(),
+            'team_id' => $event->team_id,
+            'total_price' => $totalWithTax,
+            'status' => OrderStatus::PENDING,
+            'expired_at' => now()->addMinutes(10),
+            'payment_gateway' => $variables->payment_gateway,
+        ];
+
+        $responseData = $response->json();
+
+        $returnData = array_merge($returnData, $responseData, ['signature' => $signature]);
+
+        DevNoSQLData::create([
+            'collection' => 'faspay_orders',
+            'data' => $returnData,
+        ]);
+
+
+        return $responseData['redirect_url'] ?? null;
+    }
+
+    public function tripayCharge(
+        Request $request,
+        string $orderCode,
+        float $totalWithTax,
+        array $itemDetails,
+        Event $event
+    ) {
+        $variables = $event->eventVariables;
+
+        // Select endpoint
+        $endpoint = $variables->tripay_is_production ? 'https://tripay.co.id/api/open-payment/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+        // Select keys
+        if ($variables->tripay_use_novatix) {
+            if ($variables->tripay_is_production) {
+                $apiKey = config('tripay.api_key');
+                $privateKey = config('tripay.private_key');
+                $merchantCode = config('tripay.merchant_code');
+            } else {
+                $apiKey = config('tripay.api_key_sb');
+                $privateKey = config('tripay.private_key_sb');
+                $merchantCode = config('tripay.merchant_code_sb');
+            }
+        } else {
+            if ($variables->tripay_is_production) {
+                $apiKey = Crypt::decryptString($variables->tripay_api_key_prod);
+                $privateKey = Crypt::decryptString($variables->tripay_private_key_prod);
+                $merchantCode = Crypt::decryptString($variables->tripay_merchant_code_prod);
+            } else {
+                $apiKey = Crypt::decryptString($variables->tripay_api_key_dev);
+                $privateKey = Crypt::decryptString($variables->tripay_private_key_dev);
+                $merchantCode = Crypt::decryptString($variables->tripay_merchant_code_dev);
+            }
+        }
+
+        // Generate signature
+        $customer = $request->user();
+        $timestamp = now()->addMinutes(10)->timestamp;
+        $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
+
+        // Construct payload
+        $payload = [
+            "method" => "QRISC",
+            "merchant_ref" => $orderCode,
+            "amount" => (int) $totalWithTax,
+            "customer_name" => $customer->name ?? 'Guest',
+            "customer_email" => $customer->email ?? '',
+            "customer_phone" => $request->phone ?? '',
+            "order_items" => collect($itemDetails)->map(function ($item) {
+                return [
+                    "sku" => $item['sku'] ?? Str::slug($item['name']),
+                    "name" => $item['name'],
+                    "price" => (int) $item['price'],
+                    "quantity" => (int) $item['quantity'],
+                    "product_url" => $item['product_url'] ?? null,
+                    "image_url" => $item['image_url'] ?? null,
+                ];
+            })->values()->toArray(),
+            "return_url" => route('payment.tripayReturn'),
+            "expired_time" => $timestamp,
+            "signature" => $signature,
+        ];
+
+        // Send request
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+        ])->post($endpoint, $payload);
+
+        if (! $response->ok()) {
+            throw new \Exception("Tripay charge failed: " . $response->json()['message']);
+        }
+
+        $responseData = $response->json()['data'];
+        // Store transaction
+        DevNoSQLData::create([
+            'collection' => 'tripay_orders',
+            'data' => array_merge([
+                'order_code' => $orderCode,
+                'event_id' => $event->id,
+                'user_id' => Auth::id(),
+                'team_id' => $event->team_id,
+                'total_price' => $totalWithTax,
+                'status' => OrderStatus::PENDING,
+                'expired_at' => now()->addMinutes(10),
+                'payment_gateway' => $variables->payment_gateway,
+            ], $responseData),
+        ]);
+
+        return $responseData['checkout_url'] ?? null;
     }
 
     /**
@@ -272,6 +564,20 @@ class PaymentController extends Controller
     {
         $data = $request->all();
         $identifier = $data['order_id'] ?? null;
+
+        // Append the origin ip (host) of the request to data
+        $data['origin_ip'] = $request->ip();
+
+        // Log the callback data
+        DevNoSQLData::create([
+            'collection' => 'midtrans_callbacks',
+            'data' => $data,
+        ]);
+
+        // // Only 172.68.164.43 (cloudflare midtrans)
+        // if ($request->ip() != '172.68.164.43') {
+        //     return response()->json(['error' => 'Forbidden request origin'], 403);
+        // }
 
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
@@ -310,99 +616,139 @@ class PaymentController extends Controller
         }
     }
 
-    /**
-     * Handle Faspay payment callbacks
-     */
-    // public function handleFaspayCallback(Request $request)
-    // {
-    //     $data = $request->all();
-
-    //     $validator = Validator::make($data, [
-    //         'trx_id' => 'required|string|max:16',
-    //         'merchant_id' => 'required|numeric',
-    //         'merchant' => 'required|string|max:32',
-    //         'bill_no' => 'required|string|max:32',
-    //         'payment_reff' => 'nullable|string|max:32',
-    //         'payment_date' => 'required|date_format:Y-m-d H:i:s',
-    //         'payment_status_code' => 'required|in:0,1,2,3,4,5,7,8,9',
-    //         'payment_status_desc' => 'required|string|max:32',
-    //         'bill_total' => 'required|numeric',
-    //         'payment_total' => 'required|numeric',
-    //         'payment_channel_uid' => 'required|numeric',
-    //         'payment_channel' => 'required|string|max:32',
-    //         'signature' => 'required|string',
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json(['error' => 'Invalid input', 'details' => $validator->errors()], 400);
-    //     }
-
-    //     // Example: Credentials used to compute signature
-    //     $userId = config('faspay.user_id');
-    //     $password = config('faspay.password');
-    //     $expectedSignature = sha1(md5($userId . $password . $data['bill_no'] . $data['payment_status_code']));
-
-    //     if ($data['signature'] !== $expectedSignature) {
-    //         return response()->json(['error' => 'Invalid signature'], 403);
-    //     }
-
-    //     DB::beginTransaction();
-    //     try {
-    //         // Example: Find the corresponding order
-    //         $order = Order::where('bill_no', $data['bill_no'])->first();
-
-    //         if (!$order) {
-    //             return response()->json(['error' => 'Order not found'], 404);
-    //         }
-
-    //         // Map status code to your internal status enum
-    //         $statusMap = [
-    //             '0' => OrderStatus::UNPROCESSED,
-    //             '1' => OrderStatus::PROCESSING,
-    //             '2' => OrderStatus::COMPLETED,
-    //             '3' => OrderStatus::FAILED,
-    //             '4' => OrderStatus::REVERSED,
-    //             '5' => OrderStatus::NOT_FOUND,
-    //             '7' => OrderStatus::EXPIRED,
-    //             '8' => OrderStatus::CANCELLED,
-    //             '9' => OrderStatus::UNKNOWN,
-    //         ];
-
-    //         $newStatus = $statusMap[$data['payment_status_code']] ?? OrderStatus::UNKNOWN;
-
-    //         // Update order
-    //         $order->update([
-    //             'status' => $newStatus->value,
-    //             'payment_reference' => $data['payment_reff'] ?? null,
-    //             'paid_at' => $data['payment_date'],
-    //             'payment_channel' => $data['payment_channel'],
-    //             'payment_status_desc' => $data['payment_status_desc'],
-    //             'payment_total' => $data['payment_total'],
-    //         ]);
-
-    //         DB::commit();
-    //         return response()->json(['message' => 'Payment callback processed']);
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         Log::error('Faspay callback failed: ' . $e->getMessage());
-    //         return response()->json(['error' => 'Internal server error'], 500);
-    //     }
-    // }
-
     public function faspayCallback(Request $request)
     {
         $data = $request->all();
+        $identifier = $data['bill_no'] ?? null;
 
-        return response()->json([
-            'response'       => 'Payment Notification',
-            'trx_id'         => $data['trx_id'] ?? null,
-            'merchant_id'    => $data['merchant_id'] ?? null,
-            'merchant'       => $data['merchant'] ?? null,
-            'bill_no'        => $data['bill_no'] ?? null,
-            'response_code'  => '00',
-            'response_desc'  => 'Success',
-            'response_date'  => now()->format('Y-m-d H:i:s'),
+        // Append the origin ip (host) of the request to data
+        $data['origin_ip'] = $request->ip();
+
+        // Log the callback data
+        DevNoSQLData::create([
+            'collection' => 'faspay_callbacks',
+            'data' => $data,
         ]);
+
+        if (!isset($identifier, $data['payment_status_code'])) {
+            return response()->json(['error' => 'Invalid callback data'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Process the callback based on transaction status
+            switch ($data['payment_status_code']) {
+                case '2':
+                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    break;
+
+                case '1':
+                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    break;
+
+                case '3':
+                case '4':
+                case '5':
+                case '7':
+                case '8':
+                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    break;
+                default:
+                    throw new \Exception('Invalid status');
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Callback processed successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to process callback'], 500);
+        }
+    }
+
+    public function tripayCallback(Request $request)
+    {
+        $data = $request->all();
+        $identifier = $data['merchant_ref'] ?? null;
+
+        // Append the origin ip (host) of the request to data
+        $data['origin_ip'] = $request->ip();
+
+        // Log the callback data
+        DevNoSQLData::create([
+            'collection' => 'tripay_callbacks',
+            'data' => $data,
+        ]);
+
+        // Only accept from 162.158.189.25 (cloudflare tripay)
+        // if ($request->ip() != '162.158.189.25') {
+        //     return response()->json(['error' => 'Forbidden request origin'], 403);
+        // }
+
+        if (!isset($identifier, $data['status'])) {
+            return response()->json(['error' => 'Invalid callback data'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Process the callback based on transaction status
+            switch ($data['status']) {
+                case 'PAID':
+                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    break;
+
+                case 'UNPAID':
+                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    break;
+
+                case 'EXPIRED':
+                case 'REFUND':
+                case 'FAILED':
+                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    break;
+                default:
+                    throw new \Exception('Invalid status');
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Callback processed successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to process callback'], 500);
+        }
+    }
+
+    public function midtransReturn(Request $request)
+    {
+        // Retrieve all request data
+        $data = $request->all();
+
+        // Validate required parameters
+        $validator = Validator::make($data, [
+            'order_id' => 'required|string|max:16',
+            'status_code' => 'required|string|max:32',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'error' => 'Callback return is not valid'], 404);
+        }
+
+        // Get orders from order_code => order_code and read the client slug
+        $order = Order::where('order_code', $data['order_id'])->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'error' => 'Order not found'], 404);
+        }
+
+        // Get event
+        $event = Event::find($order->event_id);
+        if (!$event) {
+            return response()->json(['success' => false, 'error' => 'Event not found'], 404);
+        }
+
+        // Redirect to my_tickets
+        return redirect()->route(
+            'client.my_tickets',
+            ['client' => $event->slug,]
+        );
     }
 
     public function faspayReturn(Request $request)
@@ -411,58 +757,72 @@ class PaymentController extends Controller
         $data = $request->all();
 
         // Validate required parameters
-        $requiredParams = [
-            'merchant_id',
-            'bill_no',
-            'trx_id',
-            'bill_reff',
-            'payment_date',
-            'bank_user_name',
-            'status',
-            'signature'
-        ];
+        $validator = Validator::make($data, [
+            'trx_id'         => 'required|string|max:16',
+            'merchant_id'    => 'required|numeric',
+            'bill_no'        => 'required|string|max:32',
+            'bill_reff'      => 'nullable|string|max:32',
+            'payment_date'   => 'required|date_format:Y-m-d H:i:s',
+            'bank_user_name' => 'required|string|max:32',
+            'status'         => 'required|string|max:32',
+            'signature'      => 'required|string',
+        ]);
 
-        foreach ($requiredParams as $param) {
-            if (!isset($data[$param])) {
-                return response()->json([
-                    'response'       => 'Error',
-                    'response_code'  => '01',
-                    'response_desc'  => "Missing parameter: $param",
-                    'response_date'  => now()->format('Y-m-d H:i:s'),
-                ], 400);
-            }
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'error' => 'Callback return is not valid'], 404);
         }
 
-        // Here you can add signature verification logic if needed
+        // Get orders from bill_no => order_code and read the client slug
+        $order = Order::where('order_code', $data['bill_no'])->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'error' => 'Order not found'], 404);
+        }
 
-        // Abort for now
-        abort(403, "
-            This is a callback test. Your include such information:
-            trx_id: {$data['trx_id']}
-            merchant_id: {$data['merchant_id']}
-            bill_no: {$data['bill_no']}
-            bill_reff: {$data['bill_reff']}
-            payment_date: {$data['payment_date']}
-            bank_user_name: {$data['bank_user_name']}
-            status: {$data['status']}
-            signature: {$data['signature']}
-        ");
+        // Get event
+        $event = Event::find($order->event_id);
+        if (!$event) {
+            return response()->json(['success' => false, 'error' => 'Event not found'], 404);
+        }
 
-        // Redirect to thank you page or any other page
-        return redirect()->route('thankYouPage', [
-            'trx_id'         => $data['trx_id'],
-            'merchant_id'    => $data['merchant_id'],
-            'bill_no'        => $data['bill_no'],
-            'bill_reff'      => $data['bill_reff'],
-            'payment_date'   => $data['payment_date'],
-            'bank_user_name' => $data['bank_user_name'],
-            'status'         => $data['status'],
-            'signature'      => $data['signature'],
-        ])->with([
-            'response_code'  => '00',
-            'response_desc'  => 'Success',
-            'response_date'  => now()->format('Y-m-d H:i:s'),
+        // Redirect to my_tickets
+        return redirect()->route(
+            'client.my_tickets',
+            ['client' => $event->slug,]
+        );
+    }
+
+    public function tripayReturn(Request $request)
+    {
+        // Retrieve all request data
+        $data = $request->all();
+
+        // Validate required parameters
+        $validator = Validator::make($data, [
+            'tripay_merchant_ref' => 'required|string|max:32',
+            'tripay_reference'    => 'required|string|max:32',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'error' => 'Callback return is not valid'], 404);
+        }
+
+        // Get orders from bill_no => order_code and read the client slug
+        $order = Order::where('order_code', $data['tripay_merchant_ref'])->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'error' => 'Order not found'], 404);
+        }
+
+        // Get event
+        $event = Event::find($order->event_id);
+        if (!$event) {
+            return response()->json(['success' => false, 'error' => 'Event not found'], 404);
+        }
+
+        // Redirect to my_tickets
+        return redirect()->route(
+            'client.my_tickets',
+            ['client' => $event->slug,]
+        );
     }
 
     /**
@@ -534,7 +894,7 @@ class PaymentController extends Controller
 
             $event = Event::where('slug', $client)->first();
             if (!$event) {
-                return response()->json(['error' => 'Event not found'], 404);
+                return response()->json(['success' => false, 'error' => 'Event not found'], 404);
             }
 
             // PERBAIKAN: Gunakan query builder dengan kondisi yang benar
@@ -575,11 +935,12 @@ class PaymentController extends Controller
                 })->filter()->values(); // PERBAIKAN: Filter null values dan reset index array
 
                 $pendingTransactions[] = [
-                    'snap_token' => $order->snap_token,
+                    'accessor' => $order->accessor,
                     'order_id' => $order->id,
                     'order_code' => $order->order_code,
                     'total_price' => $order->total_price,
                     'seats' => $seatsData,
+                    'payment_gateway' => $order->payment_gateway,
                 ];
             }
 

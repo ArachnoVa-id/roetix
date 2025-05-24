@@ -11,6 +11,7 @@ use Filament\Actions;
 use App\Enums\UserRole;
 use Filament\Infolists;
 use App\Enums\EventStatus;
+use App\Enums\PaymentGateway;
 use App\Enums\VenueStatus;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -24,7 +25,6 @@ use App\Filament\Admin\Resources\EventResource\RelationManagers\OrdersRelationMa
 use App\Filament\Admin\Resources\EventResource\RelationManagers\TicketsRelationManager;
 use App\Filament\Components\CustomPagination;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Mews\Purifier\Facades\Purifier;
 
@@ -365,33 +365,100 @@ class EventResource extends Resource
                                     ])->relationship('eventVariables')
                                 ]),
 
-                            Infolists\Components\Tabs\Tab::make('Midtrans')
+                            Infolists\Components\Tabs\Tab::make('Payment Gateway')
                                 ->hidden(!session('auth_user')->isAllowedInRoles([UserRole::ADMIN]))
                                 ->schema([
-                                    Infolists\Components\Group::make([
-                                        Infolists\Components\TextEntry::make('midtrans_client_key_sb')
-                                            ->label('Client Key SB')
-                                            ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+                                    Infolists\Components\TextEntry::make('eventVariables.payment_gateway')
+                                        ->label('Active Payment Gateway')
+                                        ->formatStateUsing(fn($state) => PaymentGateway::tryFrom($state)->getLabel())
+                                        ->color(fn($state) => PaymentGateway::tryFrom($state)->getColor())
+                                        ->icon(fn($state) => PaymentGateway::tryFrom($state)->getIcon())
+                                        ->badge()
+                                        ->columns(2),
+                                    Infolists\Components\Section::make('Midtrans')
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('midtrans_client_key_sb')
+                                                ->label('Client Key SB')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
-                                        Infolists\Components\TextEntry::make('midtrans_server_key_sb')
-                                            ->label('Server Key SB')
-                                            ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
-                                        Infolists\Components\TextEntry::make('midtrans_client_key')
-                                            ->label('Client Key')
-                                            ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+                                            Infolists\Components\TextEntry::make('midtrans_server_key_sb')
+                                                ->label('Server Key SB')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+                                            Infolists\Components\TextEntry::make('midtrans_client_key')
+                                                ->label('Client Key')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
-                                        Infolists\Components\TextEntry::make('midtrans_server_key')
-                                            ->label('Server Key')
-                                            ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+                                            Infolists\Components\TextEntry::make('midtrans_server_key')
+                                                ->label('Server Key')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
-                                        Infolists\Components\TextEntry::make('midtrans_is_production')
-                                            ->label('Production')
-                                            ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+                                            Infolists\Components\TextEntry::make('midtrans_is_production')
+                                                ->label('Production')
+                                                ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
 
-                                        Infolists\Components\TextEntry::make('midtrans_use_novatix')
-                                            ->label('Using NovaTix Midtrans')
-                                            ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
-                                    ])->relationship('eventVariables')->columns(2)
+                                            Infolists\Components\TextEntry::make('midtrans_use_novatix')
+                                                ->label('Using NovaTix Midtrans')
+                                                ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+                                        ])
+                                        ->relationship('eventVariables')
+                                        ->columns(2),
+                                    Infolists\Components\Section::make('Faspay')
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('faspay_merchant_name')
+                                                ->label('Merchant Name'),
+
+                                            Infolists\Components\TextEntry::make('faspay_merchant_id')
+                                                ->label('Merchant ID'),
+
+                                            Infolists\Components\TextEntry::make('faspay_user_id')
+                                                ->label('User ID'),
+
+                                            Infolists\Components\TextEntry::make('faspay_password')
+                                                ->label('Password'),
+
+                                            Infolists\Components\TextEntry::make('faspay_signature')
+                                                ->label('Signature'),
+
+                                            Infolists\Components\TextEntry::make('faspay_is_production')
+                                                ->label('Production')
+                                                ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+
+                                            Infolists\Components\TextEntry::make('faspay_use_novatix')
+                                                ->label('Using NovaTix Faspay')
+                                                ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+                                        ])
+                                        ->relationship('eventVariables')
+                                        ->columns(2),
+                                    Infolists\Components\Section::make('Tripay')
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('tripay_api_key_dev')
+                                                ->label('API Key Dev'),
+
+                                            Infolists\Components\TextEntry::make('tripay_private_key_dev')
+                                                ->label('Private Key Dev'),
+
+                                            Infolists\Components\TextEntry::make('tripay_api_key_prod')
+                                                ->label('API Key Prod'),
+
+                                            Infolists\Components\TextEntry::make('tripay_private_key_prod')
+                                                ->label('Private Key Prod'),
+
+                                            Infolists\Components\TextEntry::make('tripay_merchant_code_dev')
+                                                ->label('Merchant Code Dev'),
+
+                                            Infolists\Components\TextEntry::make('tripay_merchant_code')
+                                                ->label('Merchant Code Prod'),
+
+                                            Infolists\Components\TextEntry::make('tripay_is_production')
+                                                ->label('Production')
+                                                ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+
+                                            Infolists\Components\TextEntry::make('tripay_use_novatix')
+                                                ->label('Using NovaTix Tripay')
+                                                ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No'),
+                                        ])
+                                        ->relationship('eventVariables')
+                                        ->columns(2),
                                 ]),
                             Infolists\Components\Tabs\Tab::make('Orders')
                                 ->hidden(!$showOrders)
@@ -1637,56 +1704,198 @@ class EventResource extends Resource
                                     $set('privacy_policy', $state);
                                 }),
                         ]),
-                    Forms\Components\Wizard\Step::make('Midtrans')
+                    Forms\Components\Wizard\Step::make('Payment Gateway')
                         ->hidden(!session('auth_user')->isAdmin())
                         ->schema([
-                            Forms\Components\Group::make([
-                                Forms\Components\TextInput::make('midtrans_client_key_sb')
-                                    ->label('Client Key Sandbox')
-                                    ->placeholder('Client Key Sandbox')
-                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
-                                    ->maxLength(65535)
-                                    ->validationAttribute('Client Key Sandbox')
-                                    ->validationMessages([
-                                        'max' => 'Client Key Sandbox must not exceed 65535 characters',
-                                    ]),
-                                Forms\Components\TextInput::make('midtrans_server_key_sb')
-                                    ->label('Server Key Sandbox')
-                                    ->placeholder('Server Key Sandbox')
-                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
-                                    ->maxLength(65535)
-                                    ->validationAttribute('Server Key Sandbox')
-                                    ->validationMessages([
-                                        'max' => 'Server Key Sandbox must not exceed 65535 characters',
-                                    ]),
-                                Forms\Components\TextInput::make('midtrans_client_key')
-                                    ->label('Client Key')
-                                    ->placeholder('Client Key')
-                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
-                                    ->maxLength(65535)
-                                    ->validationAttribute('Client Key')
-                                    ->validationMessages([
-                                        'max' => 'Client Key must not exceed 65535 characters',
-                                    ]),
-                                Forms\Components\TextInput::make('midtrans_server_key')
-                                    ->label('Server Key')
-                                    ->placeholder('Server Key')
-                                    ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
-                                    ->maxLength(65535)
-                                    ->validationAttribute('Server Key')
-                                    ->validationMessages([
-                                        'max' => 'Server Key must not exceed 65535 characters',
-                                    ]),
-                                Forms\Components\Toggle::make('midtrans_is_production')
-                                    ->label('Is Production'),
-                                Forms\Components\Toggle::make('midtrans_use_novatix')
-                                    ->label('Use NovaTix Central Midtrans')
-                            ])
+                            Forms\Components\Select::make('payment_gateway')
+                                ->label('Active Payment Gateway')
+                                ->options(PaymentGateway::allOptions())
+                                ->default(PaymentGateway::MIDTRANS->value)
+                                ->required()
+                                ->validationAttribute('Payment Gateway')
+                                ->validationMessages([
+                                    'required' => 'Payment Gateway is required',
+                                ])
+                                ->reactive()
                                 ->columns([
                                     'default' => 1,
                                     'sm' => 1,
                                     'md' => 2,
+                                ]),
+                            Forms\Components\Section::make('Midtrans')
+                                ->hidden(fn(Forms\Get $get) => $get('payment_gateway') != PaymentGateway::MIDTRANS->value)
+                                ->schema([
+                                    Forms\Components\TextInput::make('midtrans_client_key_sb')
+                                        ->label('Client Key Sandbox')
+                                        ->placeholder('Client Key Sandbox')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Client Key Sandbox')
+                                        ->validationMessages([
+                                            'max' => 'Client Key Sandbox must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('midtrans_client_key')
+                                        ->label('Client Key')
+                                        ->placeholder('Client Key')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Client Key')
+                                        ->validationMessages([
+                                            'max' => 'Client Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('midtrans_server_key_sb')
+                                        ->label('Server Key Sandbox')
+                                        ->placeholder('Server Key Sandbox')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Server Key Sandbox')
+                                        ->validationMessages([
+                                            'max' => 'Server Key Sandbox must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('midtrans_server_key')
+                                        ->label('Server Key')
+                                        ->placeholder('Server Key')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Server Key')
+                                        ->validationMessages([
+                                            'max' => 'Server Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\Toggle::make('midtrans_is_production')
+                                        ->label('Is Production'),
+                                    Forms\Components\Toggle::make('midtrans_use_novatix')
+                                        ->label('Use NovaTix Central Midtrans')
                                 ])
+                                ->columns([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ]),
+                            Forms\Components\Section::make('Faspay')
+                                ->hidden(fn(Forms\Get $get) => $get('payment_gateway') != PaymentGateway::FASPAY->value)
+                                ->schema([
+                                    Forms\Components\TextInput::make('faspay_merchant_name')
+                                        ->label('Merchant Key')
+                                        ->placeholder('Merchant Key')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant Name')
+                                        ->validationMessages([
+                                            'max' => 'Merchant Name must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('faspay_merchant_id')
+                                        ->label('Merchant ID')
+                                        ->placeholder('Merchant ID')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant ID')
+                                        ->validationMessages([
+                                            'max' => 'Merchant ID must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('faspay_user_id')
+                                        ->label('Merchant User ID')
+                                        ->placeholder('Merchant User ID')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant User ID')
+                                        ->validationMessages([
+                                            'max' => 'Merchant User ID must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('faspay_password')
+                                        ->label('Merchant Password')
+                                        ->placeholder('Merchant Password')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant Password')
+                                        ->validationMessages([
+                                            'max' => 'Merchant Password must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('faspay_signature')
+                                        ->label('Merchant Signature')
+                                        ->placeholder('Merchant Signature')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant Signature')
+                                        ->validationMessages([
+                                            'max' => 'Merchant Signature must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\Toggle::make('faspay_is_production')
+                                        ->label('Is Production'),
+                                    Forms\Components\Toggle::make('faspay_use_novatix')
+                                        ->label('Use NovaTix Central Faspay'),
+                                ])
+                                ->columns([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ]),
+                            Forms\Components\Section::make('Tripay')
+                                ->hidden(fn(Forms\Get $get) => $get('payment_gateway') != PaymentGateway::TRIPAY->value)
+                                ->schema([
+                                    Forms\Components\TextInput::make('tripay_api_key_dev')
+                                        ->label('API Key Sandbox')
+                                        ->placeholder('API Key Sandbox')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('API Key Sandbox')
+                                        ->validationMessages([
+                                            'max' => 'API Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('tripay_api_key_prod')
+                                        ->label('API Key')
+                                        ->placeholder('API Key')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('API Key')
+                                        ->validationMessages([
+                                            'max' => 'API Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('tripay_private_key_dev')
+                                        ->label('Private Key Sandbox')
+                                        ->placeholder('Private Key Sandbox')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Private Key')
+                                        ->validationMessages([
+                                            'max' => 'Private Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('tripay_private_key_prod')
+                                        ->label('Private Key')
+                                        ->placeholder('Private Key')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Private Key')
+                                        ->validationMessages([
+                                            'max' => 'Private Key must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('tripay_merchant_code_dev')
+                                        ->label('Merchant Code Sandbox')
+                                        ->placeholder('Merchant Code Sandbox')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant Code Sandbox')
+                                        ->validationMessages([
+                                            'max' => 'Merchant Code must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('tripay_merchant_code_prod')
+                                        ->label('Merchant Code')
+                                        ->placeholder('Merchant Code')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant Code')
+                                        ->validationMessages([
+                                            'max' => 'Merchant Code must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\Toggle::make('tripay_is_production')
+                                        ->label('Is Production'),
+                                    Forms\Components\Toggle::make('tripay_use_novatix')
+                                        ->label('Use NovaTix Central Tripay'),
+                                ])
+                                ->columns([
+                                    'default' => 1,
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ]),
                         ])
 
                 ])

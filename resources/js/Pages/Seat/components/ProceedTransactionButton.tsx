@@ -1,3 +1,4 @@
+import Mqttclient from '@/Pages/Seat/components/Mqttclient';
 import {
     MidtransCallbacks,
     PaymentRequestGroupedItems,
@@ -17,6 +18,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     onTransactionStarted,
     toasterFunction,
     snapInitialized,
+    paymentGateway,
 }) => {
     const user = usePage().props?.auth.user;
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -170,9 +172,9 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             );
 
             // Handle the response
-            if (response.data && response.data.snap_token) {
-                const token = response.data.snap_token;
-                if (token === 'free') {
+            if (response.data && response.data.accessor) {
+                const accessor = response.data.accessor;
+                if (accessor === 'free') {
                     toasterFunction.showSuccess(
                         'Payment is free. No payment required.',
                     );
@@ -180,15 +182,42 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     window.location.reload();
                 }
                 // If Midtrans snap.js is loaded
-                else if (window.snap) {
+                else if (window.snap && paymentGateway === 'midtrans') {
                     const callbacks = createCallbacks();
 
+                    // logic publish
+                    const updated_tickets = response.data.updated_tickets;
+                    console.log(updated_tickets);
+
+                    const message = JSON.stringify({
+                        event: 'update_ticket_status',
+                        data: updated_tickets,
+                    });
+
+                    Mqttclient.publish(
+                        'novatix/midtrans/defaultcode',
+                        message,
+                        { qos: 1 },
+                        (err) => {
+                            if (err) {
+                                console.error('MQTT Publish Error:', err);
+                            } else {
+                                console.log('MQTT Message Sent:', message);
+                            }
+                        },
+                    );
+
                     // Open the Midtrans Snap payment page
-                    window.snap.pay(token, callbacks);
+                    window.snap.pay(accessor, callbacks);
 
                     if (onTransactionStarted) {
                         onTransactionStarted(selectedSeats);
                     }
+                } else if (
+                    paymentGateway === 'faspay' ||
+                    paymentGateway === 'tripay'
+                ) {
+                    window.location.href = accessor;
                 } else {
                     toasterFunction.showError(
                         'Payment gateway not loaded. Please refresh the page and try again.',

@@ -14,6 +14,8 @@ export interface BaseItem {
 
 export interface SeatItem extends BaseItem {
     id: string;
+    // ijin nambahin ini soalnya id tuh ga diterima dari backend adanya seat_id
+    seat_id: string;
     seat_number: string;
     status: string;
     ticket_type?: string;
@@ -102,6 +104,7 @@ export interface ProceedTransactionButtonProps {
     onTransactionStarted?: (seats: SeatItem[]) => void;
     toasterFunction: Toaster;
     snapInitialized: boolean;
+    paymentGateway: string;
 }
 
 export interface GroupedItem {
@@ -121,7 +124,7 @@ export interface PaymentRequestPayload {
 }
 
 export interface PaymentResponse {
-    snap_token: string;
+    accessor: string;
     transaction_id: string;
     new_order_id?: string;
 }
@@ -215,11 +218,12 @@ export interface CategoryPrice {
 }
 
 export interface PendingTransactionResponseItem {
-    snap_token: string;
+    accessor: string;
     order_id: string;
     order_code: string;
     total_price: string;
     seats: SeatItem[];
+    payment_gateway: string;
 }
 
 export type SelectionMode = 'SINGLE' | 'MULTIPLE' | 'CATEGORY' | 'DRAG';
@@ -257,6 +261,7 @@ export interface SeatMapDisplayProps {
 }
 
 export interface LandingProps {
+    appName: string;
     client: string;
     layout: Layout;
     event: Event;
@@ -268,4 +273,5 @@ export interface LandingProps {
     props: EventProps;
     ownedTicketCount: number;
     userEndSessionDatetime: string;
+    paymentGateway: string;
 }

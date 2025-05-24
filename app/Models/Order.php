@@ -22,7 +22,7 @@ class Order extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'snap_token',
+        'accessor',
         'order_code',
         'event_id',
         'user_id',
@@ -30,6 +30,7 @@ class Order extends Model
         'order_date',
         'total_price',
         'status',
+        'payment_gateway',
         'expired_at',
     ];
 

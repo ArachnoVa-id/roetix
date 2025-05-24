@@ -266,4 +266,9 @@ class Event extends Model
     {
         return $this->hasMany(Ticket::class, 'event_id', 'id');
     }
+
+    // public function getRouteKeyName()
+    // {
+    //     return 'slug';
+    // }
 }
