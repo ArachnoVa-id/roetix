@@ -1,3 +1,4 @@
+import Mqttclient from '@/Pages/Seat/components/Mqttclient';
 import {
     MidtransCallbacks,
     PaymentRequestGroupedItems,
@@ -183,6 +184,28 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 // If Midtrans snap.js is loaded
                 else if (window.snap && paymentGateway === 'midtrans') {
                     const callbacks = createCallbacks();
+
+                    // logic publish
+                    const updated_tickets = response.data.updated_tickets;
+                    console.log(updated_tickets);
+
+                    const message = JSON.stringify({
+                        event: 'update_ticket_status',
+                        data: updated_tickets,
+                    });
+
+                    Mqttclient.publish(
+                        'novatix/midtrans/defaultcode',
+                        message,
+                        { qos: 1 },
+                        (err) => {
+                            if (err) {
+                                console.error('MQTT Publish Error:', err);
+                            } else {
+                                console.log('MQTT Message Sent:', message);
+                            }
+                        },
+                    );
 
                     // Open the Midtrans Snap payment page
                     window.snap.pay(accessor, callbacks);

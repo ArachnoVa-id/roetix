@@ -12,7 +12,20 @@ import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Mqttclient from '../Seat/components/Mqttclient';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
+
+// interface DataItem {
+//     category: string;
+//     column: number;
+//     id: string;
+//     price: string;
+//     row: string;
+//     seat_number: string;
+//     status: string;
+//     ticket_category_id: string;
+//     ticket_type: string;
+// }
 
 interface TicketUpdate {
     id: string;
@@ -41,6 +54,10 @@ export default function Landing({
     const [pendingTransactions, setPendingTransactions] = useState<
         PendingTransactionResponseItem[]
     >([]);
+
+    useEffect(() => {
+        console.log(layout);
+    });
 
     // usestate untuk layout yang diterima dari mqtt
     const [layoutItems, setLayoutItems] = useState(layout.items);
@@ -277,6 +294,39 @@ export default function Landing({
             });
 
             if (response.data.success) {
+                // logic publish
+                const updated_tickets: { seat_id: string; status: string }[] =
+                    [];
+
+                for (const transaction of pendingTransactions) {
+                    for (const seat of transaction.seats) {
+                        updated_tickets.push({
+                            seat_id: seat.seat_id,
+                            status: 'available',
+                        });
+                    }
+                }
+
+                const message = JSON.stringify({
+                    event: 'update_ticket_status',
+                    data: updated_tickets,
+                });
+
+                console.log(message);
+
+                Mqttclient.publish(
+                    'novatix/midtrans/defaultcode',
+                    message,
+                    { qos: 1 },
+                    (err) => {
+                        if (err) {
+                            console.error('MQTT Publish Error:', err);
+                        } else {
+                            console.log('MQTT Message Sent:', message);
+                        }
+                    },
+                );
+
                 showSuccess('Payment cancelled successfully');
                 window.location.reload();
             } else {
@@ -1203,7 +1253,7 @@ export default function Landing({
                                                             onClick={() =>
                                                                 resumePayment(
                                                                     transaction.accessor,
-                                                                    transaction.payment_gateway
+                                                                    transaction.payment_gateway,
                                                                 )
                                                             }
                                                         >
