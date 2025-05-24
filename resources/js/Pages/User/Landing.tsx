@@ -12,7 +12,20 @@ import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Mqttclient from '../Seat/components/Mqttclient';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
+
+// interface DataItem {
+//     category: string;
+//     column: number;
+//     id: string;
+//     price: string;
+//     row: string;
+//     seat_number: string;
+//     status: string;
+//     ticket_category_id: string;
+//     ticket_type: string;
+// }
 
 interface TicketUpdate {
     id: string;
@@ -34,12 +47,17 @@ export default function Landing({
     props,
     ownedTicketCount,
     userEndSessionDatetime,
+    paymentGateway,
 }: LandingProps) {
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
     const [pendingTransactions, setPendingTransactions] = useState<
         PendingTransactionResponseItem[]
     >([]);
+
+    useEffect(() => {
+        console.log(layout);
+    });
 
     // usestate untuk layout yang diterima dari mqtt
     const [layoutItems, setLayoutItems] = useState(layout.items);
@@ -56,8 +74,6 @@ export default function Landing({
             try {
                 const payload = JSON.parse(message.toString());
                 const updates = payload.data as TicketUpdate[];
-
-                console.log(payload, updates);
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
@@ -132,7 +148,9 @@ export default function Landing({
         fetchPendingTransactions();
     }, [client]);
 
-    const [snapInitialized, setSnapInitialized] = useState<boolean>(false);
+    const [snapInitialized, setSnapInitialized] = useState<boolean>(
+        paymentGateway !== 'midtrans',
+    );
     // Initialize Midtrans Snap on component mount
     const showErrorRef = useRef(showError);
     const showSuccessRef = useRef(showSuccess);
@@ -186,8 +204,8 @@ export default function Landing({
             document.head.appendChild(snapScript);
         };
 
-        fetchAndInitializeSnap();
-    }, []); // Only run once when the component mounts
+        if (paymentGateway === 'midtrans') fetchAndInitializeSnap();
+    }, [paymentGateway]); // Only run once when the component mounts
 
     const createCallbacks = (): MidtransCallbacks => {
         return {
@@ -213,13 +231,22 @@ export default function Landing({
         };
     };
 
-    const resumePayment = async (token: string) => {
-        if (!window.snap) return;
-
+    const resumePayment = async (accessor: string, payment_gateway: string) => {
         showSuccess('Preparing your payment...');
 
         try {
-            window.snap.pay(token, createCallbacks());
+            switch (payment_gateway) {
+                case 'midtrans':
+                    if (!window.snap) return;
+                    window.snap.pay(accessor, createCallbacks());
+                    break;
+                case 'faspay':
+                case 'tripay':
+                    window.location.href = accessor;
+                    break;
+                default:
+                    throw new Error('Unsupported payment gateway');
+            }
         } catch (err) {
             console.error('Failed to resume payment:', err);
 
@@ -267,6 +294,39 @@ export default function Landing({
             });
 
             if (response.data.success) {
+                // logic publish
+                const updated_tickets: { seat_id: string; status: string }[] =
+                    [];
+
+                for (const transaction of pendingTransactions) {
+                    for (const seat of transaction.seats) {
+                        updated_tickets.push({
+                            seat_id: seat.seat_id,
+                            status: 'available',
+                        });
+                    }
+                }
+
+                const message = JSON.stringify({
+                    event: 'update_ticket_status',
+                    data: updated_tickets,
+                });
+
+                console.log(message);
+
+                Mqttclient.publish(
+                    'novatix/midtrans/defaultcode',
+                    message,
+                    { qos: 1 },
+                    (err) => {
+                        if (err) {
+                            console.error('MQTT Publish Error:', err);
+                        } else {
+                            console.log('MQTT Message Sent:', message);
+                        }
+                    },
+                );
+
                 showSuccess('Payment cancelled successfully');
                 window.location.reload();
             } else {
@@ -1192,7 +1252,8 @@ export default function Landing({
                                                             className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
                                                             onClick={() =>
                                                                 resumePayment(
-                                                                    transaction.snap_token,
+                                                                    transaction.accessor,
+                                                                    transaction.payment_gateway,
                                                                 )
                                                             }
                                                         >
@@ -1347,6 +1408,7 @@ export default function Landing({
                                         hideToaster,
                                     }}
                                     snapInitialized={snapInitialized}
+                                    paymentGateway={paymentGateway}
                                 />
                             )}
                     </div>

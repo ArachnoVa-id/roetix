@@ -11,6 +11,24 @@ enum TicketStatus: string implements HasLabel, HasColor
 {
     use BaseEnumTrait;
 
+    // Get by version
+    public static function getByVersion(string $version, EnumVersionType $mode = EnumVersionType::DEFAULT): array|string
+    {
+        return match ($version) {
+            'v1' => match ($mode) {
+                EnumVersionType::ARRAY => [
+                    'available',
+                    'booked',
+                    'reserved',
+                    'in_transaction',
+                ],
+                EnumVersionType::DEFAULT => 'available',
+                default => throw new \InvalidArgumentException("Mode {$mode} not supported."),
+            },
+            default => throw new \InvalidArgumentException("Version {$version} not supported."),
+        };
+    }
+
     case AVAILABLE = 'available';
     case BOOKED = 'booked';
     case RESERVED = 'reserved';

@@ -118,7 +118,7 @@ export default function UpdateContactForm({
                         <TextInput
                             id="avatar"
                             className="mt-1 block w-full"
-                            value={data.avatar}
+                            value={data?.avatar || ''}
                             onChange={(e) => setData('avatar', e.target.value)}
                             autoComplete="avatar"
                             style={{ color: props.text_secondary_color }}

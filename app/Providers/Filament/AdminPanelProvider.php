@@ -6,9 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Team;
 use Filament\Panel;
 use Filament\PanelProvider;
-use App\Filament\Components;
 use App\Models\User;
-use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Auth;
 
 class AdminPanelProvider extends PanelProvider
