@@ -78,6 +78,7 @@ export interface TicketActionEvent extends Event {
 
 // Add additional interfaces for use in the MyTickets component
 export interface MyTicketsPageProps {
+    appName: string;
     client: string;
     props: import('@/types/front-end').EventProps;
     tickets: TicketProps[];

@@ -14,11 +14,12 @@ interface SelectEventPageProps extends PageProps {
 }
 
 const SelectEventPage = () => {
-    const { events, props, client, userEndSessionDatetime } =
+    const { appName, events, props, client, userEndSessionDatetime } =
         usePage<SelectEventPageProps>().props;
 
     return (
         <AuthenticatedLayout
+            appName={appName}
             client={client}
             props={props}
             userEndSessionDatetime={userEndSessionDatetime}

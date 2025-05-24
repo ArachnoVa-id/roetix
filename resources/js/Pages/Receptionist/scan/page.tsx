@@ -63,6 +63,7 @@ interface EventContext {
 // Extending InertiaPageProps to include our custom props
 interface CustomPageProps extends InertiaPageProps {
     // <--- extends InertiaPageProps
+    appName: string;
     event: EventContext;
     props: EventProps; // This likely comes from your EventProps type
     client: string;
@@ -70,7 +71,7 @@ interface CustomPageProps extends InertiaPageProps {
 }
 
 const EventScanTicketPage = () => {
-    const { event, props, client, userEndSessionDatetime } =
+    const { appName, event, props, client, userEndSessionDatetime } =
         usePage<CustomPageProps>().props; // Use CustomPageProps
 
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -273,6 +274,7 @@ const EventScanTicketPage = () => {
 
     return (
         <AuthenticatedLayout
+            appName={appName}
             client={client}
             props={props}
             userEndSessionDatetime={userEndSessionDatetime}

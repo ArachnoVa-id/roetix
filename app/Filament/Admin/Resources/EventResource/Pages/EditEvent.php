@@ -210,7 +210,8 @@ class EditEvent extends EditRecord
                     'tripay_private_key_dev',
                     'tripay_api_key_prod',
                     'tripay_private_key_prod',
-
+                    'tripay_merchant_code_dev',
+                    'tripay_merchant_code_prod',
                 ] as $keyField
             ) {
                 if (!empty($this->data[$keyField])) {
