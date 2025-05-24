@@ -1203,7 +1203,7 @@ export default function Landing({
                                                             onClick={() =>
                                                                 resumePayment(
                                                                     transaction.accessor,
-                                                                    transaction.payment_gateway
+                                                                    transaction.payment_gateway,
                                                                 )
                                                             }
                                                         >
