@@ -152,6 +152,7 @@ class CreateEvent extends CreateRecord
                 'logo' => $data['logo'] ?? '',
                 'logo_alt' => $data['logo_alt'] ?? '',
                 'favicon' => $data['favicon'] ?? '',
+                'contact_person' => $data['contact_person'] ?? 'https://wa.me/6287785917029',
             ];
 
             // Parse all the image based to get values only (because it is in array)

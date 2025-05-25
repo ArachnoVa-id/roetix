@@ -10,6 +10,8 @@ import axios from 'axios';
 import React, { useState } from 'react';
 
 const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
+    callback,
+    disabled,
     client,
     selectedSeats,
     taxAmount,
@@ -174,6 +176,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             // Handle the response
             if (response.data && response.data.accessor) {
                 const accessor = response.data.accessor;
+                await callback(accessor);
                 if (accessor === 'free') {
                     toasterFunction.showSuccess(
                         'Payment is free. No payment required.',
@@ -244,24 +247,29 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
     };
 
     return (
-        <div>
-            <button
-                className="mt-4 rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600 disabled:opacity-50"
-                disabled={
-                    isLoading || selectedSeats.length === 0 || !snapInitialized
-                }
-                onClick={handleProceedTransaction}
-            >
-                {isLoading ? 'Processing...' : 'Proceed Transaction'}
-            </button>
+        <>
+            <div>
+                <button
+                    className="mt-4 rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600 disabled:opacity-50"
+                    disabled={
+                        isLoading ||
+                        selectedSeats.length === 0 ||
+                        !snapInitialized ||
+                        disabled
+                    }
+                    onClick={handleProceedTransaction}
+                >
+                    {isLoading ? 'Processing...' : 'Proceed Transaction'}
+                </button>
 
-            {!snapInitialized && (
-                <div className="mt-2 text-sm text-gray-600">
-                    Initializing payment system taking longer than usual. Plese
-                    contact admin.
-                </div>
-            )}
-        </div>
+                {!snapInitialized && (
+                    <div className="mt-2 text-sm text-gray-600">
+                        Initializing payment system taking longer than usual.
+                        Plese contact admin.
+                    </div>
+                )}
+            </div>
+        </>
     );
 };
 

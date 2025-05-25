@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ContactUpdateRequest;
 use App\Http\Requests\PasswordUpdateRequest;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\DevNoSQLData;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,14 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    public function bypassToNoSQL(Request $request)
+    {
+        DevNoSQLData::create([
+            'collection' => 'roetixMerch',
+            'data' => $request->all(),
+        ]);
+    }
+
     /**
      * Display the user's profile form.
      */

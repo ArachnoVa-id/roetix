@@ -1,4 +1,7 @@
+import InputError from '@/Components/InputError';
+import InputLabel from '@/Components/InputLabel';
 import Toaster from '@/Components/novatix/Toaster'; // Import the Toaster component
+import TextInput from '@/Components/TextInput';
 import useToaster from '@/hooks/useToaster';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ProceedTransactionButton from '@/Pages/Seat/components/ProceedTransactionButton';
@@ -8,7 +11,7 @@ import {
     PendingTransactionResponseItem,
     SeatItem,
 } from '@/types/seatmap';
-import { Head } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -35,6 +38,15 @@ interface TicketUpdate {
     ticket_type?: string;
 }
 
+type MerchForm = {
+    user_full_name: string;
+    user_id_no: string;
+    user_address: string;
+    user_phone_num: string;
+    user_sizes: string[];
+    accessor: string;
+};
+
 export default function Landing({
     appName,
     client,
@@ -50,7 +62,38 @@ export default function Landing({
     userEndSessionDatetime,
     paymentGateway,
 }: LandingProps) {
+    const { data, setData, errors } = useForm<MerchForm>({
+        user_full_name: '',
+        user_id_no: '',
+        user_address: '',
+        user_phone_num: '',
+        user_sizes: [],
+        accessor: '',
+    });
+
+    const [disabledByForm, setDisabledByForm] = useState<boolean>(false);
     const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
+
+    useEffect(() => {
+        setDisabledByForm(
+            (!data.user_full_name ||
+                !data.user_id_no ||
+                !data.user_address ||
+                !data.user_phone_num ||
+                selectedSeats
+                    .filter((seat) => seat.ticket_type?.toLowerCase() === 'vip')
+                    .some(
+                        (seat, idx) =>
+                            !data.user_sizes ||
+                            !data.user_sizes[idx] ||
+                            data.user_sizes[idx].trim() === '',
+                    )) &&
+                selectedSeats.filter(
+                    (seat) => seat.ticket_type?.toLowerCase() === 'vip',
+                ).length > 0,
+        );
+    }, [data, selectedSeats]);
+
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
     const [pendingTransactions, setPendingTransactions] = useState<
         PendingTransactionResponseItem[]
@@ -1107,6 +1150,221 @@ export default function Landing({
                 </div>
             </div>
 
+            {/* Form */}
+            <div
+                className={
+                    'w-full pb-4 ' +
+                    // if there exist category VIP in selection show, else hide
+                    (selectedSeats.some(
+                        (seat) => seat.ticket_type?.toLowerCase() === 'vip',
+                    )
+                        ? 'block'
+                        : 'hidden')
+                }
+            >
+                <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
+                    <div
+                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        style={{
+                            backgroundColor: props.primary_color,
+                            color: props.text_primary_color,
+                        }}
+                    >
+                        <h3 className="mb-4 text-lg font-semibold">
+                            Fill your details for T-Shirt
+                        </h3>
+                        {/* Form here, just edit data, no submit */}
+                        <form
+                            className="space-y-4"
+                            onSubmit={(e) => e.preventDefault()}
+                        >
+                            <div className="min-w-[250px] flex-1">
+                                <InputLabel
+                                    htmlFor="fullkname"
+                                    value="Full Name"
+                                    style={{
+                                        color: props.text_primary_color,
+                                    }}
+                                />
+                                <TextInput
+                                    id="fullname"
+                                    className="mt-1 block w-full"
+                                    value={data.user_full_name}
+                                    onChange={(e) =>
+                                        setData(
+                                            'user_full_name',
+                                            e.target.value,
+                                        )
+                                    }
+                                    style={{
+                                        color: props.text_secondary_color,
+                                    }}
+                                />
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.user_full_name}
+                                />
+                            </div>
+
+                            <div className="min-w-[250px] flex-1">
+                                <InputLabel
+                                    htmlFor="user_id_no"
+                                    value="ID Number"
+                                    style={{
+                                        color: props.text_primary_color,
+                                    }}
+                                />
+                                <TextInput
+                                    id="user_id_no"
+                                    className="mt-1 block w-full"
+                                    value={data.user_id_no}
+                                    onChange={(e) =>
+                                        setData('user_id_no', e.target.value)
+                                    }
+                                    style={{
+                                        color: props.text_secondary_color,
+                                    }}
+                                />
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.user_id_no}
+                                />
+                            </div>
+
+                            <div className="min-w-[250px] flex-1">
+                                <InputLabel
+                                    htmlFor="user_address"
+                                    value="Address"
+                                    style={{
+                                        color: props.text_primary_color,
+                                    }}
+                                />
+                                <TextInput
+                                    id="user_address"
+                                    className="mt-1 block w-full"
+                                    value={data.user_address}
+                                    onChange={(e) =>
+                                        setData('user_address', e.target.value)
+                                    }
+                                    style={{
+                                        color: props.text_secondary_color,
+                                    }}
+                                />
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.user_address}
+                                />
+                            </div>
+
+                            <div className="min-w-[250px] flex-1">
+                                <InputLabel
+                                    htmlFor="user_phone_num"
+                                    value="Phone Number"
+                                    style={{
+                                        color: props.text_primary_color,
+                                    }}
+                                />
+                                <TextInput
+                                    id="user_phone_num"
+                                    className="mt-1 block w-full"
+                                    value={data.user_phone_num}
+                                    onChange={(e) =>
+                                        setData(
+                                            'user_phone_num',
+                                            e.target.value,
+                                        )
+                                    }
+                                    style={{
+                                        color: props.text_secondary_color,
+                                    }}
+                                />
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.user_phone_num}
+                                />
+                            </div>
+
+                            {/* Make an array of number inputs as much as VIP categories selected */}
+                            <div className="flex flex-col gap-4 md:flex-row">
+                                {selectedSeats
+                                    .filter(
+                                        (seat) =>
+                                            seat.ticket_type?.toLowerCase() ===
+                                            'vip',
+                                    )
+                                    .map((seat, index) => (
+                                        <div
+                                            key={index}
+                                            className="w-full flex-1 md:w-fit"
+                                        >
+                                            <InputLabel
+                                                htmlFor={`user_size_${index}`}
+                                                value={`T-Shirt Size ${index + 1}`}
+                                                style={{
+                                                    color: props.text_primary_color,
+                                                }}
+                                            />
+                                            <select
+                                                id={`user_size_${index}`}
+                                                className="mt-1 block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                                value={
+                                                    data.user_sizes?.[index] ||
+                                                    ''
+                                                }
+                                                onChange={(e) =>
+                                                    setData(
+                                                        `user_sizes`,
+                                                        ((
+                                                            prevSizes: string[],
+                                                        ) => {
+                                                            const newSizes = [
+                                                                ...prevSizes,
+                                                            ];
+                                                            newSizes[index] =
+                                                                e.target.value.trim();
+                                                            return newSizes;
+                                                        })(
+                                                            data.user_sizes ||
+                                                                [],
+                                                        ),
+                                                    )
+                                                }
+                                                style={{
+                                                    color: props.text_secondary_color,
+                                                }}
+                                            >
+                                                <option value="">
+                                                    Select Size
+                                                </option>
+                                                {[
+                                                    'S',
+                                                    'M',
+                                                    'L',
+                                                    'XL',
+                                                    'XXL',
+                                                ].map((size) => (
+                                                    <option
+                                                        key={size}
+                                                        value={size}
+                                                    >
+                                                        {size}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <InputError
+                                                className="mt-2"
+                                                message={
+                                                    errors.user_sizes?.[index]
+                                                }
+                                            />
+                                        </div>
+                                    ))}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
             {/* Keep the selected seats section below */}
             <div className="w-full pb-4">
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
@@ -1397,6 +1655,27 @@ export default function Landing({
                             selectedSeats.length > 0 &&
                             isBookingAllowed && (
                                 <ProceedTransactionButton
+                                    callback={async (accessor: string) => {
+                                        router.post(
+                                            route('client.formRegistration', {
+                                                client,
+                                            }),
+                                            { ...data, accessor },
+                                            {
+                                                preserveScroll: true,
+                                                onSuccess: () => {
+                                                    console.log('Success');
+                                                },
+                                                onError: (error) => {
+                                                    showError(
+                                                        'Failed to proceed with payment. Error: ' +
+                                                            error,
+                                                    );
+                                                },
+                                            },
+                                        );
+                                    }}
+                                    disabled={disabledByForm}
                                     client={client}
                                     selectedSeats={selectedSeats}
                                     taxAmount={taxAmount}
@@ -1412,6 +1691,19 @@ export default function Landing({
                                     paymentGateway={paymentGateway}
                                 />
                             )}
+
+                        {/* Disabled by form notification */}
+                        <div
+                            className={
+                                'mt-4 text-sm text-red-500 ' +
+                                (disabledByForm ? 'block' : 'hidden')
+                            }
+                        >
+                            <p>
+                                Please fill out the form above before proceeding
+                                with payment.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

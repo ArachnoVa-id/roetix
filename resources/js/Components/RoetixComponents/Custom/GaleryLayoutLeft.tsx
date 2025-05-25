@@ -19,11 +19,11 @@ export default function GaleryLayoutLeft({
                     alt="large image"
                     width={1000}
                     height={1000}
-                    className="h-full w-full hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-full w-full transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
                 />
             </div>
 
-            <div className="col-span-6 col-start-1 row-span-2 row-start-1 flex flex-col items-end justify-center text-[3.33vw] font-bold hover:scale-95 active:scale-85 transition-transform duration-300 ease-in-out">
+            <div className="active:scale-85 col-span-6 col-start-1 row-span-2 row-start-1 flex flex-col items-end justify-center text-[3.33vw] font-bold transition-transform duration-300 ease-in-out hover:scale-95">
                 <p className="text-[rgba(77,42,125,1)]">{titleLine1}</p>
                 <p className="text-[rgba(140,76,227,1)]">{titleLine2}</p>
             </div>
@@ -34,7 +34,7 @@ export default function GaleryLayoutLeft({
                     alt="small image right"
                     width={1000}
                     height={1000}
-                    className="h-full w-full object-cover hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-full w-full object-cover transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
                 />
             </div>
 
@@ -44,7 +44,7 @@ export default function GaleryLayoutLeft({
                     alt="small image center"
                     width={1000}
                     height={1000}
-                    className="h-full w-full object-cover hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-full w-full object-cover transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
                 />
             </div>
 
@@ -54,7 +54,7 @@ export default function GaleryLayoutLeft({
                     alt="small image left"
                     width={1000}
                     height={1000}
-                    className="h-full w-full object-cover hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-full w-full object-cover transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
                 />
             </div>
         </div>
