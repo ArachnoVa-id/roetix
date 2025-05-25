@@ -96,6 +96,8 @@ export interface SeatMapConfig {
 }
 
 export interface ProceedTransactionButtonProps {
+    callback: (val: string) => void;
+    disabled: boolean;
     client: string;
     selectedSeats: SeatItem[];
     taxAmount?: number;

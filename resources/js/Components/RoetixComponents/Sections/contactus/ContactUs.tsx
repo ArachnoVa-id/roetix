@@ -30,7 +30,7 @@ const ContactUs = () => {
                 <p className="text-[4.44vw] text-white md:text-[2.08vw]">
                     Klik di Bawah untuk Detail Kontak Kami!
                 </p>
-                <CustomButton className="h-[12.15vw] w-[73.49vw] rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] md:h-[3.62vw] md:w-[21.8vw] hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out">
+                <CustomButton className="h-[12.15vw] w-[73.49vw] rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:h-[3.62vw] md:w-[21.8vw]">
                     <p className="text-[4.44vw] md:text-[1.1vw]">
                         Kontak Kami Sekarang!
                     </p>

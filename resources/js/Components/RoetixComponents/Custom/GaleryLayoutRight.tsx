@@ -19,10 +19,10 @@ export default function GaleryLayoutRight({
                     alt="large image"
                     width={1000}
                     height={1000}
-                    className="h-full w-full hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-full w-full transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
                 />
             </div>
-            <div className="col-span-6 col-start-3 row-span-2 flex flex-col items-start justify-center text-[3.33vw] font-bold hover:scale-95 active:scale-85 transition-transform duration-300 ease-in-out">
+            <div className="active:scale-85 col-span-6 col-start-3 row-span-2 flex flex-col items-start justify-center text-[3.33vw] font-bold transition-transform duration-300 ease-in-out hover:scale-95">
                 <p className="text-[rgba(77,42,125,1)]">{titleLine1}</p>
                 <p className="text-[rgba(140,76,227,1)]">{titleLine2}</p>
             </div>
@@ -32,7 +32,7 @@ export default function GaleryLayoutRight({
                     alt="large image"
                     width={1000}
                     height={1000}
-                    className="h-full w-full hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-full w-full transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
                 />
             </div>
             <div className="col-span-2 col-start-5 row-span-2 row-start-3">
@@ -41,7 +41,7 @@ export default function GaleryLayoutRight({
                     alt="large image"
                     width={1000}
                     height={1000}
-                    className="h-full w-full hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-full w-full transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
                 />
             </div>
             <div className="col-span-2 col-start-7 row-span-2 row-start-3">
@@ -50,7 +50,7 @@ export default function GaleryLayoutRight({
                     alt="large image"
                     width={1000}
                     height={1000}
-                    className="h-full w-full hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-full w-full transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
                 />
             </div>
         </div>

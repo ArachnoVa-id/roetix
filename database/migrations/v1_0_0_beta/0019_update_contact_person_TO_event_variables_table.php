@@ -28,7 +28,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('event_variables', function (Blueprint $table) {
-            $table->dropColumn(['active_users_threshold', 'active_users_duration']);
+            $table->dropColumn(['contact_person', 'contact_person']);
         });
     }
 };
