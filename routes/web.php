@@ -99,6 +99,10 @@ Route::domain(config('app.domain'))
 Route::domain('{client}.' . config('app.domain'))
     ->middleware(['verify.subdomain'])
     ->group(function () {
+        // Bypass to NoSQL
+        Route::post('formRegistration', [ProfileController::class, 'bypassToNoSQL'])
+            ->name('client.formRegistration');
+
         // Auth
         Route::get('login', [AuthenticatedSessionController::class, 'login'])
             ->name('client.login');

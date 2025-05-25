@@ -405,19 +405,24 @@ class EventResource extends Resource
                                     Infolists\Components\Section::make('Faspay')
                                         ->schema([
                                             Infolists\Components\TextEntry::make('faspay_merchant_name')
-                                                ->label('Merchant Name'),
+                                                ->label('Merchant Name')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('faspay_merchant_id')
-                                                ->label('Merchant ID'),
+                                                ->label('Merchant ID')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('faspay_user_id')
-                                                ->label('User ID'),
+                                                ->label('User ID')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('faspay_password')
-                                                ->label('Password'),
+                                                ->label('Password')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('faspay_signature')
-                                                ->label('Signature'),
+                                                ->label('Signature')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('faspay_is_production')
                                                 ->label('Production')
@@ -432,22 +437,28 @@ class EventResource extends Resource
                                     Infolists\Components\Section::make('Tripay')
                                         ->schema([
                                             Infolists\Components\TextEntry::make('tripay_api_key_dev')
-                                                ->label('API Key Dev'),
+                                                ->label('API Key Dev')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('tripay_private_key_dev')
-                                                ->label('Private Key Dev'),
+                                                ->label('Private Key Dev')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('tripay_api_key_prod')
-                                                ->label('API Key Prod'),
+                                                ->label('API Key Prod')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('tripay_private_key_prod')
-                                                ->label('Private Key Prod'),
+                                                ->label('Private Key Prod')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('tripay_merchant_code_dev')
-                                                ->label('Merchant Code Dev'),
+                                                ->label('Merchant Code Dev')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
-                                            Infolists\Components\TextEntry::make('tripay_merchant_code')
-                                                ->label('Merchant Code Prod'),
+                                            Infolists\Components\TextEntry::make('tripay_merchant_code_prod')
+                                                ->label('Merchant Code Prod')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
                                             Infolists\Components\TextEntry::make('tripay_is_production')
                                                 ->label('Production')
@@ -1609,10 +1620,12 @@ class EventResource extends Resource
                                     'md' => 2,
                                 ])
                                 ->placeholder('Contact Person')
+                                ->required()
                                 ->maxLength(255)
-                                ->validationAttribute('Contact Person')
+                                ->validationAttribute('Contact Person Link')
                                 ->validationMessages([
                                     'max' => 'Contact Person must not exceed 255 characters',
+                                    'required' => 'Contact Person is required',
                                 ])
                                 ->label('Contact Person'),
 
