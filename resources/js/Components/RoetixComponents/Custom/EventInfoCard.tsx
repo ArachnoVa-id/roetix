@@ -71,7 +71,7 @@ export default function EventInfoCard({
                     </p>
                 </div>
                 <CustomButton
-                    className="h-[11.11vw] w-[49.44vw] rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] md:h-[2.48vw] md:w-[12.57vw] hover:scale-105 active:scale-95 transition-transform duration-300 ease-in-out"
+                    className="h-[11.11vw] w-[49.44vw] rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:h-[2.48vw] md:w-[12.57vw]"
                     disabled={disabled}
                     onClick={onClick}
                 >

@@ -44,25 +44,25 @@ const Footer = () => {
                 Contact Us Through
             </p>
             <div className="flex items-center space-x-[5vw]">
-                <div className="cursor-pointer rounded-full bg-white p-[2vw] md:p-[1vw] hover:scale-95 active:scale-85 transition-transform duration-300 ease-in-out">
+                <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
                     <Facebook
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
                 </div>
-                <div className="cursor-pointer rounded-full bg-white p-[2vw] md:p-[1vw] hover:scale-95 active:scale-85 transition-transform duration-300 ease-in-out">
+                <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
                     <Instagram
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
                 </div>
-                <div className="cursor-pointer rounded-full bg-white p-[2vw] md:p-[1vw] hover:scale-95 active:scale-85 transition-transform duration-300 ease-in-out">
+                <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
                     <Twitter
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
                 </div>
-                <div className="cursor-pointer rounded-full bg-white p-[2vw] md:p-[1vw] hover:scale-95 active:scale-85 transition-transform duration-300 ease-in-out">
+                <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
                     <Youtube
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"

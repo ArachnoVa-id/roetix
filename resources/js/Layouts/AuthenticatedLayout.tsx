@@ -383,7 +383,11 @@ export default function Authenticated({
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink eventProps={props} href="#">
+                            <ResponsiveNavLink
+                                eventProps={props}
+                                href="#"
+                                className="hidden"
+                            >
                                 Profile
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
