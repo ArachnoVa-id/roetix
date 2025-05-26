@@ -428,11 +428,11 @@ const ScanTicket: React.FC = () => {
     useEffect(() => {
         // Only restart camera if scanning is active AND camera was already active
         // This prevents attempting to start camera if it's not meant to be active
-        if (isScanning && isCameraActive) {
+        if (isScanning) {
             console.log('Camera facing mode changed, restarting camera');
             startCamera();
         }
-    }, [useFrontCamera, isScanning, isCameraActive, startCamera]);
+    }, [useFrontCamera, isScanning, startCamera]);
 
     // Effect for start QR scanner
     useEffect(() => {
