@@ -62,8 +62,7 @@ interface EventContext {
 
 // Extending InertiaPageProps to include our custom props
 interface CustomPageProps extends InertiaPageProps {
-    // <--- extends InertiaPageProps
-    appName: string;
+    appName: string; // Tambahkan ini sesuai AuthenticatedLayout
     event: EventContext;
     props: EventProps; // This likely comes from your EventProps type
     client: string;
@@ -94,6 +93,12 @@ const EventScanTicketPage = () => {
                 console.error(
                     'Event data is undefined, cannot proceed with scan.',
                 );
+                setNotification({
+                    ticket: null,
+                    ticketOrder: null,
+                    message: 'Event data is missing. Cannot scan ticket.',
+                    status: 'error',
+                });
                 return; // Early return to prevent errors
             }
 
@@ -161,15 +166,33 @@ const EventScanTicketPage = () => {
     );
     useEffect(() => {
         if (videoRef.current && cameraActive && !scannerInitialized.current) {
+            // Memberikan ID ke elemen parent yang menjadi target Quagga
+            // Ini akan membantu Quagga mengatur DOM dengan lebih baik
+            const videoContainer = videoRef.current.parentElement;
+            if (!videoContainer) {
+                console.error('Video container not found for Quagga target.');
+                setNotification({
+                    message: 'Failed to start camera: Video container missing.',
+                    status: 'error',
+                    ticket: null,
+                    ticketOrder: null,
+                });
+                setCameraActive(false);
+                return;
+            }
+            videoContainer.id = 'interactive-viewport'; // <-- Tambahkan ID ini
+
             Quagga.init(
                 {
                     inputStream: {
                         name: 'Live',
                         type: 'LiveStream',
-                        target: videoRef.current,
+                        // Target harus ID dari elemen DOM yang akan menampung video dan canvas
+                        // BUKAN elemen video itu sendiri
+                        target: '#interactive-viewport', // <-- Gunakan ID container
                         constraints: {
-                            width: { min: 640 },
-                            height: { min: 480 },
+                            width: { min: 640, ideal: 1280 }, // Tambahkan ideal resolution
+                            height: { min: 480, ideal: 720 }, // Tambahkan ideal resolution
                             facingMode: facingMode,
                         },
                     },
@@ -177,8 +200,21 @@ const EventScanTicketPage = () => {
                         readers: [
                             'ean_reader',
                             'code_128_reader',
-                            // 'qr_code_reader', // <--- Hapus any casting di sini
+                            { format: 'qr_code_reader' }, // <--- Pastikan ini sebagai objek, bukan string literal
                         ],
+                    },
+                    // Atur properti lain jika perlu
+                    locator: {
+                        patchSize: 'medium', // Default 'medium'
+                        halfSample: true, // Default false
+                    },
+                    numOfWorkers: 0, // Penting untuk debugging di browser, 0 berarti di thread utama
+                    frequency: 10, // Seberapa sering memproses frame
+                    debug: {
+                        drawBoundingBox: true,
+                        drawScanline: true,
+                        showCanvas: true,
+                        showPatches: true,
                     },
                 },
                 (err: QuaggaError | Error | null) => {
@@ -196,13 +232,10 @@ const EventScanTicketPage = () => {
                     Quagga.start();
                     scannerInitialized.current = true;
                     console.log('Quagga started successfully.');
-                    if (videoRef.current) {
-                        videoRef.current
-                            .play()
-                            .catch((e) =>
-                                console.error('Error playing video:', e),
-                            );
-                    }
+
+                    // Quagga yang akan mengelola elemen <video> dan <canvas> di dalam target
+                    // Anda tidak perlu memanggil .play() secara manual jika Quagga berhasil
+                    // If you still see the video black, inspect the DOM for Quagga's canvas/video elements
                 },
             );
 
@@ -222,7 +255,7 @@ const EventScanTicketPage = () => {
                 }
             };
         }
-    }, [cameraActive, facingMode, handleTicketScan, isLoading, event?.slug]); // Use event?.slug
+    }, [cameraActive, facingMode, handleTicketScan, isLoading, event?.slug]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -295,9 +328,15 @@ const EventScanTicketPage = () => {
             <div className="container mx-auto max-w-4xl p-4">
                 {/* Camera Stream */}
                 <div className="relative mb-8 overflow-hidden rounded-lg bg-gray-900 p-4 shadow-xl">
-                    <div className="relative flex h-80 w-full items-center justify-center overflow-hidden rounded-md bg-black">
+                    {/* CONTAINER UNTUK VIDEO DAN CANVAS QUAGGA */}
+                    <div
+                        id="interactive-viewport"
+                        className="relative flex h-80 w-full items-center justify-center overflow-hidden rounded-md bg-black"
+                    >
                         {cameraActive ? (
                             <>
+                                {/* Elemen <video> ini akan digantikan atau dimanipulasi oleh Quagga */}
+                                {/* Anda tidak perlu memanggil .play() di sini */}
                                 <video
                                     ref={videoRef}
                                     autoPlay
