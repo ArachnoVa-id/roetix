@@ -4,13 +4,16 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Quagga from '@ericblade/quagga2';
 import {
-    ArrowPathIcon,
+    ArrowPathIcon, // Added for QR toggle button
+    Bars3BottomLeftIcon,
     CameraIcon,
     CheckCircleIcon,
+    QrCodeIcon,
     XCircleIcon,
 } from '@heroicons/react/24/solid';
 import { usePage } from '@inertiajs/react';
 import { Spinner } from '@nextui-org/react';
+// import { QrScanner } from '@yudiel/react-qr-scanner'; // Import the new QR scanner
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -79,6 +82,7 @@ const EventScanTicketPage = () => {
     const [facingMode, setFacingMode] = useState<'environment' | 'user'>(
         'environment',
     );
+    const [isQrMode, setIsQrMode] = useState<boolean>(false); // New state for QR mode
 
     const handleTicketScan = useCallback(
         async (code: string) => {
@@ -158,8 +162,15 @@ const EventScanTicketPage = () => {
         },
         [isLoading, client, event],
     );
+
+    // --- Quagga (Barcode) useEffect ---
     useEffect(() => {
-        if (videoRef.current && cameraActive && !scannerInitialized.current) {
+        if (
+            videoRef.current &&
+            cameraActive &&
+            !isQrMode &&
+            !scannerInitialized.current
+        ) {
             const videoContainer = videoRef.current.parentElement;
             if (!videoContainer) {
                 console.error('Video container not found for Quagga target.');
@@ -172,14 +183,14 @@ const EventScanTicketPage = () => {
                 setCameraActive(false);
                 return;
             }
-            videoContainer.id = 'interactive-viewport';
+            videoContainer.id = 'interactive-viewport-barcode'; // Unique ID for Quagga
 
             Quagga.init(
                 {
                     inputStream: {
                         name: 'Live',
                         type: 'LiveStream',
-                        target: '#interactive-viewport',
+                        target: '#interactive-viewport-barcode',
                         constraints: {
                             width: { min: 640, ideal: 1280 },
                             height: { min: 480, ideal: 720 },
@@ -196,10 +207,6 @@ const EventScanTicketPage = () => {
                                 format: 'code_128_reader',
                                 config: { supplements: [] },
                             },
-                            {
-                                format: 'qr_code_reader',
-                                config: { supplements: [] },
-                            },
                         ],
                     },
                     locator: {
@@ -214,7 +221,7 @@ const EventScanTicketPage = () => {
                     if (err) {
                         console.error('Quagga initialization failed:', err);
                         setNotification({
-                            message: `Failed to start camera: ${err.message}`,
+                            message: `Failed to start barcode scanner: ${err.message}`,
                             status: 'error',
                             ticket: null,
                             ticketOrder: null,
@@ -224,7 +231,7 @@ const EventScanTicketPage = () => {
                     }
                     Quagga.start();
                     scannerInitialized.current = true;
-                    console.log('Quagga started successfully.');
+                    console.log('Quagga started successfully for barcodes.');
                 },
             );
 
@@ -243,8 +250,40 @@ const EventScanTicketPage = () => {
                     console.log('Quagga stopped.');
                 }
             };
+        } else if (scannerInitialized.current && (isQrMode || !cameraActive)) {
+            // Stop Quagga if switching to QR mode or camera is deactivated
+            Quagga.stop();
+            scannerInitialized.current = false;
+            console.log(
+                'Quagga stopped due to mode switch or camera deactivation.',
+            );
         }
-    }, [cameraActive, facingMode, handleTicketScan, isLoading, event?.slug]);
+    }, [
+        cameraActive,
+        facingMode,
+        handleTicketScan,
+        isLoading,
+        event?.slug,
+        isQrMode,
+    ]);
+
+    // --- QR Scanner handlers ---
+    // const handleQrScan = (result: string) => {
+    //     if (result && !isLoading) {
+    //         console.log('QR Code detected:', result);
+    //         handleTicketScan(result);
+    //     }
+    // };
+
+    // const handleQrError = (err: Error) => {
+    //     console.error('QR Scanner Error:', err);
+    //     setNotification({
+    //         message: `QR Scanner Error: ${err.message}`,
+    //         status: 'error',
+    //         ticket: null,
+    //         ticketOrder: null,
+    //     });
+    // };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -253,6 +292,7 @@ const EventScanTicketPage = () => {
 
     const toggleCamera = () => {
         setCameraActive((prev) => !prev);
+        // Stop any active scanner when toggling camera off
         if (scannerInitialized.current && cameraActive) {
             Quagga.stop();
             scannerInitialized.current = false;
@@ -263,6 +303,16 @@ const EventScanTicketPage = () => {
         setFacingMode((prev) =>
             prev === 'environment' ? 'user' : 'environment',
         );
+        // Re-initialize scanner after flipping camera
+        if (scannerInitialized.current) {
+            Quagga.stop();
+            scannerInitialized.current = false;
+        }
+    };
+
+    const toggleScanMode = () => {
+        setIsQrMode((prev) => !prev);
+        // Stop any active scanner when switching modes to allow proper re-initialization
         if (scannerInitialized.current) {
             Quagga.stop();
             scannerInitialized.current = false;
@@ -314,29 +364,58 @@ const EventScanTicketPage = () => {
             }
         >
             <div className="container mx-auto max-w-4xl p-4">
+                {/* Camera Stream / Scanner Area */}
                 <div className="relative mb-8 overflow-hidden rounded-lg bg-gray-900 p-4 shadow-xl">
                     <div
-                        id="interactive-viewport"
+                        id={
+                            isQrMode
+                                ? 'interactive-viewport-qr'
+                                : 'interactive-viewport-barcode'
+                        }
                         className="relative flex h-80 w-full items-center justify-center overflow-hidden rounded-md bg-black"
                     >
-                        {cameraActive ? (
-                            <>
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    className="absolute inset-0 h-full w-full object-cover"
-                                ></video>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="h-3/4 w-3/4 rounded-md border-2 border-dashed border-white"></div>
-                                </div>
-                            </>
+                        {/* {cameraActive ? (
+                            isQrMode ? (
+                                <QrScanner
+                                    onDecode={handleQrScan}
+                                    onError={handleQrError}
+                                    constraints={{
+                                        facingMode: facingMode,
+                                    }}
+                                    containerStyle={{
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                    }}
+                                    videoContainerStyle={{
+                                        width: '100%',
+                                        height: '100%',
+                                    }}
+                                    videoStyle={{
+                                        objectFit: 'cover',
+                                    }}
+                                />
+                            ) : (
+                                <>
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        className="absolute inset-0 h-full w-full object-cover"
+                                    ></video>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="h-3/4 w-3/4 rounded-md border-2 border-dashed border-white"></div>
+                                    </div>
+                                </>
+                            )
                         ) : (
                             <p className="text-lg text-white">
                                 Camera is off. Click "Activate Camera" to start
                                 scanning.
                             </p>
-                        )}
+                        )} */}
                     </div>
 
                     <div className="mt-4 flex justify-center space-x-4">
@@ -358,9 +437,32 @@ const EventScanTicketPage = () => {
                                 Flip Camera
                             </button>
                         )}
+                        {cameraActive && (
+                            <button
+                                onClick={toggleScanMode}
+                                className={`flex items-center rounded-md px-4 py-2 font-semibold text-white shadow-md transition duration-300 ${
+                                    isQrMode
+                                        ? 'bg-purple-600 hover:bg-purple-700'
+                                        : 'bg-green-600 hover:bg-green-700'
+                                }`}
+                            >
+                                {isQrMode ? (
+                                    <>
+                                        <Bars3BottomLeftIcon className="mr-2 h-5 w-5" />
+                                        Switch to Barcode
+                                    </>
+                                ) : (
+                                    <>
+                                        <QrCodeIcon className="mr-2 h-5 w-5" />
+                                        Switch to QR Code
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
 
+                {/* Manual Input Form */}
                 <div className="mb-8 rounded-lg bg-white p-6 shadow-xl">
                     <form
                         onSubmit={handleSubmit}
@@ -388,6 +490,7 @@ const EventScanTicketPage = () => {
                     </form>
                 </div>
 
+                {/* Scan Notification */}
                 <AnimatePresence>
                     {notification && (
                         <motion.div
@@ -412,6 +515,7 @@ const EventScanTicketPage = () => {
                     )}
                 </AnimatePresence>
 
+                {/* Scanned Tickets List */}
                 <div className="rounded-lg bg-white p-6 shadow-xl">
                     <h2 className="mb-4 text-2xl font-bold">Scanned Tickets</h2>
                     {scanResults.length === 0 ? (

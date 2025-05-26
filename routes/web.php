@@ -140,15 +140,14 @@ Route::domain('{client}.' . config('app.domain'))
 
 
                 Route::controller(TicketScanController::class)->group(function () {
-                    // Route to display the scanning page (Inertia render)
+                    // Rute untuk menampilkan halaman scan (Inertia render)
                     Route::get('/events/{event_slug}/scan', 'show')
-                        ->name('client.events.scan.show');
+                        ->name('client.events.scan.show'); // Nama rute untuk frontend
 
+                    // Rute untuk memproses hasil scan (API endpoint)
                     Route::post('/events/{event_slug}/scan', 'scan')
-                        ->name('client.events.scan.store');
+                        ->name('client.events.scan.store'); // Nama rute untuk frontend
 
-                    // (If you still have it, the selectEventForScan route)
-                    // Route::get('/scan-events', 'selectEventForScan')->name('client.scan.select-event');
                 });
 
                 Route::prefix('api')->group(function () {

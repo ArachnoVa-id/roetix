@@ -28,6 +28,7 @@ export interface ContactInfo {
 export interface EventContext {
     id: number;
     name: string;
+    slug: string;
     // Add other event properties if passed from Laravel
 }
 

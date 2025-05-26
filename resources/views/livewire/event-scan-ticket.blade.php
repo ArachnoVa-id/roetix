@@ -54,7 +54,7 @@
     }
 
     function toggleCamera() {
-      useFrontCamera = !useFrontCamera;
+    useFrontCamera = !useFrontCamera;
       startCamera();
     }
 
