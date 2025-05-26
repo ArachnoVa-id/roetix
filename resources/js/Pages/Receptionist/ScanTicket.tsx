@@ -1,6 +1,11 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { ApiErrorResponse, ApiSuccessResponse } from '@/types/front-end';
-import { PageProps as InertiaBasePageProps } from '@inertiajs/core';
+import {
+    ApiErrorResponse, // Generic now
+    ApiSuccessResponse, // Generic now
+    ScannedTicketData,
+} from '@/types/front-end';
+import { PageProps } from '@inertiajs/core';
+
 import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import jsQR from 'jsqr';
@@ -18,16 +23,10 @@ interface NotificationState {
     message: string;
 }
 
-interface ScannedTicket {
-    id: string;
-    ticketCode: string;
-    timestamp: Date;
-    status: 'success' | 'error';
-    message: string;
-}
+type ScannedTicket = ScannedTicketData;
 
 const ScanTicket: React.FC = () => {
-    const page = usePage<InertiaBasePageProps>();
+    const page = usePage<PageProps>();
     const {
         props: pageConfigProps,
         client,
@@ -47,6 +46,7 @@ const ScanTicket: React.FC = () => {
         type: null,
         message: '',
     });
+    const [isFetchingHistory, setIsFetchingHistory] = useState<boolean>(true);
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -64,16 +64,46 @@ const ScanTicket: React.FC = () => {
         }, 3000);
     }, []);
 
-    const addScannedTicket = useCallback(
-        (ticketCode: string, status: 'success' | 'error', message: string) => {
-            const newTicket: ScannedTicket = {
-                id: Date.now().toString(),
-                ticketCode,
-                timestamp: new Date(),
-                status,
-                message,
-            };
-            setScannedTickets((prev) => [newTicket, ...prev.slice(0, 49)]); // Keep only last 50 tickets
+    const fetchScannedTicketsHistory = useCallback(async () => {
+        if (!event) return;
+
+        setIsFetchingHistory(true);
+        try {
+            const url = route('client.events.scanned.history', {
+                client,
+                event_slug: event.slug,
+            });
+            const response =
+                await axios.get<ApiSuccessResponse<ScannedTicket[]>>(url);
+            if (response.data && response.data.data) {
+                setScannedTickets(response.data.data);
+            } else {
+                setScannedTickets([]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch scanned tickets history:', error);
+            setNotification({
+                type: 'error',
+                message: 'Failed to load scan history.',
+            });
+            clearNotification();
+        } finally {
+            setIsFetchingHistory(false);
+        }
+    }, [client, event, clearNotification]);
+
+    useEffect(() => {
+        fetchScannedTicketsHistory();
+    }, [fetchScannedTicketsHistory]);
+
+    const addOrUpdateScannedTicket = useCallback(
+        (newTicketData: ScannedTicket) => {
+            setScannedTickets((prev) => {
+                const updatedPrev = prev.filter(
+                    (ticket) => ticket.id !== newTicketData.id,
+                );
+                return [newTicketData, ...updatedPrev];
+            });
         },
         [],
     );
@@ -87,12 +117,17 @@ const ScanTicket: React.FC = () => {
                     type: 'error',
                     message: errorMsg,
                 });
-                addScannedTicket(codeToSubmit, 'error', errorMsg);
+                addOrUpdateScannedTicket({
+                    id: `local-error-${Date.now()}`,
+                    ticket_code: codeToSubmit,
+                    scanned_at: new Date().toISOString(),
+                    status: 'error',
+                    message: errorMsg,
+                });
                 clearNotification();
                 return;
             }
 
-            // Prevent scanning the same code twice in a row quickly
             if (lastScannedCodeRef.current === codeToSubmit.trim()) {
                 return;
             }
@@ -107,7 +142,9 @@ const ScanTicket: React.FC = () => {
                     event_slug: event.slug,
                 });
 
-                const response = await axios.post<ApiSuccessResponse>(url, {
+                const response = await axios.post<
+                    ApiSuccessResponse<ScannedTicket>
+                >(url, {
                     ticket_code: codeToSubmit.trim(),
                 });
 
@@ -118,36 +155,57 @@ const ScanTicket: React.FC = () => {
                     type: 'success',
                     message: successMsg,
                 });
-                addScannedTicket(codeToSubmit.trim(), 'success', successMsg);
+
+                if (response.data?.data) {
+                    addOrUpdateScannedTicket(response.data.data);
+                }
                 setTicketCode('');
             } catch (error: unknown) {
                 let errorMessage =
                     'An unknown error occurred while processing the ticket.';
+                let ticketStatus: ScannedTicket['status'] = 'error';
+                let scannedTicketData: ScannedTicket | undefined = undefined;
+
                 if (axios.isAxiosError(error)) {
                     const responseData = error.response?.data as
-                        | ApiErrorResponse
+                        | ApiErrorResponse<ScannedTicket>
                         | undefined;
+
                     if (responseData?.message) {
                         errorMessage = responseData.message;
-                    } else if (error.message) {
-                        errorMessage = error.message;
+                    }
+                    if (error.response?.status === 409 && responseData?.data) {
+                        scannedTicketData = responseData.data;
+                        ticketStatus = 'error';
+                        errorMessage =
+                            scannedTicketData.message || errorMessage;
                     }
                 } else if (error instanceof Error) {
                     errorMessage = error.message;
                 }
+
                 setNotification({ type: 'error', message: errorMessage });
-                addScannedTicket(codeToSubmit.trim(), 'error', errorMessage);
+
+                addOrUpdateScannedTicket(
+                    scannedTicketData || {
+                        id: `local-error-${Date.now()}`,
+                        ticket_code: codeToSubmit.trim(),
+                        scanned_at: new Date().toISOString(),
+                        status: ticketStatus,
+                        message: errorMessage,
+                    },
+                );
+
                 console.error('Error submitting ticket code:', error);
             } finally {
                 setIsLoading(false);
                 clearNotification();
-                // Reset the last scanned code after a delay
                 setTimeout(() => {
                     lastScannedCodeRef.current = '';
                 }, 2000);
             }
         },
-        [isLoading, client, event, clearNotification, addScannedTicket],
+        [isLoading, client, event, clearNotification, addOrUpdateScannedTicket],
     );
 
     const startQrScanner = useCallback(() => {
@@ -220,7 +278,7 @@ const ScanTicket: React.FC = () => {
                     submitTicketCode(code.data.trim());
                 }
             }
-        }, 100); // Reduced interval for better performance
+        }, 100);
     }, [
         isScanning,
         isCameraActive,
@@ -232,39 +290,32 @@ const ScanTicket: React.FC = () => {
     const stopCamera = useCallback(() => {
         console.log('Stopping camera...');
 
-        // Clear any ongoing QR scanning interval
         if (scanIntervalRef.current) {
             clearInterval(scanIntervalRef.current);
             scanIntervalRef.current = null;
             console.log('Stopped QR scanning interval.');
         }
 
-        // Stop all tracks in the current stream
         if (currentStreamRef.current) {
             currentStreamRef.current.getTracks().forEach((track) => {
                 if (track.readyState === 'live') {
-                    // Only stop if track is active
                     track.stop();
                     console.log(
                         `Stopped track: ${track.kind} (id: ${track.id})`,
                     );
                 }
             });
-            currentStreamRef.current = null; // Clear the stream reference
+            currentStreamRef.current = null;
         }
 
-        // Stop video playback and clear its source
         if (videoRef.current) {
             videoRef.current.srcObject = null;
             videoRef.current.pause();
-            // Optional: Call load() to ensure video element is fully reset
-            // videoRef.current.load();
         }
 
-        // Reset all camera-related states
         setIsCameraActive(false);
         setCameraError('');
-        lastScannedCodeRef.current = ''; // Reset last scanned code on stop
+        lastScannedCodeRef.current = '';
         console.log('Camera stop process completed.');
     }, []);
 
@@ -272,7 +323,6 @@ const ScanTicket: React.FC = () => {
         console.log('Starting camera...');
         setCameraError('');
 
-        // Ensure videoRef.current is available before proceeding
         if (!videoRef.current) {
             console.error('Video ref not available. Cannot start camera.');
             setCameraError('Camera display element not found.');
@@ -284,14 +334,11 @@ const ScanTicket: React.FC = () => {
             return;
         }
 
-        // If a stream is already active, stop it before starting a new one
-        // This is crucial to prevent multiple active camera streams
         if (currentStreamRef.current) {
             console.log(
                 'Existing camera stream found, stopping it before new start.',
             );
             stopCamera();
-            // Give a brief moment for the browser to release resources if needed
             await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
@@ -324,7 +371,6 @@ const ScanTicket: React.FC = () => {
             console.log('Camera stream obtained:', stream);
             currentStreamRef.current = stream;
 
-            // Ensure videoRef.current is still valid after async operation
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
 
@@ -364,7 +410,6 @@ const ScanTicket: React.FC = () => {
                     video.addEventListener('loadedmetadata', onLoadedMetadata);
                     video.addEventListener('error', onError);
 
-                    // Timeout fallback in case loadedmetadata doesn't fire
                     setTimeout(() => {
                         if (!resolved) {
                             resolved = true;
@@ -375,7 +420,7 @@ const ScanTicket: React.FC = () => {
                             video.removeEventListener('error', onError);
                             resolve();
                         }
-                    }, 3000); // Max 3 seconds to wait for metadata
+                    }, 3000);
                 });
 
                 await videoRef.current.play();
@@ -410,8 +455,8 @@ const ScanTicket: React.FC = () => {
             setCameraError(camMessage);
             setNotification({ type: 'error', message: camMessage });
             clearNotification();
-            setIsCameraActive(false); // Ensure state reflects failure
-            setIsScanning(false); // Stop scanning if camera fails to start
+            setIsCameraActive(false);
+            setIsScanning(false);
         }
     }, [useFrontCamera, stopCamera, clearNotification]);
 
@@ -428,7 +473,6 @@ const ScanTicket: React.FC = () => {
         });
     }, []);
 
-    // Effect for start/stop camera based on isScanning
     useEffect(() => {
         console.log(
             '--- Effect [isScanning] triggered. isScanning:',
@@ -440,23 +484,16 @@ const ScanTicket: React.FC = () => {
             stopCamera();
         }
 
-        // Cleanup function for this effect
         return () => {
             console.log(
                 '--- Effect [isScanning] cleanup. isScanning at cleanup:',
                 isScanning,
             );
-            // This stopCamera will run if the component unmounts or if `isScanning` changes
-            // If `isScanning` goes from true to false, `stopCamera` is already called above.
-            // This is primarily for component unmount.
             stopCamera();
         };
     }, [isScanning, startCamera, stopCamera]);
 
-    // Effect for restart camera when facing mode changes
     useEffect(() => {
-        // HANYA restart kamera jika scanning aktif DAN useFrontCamera berubah
-        // JANGAN bergantung pada isCameraActive di dependency array karena itu adalah state yang dihasilkan oleh startCamera
         console.log(
             '--- Effect [useFrontCamera] triggered. useFrontCamera:',
             useFrontCamera,
@@ -464,13 +501,11 @@ const ScanTicket: React.FC = () => {
             isScanning,
         );
         if (isScanning) {
-            // Hapus `isCameraActive` dari kondisi IF
             console.log('Camera facing mode changed, restarting camera');
             startCamera();
         }
-    }, [useFrontCamera, isScanning, startCamera]); // Hapus `isCameraActive` dari dependency array
+    }, [useFrontCamera, isScanning, startCamera]);
 
-    // Effect for start QR scanner
     useEffect(() => {
         console.log(
             '--- Effect [QR Scanner] triggered. isScanning:',
@@ -489,7 +524,6 @@ const ScanTicket: React.FC = () => {
             }
         }
 
-        // Cleanup for QR scanner interval
         return () => {
             if (scanIntervalRef.current) {
                 console.log('QR Scanner cleanup.');
@@ -497,9 +531,8 @@ const ScanTicket: React.FC = () => {
                 scanIntervalRef.current = null;
             }
         };
-    }, [isScanning, isCameraActive, startQrScanner]); // `isCameraActive` perlu di sini karena scanner butuh kamera aktif
+    }, [isScanning, isCameraActive, startQrScanner]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             console.log('Component unmounting. Final camera stop.');
@@ -523,10 +556,6 @@ const ScanTicket: React.FC = () => {
         submitTicketCode(ticketCode.trim());
     };
 
-    const clearScannedTickets = () => {
-        setScannedTickets([]);
-    };
-
     if (!event) {
         return (
             <AuthenticatedLayout
@@ -538,7 +567,7 @@ const ScanTicket: React.FC = () => {
                 <Head title="Error - Event Not Found" />
                 <div className="py-12">
                     <div className="mx-auto max-w-3xl sm:px-6 lg:px-8">
-                        <div className="bg-white p-6 text-center text-red-600 shadow-sm dark:bg-gray-800 sm:rounded-lg">
+                        <div className="rounded-lg bg-white p-6 text-center text-red-600 shadow-sm dark:bg-gray-800">
                             Event information is missing or could not be loaded.
                             Please try again or contact support.
                         </div>
@@ -548,12 +577,12 @@ const ScanTicket: React.FC = () => {
         );
     }
 
-    const buttonBaseClass =
-        'px-4 py-2 rounded-md font-semibold text-xs uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50';
-    const primaryButtonClass = `${buttonBaseClass} bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:border-blue-700 focus:ring-blue-500`;
-    const successButtonClass = `${buttonBaseClass} bg-green-600 text-white hover:bg-green-700 active:bg-green-800 focus:border-green-700 focus:ring-green-500`;
-    const dangerButtonClass = `${buttonBaseClass} bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus:border-red-700 focus:ring-red-500`;
-    const secondaryButtonClass = `${buttonBaseClass} bg-gray-600 text-white hover:bg-gray-700 active:bg-gray-800 focus:border-gray-700 focus:ring-gray-500`;
+    // const buttonBaseClass =
+    //     'px-4 py-2 rounded-md font-semibold text-xs uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50';
+    // const primaryButtonClass = `${buttonBaseClass} bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:border-blue-700 focus:ring-blue-500`;
+    // const successButtonClass = `${buttonBaseClass} bg-green-600 text-white hover:bg-green-700 active:bg-green-800 focus:border-green-700 focus:ring-green-500`;
+    // const dangerButtonClass = `${buttonBaseClass} bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus:border-red-700 focus:ring-red-500`;
+    // const secondaryButtonClass = `${buttonBaseClass} bg-gray-600 text-white hover:bg-gray-700 active:bg-gray-800 focus:border-gray-700 focus:ring-gray-500`;
 
     const headerStyle = {
         '--header-text-color': pageConfigProps.text_primary_color,
@@ -567,66 +596,129 @@ const ScanTicket: React.FC = () => {
             userEndSessionDatetime={userEndSessionDatetime}
             event={event}
             header={
-                <div style={headerStyle}>
-                    <h2 className="header-dynamic-color text-xl font-semibold leading-tight">
+                <div style={headerStyle} className="py-6 sm:py-8">
+                    <h2 className="header-dynamic-color text-3xl font-extrabold leading-tight text-white drop-shadow-md md:text-4xl">
                         Scan Ticket for {event.name}
                     </h2>
+                    {event.location && (
+                        <p className="mt-2 text-base text-gray-200">
+                            {event.location}
+                        </p>
+                    )}
                 </div>
             }
         >
             <Head title={`Scan Ticket - ${event.name}`} />
-            <div className="py-6">
+            {/* Full page background, minimal structure */}
+            <div className="py-8 text-white md:py-12">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    {/* Notification Section - Floating/Integrated */}
                     {notification.type && (
                         <div
-                            className={`mb-4 rounded-md p-3 text-white ${
+                            className={`mb-8 flex items-center justify-between rounded-xl p-4 text-white shadow-lg transition-all duration-300 ${
                                 notification.type === 'success'
-                                    ? 'bg-green-500'
-                                    : 'bg-red-500'
-                            }`}
+                                    ? 'bg-green-500/90'
+                                    : 'bg-red-500/90'
+                            } backdrop-blur-sm`} // Added backdrop-blur for modern feel
                         >
-                            {notification.message}
+                            <div className="flex items-center">
+                                {notification.type === 'success' ? (
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth={1.5}
+                                        stroke="currentColor"
+                                        className="mr-3 h-6 w-6"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                ) : (
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth={1.5}
+                                        stroke="currentColor"
+                                        className="mr-3 h-6 w-6"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                )}
+                                <span className="text-base font-semibold">
+                                    {notification.message}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() =>
+                                    setNotification({ type: null, message: '' })
+                                }
+                                className="ml-4 text-white opacity-80 transition-opacity hover:opacity-100"
+                                aria-label="Close notification"
+                                title="Close notification"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={1.5}
+                                    stroke="currentColor"
+                                    className="h-5 w-5"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                            </button>
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        {/* Left Side - Camera */}
-                        <div className="bg-white p-6 shadow-sm dark:bg-gray-800 sm:rounded-lg">
-                            <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    {/* Main content grid - camera and history */}
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                        {/* Camera Scanner Section (Left) */}
+                        <div className="relative flex flex-col items-center justify-center rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
+                            <h3 className="mb-6 text-2xl font-bold">
                                 Camera Scanner
                             </h3>
 
                             {cameraError && (
-                                <div className="mb-4 rounded-md bg-yellow-100 p-3 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                    <strong>Camera Issue:</strong> {cameraError}
+                                <div className="mb-6 w-full rounded-lg bg-yellow-100/20 p-4 text-yellow-200 backdrop-blur-sm">
+                                    <strong className="block text-lg">
+                                        Camera Issue:
+                                    </strong>{' '}
+                                    <p className="text-sm">{cameraError}</p>
                                 </div>
                             )}
 
-                            <div className="mb-4">
-                                {/* Modified: Always render the video element, hide when not active */}
-                                <video
-                                    ref={videoRef}
-                                    width="100%"
-                                    height="auto"
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className={`rounded-md border dark:border-gray-600 ${
-                                        isScanning && isCameraActive
-                                            ? ''
-                                            : 'hidden'
-                                    }`}
-                                    style={{
-                                        transform: useFrontCamera
-                                            ? 'scaleX(-1)'
-                                            : 'none',
-                                        maxHeight: '400px',
-                                    }}
-                                />
-
-                                {/* Show placeholder when camera is not active or scanning */}
-                                {!(isScanning && isCameraActive) && (
-                                    <div className="flex aspect-video w-full items-center justify-center rounded-md border bg-gray-200 dark:border-gray-600 dark:bg-gray-700">
+                            {/* Camera Feed / Placeholder */}
+                            <div className="mb-6 aspect-video w-full overflow-hidden rounded-xl border-2 border-white/50 bg-gray-900 shadow-lg">
+                                {isScanning && isCameraActive ? (
+                                    <video
+                                        ref={videoRef}
+                                        width="100%"
+                                        height="auto"
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        className="h-full w-full object-cover"
+                                        style={{
+                                            transform: useFrontCamera
+                                                ? 'scaleX(-1)'
+                                                : 'none',
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="flex h-full items-center justify-center bg-gray-800/80">
                                         <div className="text-center">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
@@ -634,7 +726,7 @@ const ScanTicket: React.FC = () => {
                                                 viewBox="0 0 24 24"
                                                 strokeWidth={1.5}
                                                 stroke="currentColor"
-                                                className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
+                                                className="mx-auto mb-4 h-20 w-20 text-gray-400"
                                             >
                                                 <path
                                                     strokeLinecap="round"
@@ -642,8 +734,11 @@ const ScanTicket: React.FC = () => {
                                                     d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z"
                                                 />
                                             </svg>
-                                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                            <p className="text-lg text-gray-300">
                                                 Camera inactive
+                                            </p>
+                                            <p className="mt-1 text-sm text-gray-400">
+                                                Click "Start Camera & Scan"
                                             </p>
                                         </div>
                                     </div>
@@ -651,15 +746,16 @@ const ScanTicket: React.FC = () => {
                                 <canvas ref={canvasRef} className="hidden" />
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
+                            {/* Camera control buttons */}
+                            <div className="mb-8 flex flex-wrap justify-center gap-3">
                                 <button
                                     type="button"
                                     onClick={toggleScanning}
-                                    className={
+                                    className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
                                         isScanning
-                                            ? dangerButtonClass
-                                            : primaryButtonClass
-                                    }
+                                            ? 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400 active:bg-red-700'
+                                            : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400 active:bg-green-700'
+                                    } shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
                                     disabled={isLoading}
                                 >
                                     {isScanning
@@ -670,7 +766,7 @@ const ScanTicket: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={toggleCameraFacingMode}
-                                        className={successButtonClass}
+                                        className={`rounded-full bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-400 focus:ring-offset-2 active:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
                                         disabled={isLoading || !isCameraActive}
                                     >
                                         Switch to{' '}
@@ -681,147 +777,191 @@ const ScanTicket: React.FC = () => {
                             </div>
 
                             {/* Manual Input Form */}
-                            <div className="mt-6">
-                                <h4 className="text-md mb-3 font-medium text-gray-700 dark:text-gray-300">
-                                    Manual Entry
+                            <div className="w-full border-t border-white/20 pt-8">
+                                <h4 className="mb-4 text-xl font-bold">
+                                    Manual Ticket Entry
                                 </h4>
                                 <form
                                     onSubmit={handleManualSubmit}
-                                    className="space-y-3"
+                                    className="flex gap-3"
                                 >
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            name="ticket_code_manual"
-                                            id="ticket_code_manual"
-                                            className="block flex-1 rounded-md border-gray-300 p-2 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:focus:border-indigo-400 dark:focus:ring-indigo-400 sm:text-sm"
-                                            placeholder="Enter ticket code"
-                                            value={ticketCode}
-                                            onChange={(e) =>
-                                                setTicketCode(e.target.value)
-                                            }
-                                            disabled={isLoading}
-                                        />
-                                        <button
-                                            type="submit"
-                                            className={secondaryButtonClass}
-                                            disabled={
-                                                isLoading || !ticketCode.trim()
-                                            }
-                                        >
-                                            {isLoading ? (
-                                                <svg
-                                                    className="h-4 w-4 animate-spin"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <circle
-                                                        className="opacity-25"
-                                                        cx="12"
-                                                        cy="12"
-                                                        r="10"
-                                                        stroke="currentColor"
-                                                        strokeWidth="4"
-                                                    ></circle>
-                                                    <path
-                                                        className="opacity-75"
-                                                        fill="currentColor"
-                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                                    ></path>
-                                                </svg>
-                                            ) : (
-                                                'Submit'
-                                            )}
-                                        </button>
-                                    </div>
+                                    <input
+                                        type="text"
+                                        name="ticket_code_manual"
+                                        id="ticket_code_manual"
+                                        className="block flex-1 rounded-full border border-white/30 bg-white/20 p-3 text-white placeholder-gray-300 focus:border-blue-300 focus:ring-blue-300"
+                                        placeholder="Enter ticket code"
+                                        value={ticketCode}
+                                        onChange={(e) =>
+                                            setTicketCode(e.target.value)
+                                        }
+                                        disabled={isLoading}
+                                    />
+                                    <button
+                                        type="submit"
+                                        className={`rounded-full bg-gray-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-400 active:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
+                                        disabled={
+                                            isLoading || !ticketCode.trim()
+                                        }
+                                        aria-label={
+                                            isLoading
+                                                ? 'Submitting...'
+                                                : 'Submit ticket code'
+                                        }
+                                        title={
+                                            isLoading
+                                                ? 'Submitting...'
+                                                : 'Submit ticket code'
+                                        }
+                                    >
+                                        {isLoading ? (
+                                            <svg
+                                                className="mx-auto h-5 w-5 animate-spin text-white"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <circle
+                                                    className="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    strokeWidth="4"
+                                                ></circle>
+                                                <path
+                                                    className="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                ></path>
+                                            </svg>
+                                        ) : (
+                                            'Submit'
+                                        )}
+                                    </button>
                                 </form>
                             </div>
                         </div>
 
-                        {/* Right Side - Scanned Tickets List */}
-                        <div className="bg-white p-6 shadow-sm dark:bg-gray-800 sm:rounded-lg">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                    Scanned Tickets ({scannedTickets.length})
-                                </h3>
-                                {scannedTickets.length > 0 && (
-                                    <button
-                                        onClick={clearScannedTickets}
-                                        className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
-                                    >
-                                        Clear All
-                                    </button>
-                                )}
-                            </div>
+                        {/* Scanned Tickets History (Right) */}
+                        <div className="flex flex-col rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
+                            <h3 className="mb-6 text-2xl font-bold">
+                                Scanned Tickets History ({scannedTickets.length}
+                                )
+                            </h3>
 
-                            <div className="max-h-96 overflow-y-auto">
-                                {scannedTickets.length === 0 ? (
-                                    <div className="text-center text-gray-500 dark:text-gray-400">
-                                        <svg
-                                            className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
+                            {isFetchingHistory ? (
+                                <div className="flex flex-grow flex-col items-center justify-center py-8 text-gray-300">
+                                    <svg
+                                        className="mx-auto h-16 w-16 animate-spin text-gray-400"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
                                             stroke="currentColor"
+                                            strokeWidth="4"
+                                        ></circle>
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                        ></path>
+                                    </svg>
+                                    <p className="mt-4 text-lg font-medium">
+                                        Loading scan history...
+                                    </p>
+                                </div>
+                            ) : scannedTickets.length === 0 ? (
+                                <div className="flex flex-grow flex-col items-center justify-center py-8 text-gray-300">
+                                    <svg
+                                        className="mx-auto mb-4 h-20 w-20 text-gray-400"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                                        />
+                                    </svg>
+                                    <h3 className="text-xl font-medium">
+                                        No tickets scanned yet
+                                    </h3>
+                                    <p className="mt-2 text-sm text-gray-400">
+                                        Start scanning or manually enter a
+                                        ticket code.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="max-h-[calc(100vh-250px)] space-y-4 overflow-y-auto pr-2">
+                                    {' '}
+                                    {/* Adjusted max-height */}
+                                    {scannedTickets.map((ticket) => (
+                                        <div
+                                            key={ticket.id}
+                                            className={`rounded-lg border-l-4 p-4 shadow-md transition-transform duration-150 hover:scale-[1.01] ${
+                                                ticket.status === 'success'
+                                                    ? 'border-green-400 bg-green-500/20'
+                                                    : 'border-red-400 bg-red-500/20'
+                                            }`}
                                         >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                            />
-                                        </svg>
-                                        <h3 className="mt-2 text-sm font-medium">
-                                            No tickets scanned
-                                        </h3>
-                                        <p className="mt-1 text-sm">
-                                            Start scanning to see results here.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {scannedTickets.map((ticket) => (
-                                            <div
-                                                key={ticket.id}
-                                                className={`rounded-lg border-l-4 p-3 ${
-                                                    ticket.status === 'success'
-                                                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                                                        : 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                                                }`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <div
-                                                            className={`mr-2 h-2 w-2 rounded-full ${
-                                                                ticket.status ===
-                                                                'success'
-                                                                    ? 'bg-green-500'
-                                                                    : 'bg-red-500'
-                                                            }`}
-                                                        />
-                                                        <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                            {ticket.ticketCode}
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                        {ticket.timestamp.toLocaleTimeString()}
+                                            <div className="mb-2 flex items-center justify-between">
+                                                <div className="flex items-center">
+                                                    <div
+                                                        className={`mr-3 h-3 w-3 rounded-full ${
+                                                            ticket.status ===
+                                                            'success'
+                                                                ? 'bg-green-400'
+                                                                : 'bg-red-400'
+                                                        }`}
+                                                    />
+                                                    <span className="font-mono text-base font-bold">
+                                                        {ticket.ticket_code}
                                                     </span>
                                                 </div>
-                                                <p
-                                                    className={`mt-1 text-xs ${
-                                                        ticket.status ===
-                                                        'success'
-                                                            ? 'text-green-700 dark:text-green-300'
-                                                            : 'text-red-700 dark:text-red-300'
-                                                    }`}
-                                                >
-                                                    {ticket.message}
-                                                </p>
+                                                <span className="text-xs text-gray-300">
+                                                    {new Date(
+                                                        ticket.scanned_at,
+                                                    ).toLocaleString()}{' '}
+                                                    {/* Use toLocaleString for full date/time */}
+                                                </span>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                            {ticket.attendee_name && (
+                                                <p className="mb-1 text-sm">
+                                                    <strong className="font-semibold">
+                                                        Attendee:
+                                                    </strong>{' '}
+                                                    {ticket.attendee_name}
+                                                </p>
+                                            )}
+                                            {ticket.ticket_type && (
+                                                <p className="mb-1 text-sm text-gray-300">
+                                                    <strong className="font-semibold">
+                                                        Type:
+                                                    </strong>{' '}
+                                                    {ticket.ticket_type}
+                                                </p>
+                                            )}
+                                            <p
+                                                className={`text-sm ${
+                                                    ticket.status === 'success'
+                                                        ? 'text-green-200'
+                                                        : 'text-red-200'
+                                                }`}
+                                            >
+                                                {ticket.message}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
