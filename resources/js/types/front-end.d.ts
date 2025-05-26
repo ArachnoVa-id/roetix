@@ -67,6 +67,7 @@ export interface EventContext {
     id: number;
     name: string;
     slug: string;
+    location: string;
 }
 
 // export interface UserType {
@@ -116,13 +117,26 @@ export interface ZiggyRoute {
 }
 
 // API response types
-export interface ApiSuccessResponse {
+export interface ApiSuccessResponse<T = undefined> {
     message: string;
+    success?: boolean;
+    data?: T;
 }
 
-export interface ApiErrorResponse {
+export interface ApiErrorResponse<T = undefined> {
     message: string;
     errors?: Record<string, string[]>;
+    data?: T;
+}
+
+export interface ScannedTicketData {
+    id: string; // ID unik dari TicketOrder
+    ticket_code: string;
+    scanned_at: string; // ISO string tanggal & waktu
+    status: 'success' | 'error'; // Status yang sudah diproses untuk frontend
+    message: string;
+    attendee_name?: string; // Opsional
+    ticket_type?: string; // Opsional
 }
 
 // // Global Inertia PageProps

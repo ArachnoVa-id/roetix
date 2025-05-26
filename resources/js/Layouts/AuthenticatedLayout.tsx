@@ -44,6 +44,7 @@ interface EventContext {
     id: number;
     name: string;
     slug: string; // Added slug property
+    location: string;
 }
 
 // Perluas InertiaPageProps untuk menyertakan properti kustom kamu

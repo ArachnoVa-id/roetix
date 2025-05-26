@@ -148,6 +148,8 @@ Route::domain('{client}.' . config('app.domain'))
                     Route::post('/events/{event_slug}/scan', 'scan')
                         ->name('client.events.scan.store'); // Nama rute untuk frontend
 
+                    Route::get('/events/{event_slug}/scanned-history', 'getScannedHistory')
+                        ->name('client.events.scanned.history');
                 });
 
                 Route::prefix('api')->group(function () {
