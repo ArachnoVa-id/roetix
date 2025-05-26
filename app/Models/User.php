@@ -120,8 +120,8 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants,
     public function isReceptionist(): bool
     {
         return $this->role === UserRole::RECEPTIONIST->value ||
-            $this->role === 'receptionist' ||
-            $this->role === 'admin'; // Admin can also scan tickets
+            $this->role === 'receptionist';
+            // $this->role === 'admin'; // Admin can also scan tickets
     }
 
     public function isEO(): bool
@@ -176,5 +176,5 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants,
         return $this->isReceptionist();
     }
 
-    
+
 }
