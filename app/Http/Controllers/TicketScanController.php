@@ -7,7 +7,6 @@ use App\Models\Ticket;
 use App\Models\TicketOrder;
 use App\Models\User;
 use App\Enums\TicketOrderStatus;
-use App\Enums\UserRole; // Pastikan ini diimpor jika digunakan
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,17 +18,13 @@ use Illuminate\Validation\ValidationException;
 
 class TicketScanController extends Controller
 {
-    /**
-     * Display the ticket scanning page for an event.
-     * Only accessible by users with the 'receptionist' role.
-     */
-    public function show(Request $request, string $client, string $event_slug): InertiaResponse | \Illuminate\Http\RedirectResponse
+    public function show(Request $request, string $client): InertiaResponse | \Illuminate\Http\RedirectResponse
     {
         try {
             $user = Auth::user();
 
             if (!$user) {
-                Log::warning('Unauthenticated attempt to access scan page.', ['event_slug' => $event_slug]);
+                Log::warning('Unauthenticated attempt to access scan page.', ['client' => $client]);
                 return redirect()->route('client.login', ['client' => $client])
                     ->with('error', 'Please login to access this page.');
             }
@@ -39,10 +34,18 @@ class TicketScanController extends Controller
                 Log::warning('Unauthorized attempt to access scan page.', [
                     'user_id' => $user->id,
                     'user_role' => $userModel?->role ?? 'unknown',
-                    'event_slug' => $event_slug
+                    'client' => $client
                 ]);
                 return redirect()->route('client.home', ['client' => $client])
                     ->with('error', 'You do not have permission to access this page.');
+            }
+
+            $event_slug = $request->query('event_slug');
+
+            if (empty($event_slug)) {
+                Log::error('Event slug is missing for scan page access.', ['client' => $client, 'user_id' => $user->id]);
+                return redirect()->route('client.home', ['client' => $client])
+                    ->with('error', 'Please select an event to scan tickets.');
             }
 
             $event = Event::where('slug', $event_slug)->first();
@@ -57,12 +60,10 @@ class TicketScanController extends Controller
                     ->with('error', 'Event not found.');
             }
 
-            // Ensure event props are available similar to AuthenticatedLayout
             $eventVariables = $event->eventVariables;
             if ($eventVariables) {
                 $eventVariables->reconstructImgLinks();
             } else {
-                // Fallback or default event variables if necessary
                 $eventVariables = \App\Models\EventVariables::getDefaultValue();
             }
 
@@ -71,16 +72,15 @@ class TicketScanController extends Controller
                     'id' => $event->id,
                     'name' => $event->name,
                     'slug' => $event->slug,
-                    'location' => $event->location, // Tambahkan lokasi jika ada
+                    'location' => $event->location,
                 ],
                 'client' => $client,
                 'props' => $eventVariables->getSecure(),
                 'appName' => config('app.name'),
-                'userEndSessionDatetime' => null, // Receptionist doesn't have session timeout
+                'userEndSessionDatetime' => null,
             ]);
         } catch (\Exception $e) {
             Log::error('Error loading scan page: ' . $e->getMessage(), [
-                'event_slug' => $event_slug,
                 'client' => $client,
                 'user_id' => $user?->id ?? null,
                 'trace' => $e->getTraceAsString()
@@ -91,10 +91,7 @@ class TicketScanController extends Controller
         }
     }
 
-    /**
-     * Process the scanned ticket code.
-     */
-    public function scan(Request $request, string $client, string $event_slug): JsonResponse
+    public function scan(Request $request, string $client): JsonResponse
     {
         try {
             $user = Auth::user();
@@ -111,7 +108,7 @@ class TicketScanController extends Controller
                 Log::warning('Unauthorized scan attempt.', [
                     'user_id' => $user->id,
                     'user_role' => $userModel?->role ?? 'unknown',
-                    'event_slug' => $event_slug
+                    'client' => $client
                 ]);
                 return response()->json([
                     'message' => 'You do not have permission to scan tickets.',
@@ -119,26 +116,13 @@ class TicketScanController extends Controller
                 ], 403);
             }
 
-            try {
-                $validated = $request->validate([
-                    'ticket_code' => 'required|string|max:255|min:1',
-                ]);
-            } catch (ValidationException $e) {
-                return response()->json([
-                    'message' => 'Invalid ticket code format.',
-                    'error' => 'VALIDATION_ERROR',
-                    'details' => $e->errors()
-                ], 422);
-            }
+            $request->validate([
+                'ticket_code' => 'required|string|max:255|min:1',
+                'event_slug' => 'required|string|max:255|min:1', // Expected from body
+            ]);
 
-            $ticketCode = trim($validated['ticket_code']);
-
-            if (empty($ticketCode)) {
-                return response()->json([
-                    'message' => 'Ticket code cannot be empty.',
-                    'error' => 'EMPTY_CODE'
-                ], 422);
-            }
+            $ticketCode = trim($request->input('ticket_code'));
+            $event_slug = $request->input('event_slug'); // Retrieve from body
 
             $event = Event::where('slug', $event_slug)->first();
             if (!$event) {
@@ -151,7 +135,6 @@ class TicketScanController extends Controller
             DB::beginTransaction();
 
             try {
-                // Temukan tiket berdasarkan kode dan event_id
                 $ticket = Ticket::where('ticket_code', $ticketCode)
                     ->where('event_id', $event->id)
                     ->lockForUpdate()
@@ -171,14 +154,12 @@ class TicketScanController extends Controller
                     ], 404);
                 }
 
-                // Dapatkan order tiket yang paling relevan (misalnya yang belum discan)
                 $ticketOrder = $ticket->ticketOrders()
-                    ->where('status', '!=', TicketOrderStatus::SCANNED->value) // Ambil yang belum discan
-                    ->orderByDesc('created_at') // Ambil yang terbaru jika ada beberapa
+                    ->where('status', '!=', TicketOrderStatus::SCANNED->value)
+                    ->orderByDesc('created_at')
                     ->first();
 
                 if (!$ticketOrder) {
-                    // Jika tidak ada order yang belum discan, periksa apakah sudah discan
                     $alreadyScannedOrder = $ticket->ticketOrders()
                         ->where('status', TicketOrderStatus::SCANNED->value)
                         ->orderByDesc('created_at')
@@ -194,19 +175,18 @@ class TicketScanController extends Controller
                         return response()->json([
                             'message' => "Ticket {$ticketCode} has already been scanned.",
                             'error' => 'ALREADY_SCANNED',
-                            'data' => [ // Kirim data tiket yang sudah discan
-                                'id' => $alreadyScannedOrder->id,
+                            'data' => [
+                                'id' => (string) $alreadyScannedOrder->id,
                                 'ticket_code' => $ticket->ticket_code,
-                                'scanned_at' => $alreadyScannedOrder->updated_at->toIso8601String(), // Atau kolom yang sesuai
-                                'status' => 'error', // Status untuk frontend
+                                'scanned_at' => $alreadyScannedOrder->updated_at->toIso8601String(),
+                                'status' => 'error',
                                 'message' => "Ticket {$ticketCode} has already been scanned.",
-                                'attendee_name' => $ticket->attendee_name, // Asumsi ada kolom ini di model Ticket
-                                'ticket_type' => $ticket->type->name, // Asumsi ada relasi type
+                                'attendee_name' => $ticket->attendee_name ?? null,
+                                'ticket_type' => $ticket->ticketType->name ?? 'N/A',
                             ]
                         ], 409);
                     }
 
-                    // Jika tidak ada order sama sekali, atau semua dalam status non-scannable (dan bukan 'SCANNED')
                     DB::rollBack();
                     Log::error('Ticket order not found or not in scannable state for ticket.', [
                         'ticket_id' => $ticket->id,
@@ -219,26 +199,6 @@ class TicketScanController extends Controller
                     ], 404);
                 }
 
-                // Periksa apakah tiket dalam status yang dapat dipindai (hanya jika Anda tidak menggunakan `where('status', '!=', TicketOrderStatus::SCANNED->value)` di atas)
-                // $scannableStatuses = [
-                //     TicketOrderStatus::ENABLED->value,
-                //     // TicketOrderStatus::DEACTIVATED->value, // Hati-hati dengan ini, jika DEACTIVATED berarti tidak boleh discan
-                // ];
-                // if (!in_array($ticketOrder->status, $scannableStatuses)) {
-                //     DB::rollBack();
-                //     Log::info('Attempt to scan ticket with invalid status.', [
-                //         'ticket_code' => $ticketCode,
-                //         'current_status' => $ticketOrder->status,
-                //         'ticket_order_id' => $ticketOrder->id,
-                //         'user_id' => $user->id
-                //     ]);
-                //     return response()->json([
-                //         'message' => "Ticket {$ticketCode} is not in a scannable status. Current status: {$ticketOrder->status}",
-                //         'error' => 'INVALID_STATUS'
-                //     ], 400);
-                // }
-
-                // Update ticket status to scanned
                 $ticketOrder->status = TicketOrderStatus::SCANNED;
                 $ticketOrder->save();
 
@@ -250,19 +210,17 @@ class TicketScanController extends Controller
                     'event_id' => $event->id,
                 ]);
 
-                // Mengembalikan data tiket yang dipindai secara lengkap
                 return response()->json([
                     'message' => "Ticket {$ticketCode} successfully scanned.",
                     'success' => true,
                     'data' => [
-                        'id' => $ticketOrder->id, // Gunakan ID order tiket sebagai ID unik
+                        'id' => (string) $ticketOrder->id,
                         'ticket_code' => $ticket->ticket_code,
-                        'scanned_at' => $ticketOrder->updated_at->toIso8601String(), // Waktu scan
-                        'status' => 'success', // Status untuk frontend
+                        'scanned_at' => $ticketOrder->updated_at->toIso8601String(),
+                        'status' => 'success',
                         'message' => "Ticket {$ticketCode} successfully scanned.",
-                        // Ambil data tambahan dari model Ticket atau TicketOrder
-                        'attendee_name' => $ticket->attendee_name, // Asumsi ada kolom ini di model Ticket
-                        'ticket_type' => $ticket->ticketType->name, // Asumsi ada relasi ticketType di Ticket model
+                        'attendee_name' => $ticket->attendee_name ?? null,
+                        'ticket_type' => $ticket->ticketType->name ?? 'N/A',
                     ]
                 ], 200);
             } catch (\Exception $e) {
@@ -294,10 +252,7 @@ class TicketScanController extends Controller
         }
     }
 
-    /**
-     * Get the history of scanned tickets for an event.
-     */
-    public function getScannedHistory(Request $request, string $client, string $event_slug): JsonResponse
+    public function getScannedHistory(Request $request, string $client): JsonResponse
     {
         try {
             $user = Auth::user();
@@ -309,6 +264,11 @@ class TicketScanController extends Controller
                 ], 403);
             }
 
+            $request->validate([
+                'event_slug' => 'required|string|max:255|min:1', // Expected from query
+            ]);
+            $event_slug = $request->query('event_slug');
+
             $event = Event::where('slug', $event_slug)->first();
             if (!$event) {
                 return response()->json([
@@ -317,26 +277,23 @@ class TicketScanController extends Controller
                 ], 404);
             }
 
-            // Ambil semua TicketOrder yang berstatus 'SCANNED' untuk event ini
-            // Sertakan relasi 'ticket' dan 'ticket.ticketType' jika ingin menampilkan detail
             $scannedOrders = TicketOrder::whereHas('ticket', function ($query) use ($event) {
                 $query->where('event_id', $event->id);
             })
-                ->with(['ticket.ticketType']) // Load relasi ticket dan ticketType
+                ->with(['ticket.ticketType'])
                 ->where('status', TicketOrderStatus::SCANNED->value)
-                ->orderByDesc('updated_at') // Urutkan berdasarkan waktu scan terbaru
+                ->orderByDesc('updated_at')
                 ->get();
 
-            // Format data sesuai dengan yang diharapkan oleh frontend
             $formattedHistory = $scannedOrders->map(function ($order) {
                 return [
-                    'id' => $order->id, // ID unik dari order tiket
+                    'id' => (string) $order->id,
                     'ticket_code' => $order->ticket->ticket_code,
-                    'scanned_at' => $order->updated_at->toIso8601String(), // Waktu scan
-                    'status' => 'success', // Selalu 'success' untuk riwayat yang sudah discan
+                    'scanned_at' => $order->updated_at->toIso8601String(),
+                    'status' => 'success',
                     'message' => "Ticket {$order->ticket->ticket_code} was scanned.",
-                    'attendee_name' => $order->ticket->attendee_name, // Sesuaikan dengan nama kolom di model Ticket
-                    'ticket_type' => $order->ticket->ticketType->name ?? 'N/A', // Nama tipe tiket
+                    'attendee_name' => $order->ticket->attendee_name ?? null,
+                    'ticket_type' => $order->ticket->ticketType->name ?? 'N/A',
                 ];
             });
 
