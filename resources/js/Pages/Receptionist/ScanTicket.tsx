@@ -65,13 +65,26 @@ const ScanTicket: React.FC = () => {
     }, []);
 
     const fetchScannedTicketsHistory = useCallback(async () => {
-        if (!event) return;
+        // PERBAIKAN: Pastikan event dan event.slug tersedia sebelum melakukan fetch
+        if (!event || !event.slug) {
+            console.error(
+                'Error: Event data or slug missing for history fetch.',
+            );
+            setIsFetchingHistory(false);
+            setNotification({
+                type: 'error',
+                message: 'Event data or slug missing for history.',
+            });
+            clearNotification();
+            return;
+        }
 
         setIsFetchingHistory(true);
         try {
+            // PERBAIKAN: event_slug dikirim sebagai query parameter karena rute /scanned-history
             const url = route('client.events.scanned.history', {
                 client,
-                event_slug: event.slug,
+                event_slug: event.slug, // Ini akan menjadi ?event_slug=...
             });
             const response =
                 await axios.get<ApiSuccessResponse<ScannedTicket[]>>(url);
@@ -110,9 +123,10 @@ const ScanTicket: React.FC = () => {
 
     const submitTicketCode = useCallback(
         async (codeToSubmit: string) => {
+            // PERBAIKAN: Pastikan event dan event.slug tersedia sebelum melakukan submit
             if (isLoading || !codeToSubmit.trim()) return;
-            if (!event) {
-                const errorMsg = 'Event data is missing.';
+            if (!event || !event.slug) {
+                const errorMsg = 'Event data is missing for scanning.';
                 setNotification({
                     type: 'error',
                     message: errorMsg,
@@ -137,15 +151,15 @@ const ScanTicket: React.FC = () => {
             setNotification({ type: null, message: '' });
 
             try {
-                const url = route('client.events.scan.store', {
-                    client,
-                    event_slug: event.slug,
-                });
+                // PERBAIKAN: Rute 'client.events.scan.store' sekarang hanya '/scan'
+                // Event slug harus dikirim di body
+                const url = route('client.events.scan.store', { client });
 
                 const response = await axios.post<
                     ApiSuccessResponse<ScannedTicket>
                 >(url, {
                     ticket_code: codeToSubmit.trim(),
+                    event_slug: event.slug, // PERBAIKAN: event_slug dikirim di body
                 });
 
                 const successMsg =
@@ -209,6 +223,7 @@ const ScanTicket: React.FC = () => {
     );
 
     const startQrScanner = useCallback(() => {
+        // PERBAIKAN: Pastikan videoRef.current dan canvasRef.current tidak null
         if (
             !videoRef.current ||
             !canvasRef.current ||
@@ -222,8 +237,9 @@ const ScanTicket: React.FC = () => {
             return;
         }
 
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
+        // PERBAIKAN: Gunakan null assertion operator '!' setelah pengecekan
+        const video = videoRef.current!;
+        const canvas = canvasRef.current!;
         const context = canvas.getContext('2d', { willReadFrequently: true });
 
         if (!context) {
@@ -323,6 +339,7 @@ const ScanTicket: React.FC = () => {
         console.log('Starting camera...');
         setCameraError('');
 
+        // PERBAIKAN: Early exit jika videoRef.current belum ada
         if (!videoRef.current) {
             console.error('Video ref not available. Cannot start camera.');
             setCameraError('Camera display element not found.');
@@ -331,15 +348,29 @@ const ScanTicket: React.FC = () => {
                 message: 'Camera display element not found.',
             });
             clearNotification();
+            setIsCameraActive(false);
+            setIsScanning(false);
             return;
         }
 
-        if (currentStreamRef.current) {
-            console.log(
-                'Existing camera stream found, stopping it before new start.',
-            );
-            stopCamera();
-            await new Promise((resolve) => setTimeout(resolve, 100));
+        // PERBAIKAN: Logika cerdas untuk mencegah restart yang tidak perlu
+        if (currentStreamRef.current && isCameraActive) {
+            const videoTrack = currentStreamRef.current.getVideoTracks()[0];
+            const currentFacingMode = videoTrack?.getSettings().facingMode;
+            const desiredFacingMode = useFrontCamera ? 'user' : 'environment';
+
+            if (videoTrack && currentFacingMode === desiredFacingMode) {
+                console.log(
+                    'Camera already active with desired facing mode, no restart needed.',
+                );
+                return;
+            } else {
+                console.log(
+                    'Existing camera stream found, stopping it for mode change or restart.',
+                );
+                stopCamera();
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
         }
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -347,6 +378,8 @@ const ScanTicket: React.FC = () => {
             setCameraError(error);
             setNotification({ type: 'error', message: error });
             clearNotification();
+            setIsCameraActive(false);
+            setIsScanning(false);
             return;
         }
 
@@ -375,12 +408,7 @@ const ScanTicket: React.FC = () => {
                 videoRef.current.srcObject = stream;
 
                 await new Promise<void>((resolve, reject) => {
-                    if (!videoRef.current) {
-                        reject(new Error('Video ref lost during setup'));
-                        return;
-                    }
-
-                    const video = videoRef.current;
+                    const video = videoRef.current!; // PERBAIKAN: Null assertion
                     let resolved = false;
 
                     const onLoadedMetadata = () => {
@@ -458,7 +486,7 @@ const ScanTicket: React.FC = () => {
             setIsCameraActive(false);
             setIsScanning(false);
         }
-    }, [useFrontCamera, stopCamera, clearNotification]);
+    }, [useFrontCamera, stopCamera, clearNotification, isCameraActive]);
 
     const toggleCameraFacingMode = useCallback(() => {
         console.log('Toggling camera facing mode');
@@ -500,8 +528,9 @@ const ScanTicket: React.FC = () => {
             'isScanning:',
             isScanning,
         );
+        // PERBAIKAN: Hanya panggil startCamera jika isScanning aktif, biarkan startCamera yang memutuskan restart
         if (isScanning) {
-            console.log('Camera facing mode changed, restarting camera');
+            console.log('Camera facing mode changed, attempting restart...');
             startCamera();
         }
     }, [useFrontCamera, isScanning, startCamera]);
@@ -577,13 +606,6 @@ const ScanTicket: React.FC = () => {
         );
     }
 
-    // const buttonBaseClass =
-    //     'px-4 py-2 rounded-md font-semibold text-xs uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50';
-    // const primaryButtonClass = `${buttonBaseClass} bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:border-blue-700 focus:ring-blue-500`;
-    // const successButtonClass = `${buttonBaseClass} bg-green-600 text-white hover:bg-green-700 active:bg-green-800 focus:border-green-700 focus:ring-green-500`;
-    // const dangerButtonClass = `${buttonBaseClass} bg-red-600 text-white hover:bg-red-700 active:bg-red-800 focus:border-red-700 focus:ring-red-500`;
-    // const secondaryButtonClass = `${buttonBaseClass} bg-gray-600 text-white hover:bg-gray-700 active:bg-gray-800 focus:border-gray-700 focus:ring-gray-500`;
-
     const headerStyle = {
         '--header-text-color': pageConfigProps.text_primary_color,
     } as React.CSSProperties;
@@ -609,8 +631,15 @@ const ScanTicket: React.FC = () => {
             }
         >
             <Head title={`Scan Ticket - ${event.name}`} />
-            {/* Full page background, minimal structure */}
-            <div className="py-8 text-white md:py-12">
+            <div
+                className="min-h-screen py-8 text-white md:py-12"
+                style={{
+                    backgroundColor: pageConfigProps.secondary_color,
+                    backgroundImage: `url(${pageConfigProps.texture})`,
+                    backgroundRepeat: 'repeat',
+                    backgroundSize: 'auto',
+                }}
+            >
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     {/* Notification Section - Floating/Integrated */}
                     {notification.type && (
@@ -619,7 +648,7 @@ const ScanTicket: React.FC = () => {
                                 notification.type === 'success'
                                     ? 'bg-green-500/90'
                                     : 'bg-red-500/90'
-                            } backdrop-blur-sm`} // Added backdrop-blur for modern feel
+                            } backdrop-blur-sm`}
                         >
                             <div className="flex items-center">
                                 {notification.type === 'success' ? (
