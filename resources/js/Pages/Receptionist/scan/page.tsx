@@ -15,7 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { EventProps } from '@/types/front-end';
-import { PageProps as InertiaPageProps } from '@inertiajs/core'; // <--- Ubah impor di sini
+import { PageProps as InertiaPageProps } from '@inertiajs/core';
 
 interface TicketOrder {
     id: number;
@@ -44,34 +44,30 @@ interface QuaggaError extends Error {
     stack?: string;
 }
 
-// Ensure QuaggaDetectedData aligns with QuaggaJSResultObject
-// QuaggaJSResultObject has codeResult.code as string | null
 interface QuaggaDetectedData {
     codeResult: {
-        code: string | null; // Changed to string | null
+        code: string | null;
         format: string;
     };
 }
 
-// Updated EventContext to include slug
 interface EventContext {
     id: number;
     name: string;
-    slug: string; // Added slug property
+    slug: string;
 }
 
-// Extending InertiaPageProps to include our custom props
 interface CustomPageProps extends InertiaPageProps {
-    appName: string; // Tambahkan ini sesuai AuthenticatedLayout
+    appName: string;
     event: EventContext;
-    props: EventProps; // This likely comes from your EventProps type
+    props: EventProps;
     client: string;
     userEndSessionDatetime?: string;
 }
 
 const EventScanTicketPage = () => {
     const { appName, event, props, client, userEndSessionDatetime } =
-        usePage<CustomPageProps>().props; // Use CustomPageProps
+        usePage<CustomPageProps>().props;
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const scannerInitialized = useRef(false);
@@ -88,7 +84,6 @@ const EventScanTicketPage = () => {
         async (code: string) => {
             if (!code || isLoading) return;
 
-            // Check if event is defined before accessing its properties
             if (!event) {
                 console.error(
                     'Event data is undefined, cannot proceed with scan.',
@@ -99,14 +94,14 @@ const EventScanTicketPage = () => {
                     message: 'Event data is missing. Cannot scan ticket.',
                     status: 'error',
                 });
-                return; // Early return to prevent errors
+                return;
             }
 
             setIsLoading(true);
             try {
                 const scanUrl = route('client.events.scan.store', {
                     client,
-                    event_slug: event.slug, // Access event.slug
+                    event_slug: event.slug,
                 });
 
                 const response = await fetch(scanUrl, {
@@ -139,7 +134,6 @@ const EventScanTicketPage = () => {
                 ]);
                 setTicketCodeInput('');
             } catch (error: unknown) {
-                // Use unknown for safety
                 let errorMessage = 'An unexpected error occurred.';
                 if (error instanceof Error) {
                     errorMessage = error.message;
@@ -149,7 +143,7 @@ const EventScanTicketPage = () => {
                     'message' in error &&
                     typeof (error as { message: string }).message === 'string'
                 ) {
-                    errorMessage = (error as { message: string }).message; // Correct type assertion
+                    errorMessage = (error as { message: string }).message;
                 }
                 setNotification({
                     ticket: null,
@@ -162,12 +156,10 @@ const EventScanTicketPage = () => {
                 setTimeout(() => setNotification(null), 5000);
             }
         },
-        [isLoading, client, event], // Added 'event' to the dependency array
+        [isLoading, client, event],
     );
     useEffect(() => {
         if (videoRef.current && cameraActive && !scannerInitialized.current) {
-            // Memberikan ID ke elemen parent yang menjadi target Quagga
-            // Ini akan membantu Quagga mengatur DOM dengan lebih baik
             const videoContainer = videoRef.current.parentElement;
             if (!videoContainer) {
                 console.error('Video container not found for Quagga target.');
@@ -180,42 +172,43 @@ const EventScanTicketPage = () => {
                 setCameraActive(false);
                 return;
             }
-            videoContainer.id = 'interactive-viewport'; // <-- Tambahkan ID ini
+            videoContainer.id = 'interactive-viewport';
 
             Quagga.init(
                 {
                     inputStream: {
                         name: 'Live',
                         type: 'LiveStream',
-                        // Target harus ID dari elemen DOM yang akan menampung video dan canvas
-                        // BUKAN elemen video itu sendiri
-                        target: '#interactive-viewport', // <-- Gunakan ID container
+                        target: '#interactive-viewport',
                         constraints: {
-                            width: { min: 640, ideal: 1280 }, // Tambahkan ideal resolution
-                            height: { min: 480, ideal: 720 }, // Tambahkan ideal resolution
+                            width: { min: 640, ideal: 1280 },
+                            height: { min: 480, ideal: 720 },
                             facingMode: facingMode,
                         },
                     },
                     decoder: {
                         readers: [
-                            'ean_reader',
-                            'code_128_reader',
-                            { format: 'qr_code_reader' }, // <--- Pastikan ini sebagai objek, bukan string literal
+                            {
+                                format: 'ean_reader',
+                                config: { supplements: [] },
+                            },
+                            {
+                                format: 'code_128_reader',
+                                config: { supplements: [] },
+                            },
+                            {
+                                format: 'qr_code_reader',
+                                config: { supplements: [] },
+                            },
                         ],
                     },
-                    // Atur properti lain jika perlu
                     locator: {
-                        patchSize: 'medium', // Default 'medium'
-                        halfSample: true, // Default false
+                        patchSize: 'medium',
+                        halfSample: true,
                     },
-                    numOfWorkers: 0, // Penting untuk debugging di browser, 0 berarti di thread utama
-                    frequency: 10, // Seberapa sering memproses frame
-                    debug: {
-                        drawBoundingBox: true,
-                        drawScanline: true,
-                        showCanvas: true,
-                        showPatches: true,
-                    },
+                    numOfWorkers: 0,
+                    frequency: 10,
+                    debug: true,
                 },
                 (err: QuaggaError | Error | null) => {
                     if (err) {
@@ -232,10 +225,6 @@ const EventScanTicketPage = () => {
                     Quagga.start();
                     scannerInitialized.current = true;
                     console.log('Quagga started successfully.');
-
-                    // Quagga yang akan mengelola elemen <video> dan <canvas> di dalam target
-                    // Anda tidak perlu memanggil .play() secara manual jika Quagga berhasil
-                    // If you still see the video black, inspect the DOM for Quagga's canvas/video elements
                 },
             );
 
@@ -309,7 +298,6 @@ const EventScanTicketPage = () => {
         );
     };
 
-    // Provide a fallback for event.name if event is undefined
     const eventName = event?.name || 'Loading Event...';
 
     return (
@@ -318,7 +306,7 @@ const EventScanTicketPage = () => {
             client={client}
             props={props}
             userEndSessionDatetime={userEndSessionDatetime}
-            event={event} // Pass event prop to AuthenticatedLayout for navigation
+            event={event}
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
                     Scan Ticket for Event: {eventName}
@@ -326,17 +314,13 @@ const EventScanTicketPage = () => {
             }
         >
             <div className="container mx-auto max-w-4xl p-4">
-                {/* Camera Stream */}
                 <div className="relative mb-8 overflow-hidden rounded-lg bg-gray-900 p-4 shadow-xl">
-                    {/* CONTAINER UNTUK VIDEO DAN CANVAS QUAGGA */}
                     <div
                         id="interactive-viewport"
                         className="relative flex h-80 w-full items-center justify-center overflow-hidden rounded-md bg-black"
                     >
                         {cameraActive ? (
                             <>
-                                {/* Elemen <video> ini akan digantikan atau dimanipulasi oleh Quagga */}
-                                {/* Anda tidak perlu memanggil .play() di sini */}
                                 <video
                                     ref={videoRef}
                                     autoPlay
@@ -377,7 +361,6 @@ const EventScanTicketPage = () => {
                     </div>
                 </div>
 
-                {/* Manual Input Form */}
                 <div className="mb-8 rounded-lg bg-white p-6 shadow-xl">
                     <form
                         onSubmit={handleSubmit}
@@ -405,7 +388,6 @@ const EventScanTicketPage = () => {
                     </form>
                 </div>
 
-                {/* Scan Notification */}
                 <AnimatePresence>
                     {notification && (
                         <motion.div
@@ -430,7 +412,6 @@ const EventScanTicketPage = () => {
                     )}
                 </AnimatePresence>
 
-                {/* Scanned Tickets List */}
                 <div className="rounded-lg bg-white p-6 shadow-xl">
                     <h2 className="mb-4 text-2xl font-bold">Scanned Tickets</h2>
                     {scanResults.length === 0 ? (
