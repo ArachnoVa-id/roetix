@@ -1,7 +1,7 @@
 // resources/js/Pages/Receptionist/ScanTicket.tsx
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { ApiErrorResponse, ApiSuccessResponse } from '@/types/front-end'; // Pastikan path ini benar
-import { PageProps as InertiaBasePageProps } from '@inertiajs/core'; // Impor PageProps dasar dari Inertia
+import { ApiErrorResponse, ApiSuccessResponse } from '@/types/front-end';
+import { PageProps as InertiaBasePageProps } from '@inertiajs/core';
 import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import jsQR from 'jsqr';
@@ -14,32 +14,27 @@ import React, {
 } from 'react';
 import { route } from 'ziggy-js';
 
-// Tidak perlu ScanTicketPageInertiaProps jika PageProps global sudah benar
-// Kita akan menggunakan PageProps yang diimpor dari '@inertiajs/core'
-// yang telah kita perluas di file types/index.d.ts
-
 interface NotificationState {
     type: 'success' | 'error' | null;
     message: string;
 }
 
 const ScanTicket: React.FC = () => {
-    // Gunakan PageProps yang telah diperluas dari '@inertiajs/core'
     const page = usePage<InertiaBasePageProps>();
     const {
-        props: pageConfigProps, // Ini adalah EventProps Anda
+        props: pageConfigProps,
         client,
-        event, // Ini adalah EventContext Anda, bisa jadi undefined
+        event,
         appName,
         userEndSessionDatetime,
-        // 'ziggy' akan diambil dari page.props.ziggy jika diperlukan
     } = page.props;
 
     const [ticketCode, setTicketCode] = useState<string>('');
-    const [useFrontCamera, setUseFrontCamera] = useState<boolean>(true);
+    const [useFrontCamera, setUseFrontCamera] = useState<boolean>(false); // Ubah ke false untuk menggunakan back camera sebagai default
     const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
     const [isScanning, setIsScanning] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [cameraError, setCameraError] = useState<string>(''); // Tambahkan state untuk error kamera
     const [notification, setNotification] = useState<NotificationState>({
         type: null,
         message: '',
@@ -57,7 +52,6 @@ const ScanTicket: React.FC = () => {
     const submitTicketCode = useCallback(
         async (codeToSubmit: string) => {
             if (isLoading) return;
-            // Pastikan event ada sebelum melanjutkan
             if (!event) {
                 setNotification({
                     type: 'error',
@@ -72,7 +66,7 @@ const ScanTicket: React.FC = () => {
             try {
                 const url = route('client.events.scan.store', {
                     client,
-                    event_slug: event.slug, // Aman diakses setelah pemeriksaan di atas
+                    event_slug: event.slug,
                 });
 
                 const response = await axios.post<ApiSuccessResponse>(url, {
@@ -107,7 +101,7 @@ const ScanTicket: React.FC = () => {
                 clearNotification();
             }
         },
-        [isLoading, client, event, clearNotification], // event ditambahkan sebagai dependensi
+        [isLoading, client, event, clearNotification],
     );
 
     const startQrScanner = useCallback(() => {
@@ -117,12 +111,17 @@ const ScanTicket: React.FC = () => {
             !isScanning ||
             !isCameraActive
         ) {
-            if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+            if (scanIntervalRef.current) {
+                clearInterval(scanIntervalRef.current);
+                scanIntervalRef.current = null;
+            }
             return;
         }
+
         const video = videoRef.current;
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d', { willReadFrequently: true });
+
         if (!context) {
             setNotification({
                 type: 'error',
@@ -131,22 +130,30 @@ const ScanTicket: React.FC = () => {
             clearNotification();
             return;
         }
-        if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+
+        if (scanIntervalRef.current) {
+            clearInterval(scanIntervalRef.current);
+        }
+
         scanIntervalRef.current = setInterval(() => {
             if (
                 video.readyState === video.HAVE_ENOUGH_DATA &&
                 isScanning &&
-                isCameraActive
+                isCameraActive &&
+                video.videoWidth > 0 &&
+                video.videoHeight > 0
             ) {
                 canvas.height = video.videoHeight;
                 canvas.width = video.videoWidth;
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
                 const imageData = context.getImageData(
                     0,
                     0,
                     canvas.width,
                     canvas.height,
                 );
+
                 const code = jsQR(
                     imageData.data,
                     imageData.width,
@@ -155,60 +162,158 @@ const ScanTicket: React.FC = () => {
                         inversionAttempts: 'dontInvert',
                     },
                 );
-                if (code && code.data) {
-                    if (scanIntervalRef.current)
+
+                if (code && code.data.trim()) {
+                    if (scanIntervalRef.current) {
                         clearInterval(scanIntervalRef.current);
-                    setTicketCode(code.data);
-                    submitTicketCode(code.data);
+                        scanIntervalRef.current = null;
+                    }
+                    setTicketCode(code.data.trim());
+                    submitTicketCode(code.data.trim());
                 }
             }
         }, 300);
-    }, [isScanning, isCameraActive, clearNotification, submitTicketCode]);
+    }, [isScanning, isCameraActive, submitTicketCode, clearNotification]);
 
     const stopCamera = useCallback(() => {
+        console.log('Stopping camera...');
+
+        // Stop all tracks
         if (currentStreamRef.current) {
-            currentStreamRef.current
-                .getTracks()
-                .forEach((track) => track.stop());
+            currentStreamRef.current.getTracks().forEach((track) => {
+                track.stop();
+                console.log(`Stopped track: ${track.kind}`);
+            });
             currentStreamRef.current = null;
         }
+
+        // Clear scanning interval
         if (scanIntervalRef.current) {
             clearInterval(scanIntervalRef.current);
             scanIntervalRef.current = null;
         }
+
+        // Clear video source
         if (videoRef.current) {
             videoRef.current.srcObject = null;
+            videoRef.current.pause();
         }
+
         setIsCameraActive(false);
+        setCameraError('');
     }, []);
 
     const startCamera = useCallback(async () => {
+        console.log('Starting camera...');
+        setCameraError('');
+
+        // Stop existing camera first
         if (currentStreamRef.current) {
             stopCamera();
         }
-        if (!videoRef.current) return;
+
+        if (!videoRef.current) {
+            console.error('Video ref not available');
+            return;
+        }
+
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            const error = 'Camera not supported in this browser or environment';
+            setCameraError(error);
+            setNotification({ type: 'error', message: error });
+            clearNotification();
+            return;
+        }
+
         const constraints: MediaStreamConstraints = {
             video: {
                 facingMode: useFrontCamera ? 'user' : 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
             },
+            audio: false,
         };
+
         try {
+            console.log('Requesting camera with constraints:', constraints);
             const stream =
                 await navigator.mediaDevices.getUserMedia(constraints);
+
+            if (!stream) {
+                throw new Error('No stream received from getUserMedia');
+            }
+
+            console.log('Camera stream obtained:', stream);
             currentStreamRef.current = stream;
+
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+
+                // Wait for the video to load metadata
+                await new Promise<void>((resolve, reject) => {
+                    if (!videoRef.current) {
+                        reject(new Error('Video ref lost during setup'));
+                        return;
+                    }
+
+                    const video = videoRef.current;
+
+                    const onLoadedMetadata = () => {
+                        console.log('Video metadata loaded');
+                        video.removeEventListener(
+                            'loadedmetadata',
+                            onLoadedMetadata,
+                        );
+                        video.removeEventListener('error', onError);
+                        resolve();
+                    };
+
+                    const onError = (e: Event) => {
+                        console.error('Video error:', e);
+                        video.removeEventListener(
+                            'loadedmetadata',
+                            onLoadedMetadata,
+                        );
+                        video.removeEventListener('error', onError);
+                        reject(new Error('Video failed to load'));
+                    };
+
+                    video.addEventListener('loadedmetadata', onLoadedMetadata);
+                    video.addEventListener('error', onError);
+                });
+
+                // Start playing the video
                 await videoRef.current.play();
+                console.log('Video playing successfully');
             }
+
             setIsCameraActive(true);
             setNotification({ type: null, message: '' });
         } catch (err: unknown) {
             console.error('Error starting camera:', err);
-            let camMessage =
-                'Could not access camera. Please check permissions.';
+
+            let camMessage = 'Could not access camera. ';
+
             if (err instanceof Error) {
-                camMessage = `Camera Error: ${err.name} - ${err.message}`;
+                if (err.name === 'NotAllowedError') {
+                    camMessage +=
+                        'Permission denied. Please allow camera access.';
+                } else if (err.name === 'NotFoundError') {
+                    camMessage += 'No camera found on this device.';
+                } else if (err.name === 'NotReadableError') {
+                    camMessage +=
+                        'Camera is already in use by another application.';
+                } else if (err.name === 'OverconstrainedError') {
+                    camMessage += 'Camera constraints not supported.';
+                } else {
+                    camMessage += `${err.name}: ${err.message}`;
+                }
+            } else {
+                camMessage += 'Unknown error occurred.';
             }
+
+            setCameraError(camMessage);
             setNotification({ type: 'error', message: camMessage });
             clearNotification();
             setIsCameraActive(false);
@@ -216,38 +321,58 @@ const ScanTicket: React.FC = () => {
         }
     }, [useFrontCamera, stopCamera, clearNotification]);
 
-    const toggleCameraFacingMode = () => {
+    const toggleCameraFacingMode = useCallback(() => {
+        console.log('Toggling camera facing mode');
         setUseFrontCamera((prev) => !prev);
-    };
+    }, []);
 
+    const toggleScanning = useCallback(() => {
+        setIsScanning((prev) => {
+            const newValue = !prev;
+            console.log('Toggle scanning:', newValue);
+            return newValue;
+        });
+    }, []);
+
+    // Effect untuk start/stop camera berdasarkan isScanning
     useEffect(() => {
+        console.log('Scanning state changed:', isScanning);
         if (isScanning) {
             startCamera();
         } else {
             stopCamera();
         }
+
         return () => {
             stopCamera();
         };
     }, [isScanning, startCamera, stopCamera]);
 
+    // Effect untuk restart camera ketika facing mode berubah
     useEffect(() => {
         if (isScanning && isCameraActive) {
+            console.log('Camera facing mode changed, restarting camera');
             startCamera();
         }
     }, [useFrontCamera, isScanning, isCameraActive, startCamera]);
 
+    // Effect untuk start QR scanner
     useEffect(() => {
         if (isScanning && isCameraActive) {
+            console.log('Starting QR scanner');
             startQrScanner();
         } else {
             if (scanIntervalRef.current) {
+                console.log('Stopping QR scanner');
                 clearInterval(scanIntervalRef.current);
+                scanIntervalRef.current = null;
             }
         }
+
         return () => {
             if (scanIntervalRef.current) {
                 clearInterval(scanIntervalRef.current);
+                scanIntervalRef.current = null;
             }
         };
     }, [isScanning, isCameraActive, startQrScanner]);
@@ -262,10 +387,9 @@ const ScanTicket: React.FC = () => {
             clearNotification();
             return;
         }
-        submitTicketCode(ticketCode);
+        submitTicketCode(ticketCode.trim());
     };
 
-    // Jika event tidak ada, tampilkan pesan error atau loading
     if (!event) {
         return (
             <AuthenticatedLayout
@@ -273,7 +397,6 @@ const ScanTicket: React.FC = () => {
                 client={client}
                 props={pageConfigProps}
                 userEndSessionDatetime={userEndSessionDatetime}
-                // event bisa undefined di sini jika memang tidak ada
             >
                 <Head title="Error - Event Not Found" />
                 <div className="py-12">
@@ -287,8 +410,6 @@ const ScanTicket: React.FC = () => {
             </AuthenticatedLayout>
         );
     }
-
-    // --- Sisa JSX dari sini menggunakan 'event' yang sudah pasti ada ---
 
     const buttonBaseClass =
         'px-4 py-2 rounded-md font-semibold text-xs uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-offset-2 transition ease-in-out duration-150';
@@ -306,7 +427,7 @@ const ScanTicket: React.FC = () => {
             client={client}
             props={pageConfigProps}
             userEndSessionDatetime={userEndSessionDatetime}
-            event={event} // event di sini sudah pasti ada dan memiliki slug
+            event={event}
             header={
                 <div style={headerStyle}>
                     <h2 className="header-dynamic-color text-xl font-semibold leading-tight">
@@ -330,6 +451,14 @@ const ScanTicket: React.FC = () => {
                                 {notification.message}
                             </div>
                         )}
+
+                        {/* Camera Error Display */}
+                        {cameraError && (
+                            <div className="mb-4 rounded-md bg-yellow-100 p-3 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                <strong>Camera Issue:</strong> {cameraError}
+                            </div>
+                        )}
+
                         <div className="mb-6 flex w-full items-center justify-center">
                             <div className="w-full rounded-md md:w-3/4">
                                 {isScanning && isCameraActive ? (
@@ -339,33 +468,42 @@ const ScanTicket: React.FC = () => {
                                         height="auto"
                                         autoPlay
                                         playsInline
+                                        muted
                                         className="rounded-md border dark:border-gray-600"
+                                        style={{
+                                            transform: useFrontCamera
+                                                ? 'scaleX(-1)'
+                                                : 'none',
+                                        }}
                                     />
                                 ) : (
                                     <div className="flex aspect-video w-full items-center justify-center rounded-md border bg-gray-200 dark:border-gray-600 dark:bg-gray-700">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            strokeWidth={1.5}
-                                            stroke="currentColor"
-                                            className="h-16 w-16 text-gray-400 dark:text-gray-500"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z"
-                                            />
-                                        </svg>
+                                        <div className="text-center">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                strokeWidth={1.5}
+                                                stroke="currentColor"
+                                                className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z"
+                                                />
+                                            </svg>
+                                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                                Camera inactive
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                                 <canvas ref={canvasRef} className="hidden" />
                                 <div className="mt-4 flex justify-center gap-x-3">
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            setIsScanning((prev) => !prev)
-                                        }
+                                        onClick={toggleScanning}
                                         className={
                                             isScanning
                                                 ? dangerButtonClass
@@ -375,16 +513,20 @@ const ScanTicket: React.FC = () => {
                                     >
                                         {isScanning
                                             ? 'Stop Camera'
-                                            : 'Activate Camera & Scan'}
+                                            : 'Start Camera & Scan'}
                                     </button>
-                                    {isScanning && isCameraActive && (
+                                    {isScanning && (
                                         <button
                                             type="button"
                                             onClick={toggleCameraFacingMode}
                                             className={successButtonClass}
-                                            disabled={isLoading}
+                                            disabled={
+                                                isLoading || !isCameraActive
+                                            }
                                         >
-                                            Flip Camera
+                                            Switch to{' '}
+                                            {useFrontCamera ? 'Back' : 'Front'}{' '}
+                                            Camera
                                         </button>
                                     )}
                                 </div>
