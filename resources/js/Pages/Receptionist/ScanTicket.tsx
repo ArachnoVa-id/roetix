@@ -1,4 +1,3 @@
-// resources/js/Pages/Receptionist/ScanTicket.tsx
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { ApiErrorResponse, ApiSuccessResponse } from '@/types/front-end';
 import { PageProps as InertiaBasePageProps } from '@inertiajs/core';
@@ -233,27 +232,40 @@ const ScanTicket: React.FC = () => {
     const stopCamera = useCallback(() => {
         console.log('Stopping camera...');
 
-        if (currentStreamRef.current) {
-            currentStreamRef.current.getTracks().forEach((track) => {
-                track.stop();
-                console.log(`Stopped track: ${track.kind}`);
-            });
-            currentStreamRef.current = null;
-        }
-
+        // Clear any ongoing QR scanning interval
         if (scanIntervalRef.current) {
             clearInterval(scanIntervalRef.current);
             scanIntervalRef.current = null;
+            console.log('Stopped QR scanning interval.');
         }
 
+        // Stop all tracks in the current stream
+        if (currentStreamRef.current) {
+            currentStreamRef.current.getTracks().forEach((track) => {
+                if (track.readyState === 'live') {
+                    // Only stop if track is active
+                    track.stop();
+                    console.log(
+                        `Stopped track: ${track.kind} (id: ${track.id})`,
+                    );
+                }
+            });
+            currentStreamRef.current = null; // Clear the stream reference
+        }
+
+        // Stop video playback and clear its source
         if (videoRef.current) {
             videoRef.current.srcObject = null;
             videoRef.current.pause();
+            // Optional: Call load() to ensure video element is fully reset
+            // videoRef.current.load();
         }
 
+        // Reset all camera-related states
         setIsCameraActive(false);
         setCameraError('');
-        lastScannedCodeRef.current = '';
+        lastScannedCodeRef.current = ''; // Reset last scanned code on stop
+        console.log('Camera stop process completed.');
     }, []);
 
     const startCamera = useCallback(async () => {
@@ -273,8 +285,14 @@ const ScanTicket: React.FC = () => {
         }
 
         // If a stream is already active, stop it before starting a new one
+        // This is crucial to prevent multiple active camera streams
         if (currentStreamRef.current) {
+            console.log(
+                'Existing camera stream found, stopping it before new start.',
+            );
             stopCamera();
+            // Give a brief moment for the browser to release resources if needed
+            await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -346,7 +364,7 @@ const ScanTicket: React.FC = () => {
                     video.addEventListener('loadedmetadata', onLoadedMetadata);
                     video.addEventListener('error', onError);
 
-                    // Timeout fallback
+                    // Timeout fallback in case loadedmetadata doesn't fire
                     setTimeout(() => {
                         if (!resolved) {
                             resolved = true;
@@ -357,7 +375,7 @@ const ScanTicket: React.FC = () => {
                             video.removeEventListener('error', onError);
                             resolve();
                         }
-                    }, 3000);
+                    }, 3000); // Max 3 seconds to wait for metadata
                 });
 
                 await videoRef.current.play();
@@ -392,8 +410,8 @@ const ScanTicket: React.FC = () => {
             setCameraError(camMessage);
             setNotification({ type: 'error', message: camMessage });
             clearNotification();
-            setIsCameraActive(false);
-            setIsScanning(false);
+            setIsCameraActive(false); // Ensure state reflects failure
+            setIsScanning(false); // Stop scanning if camera fails to start
         }
     }, [useFrontCamera, stopCamera, clearNotification]);
 
@@ -405,37 +423,61 @@ const ScanTicket: React.FC = () => {
     const toggleScanning = useCallback(() => {
         setIsScanning((prev) => {
             const newValue = !prev;
-            console.log('Toggle scanning:', newValue);
+            console.log('Toggle scanning: Setting isScanning to', newValue);
             return newValue;
         });
     }, []);
 
     // Effect for start/stop camera based on isScanning
     useEffect(() => {
-        console.log('Scanning state changed:', isScanning);
+        console.log(
+            '--- Effect [isScanning] triggered. isScanning:',
+            isScanning,
+        );
         if (isScanning) {
             startCamera();
         } else {
             stopCamera();
         }
 
+        // Cleanup function for this effect
         return () => {
+            console.log(
+                '--- Effect [isScanning] cleanup. isScanning at cleanup:',
+                isScanning,
+            );
+            // This stopCamera will run if the component unmounts or if `isScanning` changes
+            // If `isScanning` goes from true to false, `stopCamera` is already called above.
+            // This is primarily for component unmount.
             stopCamera();
         };
     }, [isScanning, startCamera, stopCamera]);
 
     // Effect for restart camera when facing mode changes
     useEffect(() => {
-        // Only restart camera if scanning is active AND camera was already active
-        // This prevents attempting to start camera if it's not meant to be active
+        // HANYA restart kamera jika scanning aktif DAN useFrontCamera berubah
+        // JANGAN bergantung pada isCameraActive di dependency array karena itu adalah state yang dihasilkan oleh startCamera
+        console.log(
+            '--- Effect [useFrontCamera] triggered. useFrontCamera:',
+            useFrontCamera,
+            'isScanning:',
+            isScanning,
+        );
         if (isScanning) {
+            // Hapus `isCameraActive` dari kondisi IF
             console.log('Camera facing mode changed, restarting camera');
             startCamera();
         }
-    }, [useFrontCamera, isScanning, startCamera]);
+    }, [useFrontCamera, isScanning, startCamera]); // Hapus `isCameraActive` dari dependency array
 
     // Effect for start QR scanner
     useEffect(() => {
+        console.log(
+            '--- Effect [QR Scanner] triggered. isScanning:',
+            isScanning,
+            'isCameraActive:',
+            isCameraActive,
+        );
         if (isScanning && isCameraActive) {
             console.log('Starting QR scanner');
             startQrScanner();
@@ -447,17 +489,20 @@ const ScanTicket: React.FC = () => {
             }
         }
 
+        // Cleanup for QR scanner interval
         return () => {
             if (scanIntervalRef.current) {
+                console.log('QR Scanner cleanup.');
                 clearInterval(scanIntervalRef.current);
                 scanIntervalRef.current = null;
             }
         };
-    }, [isScanning, isCameraActive, startQrScanner]);
+    }, [isScanning, isCameraActive, startQrScanner]); // `isCameraActive` perlu di sini karena scanner butuh kamera aktif
 
     // Cleanup on unmount
     useEffect(() => {
         return () => {
+            console.log('Component unmounting. Final camera stop.');
             stopCamera();
             if (scanTimeoutRef.current) {
                 clearTimeout(scanTimeoutRef.current);
