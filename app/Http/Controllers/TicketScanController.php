@@ -7,14 +7,15 @@ use App\Models\Ticket;
 use App\Models\TicketOrder;
 use App\Models\User;
 use App\Enums\TicketOrderStatus;
-use App\Enums\UserRole; // Make sure this is the correct path to your UserRole enum
+use App\Enums\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use Inertia\Response as InertiaResponse; // Alias to avoid conflict with Illuminate\Http\Response
+use Inertia\Response as InertiaResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
 
 class TicketScanController extends Controller
 {
@@ -24,47 +25,69 @@ class TicketScanController extends Controller
      */
     public function show(Request $request, string $client, string $event_slug): InertiaResponse | \Illuminate\Http\RedirectResponse
     {
-        $user = Auth::user();
-        $userModel = User::find($user->id);
-        if (!$user || !$userModel->isReceptionist()) { // Assuming isReceptionist() method exists on User model
-            Log::warning('Unauthorized attempt to access scan page.', ['user_id' => $user?->id, 'event_slug' => $event_slug]);
-            // Redirect to client home or login, or show a generic unauthorized page
-            return redirect()->route('client.home', ['client' => $client])->with('error', 'Unauthorized access.');
+        try {
+            $user = Auth::user();
+
+            if (!$user) {
+                Log::warning('Unauthenticated attempt to access scan page.', ['event_slug' => $event_slug]);
+                return redirect()->route('client.login', ['client' => $client])
+                    ->with('error', 'Please login to access this page.');
+            }
+
+            $userModel = User::find($user->id);
+            if (!$userModel || !$userModel->isReceptionist()) {
+                Log::warning('Unauthorized attempt to access scan page.', [
+                    'user_id' => $user->id,
+                    'user_role' => $userModel?->role ?? 'unknown',
+                    'event_slug' => $event_slug
+                ]);
+                return redirect()->route('client.home', ['client' => $client])
+                    ->with('error', 'You do not have permission to access this page.');
+            }
+
+            $event = Event::where('slug', $event_slug)->first();
+
+            if (!$event) {
+                Log::error('Event not found for scanning.', [
+                    'event_slug' => $event_slug,
+                    'client' => $client,
+                    'user_id' => $user->id
+                ]);
+                return redirect()->route('client.home', ['client' => $client])
+                    ->with('error', 'Event not found.');
+            }
+
+            // Ensure event props are available similar to AuthenticatedLayout
+            $eventVariables = $event->eventVariables;
+            if ($eventVariables) {
+                $eventVariables->reconstructImgLinks();
+            } else {
+                // Fallback or default event variables if necessary
+                $eventVariables = \App\Models\EventVariables::getDefaultValue();
+            }
+
+            return Inertia::render('Receptionist/ScanTicket', [
+                'event' => [
+                    'id' => $event->id,
+                    'name' => $event->name,
+                    'slug' => $event->slug,
+                ],
+                'client' => $client,
+                'props' => $eventVariables->getSecure(),
+                'appName' => config('app.name'),
+                'userEndSessionDatetime' => null, // Receptionist doesn't have session timeout
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error loading scan page: ' . $e->getMessage(), [
+                'event_slug' => $event_slug,
+                'client' => $client,
+                'user_id' => $user?->id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('client.home', ['client' => $client])
+                ->with('error', 'An error occurred while loading the scan page.');
         }
-
-        $event = Event::where('slug', $event_slug)
-            // ->where('client_id', $client_id) // If you also link events to a client entity
-            ->first();
-
-        if (!$event) {
-            Log::error('Event not found for scanning.', ['event_slug' => $event_slug, 'client' => $client]);
-            abort(404, 'Event not found.');
-        }
-        
-        // Ensure event props are available similar to AuthenticatedLayout
-        $eventVariables = $event->eventVariables;
-        if ($eventVariables) {
-            $eventVariables->reconstructImgLinks();
-        } else {
-            // Fallback or default event variables if necessary
-            $eventVariables = \App\Models\EventVariables::getDefaultValue();
-        }
-
-
-        return Inertia::render('Receptionist/ScanTicket', [
-            'event' => [ // Pass only necessary, non-sensitive event data
-                'id' => $event->id,
-                'name' => $event->name,
-                'slug' => $event->slug,
-            ],
-            'client' => $client,
-            // 'props' should be consistent with what AuthenticatedLayout expects/provides
-            // This often comes from a middleware or view composer.
-            // For now, let's assume it's passed or can be reconstructed here if needed.
-            'props' => $eventVariables->getSecure(), 
-            'appName' => config('app.name'),
-            // 'userEndSessionDatetime' => ... // if applicable
-        ]);
     }
 
     /**
@@ -72,75 +95,171 @@ class TicketScanController extends Controller
      */
     public function scan(Request $request, string $client, string $event_slug): JsonResponse
     {
-        $user = Auth::user();
-        $userModel = User::find($user->id);
-        if (!$user || !$userModel->isReceptionist()) {
-            return response()->json(['message' => 'Unauthorized.'], 403);
-        }
-
-        $validated = $request->validate([
-            'ticket_code' => 'required|string|max:255',
-        ]);
-
-        $ticketCode = $validated['ticket_code'];
-
-        $event = Event::where('slug', $event_slug)->first();
-        if (!$event) {
-            return response()->json(['message' => 'Event not found.'], 404);
-        }
-
         try {
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'message' => 'Authentication required.',
+                    'error' => 'UNAUTHENTICATED'
+                ], 401);
+            }
+
+            $userModel = User::find($user->id);
+            if (!$userModel || !$userModel->isReceptionist()) {
+                Log::warning('Unauthorized scan attempt.', [
+                    'user_id' => $user->id,
+                    'user_role' => $userModel?->role ?? 'unknown',
+                    'event_slug' => $event_slug
+                ]);
+                return response()->json([
+                    'message' => 'You do not have permission to scan tickets.',
+                    'error' => 'UNAUTHORIZED'
+                ], 403);
+            }
+
+            // Validate input with better error messages
+            try {
+                $validated = $request->validate([
+                    'ticket_code' => 'required|string|max:255|min:1',
+                ]);
+            } catch (ValidationException $e) {
+                return response()->json([
+                    'message' => 'Invalid ticket code format.',
+                    'error' => 'VALIDATION_ERROR',
+                    'details' => $e->errors()
+                ], 422);
+            }
+
+            $ticketCode = trim($validated['ticket_code']);
+
+            if (empty($ticketCode)) {
+                return response()->json([
+                    'message' => 'Ticket code cannot be empty.',
+                    'error' => 'EMPTY_CODE'
+                ], 422);
+            }
+
+            $event = Event::where('slug', $event_slug)->first();
+            if (!$event) {
+                return response()->json([
+                    'message' => 'Event not found.',
+                    'error' => 'EVENT_NOT_FOUND'
+                ], 404);
+            }
+
             DB::beginTransaction();
 
-            $ticket = Ticket::where('ticket_code', $ticketCode)
-                ->where('event_id', $event->id)
-                ->lockForUpdate() // Important for concurrency
-                ->first();
+            try {
+                $ticket = Ticket::where('ticket_code', $ticketCode)
+                    ->where('event_id', $event->id)
+                    ->lockForUpdate()
+                    ->first();
 
-            if (!$ticket) {
+                if (!$ticket) {
+                    DB::rollBack();
+                    Log::info('Ticket not found for scanning.', [
+                        'ticket_code' => $ticketCode,
+                        'event_id' => $event->id,
+                        'event_slug' => $event_slug,
+                        'user_id' => $user->id
+                    ]);
+                    return response()->json([
+                        'message' => 'Ticket not found or not valid for this event.',
+                        'error' => 'TICKET_NOT_FOUND'
+                    ], 404);
+                }
+
+                // Get the latest ticket order associated with this ticket
+                $ticketOrder = $ticket->ticketOrders()
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                if (!$ticketOrder) {
+                    DB::rollBack();
+                    Log::error('Ticket order not found for ticket.', [
+                        'ticket_id' => $ticket->id,
+                        'ticket_code' => $ticketCode,
+                        'event_id' => $event->id
+                    ]);
+                    return response()->json([
+                        'message' => 'Ticket order not found for this ticket.',
+                        'error' => 'ORDER_NOT_FOUND'
+                    ], 404);
+                }
+
+                // Check if already scanned
+                if ($ticketOrder->status === TicketOrderStatus::SCANNED->value) {
+                    DB::rollBack();
+                    Log::info('Attempt to scan already scanned ticket.', [
+                        'ticket_code' => $ticketCode,
+                        'ticket_order_id' => $ticketOrder->id,
+                        'user_id' => $user->id
+                    ]);
+                    return response()->json([
+                        'message' => "Ticket {$ticketCode} has already been scanned.",
+                        'error' => 'ALREADY_SCANNED'
+                    ], 409);
+                }
+
+                // Check if ticket is in a scannable state
+                $scannableStatuses = [
+                    TicketOrderStatus::ENABLED->value,
+                    TicketOrderStatus::DEACTIVATED->value,
+                    // Add other valid statuses as needed
+                ];
+
+                if (!in_array($ticketOrder->status, $scannableStatuses)) {
+                    DB::rollBack();
+                    Log::info('Attempt to scan ticket with invalid status.', [
+                        'ticket_code' => $ticketCode,
+                        'current_status' => $ticketOrder->status,
+                        'ticket_order_id' => $ticketOrder->id,
+                        'user_id' => $user->id
+                    ]);
+                    return response()->json([
+                        'message' => "Ticket {$ticketCode} is not in a scannable status. Current status: {$ticketOrder->status}",
+                        'error' => 'INVALID_STATUS'
+                    ], 400);
+                }
+
+                // Update ticket status to scanned
+                $ticketOrder->status = TicketOrderStatus::SCANNED;
+                $ticketOrder->save();
+
+                DB::commit();
+
+                Log::info('Ticket successfully scanned.', [
+                    'ticket_code' => $ticketCode,
+                    'ticket_order_id' => $ticketOrder->id,
+                    'event_id' => $event->id,
+                ]);
+
+                return response()->json([
+                    'message' => "Ticket {$ticketCode} successfully scanned.",
+                    'success' => true,
+                    'data' => [
+                        'ticket_code' => $ticketCode,
+                        'status' => $ticketOrder->status
+                    ]
+                ], 200);
+            } catch (\Exception $e) {
                 DB::rollBack();
-                return response()->json(['message' => 'Ticket not found or not valid for this event.'], 404);
+                throw $e; // Re-throw to be caught by outer try-catch
             }
-
-            // Get the latest ticket order associated with this ticket
-            // Assuming a ticket might have multiple order entries if re-enabled, etc.
-            // Or, if a ticket_id is unique to one order, TicketOrder::where('ticket_id', $ticket->id)->first() is fine.
-            $ticketOrder = $ticket->ticketOrders()->orderByDesc('created_at')->first();
-
-            if (!$ticketOrder) {
-                DB::rollBack();
-                return response()->json(['message' => 'Ticket order not found for this ticket.'], 404);
-            }
-            
-            // Check if already scanned
-            if ($ticketOrder->status === TicketOrderStatus::SCANNED->value) {
-                 DB::rollBack(); // No change, so rollback (or commit, depending on desired behavior)
-                 return response()->json(['message' => "Ticket {$ticketCode} has already been scanned."], 409); // 409 Conflict
-            }
-
-            // Check if ticket is in a scannable state (e.g., ENABLED or PAID)
-            // This depends on your application's status flow.
-            // Example: if ($ticketOrder->status !== TicketOrderStatus::ENABLED->value && $ticketOrder->status !== TicketOrderStatus::PAID->value) {
-            // DB::rollBack();
-            // return response()->json(['message' => "Ticket {$ticketCode} is not in a scannable status."], 400);
-            // }
-
-
-            $ticketOrder->status = TicketOrderStatus::SCANNED;
-            $ticketOrder->save();
-
-            DB::commit();
-
-            // You could dispatch an event or send a real-time notification here if needed.
-
-            return response()->json(['message' => "Ticket {$ticketCode} successfully scanned."]);
-
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Error scanning ticket {$ticketCode} for event {$event_slug}: " . $e->getMessage(), [
+            Log::error("Error scanning ticket for event {$event_slug}: " . $e->getMessage(), [
+                'ticket_code' => $request->input('ticket_code'),
+                'event_slug' => $event_slug,
+                'client' => $client,
+                'user_id' => $user?->id ?? null,
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['message' => 'An server error occurred: ' . $e->getMessage()], 500);
+
+            return response()->json([
+                'message' => 'An error occurred while processing the ticket scan.',
+                'error' => 'SERVER_ERROR'
+            ], 500);
         }
     }
 }
