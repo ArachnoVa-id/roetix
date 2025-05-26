@@ -117,6 +117,11 @@ class User extends Authenticatable implements FilamentUser, HasName, HasTenants,
         return $this->role == UserRole::ADMIN->value;
     }
 
+    public function isReceptionist(): bool
+    {
+        return $this->role === UserRole::RECEPTIONIST->value;
+    }
+
     public function isEO(): bool
     {
         return $this->role == UserRole::EVENT_ORGANIZER->value;

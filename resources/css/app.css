@@ -106,3 +106,35 @@
     flex: 0 0 100%;
   }
 }
+
+/* Pastikan canvas Quagga tidak menutupi video dan propertinya benar */
+/* ID 'interactive' adalah default QuaggaJS untuk elemen root-nya */
+#interactive.viewport {
+    position: relative; /* Pastikan pembungkus memiliki posisi relatif */
+    width: 100%;
+    height: 100%; /* Atau tinggi yang Anda inginkan, misal 320px */
+    overflow: hidden;
+}
+
+#interactive.viewport > canvas,
+#interactive.viewport > video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Menyesuaikan video ke container */
+    background: transparent !important; /* Sangat penting: pastikan transparan */
+    z-index: 1; /* Pastikan video di bawah canvas deteksi jika ada */
+}
+
+/* Jika Quagga membuat elemen dengan kelas 'drawingBuffer' (untuk garis deteksi) */
+canvas.drawingBuffer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent !important; /* Pastikan ini transparan */
+    z-index: 2; /* Pastikan canvas deteksi di atas video */
+}

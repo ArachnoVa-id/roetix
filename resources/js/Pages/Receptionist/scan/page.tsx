@@ -196,6 +196,13 @@ const EventScanTicketPage = () => {
                     Quagga.start();
                     scannerInitialized.current = true;
                     console.log('Quagga started successfully.');
+                    if (videoRef.current) {
+                        videoRef.current
+                            .play()
+                            .catch((e) =>
+                                console.error('Error playing video:', e),
+                            );
+                    }
                 },
             );
 

@@ -139,7 +139,8 @@ export default function Authenticated({
         useState<boolean>(false);
 
     // Condition: Only show for 'admin' role AND when an event context is available
-    const showScanTicketLink = user?.role === 'admin' && event?.id; // <-- Re-added event?.id
+    const showScanTicketLink = user?.role === 'receptionist' && event?.id; // <-- Re-added event?.id
+    const showUserLinks = user?.role !== 'receptionist';
 
     return (
         <div
@@ -164,54 +165,68 @@ export default function Authenticated({
                         <div className="flex">
                             <div className="flex shrink-0 items-center">
                                 <Link href="/">
+                                    {/* Gunakan appName di sini untuk alt text */}
                                     <img
                                         src={props?.logo}
-                                        alt={props?.logo_alt}
+                                        alt={props?.logo_alt || appName}
                                         className="h-8 rounded-lg"
                                     />
                                 </Link>
                             </div>
 
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    eventProps={props}
-                                    href={
-                                        client
-                                            ? route('client.home', client)
-                                            : ''
-                                    }
-                                    active={route().current('client.home')}
-                                >
-                                    Buy Ticket
-                                </NavLink>
-                                <NavLink
-                                    eventProps={props}
-                                    href={
-                                        client
-                                            ? route('client.my_tickets', client)
-                                            : ''
-                                    }
-                                    active={route().current(
-                                        'client.my_tickets',
-                                    )}
-                                >
-                                    My Tickets
-                                </NavLink>
-                                {showScanTicketLink && ( // This determines if the link appears AT ALL
+                                {/* Tampilkan Buy Ticket & My Tickets hanya jika BUKAN receptionist */}
+                                {showUserLinks && (
+                                    <>
+                                        <NavLink
+                                            eventProps={props}
+                                            href={
+                                                client
+                                                    ? route(
+                                                          'client.home',
+                                                          client,
+                                                      )
+                                                    : ''
+                                            }
+                                            active={route().current(
+                                                'client.home',
+                                            )}
+                                        >
+                                            Buy Ticket
+                                        </NavLink>
+                                        <NavLink
+                                            eventProps={props}
+                                            href={
+                                                client
+                                                    ? route(
+                                                          'client.my_tickets',
+                                                          client,
+                                                      )
+                                                    : ''
+                                            }
+                                            active={route().current(
+                                                'client.my_tickets',
+                                            )}
+                                        >
+                                            My Tickets
+                                        </NavLink>
+                                    </>
+                                )}
+                                {/* Tampilkan Scan Ticket jika kondisi terpenuhi */}
+                                {showScanTicketLink && (
                                     <NavLink
                                         eventProps={props}
                                         href={
-                                            // This ensures the href is only valid if event.id exists
-                                            client && event?.slug // Changed event?.id to event?.slug
+                                            client && event?.slug
                                                 ? route(
                                                       'client.events.scan.show',
                                                       {
                                                           client,
                                                           event_slug:
-                                                              event.slug, // Use event.slug
+                                                              event.slug,
                                                       },
                                                   )
-                                                : '#' // Falls back to '#' if event?.id is undefined
+                                                : '#' // Fallback jika event.slug tidak ada
                                         }
                                         active={route().current(
                                             'client.events.scan.show',
@@ -227,7 +242,7 @@ export default function Authenticated({
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
                                     href="#"
-                                    active={false} // <--- Tambahkan properti active={false}
+                                    active={false}
                                     eventProps={props}
                                     className="flex gap-3"
                                 >
@@ -248,7 +263,7 @@ export default function Authenticated({
                                     }
                                     eventProps={props}
                                     href="#"
-                                    active={false} // <--- Tambahkan properti active={false}
+                                    active={false}
                                     onClick={() => {
                                         window.location.href = route('home');
                                     }}
@@ -319,30 +334,42 @@ export default function Authenticated({
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            eventProps={props}
-                            href={client ? route('client.home', client) : ''}
-                            active={route().current('client.home')}
-                        >
-                            Buy Ticket
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            eventProps={props}
-                            href={
-                                client ? route('client.my_tickets', client) : ''
-                            }
-                            active={route().current('client.my_tickets')}
-                        >
-                            My Tickets
-                        </ResponsiveNavLink>
+                        {showUserLinks && ( // Untuk ResponsiveNavLink juga
+                            <>
+                                <ResponsiveNavLink
+                                    eventProps={props}
+                                    href={
+                                        client
+                                            ? route('client.home', client)
+                                            : ''
+                                    }
+                                    active={route().current('client.home')}
+                                >
+                                    Buy Ticket
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    eventProps={props}
+                                    href={
+                                        client
+                                            ? route('client.my_tickets', client)
+                                            : ''
+                                    }
+                                    active={route().current(
+                                        'client.my_tickets',
+                                    )}
+                                >
+                                    My Tickets
+                                </ResponsiveNavLink>
+                            </>
+                        )}
                         {showScanTicketLink && (
                             <ResponsiveNavLink
                                 eventProps={props}
                                 href={
-                                    client && event?.slug // Changed event?.id to event?.slug
+                                    client && event?.slug
                                         ? route('client.events.scan.show', {
                                               client,
-                                              event_slug: event.slug, // Use event.slug
+                                              event_slug: event.slug,
                                           })
                                         : '#'
                                 }
@@ -353,7 +380,6 @@ export default function Authenticated({
                                 Scan Ticket
                             </ResponsiveNavLink>
                         )}
-                        {/* ... */}
                     </div>
 
                     <div
@@ -428,7 +454,8 @@ export default function Authenticated({
             )}
 
             <main className="relative flex h-full w-full grow flex-col items-center justify-center">
-                <p className="pointer-events-none fixed left-0 top-0 z-[10] flex w-screen justify-center">
+                {/* Perbaikan: Mengubah <p> menjadi <div> untuk DOM Nesting */}
+                <div className="pointer-events-none fixed left-0 top-0 z-[10] flex w-screen justify-center">
                     <div className="relative mt-4 rounded-lg px-4 py-2 shadow-lg">
                         {/* Blurred background layer */}
                         <div
@@ -439,7 +466,6 @@ export default function Authenticated({
                             }}
                         />
                         {/* Text layer (above the blur) */}
-
                         <span
                             className="relative font-bold"
                             style={{
@@ -451,7 +477,7 @@ export default function Authenticated({
                                 : `Admin View`}
                         </span>
                     </div>
-                </p>
+                </div>
                 {children}
             </main>
 

@@ -38,7 +38,7 @@ Route::domain(config('app.domain'))
         } else
             Route::get('/', function () {
                 return redirect()->route('login');
-            });
+            })->name('home');
 
         // Privacy Policy and Terms & Conditions pages
         Route::get('/privacy-policy', function () {
