@@ -111,14 +111,12 @@
 #interactive-viewport {
     position: relative;
     width: 100%;
-    height: 100%; /* Atau ukuran tinggi yang Anda inginkan, misalnya 320px */
+    height: 100%; /* Atau tinggi yang Anda inginkan, misalnya 320px */
     overflow: hidden;
-    /* Pastikan background-nya tidak solid jika Anda ingin melihat video di bawah canvas */
-    background-color: transparent; /* Atau warna yang cocok dengan tema Anda */
+    background-color: transparent;
 }
 
 /* Aturan untuk elemen <video> dan <canvas> yang dibuat oleh QuaggaJS */
-/* QuaggaJS biasanya akan membuat elemen <video> dan <canvas> sebagai sibling di dalam target */
 #interactive-viewport > video,
 #interactive-viewport > canvas {
     position: absolute;
@@ -126,24 +124,21 @@
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Agar video mengisi seluruh area tanpa terdistorsi */
-    background: transparent !important; /* Pastikan background transparan */
+    object-fit: cover;
+    background: transparent !important;
 }
 
 /* Aturan spesifik untuk canvas yang digunakan untuk menggambar deteksi */
-/* QuaggaJS bisa menggunakan kelas 'drawingBuffer' atau hanya menjadi salah satu canvas */
-/* Ini harus di atas video */
 #interactive-viewport canvas.drawingBuffer {
-    z-index: 2; /* Letakkan canvas deteksi di atas video */
+    z-index: 2; /* Di atas video */
 }
 
 /* Aturan untuk elemen video yang dibuat atau dimanipulasi QuaggaJS */
-/* Ini harus di bawah canvas deteksi */
 #interactive-viewport video {
-    z-index: 1; /* Letakkan video di bawah canvas deteksi */
+    z-index: 1; /* Di bawah canvas deteksi */
 }
 
-/* Beberapa implementasi QuaggaJS juga bisa membuat canvas di luar viewport, pastikan tidak ada yang menutupi */
+/* Pastikan tidak ada canvas lain yang memiliki background solid */
 canvas {
     background: transparent !important;
 }
