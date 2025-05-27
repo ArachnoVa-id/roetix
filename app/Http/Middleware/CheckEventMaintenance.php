@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
@@ -17,6 +18,18 @@ class CheckEventMaintenance
         $client = $request->route('client');
         $event = $request->get('event');
         $props = $request->get('props');
+
+        $client = User::find($client->id);
+        if (!$client) {
+            return Inertia::render('Error/NotFound', [
+                'message' => 'Client not found.'
+            ]);
+        }
+
+        // Bypass for eo and admin
+        if ($client->isEO() || $client->isAdmin()) {
+            return $next($request);
+        }
 
         // Check if the event is in maintenance mode
         if ($props->is_maintenance) {

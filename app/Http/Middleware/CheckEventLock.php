@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +18,18 @@ class CheckEventLock
         $client = $request->route('client');
         $event = $request->get('event');
         $props = $request->get('props');
+
+        $client = User::find($client->id);
+        if (!$client) {
+            return Inertia::render('Error/NotFound', [
+                'message' => 'Client not found.'
+            ]);
+        }
+
+        // Bypass for event organizers and admins
+        if ($client->isEo() || $client->isAdmin()) {
+            return $next($request);
+        }
 
         // Check if the event is locked
         $isAuthenticated = false;
