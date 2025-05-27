@@ -606,9 +606,9 @@ const ScanTicket: React.FC = () => {
         );
     }
 
-    const headerStyle = {
-        '--header-text-color': pageConfigProps.text_primary_color,
-    } as React.CSSProperties;
+    // const headerStyle = {
+    //     '--header-text-color': pageConfigProps.text_primary_color,
+    // } as React.CSSProperties;
 
     return (
         <AuthenticatedLayout
@@ -618,7 +618,12 @@ const ScanTicket: React.FC = () => {
             userEndSessionDatetime={userEndSessionDatetime}
             event={event}
             header={
-                <div style={headerStyle} className="py-6 sm:py-8">
+                <div
+                    style={{
+                        color: pageConfigProps.text_primary_color,
+                    }}
+                    className="py-6 sm:py-8"
+                >
                     <h2 className="header-dynamic-color text-3xl font-extrabold leading-tight text-white drop-shadow-md md:text-4xl">
                         Scan Ticket for {event.name}
                     </h2>
@@ -730,24 +735,30 @@ const ScanTicket: React.FC = () => {
                             )}
 
                             {/* Camera Feed / Placeholder */}
-                            <div className="mb-6 aspect-video w-full overflow-hidden rounded-xl border-2 border-white/50 bg-gray-900 shadow-lg">
-                                {isScanning && isCameraActive ? (
-                                    <video
-                                        ref={videoRef}
-                                        width="100%"
-                                        height="auto"
-                                        autoPlay
-                                        playsInline
-                                        muted
-                                        className="h-full w-full object-cover"
-                                        style={{
-                                            transform: useFrontCamera
-                                                ? 'scaleX(-1)'
-                                                : 'none',
-                                        }}
-                                    />
-                                ) : (
-                                    <div className="flex h-full items-center justify-center bg-gray-800/80">
+                            <div className="relative mb-6 aspect-video w-full overflow-hidden rounded-xl border-2 border-white/50 bg-gray-900 shadow-lg">
+                                {/* Always render the video, control its display */}
+                                <video
+                                    ref={videoRef}
+                                    width="100%"
+                                    height="auto"
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className={`h-full w-full object-cover ${
+                                        isScanning && isCameraActive
+                                            ? ''
+                                            : 'hidden'
+                                    }`}
+                                    style={{
+                                        transform: useFrontCamera
+                                            ? 'scaleX(-1)'
+                                            : 'none',
+                                    }}
+                                />
+
+                                {/* Placeholder content when camera is inactive */}
+                                {!isScanning || !isCameraActive ? (
+                                    <div className="absolute inset-0 flex h-full items-center justify-center bg-gray-800/80">
                                         <div className="text-center">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
@@ -771,7 +782,7 @@ const ScanTicket: React.FC = () => {
                                             </p>
                                         </div>
                                     </div>
-                                )}
+                                ) : null}
                                 <canvas ref={canvasRef} className="hidden" />
                             </div>
 
