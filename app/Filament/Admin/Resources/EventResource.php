@@ -420,6 +420,10 @@ class EventResource extends Resource
                                                 ->label('Password')
                                                 ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
 
+                                            Infolists\Components\TextEntry::make('faspay_password_prod')
+                                                ->label('Password Production')
+                                                ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
+
                                             Infolists\Components\TextEntry::make('faspay_signature')
                                                 ->label('Signature')
                                                 ->formatStateUsing(fn($state) => Crypt::decryptString($state)),
@@ -1788,8 +1792,8 @@ class EventResource extends Resource
                                 ->hidden(fn(Forms\Get $get) => $get('payment_gateway') != PaymentGateway::FASPAY->value)
                                 ->schema([
                                     Forms\Components\TextInput::make('faspay_merchant_name')
-                                        ->label('Merchant Key')
-                                        ->placeholder('Merchant Key')
+                                        ->label('Merchant Name')
+                                        ->placeholder('Merchant Name')
                                         ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
                                         ->maxLength(65535)
                                         ->validationAttribute('Merchant Name')
@@ -1822,6 +1826,15 @@ class EventResource extends Resource
                                         ->validationAttribute('Merchant Password')
                                         ->validationMessages([
                                             'max' => 'Merchant Password must not exceed 65535 characters',
+                                        ]),
+                                    Forms\Components\TextInput::make('faspay_password_prod')
+                                        ->label('Merchant Password Production')
+                                        ->placeholder('Merchant Password Production')
+                                        ->formatStateUsing(fn($state) => $modelExists && $state ? Crypt::decryptString($state) : null)
+                                        ->maxLength(65535)
+                                        ->validationAttribute('Merchant Password Production')
+                                        ->validationMessages([
+                                            'max' => 'Merchant Password Production must not exceed 65535 characters',
                                         ]),
                                     Forms\Components\TextInput::make('faspay_signature')
                                         ->label('Merchant Signature')

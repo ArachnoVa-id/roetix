@@ -38,7 +38,7 @@ Route::domain(config('app.domain'))
         } else
             Route::get('/', function () {
                 return redirect()->route('login');
-            });
+            })->name('home');
 
         // Privacy Policy and Terms & Conditions pages
         Route::get('/privacy-policy', function () {
@@ -139,17 +139,14 @@ Route::domain('{client}.' . config('app.domain'))
                     ->name('client.my_tickets');
 
 
-                Route::controller(TicketScanController::class)->group(function () {
-                    // Route to display the scanning page (Inertia render)
-                    Route::get('/events/{event_slug}/scan', 'show')
-                        ->name('client.events.scan.show');
+                // FOR THE SCAN PAGE (show method)
+                Route::get('/events/{event_slug}/scan', [TicketScanController::class, 'show'])->name('events.scan.show');
 
-                    Route::post('/events/{event_slug}/scan', 'scan')
-                        ->name('client.events.scan.store');
+                // FOR THE SCAN ACTION (store method, e.g., POST request)
+                Route::post('/scan', [TicketScanController::class, 'scan'])->name('events.scan.store');
 
-                    // (If you still have it, the selectEventForScan route)
-                    // Route::get('/scan-events', 'selectEventForScan')->name('client.scan.select-event');
-                });
+                // FOR THE HISTORY (get method)
+                Route::get('/scanned-history', [TicketScanController::class, 'getScannedHistory'])->name('events.scanned.history');
 
                 Route::prefix('api')->group(function () {
                     // Use a simple GET route with no path parameters

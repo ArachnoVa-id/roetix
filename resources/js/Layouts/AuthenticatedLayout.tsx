@@ -2,9 +2,10 @@
 
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
+import { ContactInfo } from '@/types';
 import { deconstructEventColorProps } from '@/types/deconstruct-front-end';
 import { EventColorProps, EventProps } from '@/types/front-end';
-import { PageProps as InertiaPageProps } from '@inertiajs/core'; // <--- Ubah impor di sini
+import { PageProps as InertiaPageProps } from '@inertiajs/core';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
@@ -39,19 +40,29 @@ const changeFavicon = (faviconUrl: string) => {
     }
 };
 
-// Updated Event type to include slug
 interface EventContext {
     id: number;
     name: string;
-    slug: string; // Added slug property
+    slug: string;
+    location: string;
 }
 
-// Perluas InertiaPageProps untuk menyertakan properti kustom kamu
 interface CustomInertiaPageProps extends InertiaPageProps {
     event: EventContext;
-    props: EventProps; // This likely comes from your EventProps type
+    props: EventProps;
     client: string;
     userEndSessionDatetime?: string;
+    // Tambahkan properti `auth` untuk mengakses `user`
+    auth: {
+        user: {
+            id: number;
+            first_name: string;
+            last_name: string;
+            email: string;
+            role: string; // Misal: 'user', 'admin', 'receptionist'
+            contact_info: ContactInfo;
+        };
+    };
 }
 
 interface AuthenticatedLayoutProps {
@@ -61,7 +72,7 @@ interface AuthenticatedLayoutProps {
     client: string;
     props: EventProps;
     userEndSessionDatetime?: string;
-    event?: EventContext; // Use the updated EventContext type
+    event?: EventContext;
 }
 
 export default function Authenticated({
@@ -72,9 +83,8 @@ export default function Authenticated({
     client,
     props,
     userEndSessionDatetime,
-    event, // This prop is crucial
+    event,
 }: PropsWithChildren<AuthenticatedLayoutProps>) {
-    // Gunakan CustomInertiaPageProps di sini
     const { auth } = usePage<CustomInertiaPageProps>().props;
     const user = auth.user;
 
@@ -100,13 +110,14 @@ export default function Authenticated({
 
                 if (timeLeft <= 0) {
                     clearInterval(interval);
-                    window.location.href = route('client.home', client);
+                    window.location.href = route('client.home', {
+                        client: client,
+                    }); // Pastikan parameter client dikirim
                 }
             }, 1000);
 
-            // Removed 'client' from dependency array to fix ESLint warning
             return () => clearInterval(interval);
-        }, [userEndSessionDatetime]);
+        }, [userEndSessionDatetime]); // Tambahkan client ke dependency array
 
         return countdown;
     }
@@ -138,8 +149,13 @@ export default function Authenticated({
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState<boolean>(false);
 
-    // Condition: Only show for 'admin' role AND when an event context is available
-    const showScanTicketLink = user?.role === 'admin' && event?.id; // <-- Re-added event?.id
+    // --- LOGIKA BARU UNTUK NAVIGASI ---
+    // Scan Ticket hanya terlihat jika user adalah 'receptionist' DAN event tersedia
+    const showScanTicketLink = user?.role === 'receptionist' && event?.id;
+
+    // Buy Ticket dan My Tickets terlihat untuk SEMUA role
+    // Tidak perlu variabel khusus, cukup render kondisional jika diperlukan
+    // --- AKHIR LOGIKA BARU ---
 
     return (
         <div
@@ -166,13 +182,14 @@ export default function Authenticated({
                                 <Link href="/">
                                     <img
                                         src={props?.logo}
-                                        alt={props?.logo_alt}
+                                        alt={props?.logo_alt || appName}
                                         className="h-8 rounded-lg"
                                     />
                                 </Link>
                             </div>
 
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                {/* Buy Ticket - Selalu tampil */}
                                 <NavLink
                                     eventProps={props}
                                     href={
@@ -184,6 +201,7 @@ export default function Authenticated({
                                 >
                                     Buy Ticket
                                 </NavLink>
+                                {/* My Tickets - Selalu tampil */}
                                 <NavLink
                                     eventProps={props}
                                     href={
@@ -197,21 +215,21 @@ export default function Authenticated({
                                 >
                                     My Tickets
                                 </NavLink>
-                                {showScanTicketLink && ( // This determines if the link appears AT ALL
+                                {/* Scan Ticket - Tampil hanya jika user adalah 'receptionist' */}
+                                {showScanTicketLink && (
                                     <NavLink
                                         eventProps={props}
                                         href={
-                                            // This ensures the href is only valid if event.id exists
-                                            client && event?.slug // Changed event?.id to event?.slug
+                                            client && event?.slug
                                                 ? route(
                                                       'client.events.scan.show',
                                                       {
-                                                          client,
+                                                          client: client,
                                                           event_slug:
-                                                              event.slug, // Use event.slug
+                                                              event.slug,
                                                       },
                                                   )
-                                                : '#' // Falls back to '#' if event?.id is undefined
+                                                : '#'
                                         }
                                         active={route().current(
                                             'client.events.scan.show',
@@ -227,7 +245,7 @@ export default function Authenticated({
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink
                                     href="#"
-                                    active={false} // <--- Tambahkan properti active={false}
+                                    active={false}
                                     eventProps={props}
                                     className="flex gap-3"
                                 >
@@ -248,7 +266,7 @@ export default function Authenticated({
                                     }
                                     eventProps={props}
                                     href="#"
-                                    active={false} // <--- Tambahkan properti active={false}
+                                    active={false}
                                     onClick={() => {
                                         window.location.href = route('home');
                                     }}
@@ -319,6 +337,7 @@ export default function Authenticated({
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
+                        {/* Buy Ticket - Selalu tampil di responsive */}
                         <ResponsiveNavLink
                             eventProps={props}
                             href={client ? route('client.home', client) : ''}
@@ -326,6 +345,7 @@ export default function Authenticated({
                         >
                             Buy Ticket
                         </ResponsiveNavLink>
+                        {/* My Tickets - Selalu tampil di responsive */}
                         <ResponsiveNavLink
                             eventProps={props}
                             href={
@@ -335,14 +355,15 @@ export default function Authenticated({
                         >
                             My Tickets
                         </ResponsiveNavLink>
+                        {/* Scan Ticket - Tampil hanya jika user adalah 'receptionist' di responsive */}
                         {showScanTicketLink && (
                             <ResponsiveNavLink
                                 eventProps={props}
                                 href={
-                                    client && event?.slug // Changed event?.id to event?.slug
+                                    client && event?.slug
                                         ? route('client.events.scan.show', {
-                                              client,
-                                              event_slug: event.slug, // Use event.slug
+                                              client: client,
+                                              event_slug: event.slug,
                                           })
                                         : '#'
                                 }
@@ -353,7 +374,6 @@ export default function Authenticated({
                                 Scan Ticket
                             </ResponsiveNavLink>
                         )}
-                        {/* ... */}
                     </div>
 
                     <div
@@ -428,9 +448,8 @@ export default function Authenticated({
             )}
 
             <main className="relative flex h-full w-full grow flex-col items-center justify-center">
-                <p className="pointer-events-none fixed left-0 top-0 z-[10] flex w-screen justify-center">
+                <div className="pointer-events-none fixed left-0 top-0 z-[10] flex w-screen justify-center">
                     <div className="relative mt-4 rounded-lg px-4 py-2 shadow-lg">
-                        {/* Blurred background layer */}
                         <div
                             className="absolute inset-0 rounded-lg backdrop-blur"
                             style={{
@@ -438,8 +457,6 @@ export default function Authenticated({
                                 opacity: 0.7,
                             }}
                         />
-                        {/* Text layer (above the blur) */}
-
                         <span
                             className="relative font-bold"
                             style={{
@@ -451,7 +468,7 @@ export default function Authenticated({
                                 : `Admin View`}
                         </span>
                     </div>
-                </p>
+                </div>
                 {children}
             </main>
 

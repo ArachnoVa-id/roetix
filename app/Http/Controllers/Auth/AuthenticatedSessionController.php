@@ -109,12 +109,50 @@ class AuthenticatedSessionController extends Controller
         // For main login
         $firstTeam = $userModel->teams()->first();
 
+        // if ($userModel->isReceptionist()) { // Menggunakan metode isReceptionist() dari User model
+        //     // Jika login dari subdomain yang terkait dengan event
+        //     if ($event && $event->slug) {
+        //         try {
+        //             Event::loginUser($event, $userModel); // Panggil loginUser jika perlu untuk receptionist
+        //         } catch (\Throwable $e) {
+        //             Log::error("Receptionist failed loginUser to event queue: " . $e->getMessage());
+        //             // Fallback jika loginUser gagal (misal: sudah di antrian)
+        //             // Anda bisa memilih redirect ke login atau home client
+        //             return redirect()->route('client.home', ['client' => $client]);
+        //         }
+        //         return redirect()->route('client.events.scan.show', ['client' => $client, 'event_slug' => $event->slug]);
+        //     } else {
+        //         // Jika receptionist login dari main domain atau tanpa event context
+        //         // Anda harus memutuskan ke mana mereka akan diarahkan.
+        //         // Opsi A: Redirect ke halaman seleksi event (jika dibuat)
+        //         // Opsi B: Redirect ke suatu "Admin Landing Page" atau halaman default yang kosong
+        //         // Opsi C: Redirect ke home main domain jika mereka tidak memiliki event default
+        //         Log::warning("Receptionist login without specific event context. Redirecting to main home.");
+        //         return redirect()->route('home'); // Atau redirect ke halaman daftar event admin
+        //     }
+        // }
+
         if ($userModel->isAdmin()) {
             session([
                 'auth_user' => $userModel,
             ]);
 
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
+        } else if ($userModel->isReceptionist()) {
+            if ($client && $event) { // Jika receptionist login via subdomain DENGAN event valid
+                try {
+                    Event::loginUser($event, $userModel);
+                } catch (\Throwable $e) {
+                    Log::error("Receptionist failed loginUser to event queue: " . $e->getMessage());
+                    return redirect()->route('client.home', ['client' => $client]); // Fallback ke home client jika antrian
+                }
+                return redirect()->route('client.events.scan.show', ['client' => $client, 'event_slug' => $event->slug]);
+            } else { // Jika receptionist login dari main domain atau subdomain tanpa event (misal: hanya novatix.id/login)
+                Log::warning("Receptionist login without specific event context. Redirecting to main login as fallback.");
+                // Jika tidak ada konteks event yang jelas, arahkan ke login utama.
+                // ATAU, jika ada halaman dashboard khusus receptionist tanpa event, arahkan ke sana.
+                return redirect()->route('login'); // Reverted to login as simplest fallback, can be 'dashboard' if created
+            }
         } else if ($userModel->isUser()) {
             Auth::logout();
             abort(403, 'User role not allowed.');
