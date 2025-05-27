@@ -82,8 +82,8 @@ const ScanTicket: React.FC = () => {
         setIsFetchingHistory(true);
         try {
             // PERBAIKAN: event_slug dikirim sebagai query parameter karena rute /scanned-history
-            const url = route('client.events.scanned.history', {
-                client,
+            const url = route('events.scanned.history', {
+                client: client,
                 event_slug: event.slug, // Ini akan menjadi ?event_slug=...
             });
             const response =
