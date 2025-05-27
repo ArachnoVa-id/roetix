@@ -221,18 +221,14 @@ export default function Authenticated({
                                         eventProps={props}
                                         href={
                                             client && event?.slug
-                                                ? route(
-                                                      'client.events.scan.show',
-                                                      {
-                                                          client: client,
-                                                          event_slug:
-                                                              event.slug,
-                                                      },
-                                                  )
+                                                ? route('events.scan.show', {
+                                                      client: client,
+                                                      event_slug: event.slug,
+                                                  })
                                                 : '#'
                                         }
                                         active={route().current(
-                                            'client.events.scan.show',
+                                            'events.scan.show',
                                         )}
                                     >
                                         Scan Ticket
@@ -361,15 +357,13 @@ export default function Authenticated({
                                 eventProps={props}
                                 href={
                                     client && event?.slug
-                                        ? route('client.events.scan.show', {
+                                        ? route('events.scan.show', {
                                               client: client,
                                               event_slug: event.slug,
                                           })
                                         : '#'
                                 }
-                                active={route().current(
-                                    'client.events.scan.show',
-                                )}
+                                active={route().current('events.scan.show')}
                             >
                                 Scan Ticket
                             </ResponsiveNavLink>
