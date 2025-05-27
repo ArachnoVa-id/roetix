@@ -476,7 +476,7 @@ class PaymentController extends Controller
         $variables = $event->eventVariables;
 
         // Select endpoint
-        $endpoint = $variables->tripay_is_production ? 'https://tripay.co.id/api/open-payment/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+        $endpoint = $variables->tripay_is_production ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
 
         // Select keys
         if ($variables->tripay_use_novatix) {
