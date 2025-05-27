@@ -146,7 +146,7 @@ Route::domain('{client}.' . config('app.domain'))
                 Route::post('/scan', [TicketScanController::class, 'scan'])->name('events.scan.store');
 
                 // FOR THE HISTORY (get method)
-                Route::get('/scanned-history', [TicketScanController::class, 'getScannedHistory'])->name('events.scanned.history');
+                Route::get('/events/{event_slug}/scanned-history', [TicketScanController::class, 'getScannedHistory'])->name('events.scanned.history');
 
                 Route::prefix('api')->group(function () {
                     // Use a simple GET route with no path parameters
