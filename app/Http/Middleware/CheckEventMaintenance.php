@@ -19,12 +19,12 @@ class CheckEventMaintenance
         $event = $request->get('event');
         $props = $request->get('props');
 
-        $client = User::find($client->id);
-        if (!$client) {
-            return Inertia::render('Error/NotFound', [
-                'message' => 'Client not found.'
-            ]);
-        }
+        // $client = User::find($client->id);
+        // if (!$client) {
+        //     return Inertia::render('Error/NotFound', [
+        //         'message' => 'Client not found.'
+        //     ]);
+        // }
 
         // Bypass for eo and admin
         if ($client->isEO() || $client->isAdmin()) {
