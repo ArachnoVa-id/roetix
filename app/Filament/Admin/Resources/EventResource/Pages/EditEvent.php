@@ -205,6 +205,7 @@ class EditEvent extends EditRecord
                     'faspay_merchant_id',
                     'faspay_user_id',
                     'faspay_password',
+                    'faspay_password_prod',
                     'faspay_signature',
                     'tripay_api_key_dev',
                     'tripay_private_key_dev',
