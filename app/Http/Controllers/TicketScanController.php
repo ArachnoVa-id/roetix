@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class TicketScanController extends Controller
 {
-    public function show(Request $request, string $client): InertiaResponse | \Illuminate\Http\RedirectResponse
+    public function show(Request $request, string $client, string $event_slug): InertiaResponse | \Illuminate\Http\RedirectResponse
     {
         try {
             $user = Auth::user();
@@ -40,15 +40,14 @@ class TicketScanController extends Controller
                     ->with('error', 'You do not have permission to access this page.');
             }
 
-            $event_slug = $request->query('event_slug');
+            // $event_slug is now directly passed as a route parameter, no need for $request->query()
+            // if (empty($event_slug)) { // This check is no longer needed if it's a mandatory route parameter
+            //     Log::error('Event slug is missing for scan page access.', ['client' => $client, 'user_id' => $user->id]);
+            //     return redirect()->route('client.home', ['client' => $client])
+            //         ->with('error', 'Please select an event to scan tickets.');
+            // }
 
-            if (empty($event_slug)) {
-                Log::error('Event slug is missing for scan page access.', ['client' => $client, 'user_id' => $user->id]);
-                return redirect()->route('client.home', ['client' => $client])
-                    ->with('error', 'Please select an event to scan tickets.');
-            }
-
-            $event = Event::where('slug', $event_slug)->first();
+            $event = Event::where('slug', $event_slug)->first(); // Use the passed $event_slug
 
             if (!$event) {
                 Log::error('Event not found for scanning.', [

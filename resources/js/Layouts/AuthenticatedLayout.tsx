@@ -224,7 +224,7 @@ export default function Authenticated({
                                                 ? route(
                                                       'client.events.scan.show',
                                                       {
-                                                          client,
+                                                          client: client,
                                                           event_slug:
                                                               event.slug,
                                                       },
@@ -362,7 +362,7 @@ export default function Authenticated({
                                 href={
                                     client && event?.slug
                                         ? route('client.events.scan.show', {
-                                              client,
+                                              client: client,
                                               event_slug: event.slug,
                                           })
                                         : '#'

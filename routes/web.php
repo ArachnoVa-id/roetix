@@ -139,18 +139,14 @@ Route::domain('{client}.' . config('app.domain'))
                     ->name('client.my_tickets');
 
 
-                Route::controller(TicketScanController::class)->group(function () {
-                    // Rute untuk menampilkan halaman scan (Inertia render)
-                    Route::get('/events/{event_slug}/scan', 'show')
-                        ->name('client.events.scan.show'); // Nama rute untuk frontend
+                // FOR THE SCAN PAGE (show method)
+                Route::get('/events/{event_slug}/scan', [TicketScanController::class, 'show'])->name('events.scan.show');
 
-                    // Rute untuk memproses hasil scan (API endpoint)
-                    Route::post('/events/{event_slug}/scan', 'scan')
-                        ->name('client.events.scan.store'); // Nama rute untuk frontend
+                // FOR THE SCAN ACTION (store method, e.g., POST request)
+                Route::post('/scan', [TicketScanController::class, 'scan'])->name('events.scan.store');
 
-                    Route::get('/events/{event_slug}/scanned-history', 'getScannedHistory')
-                        ->name('client.events.scanned.history');
-                });
+                // FOR THE HISTORY (get method)
+                Route::get('/scanned-history', [TicketScanController::class, 'getScannedHistory'])->name('events.scanned.history');
 
                 Route::prefix('api')->group(function () {
                     // Use a simple GET route with no path parameters

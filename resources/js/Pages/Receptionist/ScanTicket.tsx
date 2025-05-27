@@ -632,7 +632,7 @@ const ScanTicket: React.FC = () => {
         >
             <Head title={`Scan Ticket - ${event.name}`} />
             <div
-                className="min-h-screen py-8 text-white md:py-12"
+                className="py-8 text-white md:py-12"
                 style={{
                     backgroundColor: pageConfigProps.secondary_color,
                     backgroundImage: `url(${pageConfigProps.texture})`,
