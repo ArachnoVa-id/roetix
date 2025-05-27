@@ -247,7 +247,10 @@ export default function Landing({
             document.head.appendChild(snapScript);
         };
 
-        fetchAndInitializeSnap();
+        if (paymentGateway !== 'midtrans') {
+            setSnapInitialized(true);
+            return;
+        } else fetchAndInitializeSnap();
     }, [paymentGateway]); // Only run once when the component mounts
 
     const createCallbacks = (): MidtransCallbacks => {
