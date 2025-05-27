@@ -153,7 +153,7 @@ const ScanTicket: React.FC = () => {
             try {
                 // PERBAIKAN: Rute 'client.events.scan.store' sekarang hanya '/scan'
                 // Event slug harus dikirim di body
-                const url = route('client.events.scan.store', { client });
+                const url = route('events.scan.store', { client });
 
                 const response = await axios.post<
                     ApiSuccessResponse<ScannedTicket>
