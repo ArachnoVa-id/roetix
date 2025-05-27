@@ -106,3 +106,39 @@
     flex: 0 0 100%;
   }
 }
+
+/* Container yang akan di-target oleh QuaggaJS */
+#interactive-viewport {
+    position: relative;
+    width: 100%;
+    height: 100%; /* Atau tinggi yang Anda inginkan, misalnya 320px */
+    overflow: hidden;
+    background-color: transparent;
+}
+
+/* Aturan untuk elemen <video> dan <canvas> yang dibuat oleh QuaggaJS */
+#interactive-viewport > video,
+#interactive-viewport > canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: transparent !important;
+}
+
+/* Aturan spesifik untuk canvas yang digunakan untuk menggambar deteksi */
+#interactive-viewport canvas.drawingBuffer {
+    z-index: 2; /* Di atas video */
+}
+
+/* Aturan untuk elemen video yang dibuat atau dimanipulasi QuaggaJS */
+#interactive-viewport video {
+    z-index: 1; /* Di bawah canvas deteksi */
+}
+
+/* Pastikan tidak ada canvas lain yang memiliki background solid */
+canvas {
+    background: transparent !important;
+}

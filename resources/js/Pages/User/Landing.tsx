@@ -1656,6 +1656,8 @@ export default function Landing({
                             isBookingAllowed && (
                                 <ProceedTransactionButton
                                     callback={async (accessor: string) => {
+                                        if (!data.user_full_name) return;
+
                                         router.post(
                                             route('client.formRegistration', {
                                                 client,
