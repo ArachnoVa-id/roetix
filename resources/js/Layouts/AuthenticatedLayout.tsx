@@ -151,7 +151,7 @@ export default function Authenticated({
 
     // --- LOGIKA BARU UNTUK NAVIGASI ---
     // Scan Ticket hanya terlihat jika user adalah 'receptionist' DAN event tersedia
-    const showScanTicketLink = user?.role === 'receptionist' && event?.id;
+    const showScanTicketLink = user?.role === 'receptionist';
 
     // Buy Ticket dan My Tickets terlihat untuk SEMUA role
     // Tidak perlu variabel khusus, cukup render kondisional jika diperlukan
