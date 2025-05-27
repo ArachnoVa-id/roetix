@@ -1,5 +1,3 @@
-// resources/js/Layouts/AuthenticatedLayout.tsx
-
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { ContactInfo } from '@/types';
@@ -72,7 +70,7 @@ interface AuthenticatedLayoutProps {
     client: string;
     props: EventProps;
     userEndSessionDatetime?: string;
-    event?: EventContext;
+    // event: EventContext;
 }
 
 export default function Authenticated({
@@ -83,9 +81,9 @@ export default function Authenticated({
     client,
     props,
     userEndSessionDatetime,
-    event,
+    // event,
 }: PropsWithChildren<AuthenticatedLayoutProps>) {
-    const { auth } = usePage<CustomInertiaPageProps>().props;
+    const { auth, event } = usePage<CustomInertiaPageProps>().props;
     const user = auth.user;
 
     const [eventColorProps, setEventColorProps] = useState<EventColorProps>(
@@ -151,7 +149,49 @@ export default function Authenticated({
 
     // --- LOGIKA BARU UNTUK NAVIGASI ---
     // Scan Ticket hanya terlihat jika user adalah 'receptionist' DAN event tersedia
-    const showScanTicketLink = user?.role === 'receptionist' && event?.id;
+    const showScanTicketLink = user?.role === 'receptionist';
+
+    console.log('Event Slug:', event?.slug);
+
+    const handleScanNavigation = () => {
+        console.log('Debug info:', {
+            client,
+            event,
+            eventSlug: event?.slug,
+            user: user?.role,
+        });
+
+        if (!client) {
+            console.error('Client not available');
+            alert('Client information not available');
+            return;
+        }
+
+        // Periksa apakah event ada dan memiliki slug
+        if (!event) {
+            console.error('Event not available');
+            alert('Event information not available');
+            return;
+        }
+
+        if (!event.slug) {
+            console.error('Event slug not available');
+            alert('Event slug not available');
+            return;
+        }
+
+        try {
+            const url = route('events.scan.show', {
+                client: client,
+                event_slug: event.slug,
+            });
+            console.log('Navigating to:', url);
+            window.location.href = url;
+        } catch (error) {
+            console.error('Route generation failed:', error);
+            alert('Failed to generate scan page URL');
+        }
+    };
 
     // Buy Ticket dan My Tickets terlihat untuk SEMUA role
     // Tidak perlu variabel khusus, cukup render kondisional jika diperlukan
@@ -215,25 +255,18 @@ export default function Authenticated({
                                 >
                                     My Tickets
                                 </NavLink>
-                                {/* Scan Ticket - Tampil hanya jika user adalah 'receptionist' */}
-                                {showScanTicketLink && (
+                                {/* Scan Ticket - Tampil hanya jika user adalah 'receptionist' atau 'admin' dan event tersedia */}
+                                {showScanTicketLink && event?.slug && (
                                     <NavLink
                                         eventProps={props}
-                                        href={
-                                            client && event?.slug
-                                                ? route(
-                                                      'client.events.scan.show',
-                                                      {
-                                                          client: client,
-                                                          event_slug:
-                                                              event.slug,
-                                                      },
-                                                  )
-                                                : '#'
-                                        }
+                                        href="#"
                                         active={route().current(
-                                            'client.events.scan.show',
+                                            'events.scan.show',
                                         )}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleScanNavigation();
+                                        }}
                                     >
                                         Scan Ticket
                                     </NavLink>
@@ -359,17 +392,12 @@ export default function Authenticated({
                         {showScanTicketLink && (
                             <ResponsiveNavLink
                                 eventProps={props}
-                                href={
-                                    client && event?.slug
-                                        ? route('client.events.scan.show', {
-                                              client: client,
-                                              event_slug: event.slug,
-                                          })
-                                        : '#'
-                                }
-                                active={route().current(
-                                    'client.events.scan.show',
-                                )}
+                                href="#"
+                                active={route().current('events.scan.show')}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleScanNavigation();
+                                }}
                             >
                                 Scan Ticket
                             </ResponsiveNavLink>
