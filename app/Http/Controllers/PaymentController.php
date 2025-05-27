@@ -367,12 +367,12 @@ class PaymentController extends Controller
             $merchantId = config('faspay.merchant_id');
             $merchantName = config('faspay.merchant_name');
             $userId = config('faspay.user_id');
-            $password = config('faspay.password');
+            $password = $variables->faspay_is_production ? config('faspay.password_prod') : config('faspay.password');
         } else {
             $merchantId = Crypt::decryptString($variables->faspay_merchant_id);
             $merchantName = Crypt::decryptString($variables->faspay_merchant_name);
             $userId = Crypt::decryptString($variables->faspay_user_id);
-            $password = Crypt::decryptString($variables->faspay_password);
+            $password = $variables->faspay_is_production ? Crypt::decryptString($variables->faspay_password_prod) : Crypt::decryptString($variables->faspay_password);
         }
 
         $signature = sha1(md5($userId . $password . $orderCode));
@@ -476,7 +476,8 @@ class PaymentController extends Controller
         $variables = $event->eventVariables;
 
         // Select endpoint
-        $endpoint = $variables->tripay_is_production ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+        $tripay_baseUrl = $variables->tripay_is_production ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
+        $endpoint = $tripay_baseUrl . '/transaction/create';
 
         // Select keys
         if ($variables->tripay_use_novatix) {
@@ -508,7 +509,7 @@ class PaymentController extends Controller
 
         // Construct payload
         $payload = [
-            "method" => "QRISC",
+            "method" => "QRIS", // payment method
             "merchant_ref" => $orderCode,
             "amount" => (int) $totalWithTax,
             "customer_name" => $customer->name ?? 'Guest',
