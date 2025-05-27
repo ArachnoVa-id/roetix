@@ -251,7 +251,7 @@ class TicketScanController extends Controller
         }
     }
 
-    public function getScannedHistory(Request $request, string $client): JsonResponse
+    public function getScannedHistory(Request $request, string $client, string $event_slug): JsonResponse
     {
         try {
             $user = Auth::user();
@@ -263,10 +263,11 @@ class TicketScanController extends Controller
                 ], 403);
             }
 
-            $request->validate([
-                'event_slug' => 'required|string|max:255|min:1', // Expected from query
-            ]);
-            $event_slug = $request->query('event_slug');
+            // HAPUS VALIDASI INI KARENA $event_slug SUDAH DARI ROUTE PARAMETER:
+            // $request->validate([
+            //     'event_slug' => 'required|string|max:255|min:1',
+            // ]);
+            // $event_slug = $request->query('event_slug');
 
             $event = Event::where('slug', $event_slug)->first();
             if (!$event) {
