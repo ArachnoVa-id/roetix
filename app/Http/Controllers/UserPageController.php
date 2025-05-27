@@ -22,6 +22,24 @@ use App\Models\User;
 
 class UserPageController extends Controller
 {
+    // Helper method untuk format event data yang konsisten
+    private function formatEventData($event)
+    {
+        return [
+            'id' => $event->id,
+            'event_id' => $event->event_id ?? $event->id,
+            'name' => $event->name,
+            'slug' => $event->slug,
+            'location' => $event->location,
+            'date' => $event->date,
+            'event_date' => $event->event_date ?? $event->date,
+            'venue_id' => $event->venue_id,
+            'status' => $event->status,
+            'description' => $event->description ?? '',
+            'event_variables_id' => $event->event_variables_id,
+        ];
+    }
+
     public function landing(Request $request, string $client = '')
     {
         $event = $request->get('event');
@@ -153,15 +171,7 @@ class UserPageController extends Controller
                 'appName' => config('app.name'),
                 'client' => $client,
                 'layout' => $layout,
-                'event' => [
-                    'event_id' => $event->event_id,
-                    'name' => $event->name,
-                    'date' => $event->date,
-                    'event_date' => $event->event_date ?? $event->date,
-                    'venue_id' => $event->venue_id,
-                    'status' => $event->status,
-                    'slug' => $event->slug
-                ],
+                'event' => $this->formatEventData($event), // Gunakan helper method
                 'venue' => $venue,
                 'ticketCategories' => $ticketCategories,
                 'currentTimeline' => $currentTimeline,
@@ -177,7 +187,8 @@ class UserPageController extends Controller
             return Inertia::render('User/Landing', [
                 'client' => $client,
                 'error' => 'Failed to load event data: ' . $e->getMessage(),
-                'props' => $props->getSecure()
+                'props' => $props->getSecure(),
+                'event' => $this->formatEventData($event), // Pastikan event data tetap tersedia meski error
             ]);
         }
     }
@@ -279,14 +290,7 @@ class UserPageController extends Controller
                 'props' => $props->getSecure(),
                 'tickets' => $formattedTickets,
                 'ticketCategories' => $ticketCategories,
-                'event' => [
-                    'id' => $event->id,
-                    'name' => $event->name,
-                    'slug' => $event->slug,
-                    'description' => $event->description ?? '',
-                    'venue_id' => $event->venue_id,
-                    'event_variables_id' => $event->event_variables_id,
-                ]
+                'event' => $this->formatEventData($event), // Gunakan helper method
             ]);
         } catch (\Exception $e) {
             return redirect()->route('client.home', ['client' => $client])
@@ -306,11 +310,7 @@ class UserPageController extends Controller
                 'appName' => config('app.name'),
                 'client' => $client,
                 'props' => $props->getSecure(),
-                'event' => [
-                    'event_id' => $event->id,
-                    'name' => $event->name,
-                    'slug' => $event->slug,
-                ],
+                'event' => $this->formatEventData($event), // Gunakan helper method
                 'user' => Auth::user(),
                 'dbContent' => $dbContent,
             ]);
@@ -336,11 +336,7 @@ class UserPageController extends Controller
                 'appName' => config('app.name'),
                 'client' => $client,
                 'props' => $props->getSecure(),
-                'event' => [
-                    'event_id' => $event->id,
-                    'name' => $event->name,
-                    'slug' => $event->slug,
-                ],
+                'event' => $this->formatEventData($event), // Gunakan helper method
                 'user' => Auth::user(),
                 'dbContent' => $dbContent,
             ]);
@@ -367,7 +363,7 @@ class UserPageController extends Controller
         if ($validator->fails()) {
             return Inertia::render('User/LockedEvent', [
                 'client' => $client,
-                'event' => $event,
+                'event' => $this->formatEventData($event), // Gunakan helper method
                 'props' => $props->getSecure(),
             ])->with([
                 'errors' => $validator->errors()->toArray()
@@ -400,7 +396,7 @@ class UserPageController extends Controller
                 // When pass incorrect
                 return Inertia::render('User/LockedEvent', [
                     'client' => $client,
-                    'event' => $event,
+                    'event' => $this->formatEventData($event), // Gunakan helper method
                     'props' => $props->getSecure(),
                 ])->with([
                     'errors' => ['event_password' => 'The password you entered is incorrect.']
