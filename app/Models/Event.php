@@ -216,16 +216,16 @@ class Event extends Model
             12 => 'Desember'
         ];
 
-        $day = $this->start_date->format('j');
-        $month = $months[(int)$this->start_date->format('n')];
-        $year = $this->start_date->format('Y');
+        $day = $this->event_date->format('j');
+        $month = $months[(int)$this->event_date->format('n')];
+        $year = $this->event_date->format('Y');
 
         return "{$day} {$month} {$year}";
     }
 
     public function getEventTime(): string
     {
-        return $this->start_date->format('H:i') . ' WIB';
+        return $this->event_date->format('H:i') . ' WIB';
     }
 
     public function getAllTicketsPDFTitle()

@@ -26,10 +26,10 @@ class CheckEventMaintenance
         //     ]);
         // }
 
-        // Bypass for eo and admin
-        if ($client->isEO() || $client->isAdmin()) {
-            return $next($request);
-        }
+        // // Bypass for eo and admin
+        // if ($client->isEO() || $client->isAdmin()) {
+        //     return $next($request);
+        // }
 
         // Check if the event is in maintenance mode
         if ($props->is_maintenance) {
