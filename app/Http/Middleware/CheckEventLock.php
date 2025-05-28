@@ -27,9 +27,9 @@ class CheckEventLock
         // }
 
         // Bypass for event organizers and admins
-        if ($client->isEo() || $client->isAdmin()) {
-            return $next($request);
-        }
+        // if ($client->isEo() || $client->isAdmin()) {
+        //     return $next($request);
+        // }
 
         // Check if the event is locked
         $isAuthenticated = false;
