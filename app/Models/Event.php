@@ -64,6 +64,7 @@ class Event extends Model
         $pdo = new PDO("sqlite:" . $path);
 
         // nambahin expected online field
+        // nambahin expected_kick online field
         $query = "
             CREATE TABLE IF NOT EXISTS user_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,6 +72,7 @@ class Event extends Model
                 status TEXT NULL,
                 start_time DATETIME NULL,
                 expected_online DATETIME,
+                expected_kick DATETIME,
                 expected_end_time DATETIME NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )";
@@ -107,8 +109,13 @@ class Event extends Model
 
         // update expected_online
         $expectedOnline = Carbon::now()->addMinutes($eventVariablesDuration * $userPosition)->toDateTimeString();
-        $stmt = $pdo->prepare("UPDATE user_logs SET expected_online = ? WHERE user_id = ? AND status = 'waiting'");
-        $stmt->execute([$expectedOnline, $user->id]);
+        $expectedKick = Carbon::now()->addMinutes($eventVariablesDuration * ($userPosition + 1))->toDateTimeString();
+        $stmt = $pdo->prepare(
+            "UPDATE user_logs 
+            SET expected_online = ?, expected_kick = ?
+            WHERE user_id = ? AND status = 'waiting'"
+        );
+        $stmt->execute([$expectedOnline, $expectedKick, $user->id]);
     }
 
     public static function promoteUser($event, $user)
@@ -139,9 +146,15 @@ class Event extends Model
     public static function getUserPosition($event, $user)
     {
         $pdo = self::getPdo($event);
+        $now = Carbon::now()->toDateTimeString();
 
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM user_logs WHERE status = 'waiting' AND id < (SELECT id FROM user_logs WHERE user_id = ?)");
-        $stmt->execute([$user->id]);
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM user_logs 
+            WHERE status = 'waiting' 
+                AND expected_kick > ?
+                AND id < (SELECT id FROM user_logs WHERE user_id = ?)"
+        );
+        $stmt->execute([$now, $user->id]);
         return $stmt->fetchColumn() + 1;
     }
 
