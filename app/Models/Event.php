@@ -63,12 +63,14 @@ class Event extends Model
 
         $pdo = new PDO("sqlite:" . $path);
 
+        // nambahin expected online field
         $query = "
             CREATE TABLE IF NOT EXISTS user_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
                 status TEXT NULL,
                 start_time DATETIME NULL,
+                expected_online DATETIME,
                 expected_end_time DATETIME NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )";
@@ -99,6 +101,14 @@ class Event extends Model
 
         $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
         $stmt->execute([$user->id]);
+
+        $userPosition = max(0, self::getUserPosition($event, $user));
+        $eventVariablesDuration = $event->eventVariables->active_users_duration;
+
+        // update expected_online
+        $expectedOnline = Carbon::now()->addMinutes($eventVariablesDuration * $userPosition)->toDateTimeString();
+        $stmt = $pdo->prepare("UPDATE user_logs SET expected_online = ? WHERE user_id = ? AND status = 'waiting'");
+        $stmt->execute([$expectedOnline, $user->id]);
     }
 
     public static function promoteUser($event, $user)
