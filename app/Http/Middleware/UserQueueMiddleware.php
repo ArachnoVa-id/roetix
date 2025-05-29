@@ -91,10 +91,17 @@ class UserQueueMiddleware
                 return $next($request);
             }
 
+            if (Carbon::now()->gte(Carbon::parse($current_user->expected_online))) {
+                Event::promoteUser($event, $user);
+                return $next($request);
+            }
+
             // Estimate waiting time
             $batch = ceil($position / $threshold);
             $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
             $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
+
+            // dd($current_user->expected_online);
 
             return Inertia::render('User/Overload', [
                 'client' => $client,
@@ -106,7 +113,7 @@ class UserQueueMiddleware
                 'queue' => [
                     'title' => "You are in a queue number " . $position,
                     'message' => 'Please wait...',
-                    'expected_finish' => $expected_end,
+                    'expected_finish' => $current_user->expected_online,
                 ],
             ]);
         }
