@@ -28,6 +28,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Crypt;
 use Mews\Purifier\Facades\Purifier;
 
+use Filament\Forms\Components\Actions\Action;
+
 class EventResource extends Resource
 {
     protected static ?string $model = Event::class;
@@ -1922,8 +1924,30 @@ class EventResource extends Resource
                                     'sm' => 1,
                                     'md' => 2,
                                 ]),
-                        ])
+                        ]),
+                    Forms\Components\Wizard\Step::make('User Logs')
+                        ->schema([
+                            \Filament\Forms\Components\Actions::make([
+                                \Filament\Forms\Components\Actions\Action::make('button')
+                                    ->label('Recreate SQLite for user logs Event')
+                                    ->action(function (Forms\Set $set, $state, $livewire) {
+                                        $event = $livewire->getRecord();
+                                        if ($event) {
+                                            Event::createQueueSqlite($event);
 
+                                            \Filament\Notifications\Notification::make()
+                                                ->title("SQLite for Event #{$event->id} created.")
+                                                ->success()
+                                                ->send();
+                                        } else {
+                                            \Filament\Notifications\Notification::make()
+                                                ->title("No event record found.")
+                                                ->danger()
+                                                ->send();
+                                        }
+                                    }),
+                            ])
+                        ]),
                 ])
                     ->skippable($modelExists)
                     ->columnSpan('full'),
