@@ -169,7 +169,7 @@ export default function Landing({
                     success: boolean;
                     pendingTransactions: PendingTransactionResponseItem[];
                 };
-                console.log(data.pendingTransactions);
+
                 if (data.success && data.pendingTransactions.length > 0) {
                     // Set pending transactions
                     setPendingTransactions(data.pendingTransactions);
@@ -276,7 +276,6 @@ export default function Landing({
     const resumePayment = async (accessor: string, payment_gateway: string) => {
         showSuccess('Preparing your payment...');
 
-        console.log(accessor, payment_gateway);
         try {
             switch (payment_gateway) {
                 case 'midtrans':
@@ -1720,7 +1719,6 @@ export default function Landing({
                                                 {
                                                     preserveScroll: true,
                                                     onSuccess: () => {
-                                                        console.log('Success');
                                                         resolve(true);
                                                     },
                                                     onError: (error) => {

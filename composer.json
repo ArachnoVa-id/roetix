@@ -21,6 +21,7 @@
         "laravel/socialite": "^5.18",
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
+        "mailersend/laravel-driver": "^2.11",
         "mews/purifier": "^3.4",
         "midtrans/midtrans-php": "^2.6",
         "njxqlus/filament-relation-manager-component": "*",

@@ -17,9 +17,10 @@ export default function MyTickets({
     props,
     tickets,
     event,
+    userEndSessionDatetime,
 }: MyTicketsPageProps): React.ReactElement {
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
-
+    console.log(userEndSessionDatetime);
     // Handle download all tickets - updated to use query parameters
     const handleDownloadAll = () => {
         if (!tickets || tickets.length === 0 || !event?.id) {
@@ -81,7 +82,12 @@ export default function MyTickets({
     };
 
     return (
-        <AuthenticatedLayout appName={appName} client={client} props={props}>
+        <AuthenticatedLayout
+            appName={appName}
+            client={client}
+            props={props}
+            userEndSessionDatetime={userEndSessionDatetime}
+        >
             <Head title={'My Tickets | ' + event.name} />
             <div className="w-full py-8">
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
