@@ -215,7 +215,7 @@ class PaymentController extends Controller
 
             $accessor = null;
             // Initiate pgs if totalWithTax is not null
-            if ($totalWithTax) {
+            if ($totalWithTax > 0) {
                 switch ($event->eventVariables->payment_gateway) {
                     case PaymentGateway::MIDTRANS->value:
                         try {
@@ -280,10 +280,9 @@ class PaymentController extends Controller
                 }
             } else {
                 // Handle free order, auto complete
-                $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
+                $order->status = OrderStatus::COMPLETED;
                 $accessor = 'free';
             }
-
             $order->update(['accessor' => $accessor]);
 
             DB::commit();
