@@ -18,18 +18,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Mqttclient from '../Seat/components/Mqttclient';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
 
-// interface DataItem {
-//     category: string;
-//     column: number;
-//     id: string;
-//     price: string;
-//     row: string;
-//     seat_number: string;
-//     status: string;
-//     ticket_category_id: string;
-//     ticket_type: string;
-// }
-
 interface TicketUpdate {
     id: string;
     status: string;
@@ -42,6 +30,7 @@ type MerchForm = {
     user_full_name: string;
     user_id_no: string;
     user_address: string;
+    user_email: string;
     user_phone_num: string;
     user_sizes: string[];
     accessor: string;
@@ -66,6 +55,7 @@ export default function Landing({
         user_full_name: '',
         user_id_no: '',
         user_address: '',
+        user_email: '',
         user_phone_num: '',
         user_sizes: [],
         accessor: '',
@@ -76,21 +66,27 @@ export default function Landing({
 
     useEffect(() => {
         setDisabledByForm(
-            (!data.user_full_name ||
-                !data.user_id_no ||
-                !data.user_address ||
-                !data.user_phone_num ||
-                selectedSeats
-                    .filter((seat) => seat.ticket_type?.toLowerCase() === 'vip')
-                    .some(
-                        (seat, idx) =>
-                            !data.user_sizes ||
-                            !data.user_sizes[idx] ||
-                            data.user_sizes[idx].trim() === '',
-                    )) &&
-                selectedSeats.filter(
-                    (seat) => seat.ticket_type?.toLowerCase() === 'vip',
-                ).length > 0,
+            selectedSeats.length > 0 &&
+                (!data.user_full_name ||
+                    !data.user_id_no ||
+                    !data.user_phone_num ||
+                    !data.user_email ||
+                    (selectedSeats.filter(
+                        (seat) => seat.ticket_type?.toLowerCase() === 'nobles',
+                    ).length > 0 &&
+                        (!data.user_address ||
+                            selectedSeats
+                                .filter(
+                                    (seat) =>
+                                        seat.ticket_type?.toLowerCase() ===
+                                        'nobles',
+                                )
+                                .some(
+                                    (seat, idx) =>
+                                        !data.user_sizes ||
+                                        !data.user_sizes[idx] ||
+                                        data.user_sizes[idx].trim() === '',
+                                )))),
         );
     }, [data, selectedSeats]);
 
@@ -100,7 +96,7 @@ export default function Landing({
     >([]);
 
     // usestate untuk layout yang diterima dari mqtt
-    const [layoutItems, setLayoutItems] = useState(layout.items);
+    const [layoutItems, setLayoutItems] = useState(layout?.items || []);
     const [layoutState, setLayoutState] = useState(layout);
 
     useEffect(() => {
@@ -1153,16 +1149,12 @@ export default function Landing({
                 </div>
             </div>
 
-            {/* Form */}
+            {/* Form Mandatory */}
             <div
                 className={
                     'w-full pb-4 ' +
-                    // if there exist category VIP in selection show, else hide
-                    (selectedSeats.some(
-                        (seat) => seat.ticket_type?.toLowerCase() === 'vip',
-                    )
-                        ? 'block'
-                        : 'hidden')
+                    // if there exist category NOBLES in selection show, else hide
+                    (selectedSeats.length > 0 ? 'block' : 'hidden')
                 }
             >
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
@@ -1174,7 +1166,7 @@ export default function Landing({
                         }}
                     >
                         <h3 className="mb-4 text-lg font-semibold">
-                            Fill your details for T-Shirt
+                            Fill your details for Confirmation
                         </h3>
                         {/* Form here, just edit data, no submit */}
                         <form
@@ -1183,7 +1175,7 @@ export default function Landing({
                         >
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
-                                    htmlFor="fullkname"
+                                    htmlFor="fullname"
                                     value="Full Name"
                                     style={{
                                         color: props.text_primary_color,
@@ -1212,7 +1204,7 @@ export default function Landing({
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
                                     htmlFor="user_id_no"
-                                    value="ID Number"
+                                    value="ID Number (NIK/KTP/SIM)"
                                     style={{
                                         color: props.text_primary_color,
                                     }}
@@ -1236,18 +1228,18 @@ export default function Landing({
 
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
-                                    htmlFor="user_address"
-                                    value="Address"
+                                    htmlFor="user_email"
+                                    value="Email Address"
                                     style={{
                                         color: props.text_primary_color,
                                     }}
                                 />
                                 <TextInput
-                                    id="user_address"
+                                    id="user_email"
                                     className="mt-1 block w-full"
-                                    value={data.user_address}
+                                    value={data.user_email}
                                     onChange={(e) =>
-                                        setData('user_address', e.target.value)
+                                        setData('user_email', e.target.value)
                                     }
                                     style={{
                                         color: props.text_secondary_color,
@@ -1255,7 +1247,7 @@ export default function Landing({
                                 />
                                 <InputError
                                     className="mt-2"
-                                    message={errors.user_address}
+                                    message={errors.user_email}
                                 />
                             </div>
 
@@ -1286,14 +1278,71 @@ export default function Landing({
                                     message={errors.user_phone_num}
                                 />
                             </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
 
-                            {/* Make an array of number inputs as much as VIP categories selected */}
+            {/* Form NOBLES */}
+            <div
+                className={
+                    'w-full pb-4 ' +
+                    // if there exist category NOBLES in selection show, else hide
+                    (selectedSeats.some(
+                        (seat) => seat.ticket_type?.toLowerCase() === 'nobles',
+                    )
+                        ? 'block'
+                        : 'hidden')
+                }
+            >
+                <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
+                    <div
+                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        style={{
+                            backgroundColor: props.primary_color,
+                            color: props.text_primary_color,
+                        }}
+                    >
+                        <h3 className="mb-4 text-lg font-semibold">
+                            Fill your details for T-Shirt
+                        </h3>
+                        {/* Form here, just edit data, no submit */}
+                        <form
+                            className="space-y-4"
+                            onSubmit={(e) => e.preventDefault()}
+                        >
+                            <div className="min-w-[250px] flex-1">
+                                <InputLabel
+                                    htmlFor="user_address"
+                                    value="Address"
+                                    style={{
+                                        color: props.text_primary_color,
+                                    }}
+                                />
+                                <TextInput
+                                    id="user_address"
+                                    className="mt-1 block w-full"
+                                    value={data.user_address}
+                                    onChange={(e) =>
+                                        setData('user_address', e.target.value)
+                                    }
+                                    style={{
+                                        color: props.text_secondary_color,
+                                    }}
+                                />
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.user_address}
+                                />
+                            </div>
+
+                            {/* Make an array of number inputs as much as NOBLES categories selected */}
                             <div className="flex flex-col gap-4 md:flex-row">
                                 {selectedSeats
                                     .filter(
                                         (seat) =>
                                             seat.ticket_type?.toLowerCase() ===
-                                            'vip',
+                                            'nobles',
                                     )
                                     .map((seat, index) => (
                                         <div
@@ -1658,27 +1707,32 @@ export default function Landing({
                             selectedSeats.length > 0 &&
                             isBookingAllowed && (
                                 <ProceedTransactionButton
-                                    callback={async (accessor: string) => {
-                                        if (!data.user_full_name) return;
-
-                                        router.post(
-                                            route('client.formRegistration', {
-                                                client,
-                                            }),
-                                            { ...data, accessor },
-                                            {
-                                                preserveScroll: true,
-                                                onSuccess: () => {
-                                                    console.log('Success');
+                                    callback={async (accessor) => {
+                                        await new Promise((resolve, reject) => {
+                                            router.post(
+                                                route(
+                                                    'client.formRegistration',
+                                                    {
+                                                        client,
+                                                    },
+                                                ),
+                                                { ...data, accessor },
+                                                {
+                                                    preserveScroll: true,
+                                                    onSuccess: () => {
+                                                        console.log('Success');
+                                                        resolve(true);
+                                                    },
+                                                    onError: (error) => {
+                                                        showError(
+                                                            'Failed to proceed with payment. Error: ' +
+                                                                error,
+                                                        );
+                                                        reject(error);
+                                                    },
                                                 },
-                                                onError: (error) => {
-                                                    showError(
-                                                        'Failed to proceed with payment. Error: ' +
-                                                            error,
-                                                    );
-                                                },
-                                            },
-                                        );
+                                            );
+                                        });
                                     }}
                                     disabled={disabledByForm}
                                     client={client}
