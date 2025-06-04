@@ -20,7 +20,6 @@ export default function MyTickets({
     userEndSessionDatetime,
 }: MyTicketsPageProps): React.ReactElement {
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
-    console.log(userEndSessionDatetime);
     // Handle download all tickets - updated to use query parameters
     const handleDownloadAll = () => {
         if (!tickets || tickets.length === 0 || !event?.id) {
