@@ -14,12 +14,12 @@ class ResendMailer
         $this->client = new Client([
             'base_uri' => 'https://api.resend.com/',
             'headers' => [
-                'Authorization' => 'Bearer ' . env('RESEND_API_KEY'),
+                'Authorization' => 'Bearer ' . config('mail.mailers.resend.api_key'),
                 'Content-Type' => 'application/json',
             ],
         ]);
 
-        $this->apiKey = env('RESEND_API_KEY');
+        $this->apiKey = config('mail.mailers.resend.api_key');
     }
 
     public function send(string $to, string $subject, string $html)

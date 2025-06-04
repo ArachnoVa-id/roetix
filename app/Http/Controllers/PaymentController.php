@@ -879,6 +879,7 @@ class PaymentController extends Controller
                         "id" => $ticket->id,
                         "status" => $status,
                         "seat_id" => $ticket->seat_id,
+                        "seat_number" => $ticket->seat->seat_number,
                         "ticket_category_id" => $ticket->ticket_category_id,
                         "ticket_type" => $ticket->ticket_type,
                     ];
@@ -897,8 +898,8 @@ class PaymentController extends Controller
                         <p>Your order has been successfully processed.</p>
                         <p>Order Code: ' . $order->order_code . '</p>
                         <p>Total Price: ' . number_format($order->total_price, 2) . '</p>
-                        <p>Event: ' . $order->event->name . '</p>
-                        <p>Tickets: ' . implode(', ', $updatedTickets) . '</p>'
+                        <p>Event: ' . $order->getSingleEvent()->name . '</p>
+                        <p>Tickets: ' . implode(',', array_map(fn($item) => $item['seat_number'], $updatedTickets)) . '</p>'
                 );
             }
 
