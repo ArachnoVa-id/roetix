@@ -6,6 +6,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class CheckEventMaintenance
@@ -19,17 +20,18 @@ class CheckEventMaintenance
         $event = $request->get('event');
         $props = $request->get('props');
 
-        // $client = User::find($client->id);
-        // if (!$client) {
-        //     return Inertia::render('Error/NotFound', [
-        //         'message' => 'Client not found.'
-        //     ]);
-        // }
+        // Bypass for event organizers (EO) and admins
+        $user = Auth::user();
 
-        // // Bypass for eo and admin
-        // if ($client->isEO() || $client->isAdmin()) {
-        //     return $next($request);
-        // }
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $user = User::find($user->id);
+
+        if ($user->isEo() || $user->isAdmin()) {
+            return $next($request);
+        }
 
         // Check if the event is in maintenance mode
         if ($props->is_maintenance) {
