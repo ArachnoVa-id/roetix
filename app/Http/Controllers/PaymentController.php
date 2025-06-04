@@ -280,9 +280,10 @@ class PaymentController extends Controller
                 }
             } else {
                 // Handle free order, auto complete
-                $order->status = OrderStatus::COMPLETED;
+                $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
                 $accessor = 'free';
             }
+
             $order->update(['accessor' => $accessor]);
 
             DB::commit();
