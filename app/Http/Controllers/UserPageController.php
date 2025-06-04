@@ -285,12 +285,21 @@ class UserPageController extends Controller
                 ]);
             }
 
+            $current_user = (object) Event::getUser($event, Auth::user());
+
+            $user = Auth::user();
+            $userData = User::find($user->id);
+            if (!$userData) {
+                throw new \Exception('User not found.');
+            }
+
             return Inertia::render('User/MyTickets', [
                 'client' => $client,
                 'props' => $props->getSecure(),
                 'tickets' => $formattedTickets,
                 'ticketCategories' => $ticketCategories,
                 'event' => $this->formatEventData($event), // Gunakan helper method
+                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_end_time,
             ]);
         } catch (\Exception $e) {
             return redirect()->route('client.home', ['client' => $client])

@@ -17,9 +17,10 @@ export default function MyTickets({
     props,
     tickets,
     event,
+    userEndSessionDatetime,
 }: MyTicketsPageProps): React.ReactElement {
     const { toasterState, showSuccess, showError, hideToaster } = useToaster();
-
+    console.log(userEndSessionDatetime);
     // Handle download all tickets - updated to use query parameters
     const handleDownloadAll = () => {
         if (!tickets || tickets.length === 0 || !event?.id) {
@@ -81,7 +82,12 @@ export default function MyTickets({
     };
 
     return (
-        <AuthenticatedLayout appName={appName} client={client} props={props}>
+        <AuthenticatedLayout
+            appName={appName}
+            client={client}
+            props={props}
+            userEndSessionDatetime={userEndSessionDatetime}
+        >
             <Head title={'My Tickets | ' + event.name} />
             <div className="w-full py-8">
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
@@ -102,24 +108,38 @@ export default function MyTickets({
                                 </h2>
 
                                 {tickets && tickets.length > 0 && (
-                                    <button
-                                        onClick={handleDownloadAll}
-                                        className="flex items-center rounded-md bg-green-600 px-4 py-2 text-white transition-colors duration-200 hover:bg-green-700"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="mr-2 h-5 w-5"
-                                            viewBox="0 0 20 20"
-                                            fill="currentColor"
+                                    <>
+                                        {/* Button */}
+                                        <button
+                                            onClick={() =>
+                                                window.open(
+                                                    'https://docs.google.com/forms/d/e/1FAIpQLSfPVhg1BOYvM5xe53rlaJXiuEyNYhNSZxw1xq6jW9mU5hZYyQ/viewform',
+                                                    '_blank',
+                                                )
+                                            }
+                                            className="flex items-center rounded-md bg-blue-600 px-4 py-2 text-white transition-colors duration-200 hover:bg-blue-700"
                                         >
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
-                                        Download All Tickets
-                                    </button>
+                                            Confirm Payment
+                                        </button>
+                                        <button
+                                            onClick={handleDownloadAll}
+                                            className="flex items-center rounded-md bg-green-600 px-4 py-2 text-white transition-colors duration-200 hover:bg-green-700"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="mr-2 h-5 w-5"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                                    clipRule="evenodd"
+                                                />
+                                            </svg>
+                                            Download All Tickets
+                                        </button>
+                                    </>
                                 )}
                             </div>
 

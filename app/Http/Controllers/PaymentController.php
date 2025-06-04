@@ -21,6 +21,8 @@ use App\Enums\PaymentGateway;
 use App\Exports\OrdersExport;
 use PhpMqtt\Client\MqttClient;
 use App\Enums\TicketOrderStatus;
+use App\Models\UserContact;
+use App\Services\ResendMailer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +30,7 @@ use Illuminate\Support\Facades\Http;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Validator;
 
@@ -839,6 +842,18 @@ class PaymentController extends Controller
                 throw new \Exception('Order not found: ' . $orderCode);
             }
 
+            // Get user
+            $user = User::find($order->user_id);
+            if (!$user) {
+                throw new \Exception('User not found for order: ' . $orderCode);
+            }
+
+            // Get user contact
+            $userContact = UserContact::find($user->contact_info);
+            if (!$userContact) {
+                throw new \Exception('User contact not found for user: ' . $user->id);
+            }
+
             $currentStatus = $order->status;
             if ($currentStatus === $status || $currentStatus === OrderStatus::CANCELLED || $currentStatus === OrderStatus::COMPLETED) {
                 // No need to update if status is the same and ignore completed/cancelled orders
@@ -869,6 +884,24 @@ class PaymentController extends Controller
                     ];
                 }
             }
+
+            if ($status === OrderStatus::COMPLETED->value) {
+                // Send email
+                $resendMailer = new ResendMailer();
+
+                $resendMailer->send(
+                    to: $userContact->email,
+                    subject: "Successful Ticket Payment for Order #{$order->order_code}",
+                    html: '
+                        <h1>Thank you for your purchase!</h1>
+                        <p>Your order has been successfully processed.</p>
+                        <p>Order Code: ' . $order->order_code . '</p>
+                        <p>Total Price: ' . number_format($order->total_price, 2) . '</p>
+                        <p>Event: ' . $order->event->name . '</p>
+                        <p>Tickets: ' . implode(', ', $updatedTickets) . '</p>'
+                );
+            }
+
             DB::commit();
             $this->publishMqtt(data: [
                 'event' => "update_ticket_status",
