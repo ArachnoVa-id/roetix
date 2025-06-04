@@ -63,12 +63,16 @@ class Event extends Model
 
         $pdo = new PDO("sqlite:" . $path);
 
+        // nambahin expected online field
+        // nambahin expected_kick online field
         $query = "
             CREATE TABLE IF NOT EXISTS user_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
                 status TEXT NULL,
                 start_time DATETIME NULL,
+                expected_online DATETIME,
+                expected_kick DATETIME,
                 expected_end_time DATETIME NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )";
@@ -99,6 +103,19 @@ class Event extends Model
 
         $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
         $stmt->execute([$user->id]);
+
+        $userPosition = max(0, self::getUserPosition($event, $user));
+        $eventVariablesDuration = $event->eventVariables->active_users_duration;
+
+        // update expected_online
+        $expectedOnline = Carbon::now()->addMinutes($eventVariablesDuration * $userPosition)->toDateTimeString();
+        $expectedKick = Carbon::now()->addMinutes($eventVariablesDuration * ($userPosition + 1))->toDateTimeString();
+        $stmt = $pdo->prepare(
+            "UPDATE user_logs 
+            SET expected_online = ?, expected_kick = ?
+            WHERE user_id = ? AND status = 'waiting'"
+        );
+        $stmt->execute([$expectedOnline, $expectedKick, $user->id]);
     }
 
     public static function promoteUser($event, $user)
@@ -129,9 +146,15 @@ class Event extends Model
     public static function getUserPosition($event, $user)
     {
         $pdo = self::getPdo($event);
+        $now = Carbon::now()->toDateTimeString();
 
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM user_logs WHERE status = 'waiting' AND id < (SELECT id FROM user_logs WHERE user_id = ?)");
-        $stmt->execute([$user->id]);
+        $stmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM user_logs 
+            WHERE status = 'waiting' 
+                AND expected_kick > ?
+                AND id < (SELECT id FROM user_logs WHERE user_id = ?)"
+        );
+        $stmt->execute([$now, $user->id]);
         return $stmt->fetchColumn() + 1;
     }
 
@@ -216,16 +239,16 @@ class Event extends Model
             12 => 'Desember'
         ];
 
-        $day = $this->start_date->format('j');
-        $month = $months[(int)$this->start_date->format('n')];
-        $year = $this->start_date->format('Y');
+        $day = $this->event_date->format('j');
+        $month = $months[(int)$this->event_date->format('n')];
+        $year = $this->event_date->format('Y');
 
         return "{$day} {$month} {$year}";
     }
 
     public function getEventTime(): string
     {
-        return $this->start_date->format('H:i') . ' WIB';
+        return $this->event_date->format('H:i') . ' WIB';
     }
 
     public function getAllTicketsPDFTitle()

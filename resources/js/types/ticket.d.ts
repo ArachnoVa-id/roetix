@@ -83,6 +83,7 @@ export interface MyTicketsPageProps {
     props: import('@/types/front-end').EventProps;
     tickets: TicketProps[];
     event: EventInterface;
+    userEndSessionDatetime: string;
 }
 
 export interface RowComponentProps {
