@@ -246,12 +246,8 @@ class UserPageController extends Controller
             }
 
             // Format tickets for display
-            $formattedTickets = collect($tickets)->map(function ($ticket) use ($client) {
-                // Use order date or created_at for ticket date
-                $ticketDate = property_exists($ticket, 'order_date') && $ticket->order_date
-                    ? Carbon::parse($ticket->order_date)
-                    : Carbon::parse($ticket->created_at);
-
+            $eventDb = Event::find($event->id);
+            $formattedTickets = collect($tickets)->map(function ($ticket) use ($eventDb) {
                 // Determine ticket type
                 $typeName = $ticket->ticket_type ? ucfirst($ticket->ticket_type) : 'Unset';
 
@@ -267,7 +263,7 @@ class UserPageController extends Controller
                     'status' => $ticketStatus, // Include the status
                     'categoryColor' => $ticket->category_color ?? null, // Include the category color
                     'data' => [
-                        'date' => $ticketDate->format('d F Y, H:i'),
+                        'date' => $eventDb->event_date->format('d F Y H:i'),
                         'type' => $typeName,
                         'seat' => $ticket->seat ? $ticket->seat->seat_number : 'N/A',
                         'price' => 'Rp' . number_format($ticket->price, 0, ',', '.'),
