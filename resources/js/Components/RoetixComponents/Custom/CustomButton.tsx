@@ -29,7 +29,12 @@ export default function CustomButton({
 
     if (href && !disabled) {
         return (
-            <a href={href} className={mergedClass} target='_blank' rel='noreferrer'>
+            <a
+                href={href}
+                className={mergedClass}
+                target="_blank"
+                rel="noreferrer"
+            >
                 {children}
             </a>
         );

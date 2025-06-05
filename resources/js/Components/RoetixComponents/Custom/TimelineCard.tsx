@@ -57,7 +57,7 @@ export default function TimelineCard({
                     </CustomButton>
 
                     <CustomButton
-                        className="w-full rounded-full border-4 border-[rgba(140,76,227,1)] bg-white text-[rgba(140,76,227,1)] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 text-[4.44vw] md:text-[0.83vw]"
+                        className="w-full rounded-full border-4 border-[rgba(140,76,227,1)] bg-white text-[4.44vw] text-[rgba(140,76,227,1)] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:text-[0.83vw]"
                         href={beliSekarang}
                     >
                         Beli Sekarang
@@ -83,14 +83,14 @@ export default function TimelineCard({
 
                     <CustomButton
                         href={beliSekarang}
-                        className="h-[13.33vw] w-[68.61vw] rounded-full border-4 border-[rgba(140,76,227,1)] bg-white text-[rgba(140,76,227,1)] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:hidden md:h-[2.5vw] md:w-[12.86vw] text-[4.44vw] md:text-[1.04vw]"
+                        className="h-[13.33vw] w-[68.61vw] rounded-full border-4 border-[rgba(140,76,227,1)] bg-white text-[4.44vw] text-[rgba(140,76,227,1)] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:hidden md:h-[2.5vw] md:w-[12.86vw] md:text-[1.04vw]"
                     >
                         Beli Sekarang
                     </CustomButton>
 
                     <CustomButton
                         href={beliSekarang}
-                        className="mt-[1vw] hidden w-full self-center rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] px-4 py-2 transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:flex text-[4.44vw] md:text-[1.04vw]"
+                        className="mt-[1vw] hidden w-full self-center rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] px-4 py-2 text-[4.44vw] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:flex md:text-[1.04vw]"
                     >
                         Beli Sekarang
                     </CustomButton>
