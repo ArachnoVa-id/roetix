@@ -109,29 +109,6 @@ class AuthenticatedSessionController extends Controller
         // For main login
         $firstTeam = $userModel->teams()->first();
 
-        // if ($userModel->isReceptionist()) { // Menggunakan metode isReceptionist() dari User model
-        //     // Jika login dari subdomain yang terkait dengan event
-        //     if ($event && $event->slug) {
-        //         try {
-        //             Event::loginUser($event, $userModel); // Panggil loginUser jika perlu untuk receptionist
-        //         } catch (\Throwable $e) {
-        //             Log::error("Receptionist failed loginUser to event queue: " . $e->getMessage());
-        //             // Fallback jika loginUser gagal (misal: sudah di antrian)
-        //             // Anda bisa memilih redirect ke login atau home client
-        //             return redirect()->route('client.home', ['client' => $client]);
-        //         }
-        //         return redirect()->route('client.events.scan.show', ['client' => $client, 'event_slug' => $event->slug]);
-        //     } else {
-        //         // Jika receptionist login dari main domain atau tanpa event context
-        //         // Anda harus memutuskan ke mana mereka akan diarahkan.
-        //         // Opsi A: Redirect ke halaman seleksi event (jika dibuat)
-        //         // Opsi B: Redirect ke suatu "Admin Landing Page" atau halaman default yang kosong
-        //         // Opsi C: Redirect ke home main domain jika mereka tidak memiliki event default
-        //         Log::warning("Receptionist login without specific event context. Redirecting to main home.");
-        //         return redirect()->route('home'); // Atau redirect ke halaman daftar event admin
-        //     }
-        // }
-
         if ($userModel->isAdmin()) {
             session([
                 'auth_user' => $userModel,
@@ -180,7 +157,7 @@ class AuthenticatedSessionController extends Controller
         $event = Event::where('slug', $subdomain)->first();
 
         if ($event) {
-            Event::logoutUserAndPromoteNext($event, $user, $this);
+            Event::logoutUserAndPromoteNext($event, $user);
         }
 
         Auth::guard('web')->logout();
@@ -189,38 +166,5 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/login');
-    }
-
-    public function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
-    {
-        $server = 'broker.emqx.io';
-        $port = 1883;
-        $clientId = 'novatix_midtrans' . rand(100, 999);
-        $usrname = 'emqx';
-        $password = 'public';
-        $mqtt_version = MqttClient::MQTT_3_1_1;
-        $sanitized_mqtt_code = str_replace('-', '', $mqtt_code);
-        $topic = 'novatix/logs/' . $sanitized_mqtt_code;
-
-        $conn_settings = (new ConnectionSettings)
-            ->setUsername($usrname)
-            ->setPassword($password)
-            ->setLastWillMessage('client disconnected')
-            ->setLastWillTopic('emqx/last-will')
-            ->setLastWillQualityOfService(1);
-
-        $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-
-        try {
-            $mqtt->connect($conn_settings, true);
-            $mqtt->publish(
-                $topic,
-                json_encode($data),
-                0
-            );
-            $mqtt->disconnect();
-        } catch (\Throwable $th) {
-            Log::error('MQTT Publish Failed: ' . $th->getMessage());
-        }
     }
 }

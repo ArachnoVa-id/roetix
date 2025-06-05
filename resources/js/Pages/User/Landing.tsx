@@ -628,7 +628,10 @@ export default function Landing({
             userEndSessionDatetime={userEndSessionDatetime}
         >
             <Head title={'Book Tickets | ' + event.name} />
-            <div className="flex w-full flex-col gap-4 py-4">
+            <div
+                id="landing-wrapper"
+                className="flex w-full flex-col gap-4 py-4"
+            >
                 {/* Tampilkan pesan status event jika tidak active */}
                 {!isBookingAllowed && event && (
                     <div className="mx-auto w-fit sm:px-6 lg:px-8">
