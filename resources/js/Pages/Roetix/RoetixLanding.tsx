@@ -19,13 +19,13 @@ export default function RoetixLanding() {
             <div className="aspect-[360/820] md:aspect-[1920/727]">
                 <About />
             </div>
-            <div className="aspect-[360/800] md:aspect-[1920/800]">
+            <div className="aspect-[360/800] md:aspect-[1920/800] hidden">
                 <Event />
             </div>
-            <div className="aspect-[360/1716] md:aspect-[1920/1225]">
+            <div className="aspect-[360/1716] md:aspect-[1920/1225]" id='timeline'>
                 <TimeLine />
             </div>
-            <div className="aspect-[360/1623] md:aspect-[1920/727]">
+            <div className="aspect-[360/1623] md:aspect-[1920/727] hidden">
                 <EventGalery />
             </div>
             <div className="aspect-[360/412] md:aspect-[1920/675]">

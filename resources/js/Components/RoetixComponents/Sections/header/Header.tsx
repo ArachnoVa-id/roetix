@@ -36,12 +36,12 @@ const Header = () => {
                 </p>
                 {/* button  */}
                 <div className="mt-[8vw] flex flex-col space-y-[3vw] md:mt-[2vw] md:flex-row md:space-x-[1vw] md:space-y-0">
-                    <CustomButton className="h-[13.33vw] w-[68.61vw] rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:h-[2.5vw] md:w-[12.86vw]">
+                    <CustomButton className="h-[13.33vw] w-[68.61vw] rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:h-[2.5vw] md:w-[12.86vw]" href='#timeline'>
                         <p className="text-[4.44vw] md:text-[0.83vw]">
                             Pesan Tiket Sekarang
                         </p>
                     </CustomButton>
-                    <CustomButton className="border-[rgba(140,76,227,1) h-[13.33vw] w-[68.61vw] rounded-full border-4 bg-white text-[rgba(140,76,227,1)] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:h-[2.5vw] md:w-[12.86vw]">
+                    <CustomButton className="border-[rgba(140,76,227,1) h-[13.33vw] w-[68.61vw] rounded-full border-4 bg-white text-[rgba(140,76,227,1)] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:h-[2.5vw] md:w-[12.86vw]" href='#timeline'>
                         <p className="text-[4.44vw] md:text-[0.83vw]">
                             Telusuri Lebih Lanjut
                         </p>

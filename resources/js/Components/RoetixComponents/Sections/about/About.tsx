@@ -9,63 +9,73 @@ const About = () => {
                     height={1000}
                     className="h-[35.54vw] w-[27.19vw] md:h-[36.022vw] md:w-[27.552vw]"
                 />
-                <div className="flex flex-col items-start justify-center text-[8.89vw] md:text-[3.33vw]">
-                    <h1 className="font-bold text-[rgba(77,42,125,1)]">
-                        Mengenai
+                <div className="flex flex-col items-start justify-center">
+                    <h1 className="font-bold text-[rgba(77,42,125,1)] text-[5.8vw] md:text-[3.2vw]">
+                        Saga From Our Childhood
                     </h1>
-                    <h2 className="font-bold text-[rgba(140,76,227,1)]">
-                        Roetix
+                    <h2 className="font-bold text-[rgba(140,76,227,1)] text-[4.8vw] md:text-[2.3vw]">
+                        Whispers Before the Romance Dawn
                     </h2>
-                    <p className="mt-[1vw] hidden text-justify text-[1.04vw] md:flex">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-                        sed do eiusmod tempor incididunt ut labore et dolore
-                        magna aliqua. Ut enim ad minim veniam, quis nostrud
-                        exercitation ullamco laboris nisi ut aliquip ex ea
-                        commodo consequat. Duis aute irure dolor in
-                        reprehenderit in voluptate velit esse cillum dolore eu
-                        fugiat nulla pariatur. Excepteur sint occaecat cupidatat
-                        non proident, sunt in culpa qui officia deserunt mollit
-                        anim id est laborum.
+                    {/* 1 nd paragraph */}
+                    <p className="mt-[0.8vw] hidden text-justify text-[1.04vw] md:flex font-bold">
+                        A special performance by Rumah Orkestra Jogja
                     </p>
                     {/* 2 nd paragraph */}
-                    <p className="mt-[1vw] hidden text-justify text-[1.04vw] md:flex">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-                        sed do eiusmod tempor incididunt ut labore et dolore
-                        magna aliqua. Ut enim ad minim veniam, quis nostrud
-                        exercitation ullamco laboris nisi ut aliquip ex ea
-                        commodo consequat. Duis aute irure dolor in
-                        reprehenderit in voluptate velit esse cillum dolore eu
-                        fugiat nulla pariatur. Excepteur sint occaecat cupidatat
-                        non proident, sunt in culpa qui officia deserunt mollit
-                        anim id est laborum.
+                    <p className="mt-[0.8vw] hidden text-justify text-[1.14vw] md:flex">
+                        Childhood is a timeless voyage, one that never truly ends. In this nostalgic concert,
+                        Rumah Orkestra Jogja proudly presents SAGA, a musical journey through the stories that
+                        shaped our youth. From iconic anime blockbusters to beloved pop culture moments, we'll
+                        relive the magic that once lit up our imaginations.
+                    </p>
+                    {/* 3 nd paragraph */}
+                    <p className="mt-[0.8vw] hidden text-justify text-[1.14vw] md:flex">
+                        “Whispers Before the Romance Dawn” will feature a beautiful repertoire from One Piece,
+                        inviting us to sail across the seas of memory, adventure, and dreams. This isn't just a concert,
+                        it's a celebration of the moments we once cherished, and the spirit that still lives on within us.
+                    </p>
+                    {/* 4 nd paragraph */}
+                    <p className="mt-[0.5vw] hidden text-justify text-[1.04vw] md:flex italic font-bold">
+                        Don't be sad that it's over, be glad that it happened.
+                    </p>
+                    {/* 5 nd paragraph */}
+                    <p className="mt-[0.2vw] hidden text-justify text-[1.04vw] md:flex italic font-bold">
+                        Come, let's set sail together,one more time.
                     </p>
                 </div>
             </div>
 
-            <div className="px-[8vw] text-justify text-[4.44vw] md:hidden md:text-[1.04vw]">
-                {/* 1 st paragraph */}
-                <p className="mt-[5vw]">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed
-                    do eiusmod tempor incididunt ut labore et dolore magna
-                    aliqua. Ut enim ad minim veniam, quis nostrud exercitation
-                    ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                    Duis aute irure dolor in reprehenderit in voluptate velit
-                    esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
-                    occaecat cupidatat non proident, sunt in culpa qui officia
-                    deserunt mollit anim id est laborum.
+            <div className="px-[6vw] text-justify md:hidden">
+                {/* 1st paragraph */}
+                <p className="mt-[5vw] text-[4vw] font-bold leading-[6vw]">
+                    A special performance by Rumah Orkestra Jogja
                 </p>
-                {/* 2 nd paragraph */}
-                <p className="mt-[5vw]">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed
-                    do eiusmod tempor incididunt ut labore et dolore magna
-                    aliqua. Ut enim ad minim veniam, quis nostrud exercitation
-                    ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                    Duis aute irure dolor in reprehenderit in voluptate velit
-                    esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
-                    occaecat cupidatat non proident, sunt in culpa qui officia
-                    deserunt mollit anim id est laborum.
+
+                {/* 2nd paragraph */}
+                <p className="mt-[4vw] text-[3.6vw] leading-[6.2vw]">
+                    Childhood is a timeless voyage, one that never truly ends. In this nostalgic concert,
+                    Rumah Orkestra Jogja proudly presents SAGA, a musical journey through the stories that
+                    shaped our youth. From iconic anime blockbusters to beloved pop culture moments, we'll
+                    relive the magic that once lit up our imaginations.
+                </p>
+
+                {/* 3rd paragraph */}
+                <p className="mt-[4vw] text-[3.6vw] leading-[6.2vw]">
+                    “Whispers Before the Romance Dawn” will feature a beautiful repertoire from One Piece,
+                    inviting us to sail across the seas of memory, adventure, and dreams. This isn't just a concert,
+                    it's a celebration of the moments we once cherished, and the spirit that still lives on within us.
+                </p>
+
+                {/* 4th paragraph */}
+                <p className="mt-[4vw] text-[3.6vw] leading-[6.2vw] italic">
+                    Don't be sad that it's over, be glad that it happened.
+                </p>
+
+                {/* 5th paragraph */}
+                <p className="mt-[4vw] text-[3.6vw] leading-[6.2vw] font-semibold">
+                    Come, let's set sail together, one more time.
                 </p>
             </div>
+
         </div>
     );
 };

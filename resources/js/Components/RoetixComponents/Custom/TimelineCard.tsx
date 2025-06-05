@@ -64,14 +64,14 @@ export default function TimelineCard({
 
             {isOpened && (
                 <>
-                    <div>
+                    <div className='py-5'>
                         <p className="text-[8.89vw] font-bold text-[rgba(77,42,125,1)] md:text-[2.71vw]">
-                            Benefits
+                            Time
                         </p>
                         {renderList(benefits)}
                     </div>
 
-                    <div>
+                    <div className='hidden'>
                         <p className="text-[8.89vw] font-bold text-[rgba(77,42,125,1)] md:text-[2.71vw]">
                             Merits
                         </p>

@@ -73,7 +73,9 @@ export default function EventInfoCard({
                 <CustomButton
                     className="h-[11.11vw] w-[49.44vw] rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:h-[2.48vw] md:w-[12.57vw]"
                     disabled={disabled}
-                    onClick={onClick}
+                    // onClick={onClick}
+                    href='#timeline'
+
                 >
                     <p className="text-[3.89vw] md:text-[0.94vw]">
                         Telusuri Lebih Lanjut

@@ -23,23 +23,24 @@ const TimeLine = () => {
     };
 
     const timelineData = [
-        { title: 'Early Bird' },
-        { title: 'Middle Bird' },
-        { title: 'Top Bird' },
+        { title: 'Show A', benefits: ['Sabtu, 05 Juli 2025, 15.30',] },
+        { title: 'Show B', benefits: ['Sabtu, 05 Juli 2025, 19.30',] },
     ];
 
     const sampleContent = {
         benefits: [
-            'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-            'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-            'Ut enim ad minim veniam, quis nostrud exercitation.',
-            'Duis aute irure dolor in reprehenderit in voluptate velit.',
+            'Sabtu, 05 Juli 2025, 15.30',
+            'Sabtu, 05 Juli 2025, 19.30'
+            // 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+            // 'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+            // 'Ut enim ad minim veniam, quis nostrud exercitation.',
+            // 'Duis aute irure dolor in reprehenderit in voluptate velit.',
         ],
         merits: [
-            'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-            'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-            'Ut enim ad minim veniam, quis nostrud exercitation.',
-            'Duis aute irure dolor in reprehenderit in voluptate velit.',
+            // 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+            // 'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+            // 'Ut enim ad minim veniam, quis nostrud exercitation.',
+            // 'Duis aute irure dolor in reprehenderit in voluptate velit.',
         ],
     };
 
@@ -67,12 +68,12 @@ const TimeLine = () => {
                     Timeline Event
                 </h1>
 
-                <div className="space-y-5 md:flex md:space-x-[2vw] md:space-y-0">
+                <div className="flex flex-col md:flex-row space-y-[10vw] md:space-y-0 justify-center items-center md:justify-evenly w-full">
                     {timelineData.map((item, idx) => (
                         <TimelineCard
                             key={idx}
                             title={item.title}
-                            benefits={sampleContent.benefits}
+                            benefits={item.benefits}
                             merits={sampleContent.merits}
                             isOpened={!isMobile || activeIndex === idx}
                             onToggle={() => handleToggle(idx)}
