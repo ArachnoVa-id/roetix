@@ -151,16 +151,7 @@ export default function Authenticated({
     // Scan Ticket hanya terlihat jika user adalah 'receptionist' DAN event tersedia
     const showScanTicketLink = user?.role === 'receptionist';
 
-    console.log('Event Slug:', event?.slug);
-
     const handleScanNavigation = () => {
-        console.log('Debug info:', {
-            client,
-            event,
-            eventSlug: event?.slug,
-            user: user?.role,
-        });
-
         if (!client) {
             console.error('Client not available');
             alert('Client information not available');
@@ -185,7 +176,6 @@ export default function Authenticated({
                 client: client,
                 event_slug: event.slug,
             });
-            console.log('Navigating to:', url);
             window.location.href = url;
         } catch (error) {
             console.error('Route generation failed:', error);
@@ -307,6 +297,7 @@ export default function Authenticated({
                                     Admin Dashboard
                                 </NavLink>
                                 <NavLink
+                                    id="logout"
                                     eventProps={props}
                                     method="post"
                                     href={route('logout')}
@@ -449,6 +440,7 @@ export default function Authenticated({
                                 Admin Dashboard
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
+                                id="logout"
                                 eventProps={props}
                                 method="post"
                                 href={route('logout')}

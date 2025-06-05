@@ -176,22 +176,23 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             // Handle the response
             if (response.data && response.data.accessor) {
                 const accessor = response.data.accessor;
+
+                // Wait for callback to complete BEFORE navigating
                 await callback(accessor);
+
                 if (accessor === 'free') {
                     toasterFunction.showSuccess(
                         'Payment is free. No payment required.',
                     );
                     setIsLoading(false);
                     window.location.reload();
+                    return;
                 }
-                // If Midtrans snap.js is loaded
-                else if (window.snap && paymentGateway === 'midtrans') {
+
+                if (window.snap && paymentGateway === 'midtrans') {
                     const callbacks = createCallbacks();
 
-                    // logic publish
                     const updated_tickets = response.data.updated_tickets;
-                    console.log(updated_tickets);
-
                     const message = JSON.stringify({
                         event: 'update_ticket_status',
                         data: updated_tickets,
@@ -210,7 +211,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                         },
                     );
 
-                    // Open the Midtrans Snap payment page
                     window.snap.pay(accessor, callbacks);
 
                     if (onTransactionStarted) {
@@ -220,6 +220,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                     paymentGateway === 'faspay' ||
                     paymentGateway === 'tripay'
                 ) {
+                    // DEFER redirect until after callback
                     window.location.href = accessor;
                 } else {
                     toasterFunction.showError(

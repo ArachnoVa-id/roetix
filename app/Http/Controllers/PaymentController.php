@@ -21,6 +21,8 @@ use App\Enums\PaymentGateway;
 use App\Exports\OrdersExport;
 use PhpMqtt\Client\MqttClient;
 use App\Enums\TicketOrderStatus;
+use App\Models\UserContact;
+use App\Services\ResendMailer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +30,7 @@ use Illuminate\Support\Facades\Http;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Validator;
 
@@ -212,7 +215,7 @@ class PaymentController extends Controller
 
             $accessor = null;
             // Initiate pgs if totalWithTax is not null
-            if ($totalWithTax) {
+            if ($totalWithTax > 0) {
                 switch ($event->eventVariables->payment_gateway) {
                     case PaymentGateway::MIDTRANS->value:
                         try {
@@ -839,6 +842,18 @@ class PaymentController extends Controller
                 throw new \Exception('Order not found: ' . $orderCode);
             }
 
+            // Get user
+            $user = User::find($order->user_id);
+            if (!$user) {
+                throw new \Exception('User not found for order: ' . $orderCode);
+            }
+
+            // Get user contact
+            $userContact = UserContact::find($user->contact_info);
+            if (!$userContact) {
+                throw new \Exception('User contact not found for user: ' . $user->id);
+            }
+
             $currentStatus = $order->status;
             if ($currentStatus === $status || $currentStatus === OrderStatus::CANCELLED || $currentStatus === OrderStatus::COMPLETED) {
                 // No need to update if status is the same and ignore completed/cancelled orders
@@ -864,11 +879,30 @@ class PaymentController extends Controller
                         "id" => $ticket->id,
                         "status" => $status,
                         "seat_id" => $ticket->seat_id,
+                        "seat_number" => $ticket->seat->seat_number,
                         "ticket_category_id" => $ticket->ticket_category_id,
                         "ticket_type" => $ticket->ticket_type,
                     ];
                 }
             }
+
+            if ($status === OrderStatus::COMPLETED->value) {
+                // Send email
+                $resendMailer = new ResendMailer();
+
+                $resendMailer->send(
+                    to: $userContact->email,
+                    subject: "Successful Ticket Payment for Order #{$order->order_code}",
+                    html: '
+                        <h1>Thank you for your purchase!</h1>
+                        <p>Your order has been successfully processed.</p>
+                        <p>Order Code: ' . $order->order_code . '</p>
+                        <p>Total Price: ' . number_format($order->total_price, 2) . '</p>
+                        <p>Event: ' . $order->getSingleEvent()->name . '</p>
+                        <p>Tickets: ' . implode(',', array_map(fn($item) => $item['seat_number'], $updatedTickets)) . '</p>'
+                );
+            }
+
             DB::commit();
             $this->publishMqtt(data: [
                 'event' => "update_ticket_status",

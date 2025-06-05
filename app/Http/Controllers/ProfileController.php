@@ -19,7 +19,7 @@ class ProfileController extends Controller
     public function bypassToNoSQL(Request $request)
     {
         DevNoSQLData::create([
-            'collection' => 'roetixMerch',
+            'collection' => 'roetixUserData',
             'data' => $request->all(),
         ]);
     }
