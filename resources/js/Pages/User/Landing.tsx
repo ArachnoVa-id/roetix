@@ -1237,6 +1237,7 @@ export default function Landing({
                                     }}
                                 />
                                 <TextInput
+                                    type="email"
                                     id="user_email"
                                     className="mt-1 block w-full"
                                     value={data.user_email}
@@ -1262,6 +1263,7 @@ export default function Landing({
                                     }}
                                 />
                                 <TextInput
+                                    type="tel"
                                     id="user_phone_num"
                                     className="mt-1 block w-full"
                                     value={data.user_phone_num}
