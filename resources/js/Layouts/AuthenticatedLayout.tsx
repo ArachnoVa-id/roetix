@@ -297,6 +297,7 @@ export default function Authenticated({
                                     Admin Dashboard
                                 </NavLink>
                                 <NavLink
+                                    id="logout"
                                     eventProps={props}
                                     method="post"
                                     href={route('logout')}
@@ -439,6 +440,7 @@ export default function Authenticated({
                                 Admin Dashboard
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
+                                id="logout"
                                 eventProps={props}
                                 method="post"
                                 href={route('logout')}
