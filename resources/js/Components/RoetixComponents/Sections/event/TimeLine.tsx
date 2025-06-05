@@ -23,14 +23,22 @@ const TimeLine = () => {
     };
 
     const timelineData = [
-        { title: 'Show A', benefits: ['Sabtu, 05 Juli 2025, 15.30',] },
-        { title: 'Show B', benefits: ['Sabtu, 05 Juli 2025, 19.30',] },
+        {
+            title: 'Show A',
+            benefits: ['Sabtu, 05 Juli 2025, 15.30'],
+            beliSekarangLink: 'http://sfoc-show-a.roetix.com',
+        },
+        {
+            title: 'Show B',
+            benefits: ['Sabtu, 05 Juli 2025, 19.30'],
+            beliSekarangLink: 'http://sfoc-show-b.roetix.com',
+        },
     ];
 
     const sampleContent = {
         benefits: [
             'Sabtu, 05 Juli 2025, 15.30',
-            'Sabtu, 05 Juli 2025, 19.30'
+            'Sabtu, 05 Juli 2025, 19.30',
             // 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
             // 'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
             // 'Ut enim ad minim veniam, quis nostrud exercitation.',
@@ -63,12 +71,12 @@ const TimeLine = () => {
                 />
             </div>
 
-            <div className="absolute inset-0 flex w-full flex-col items-center justify-center space-y-[2vw]">
+            <div className="absolute inset-0 flex w-full flex-col items-center justify-start space-y-[50vw] py-[10vw] md:space-y-[15vw]">
                 <h1 className="text-center text-[8.89vw] font-bold text-[rgba(211,190,255,1)] md:text-[3.33vw]">
                     Timeline Event
                 </h1>
 
-                <div className="flex flex-col md:flex-row space-y-[10vw] md:space-y-0 justify-center items-center md:justify-evenly w-full">
+                <div className="flex w-full flex-col items-center justify-center space-y-[10vw] md:flex-row md:justify-evenly md:space-y-0">
                     {timelineData.map((item, idx) => (
                         <TimelineCard
                             key={idx}
@@ -77,6 +85,7 @@ const TimeLine = () => {
                             merits={sampleContent.merits}
                             isOpened={!isMobile || activeIndex === idx}
                             onToggle={() => handleToggle(idx)}
+                            beliSekarang={item.beliSekarangLink}
                         />
                     ))}
                 </div>

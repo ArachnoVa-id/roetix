@@ -1,12 +1,4 @@
-import {
-    Facebook,
-    House,
-    Instagram,
-    Mail,
-    Phone,
-    Twitter,
-    Youtube,
-} from 'lucide-react';
+import { Instagram, Phone, Youtube } from 'lucide-react';
 
 const Footer = () => {
     return (
@@ -50,7 +42,12 @@ const Footer = () => {
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
                 </div> */}
-                <a className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]" href='https://www.instagram.com/rumahorkestrajogja/' target="_blank">
+                <a
+                    className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]"
+                    href="https://www.instagram.com/rumahorkestrajogja/"
+                    target="_blank"
+                    rel="noreferrer"
+                >
                     <Instagram
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
@@ -62,7 +59,12 @@ const Footer = () => {
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
                 </div> */}
-                <a className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]" href='https://www.youtube.com/@rumahorkestrajogja6902' target='_blank'>
+                <a
+                    className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]"
+                    href="https://www.youtube.com/@rumahorkestrajogja6902"
+                    target="_blank"
+                    rel="noreferrer"
+                >
                     <Youtube
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
