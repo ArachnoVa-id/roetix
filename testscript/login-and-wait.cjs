@@ -1,8 +1,9 @@
 const { chromium } = require('playwright');
 
 const PASSWORD = 'password123';
-const DOMAIN = process.argv[3] || 'http://test.dev-staging-novatix.id';
 const userCount = parseInt(process.argv[2], 10) || 20;
+const DOMAIN = process.argv[3] || 'http://test.dev-staging-novatix.id';
+const DELAY = parseInt(process.argv[4], 10) || 20000;
 
 const USERS = Array.from({ length: userCount }, (_, i) => ({
     email: `testuser${i + 1}@example.com`,
@@ -38,7 +39,6 @@ const loginAndMonitor = async (user, label) => {
         await page.fill('#password', user.password);
 
         console.log(`🔓 [${label}] Submitting login form...`);
-        const initialUrl = page.url();
         await Promise.all([
             page.waitForNavigation({ waitUntil: 'load', timeout: 10_000 }),
             page.click('form button[type=submit]'),
@@ -47,8 +47,8 @@ const loginAndMonitor = async (user, label) => {
         // Wait for page to change or DOM mutation
         console.log(`🧭 [${label}] Waiting for post-login state...`);
         await page.waitForFunction(
-            () => window.location.href === DOMAIN + '/',
-            initialUrl,
+            (expectedUrl) => window.location.href === expectedUrl,
+            DOMAIN + '/',
             { timeout: 120_000 },
         );
 
@@ -57,7 +57,7 @@ const loginAndMonitor = async (user, label) => {
         );
 
         // wait the page to stabilize
-        await page.waitForTimeout(20_000);
+        await page.waitForTimeout(DELAY);
 
         const isQueueVisible = await page.locator('#queue-wrapper').isVisible();
         const isLandingVisible = await page
