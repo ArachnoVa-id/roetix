@@ -178,7 +178,7 @@ class UserPageController extends Controller
                 'categoryPrices' => $categoryPrices,
                 'props' => $props->getSecure(),
                 'ownedTicketCount' => $ownedTicketCount,
-                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_end_time,
+                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_kick,
                 'paymentGateway' => $event->eventVariables->payment_gateway,
             ];
 
@@ -295,7 +295,7 @@ class UserPageController extends Controller
                 'tickets' => $formattedTickets,
                 'ticketCategories' => $ticketCategories,
                 'event' => $this->formatEventData($event), // Gunakan helper method
-                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_end_time,
+                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_kick,
             ]);
         } catch (\Exception $e) {
             return redirect()->route('client.home', ['client' => $client])

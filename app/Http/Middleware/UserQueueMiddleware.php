@@ -51,9 +51,6 @@ class UserQueueMiddleware
             throw new \Exception("Invalid active_users_threshold value.");
         }
 
-        // ✅ Clean up expired users first
-        Event::removeExpiredUsers($event, $this);
-
         // ✅ Always work with latest data
         $trafficNumber = Event::countOnlineUsers($event);
         $current_user = (object) Event::getUser($event, $user);
@@ -67,7 +64,7 @@ class UserQueueMiddleware
         // ✅ If online, check session timeout
         if ($current_user->status === 'online') {
             $now = Carbon::now();
-            $expectedEnd = Carbon::parse($current_user->expected_end_time);
+            $expectedEnd = Carbon::parse($current_user->expected_kick);
 
             if ($now->gte($expectedEnd)) {
                 Event::logoutUserAndPromoteNext($event, $user, $this);
@@ -86,22 +83,10 @@ class UserQueueMiddleware
         if ($current_user->status === 'waiting') {
             $position = Event::getUserPosition($event, $user);
 
-            if ($position === 1 && $trafficNumber < $threshold) {
-                Event::promoteUser($event, $user);
-                return $next($request);
-            }
-
-            if (Carbon::now()->gte(Carbon::parse($current_user->expected_online))) {
-                Event::promoteUser($event, $user);
-                return $next($request);
-            }
-
             // Estimate waiting time
             $batch = ceil($position / $threshold);
             $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
             $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
-
-            // dd($current_user->expected_online);
 
             return Inertia::render('User/Overload', [
                 'client' => $client,
@@ -113,7 +98,7 @@ class UserQueueMiddleware
                 'queue' => [
                     'title' => "You are in a queue number " . $position,
                     'message' => 'Please wait...',
-                    'expected_finish' => $current_user->expected_online,
+                    'expected_finish' => $expected_end,
                 ],
             ]);
         }

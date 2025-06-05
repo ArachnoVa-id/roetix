@@ -53,14 +53,28 @@ export default function Overload({
                 const payload = JSON.parse(message.toString());
                 const updates = Array.isArray(payload) ? payload : [payload];
 
-                const logoutEvent = updates.find(
-                    (e) =>
-                        e.event === 'user_logout' &&
-                        e.next_user_id === event.user_id,
-                );
+                const relevantEvent = updates.find((e) => {
+                    if (!e || !e.event) return false;
 
-                if (logoutEvent) {
-                    // Tambahkan delay kecil agar DB update selesai
+                    // Events relevant to this user
+                    if (
+                        (e.event === 'user_logout' &&
+                            e.user_id === event.user_id) ||
+                        (e.event === 'user_login' &&
+                            e.user_id === event.user_id) ||
+                        (e.event === 'user_promoted' &&
+                            e.user_id === event.user_id) ||
+                        (e.event === 'user_logout' &&
+                            e.next_user_id === event.user_id)
+                    ) {
+                        return true;
+                    }
+
+                    return false;
+                });
+
+                if (relevantEvent) {
+                    // Small delay to allow DB or backend updates to settle
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
@@ -113,6 +127,7 @@ export default function Overload({
 
     return (
         <div
+            id="queue-wrapper"
             className="flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8"
             style={{
                 backgroundColor: primary_color,
