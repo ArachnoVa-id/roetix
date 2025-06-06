@@ -519,7 +519,8 @@ const ScanTicket: React.FC = () => {
             console.log('--- Primary Camera Effect Cleanup ---');
             stopCamera();
         };
-    }, [isScanning]); // REMOVED startCamera and stopCamera from dependencies
+    }, [isScanning, startCamera, stopCamera]); // REMOVED startCamera and stopCamera from dependencies
+    // ijin ngubah sek bang biar bisa merge ke roetix
 
     // Effect 2: Handle camera facing mode change
     useEffect(() => {
@@ -535,7 +536,8 @@ const ScanTicket: React.FC = () => {
             console.log('Restarting camera for facing mode change');
             startCamera();
         }
-    }, [useFrontCamera]); // REMOVED dependencies that cause loops
+    }, [useFrontCamera, isCameraActive, isScanning, startCamera]); // REMOVED dependencies that cause loops
+    // ijin ngubah sek bang biar bisa merge ke roetix
 
     // Effect 3: Handle QR scanner interval
     useEffect(() => {
@@ -566,7 +568,8 @@ const ScanTicket: React.FC = () => {
                 scanIntervalRef.current = null;
             }
         };
-    }, [isScanning, isCameraActive, isLoading]); // REMOVED startQrScanner from dependencies
+    }, [isScanning, isCameraActive, isLoading, startQrScanner]); // REMOVED startQrScanner from dependencies
+    // ijin ngubah sek bang biar bisa merge ke roetix
 
     // Effect 4: Final cleanup on component unmount
     useEffect(() => {

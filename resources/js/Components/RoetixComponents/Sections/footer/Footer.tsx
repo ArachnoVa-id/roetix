@@ -1,12 +1,4 @@
-import {
-    Facebook,
-    House,
-    Instagram,
-    Mail,
-    Phone,
-    Twitter,
-    Youtube,
-} from 'lucide-react';
+import { Instagram, Phone, Youtube } from 'lucide-react';
 
 const Footer = () => {
     return (
@@ -24,50 +16,60 @@ const Footer = () => {
             </p>
 
             <div className="flex flex-col items-center justify-center space-y-[2vw] text-[4.44vw] text-white md:flex-row md:space-x-[1vw] md:space-y-0 md:text-[1.25vw]">
-                <div className="flex items-center space-x-2">
+                {/* <div className="items-center space-x-2 hidden">
                     <House color="rgba(252, 216, 4, 1)" />
                     <p>Insert Alamat di Sini</p>
-                </div>
+                </div> */}
 
                 <div className="flex items-center space-x-2">
                     <Phone color="rgba(252, 216, 4, 1)" />
-                    <p>+62 812-1647-9387</p>
+                    <p>+62 822-6548-6116</p>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                {/* <div className="flex items-center space-x-2">
                     <Mail color="rgba(252, 216, 4, 1)" />
                     <p>LoremIpsum@gmail.com</p>
-                </div>
+                </div> */}
             </div>
 
             <p className="text-[3.89vw] font-bold text-white md:text-[1.67vw]">
                 Contact Us Through
             </p>
             <div className="flex items-center space-x-[5vw]">
-                <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
+                {/* <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw] hidden">
                     <Facebook
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
-                </div>
-                <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
+                </div> */}
+                <a
+                    className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]"
+                    href="https://www.instagram.com/rumahorkestrajogja/"
+                    target="_blank"
+                    rel="noreferrer"
+                >
                     <Instagram
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
-                </div>
-                <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
+                </a>
+                {/* <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
                     <Twitter
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
-                </div>
-                <div className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]">
+                </div> */}
+                <a
+                    className="active:scale-85 cursor-pointer rounded-full bg-white p-[2vw] transition-transform duration-300 ease-in-out hover:scale-95 md:p-[1vw]"
+                    href="https://www.youtube.com/@rumahorkestrajogja6902"
+                    target="_blank"
+                    rel="noreferrer"
+                >
                     <Youtube
                         color="rgba(77, 42, 125, 1)"
                         className="h-[6vw] w-[6vw] md:h-[1.5vw] md:w-[1.5vw]"
                     />
-                </div>
+                </a>
             </div>
         </div>
     );
