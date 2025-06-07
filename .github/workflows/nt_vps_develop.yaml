@@ -202,6 +202,14 @@ jobs:
               echo "Nginx config already exists at $NGINX_CONF_PATH, skipping..."
           fi
 
+          # Install certbot and python3-certbot-nginx if missing
+          if ! command -v certbot > /dev/null; then
+              echo "Certbot not found, installing certbot and python3-certbot-nginx..."
+              sudo apt update
+              sudo apt install -y certbot python3-certbot-nginx
+          else
+              echo "Certbot already installed."
+          fi
 
           echo "Fixing Laravel directory permissions..."
           mkdir -p storage/framework/{cache,sessions,views}
