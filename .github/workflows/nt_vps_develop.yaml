@@ -151,6 +151,17 @@ jobs:
           npm install
           npm run build
 
+          # Check if nginx is installed, install if missing
+          if ! command -v nginx > /dev/null; then
+              echo "Nginx not found, installing..."
+              sudo apt update
+              sudo apt install -y nginx
+              sudo systemctl enable nginx
+              sudo systemctl start nginx
+          else
+              echo "Nginx is already installed."
+          fi
+
           echo "Fixing Laravel directory permissions..."
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
