@@ -151,6 +151,66 @@ jobs:
           npm install
           npm run build
 
+          # Check if nginx is installed, install if missing
+          if ! command -v nginx > /dev/null; then
+              echo "Nginx not found, installing..."
+              sudo apt update
+              sudo apt install -y nginx
+              sudo systemctl enable nginx
+              sudo systemctl start nginx
+          else
+              echo "Nginx is already installed."
+          fi
+
+          # Install MariaDB server if missing
+          if ! systemctl list-units --full -all | grep -q mariadb.service; then
+              echo "MariaDB server not found, installing..."
+              sudo apt update
+              sudo apt install -y mariadb-server
+              sudo systemctl enable mariadb
+              sudo systemctl start mariadb
+          else
+              echo "MariaDB server already installed."
+          fi
+
+          # Install PHP MySQL extension if missing
+          if ! dpkg -l | grep -q php8.3-mysql; then
+              echo "Installing PHP MySQL extension..."
+              sudo apt update
+              sudo apt install -y php8.3-mysql
+              # Restart php-fpm to apply new extension
+              sudo systemctl restart php8.3-fpm
+          else
+              echo "PHP MySQL extension already installed."
+          fi
+
+          # Path to nginx config inside your repo
+          REPO_NGINX_CONF=~/novatix/app/develop/nginx.conf
+          NGINX_CONF_PATH=/etc/nginx/sites-available/novatix
+          NGINX_ENABLED_PATH=/etc/nginx/sites-enabled/novatix
+
+          if [ ! -f "$NGINX_CONF_PATH" ]; then
+              echo "Nginx config not found in sites-available, copying from repo..."
+              sudo cp "$REPO_NGINX_CONF" "$NGINX_CONF_PATH"
+              echo "Creating symlink in sites-enabled..."
+              sudo ln -sf "$NGINX_CONF_PATH" "$NGINX_ENABLED_PATH"
+              echo "Testing nginx config..."
+              sudo nginx -t
+              echo "Reloading nginx service..."
+              sudo systemctl reload nginx
+          else
+              echo "Nginx config already exists at $NGINX_CONF_PATH, skipping..."
+          fi
+
+          # Install certbot and python3-certbot-nginx if missing
+          if ! command -v certbot > /dev/null; then
+              echo "Certbot not found, installing certbot and python3-certbot-nginx..."
+              sudo apt update
+              sudo apt install -y certbot python3-certbot-nginx
+          else
+              echo "Certbot already installed."
+          fi
+
           echo "Fixing Laravel directory permissions..."
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
