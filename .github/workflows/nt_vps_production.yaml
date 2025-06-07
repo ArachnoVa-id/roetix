@@ -89,33 +89,36 @@ jobs:
           set -e
 
           # Ensure project directory exists
-          sudo mkdir -p ~/novatix/app/production
+          mkdir -p ~/novatix/app/production
 
-          # Change ownership to www-data for Laravel folders before installation
+          # Change ownership ONLY of production app folder
           sudo chown -R www-data:www-data ~/novatix/app/production
 
-          # Link to /var/www/novatix
+          # Recreate symlink in /var/www to point to production folder
           SYMLINK_TARGET=$(realpath ~/novatix/app/production)
           sudo rm -rf /var/www/novatix
           sudo ln -sfn "$SYMLINK_TARGET" /var/www/novatix
-          sudo chown -R www-data:www-data /var/www/novatix
+
+          # Fix ownership of symlink target folder (optional, but good)
+          sudo chown -R www-data:www-data "$SYMLINK_TARGET"
 
           cd /var/www/novatix
 
-          # Prepare folders and fix permissions early
+          # Prepare Laravel folders with correct permissions
           mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
+
           sudo chown -R www-data:www-data bootstrap/cache storage
           sudo chmod -R 775 bootstrap/cache storage
           sudo chmod g+s bootstrap/cache storage
 
-          # Run composer, npm and artisan as www-data user
+          # Run composer, npm, artisan commands AS www-data
           sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader
           sudo -u www-data npm install
           sudo -u www-data npm run build
           sudo -u www-data php artisan migrate
           sudo -u www-data php artisan storage:link
 
-          # Final ownership fix
+          # Final ownership fix (just in case)
           sudo chown -R www-data:www-data bootstrap/cache storage
           sudo chmod -R 775 bootstrap/cache storage
           sudo chmod g+s bootstrap/cache storage
