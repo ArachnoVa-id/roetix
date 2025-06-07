@@ -162,6 +162,28 @@ jobs:
               echo "Nginx is already installed."
           fi
 
+          # Install MariaDB server if missing
+          if ! systemctl list-units --full -all | grep -q mariadb.service; then
+              echo "MariaDB server not found, installing..."
+              sudo apt update
+              sudo apt install -y mariadb-server
+              sudo systemctl enable mariadb
+              sudo systemctl start mariadb
+          else
+              echo "MariaDB server already installed."
+          fi
+
+          # Install PHP MySQL extension if missing
+          if ! dpkg -l | grep -q php8.3-mysql; then
+              echo "Installing PHP MySQL extension..."
+              sudo apt update
+              sudo apt install -y php8.3-mysql
+              # Restart php-fpm to apply new extension
+              sudo systemctl restart php8.3-fpm
+          else
+              echo "PHP MySQL extension already installed."
+          fi
+
           echo "Fixing Laravel directory permissions..."
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
