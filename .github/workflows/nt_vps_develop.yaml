@@ -267,7 +267,7 @@ jobs:
 
           # Define directory paths
           DEV_DIR=~/novatix/app/develop
-          SYMLINK_PATH=/var/www/novatix_develop
+          SYMLINK_PATH=/var/www/novatix_staging
 
           # Ensure directory exists
           mkdir -p "$DEV_DIR"
