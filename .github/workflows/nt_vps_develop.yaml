@@ -186,7 +186,7 @@ jobs:
 
           echo "Setting up Laravel worker services..."
 
-          # Create systemd service for queue worker
+          # Create systemd service for queue worker ONLY
           sudo tee /etc/systemd/system/novatix-queue-worker.service > /dev/null << 'EOTS'
           [Unit]
           Description=NovaTix Laravel Queue Worker
@@ -214,48 +214,15 @@ jobs:
           WantedBy=multi-user.target
           EOTS
 
-          # FIXED: Create systemd service for event adjustment worker with proper configuration
-          sudo tee /etc/systemd/system/novatix-event-adjust.service > /dev/null << 'EOTS'
-          [Unit]
-          Description=NovaTix Event Adjust Users Worker
-          After=network.target redis.service
-          Wants=redis.service
-
-          [Service]
-          Type=simple
-          User=www-data
-          Group=www-data
-          Restart=always
-          RestartSec=30
-          StartLimitInterval=600
-          StartLimitBurst=3
-          WorkingDirectory=/var/www/novatix_staging
-          Environment=HOME=/var/www
-          Environment=USER=www-data
-          # First check if the command exists and is valid
-          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && php artisan config:cache && php artisan list | grep -q "event:adjust-users"'
-          # Use timeout to prevent infinite hanging
-          ExecStart=/usr/bin/timeout 3600 /usr/bin/php artisan event:adjust-users --continuous
-          # Handle timeout as normal exit (not failure)
-          SuccessExitStatus=124
-          StandardOutput=journal
-          StandardError=journal
-          SyslogIdentifier=novatix-event-adjust
-          # Kill the process group to ensure cleanup
-          KillMode=mixed
-          KillSignal=SIGTERM
-          TimeoutStopSec=30
-
-          [Install]
-          WantedBy=multi-user.target
-          EOTS
+          # Set up Laravel scheduler via cron instead of systemd
+          echo "Setting up Laravel scheduler via cron..."
+          (crontab -u www-data -l 2>/dev/null; echo "* * * * * cd /var/www/novatix_staging && php artisan schedule:run >> /dev/null 2>&1") | crontab -u www-data -
 
           echo "Reloading systemd daemon..."
           sudo systemctl daemon-reload
 
-          echo "Enabling services..."
+          echo "Enabling queue worker service..."
           sudo systemctl enable novatix-queue-worker
-          sudo systemctl enable novatix-event-adjust
           EOT
           chmod +x ~/novatix/setups/setup_worker_services.sh
 
@@ -276,32 +243,11 @@ jobs:
           #!/bin/bash
           set -e
 
-          echo "=== Pre-flight checks ==="
-          # Verify the event:adjust-users command exists
-          cd /var/www/novatix_staging
-          echo "Checking if event:adjust-users command exists..."
-          if ! sudo -u www-data php artisan list | grep -q "event:adjust-users"; then
-              echo "WARNING: event:adjust-users command not found!"
-              echo "Available event commands:"
-              sudo -u www-data php artisan list | grep -E "^\s*event:" || echo "No event commands found"
-              echo "Proceeding with queue worker only..."
-              SKIP_EVENT_ADJUST=true
-          else
-              echo "✓ event:adjust-users command found"
-              SKIP_EVENT_ADJUST=false
-          fi
-
-          echo "=== Stopping Laravel workers ==="
+          echo "=== Stopping Laravel queue worker ==="
           sudo systemctl stop novatix-queue-worker || true
-          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
-              sudo systemctl stop novatix-event-adjust || true
-          fi
 
           echo "=== Resetting service failure counters ==="
           sudo systemctl reset-failed novatix-queue-worker || true
-          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
-              sudo systemctl reset-failed novatix-event-adjust || true
-          fi
 
           echo "=== Restarting PHP-FPM ==="
           sudo systemctl restart php8.3-fpm
@@ -326,17 +272,9 @@ jobs:
           fi
           echo "✓ Laravel environment is working"
 
-          echo "=== Starting Laravel workers ==="
+          echo "=== Starting Laravel queue worker ==="
           sudo systemctl start novatix-queue-worker
           sleep 5
-
-          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
-              echo "Starting event adjust worker..."
-              sudo systemctl start novatix-event-adjust
-              sleep 10
-          else
-              echo "Skipping event adjust worker (command not found)"
-          fi
 
           echo "=== Final service status check ==="
           echo "Redis status:"
@@ -345,12 +283,7 @@ jobs:
           echo "Queue worker status:"
           sudo systemctl status novatix-queue-worker --no-pager -l || true
 
-          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
-              echo "Event adjust worker status:"
-              sudo systemctl status novatix-event-adjust --no-pager -l || true
-          fi
-
-          echo "=== Checking if services are actually running ==="
+          echo "=== Checking if queue worker is actually running ==="
           if ! sudo systemctl is-active --quiet novatix-queue-worker; then
               echo "ERROR: Queue worker failed to start"
               sudo journalctl -u novatix-queue-worker --no-pager -n 20
@@ -358,16 +291,9 @@ jobs:
           fi
           echo "✓ Queue worker is running"
 
-          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
-              if ! sudo systemctl is-active --quiet novatix-event-adjust; then
-                  echo "WARNING: Event adjust worker is not running"
-                  echo "Recent logs:"
-                  sudo journalctl -u novatix-event-adjust --no-pager -n 10
-                  echo "This might be normal if the command completes quickly"
-              else
-                  echo "✓ Event adjust worker is running"
-              fi
-          fi
+          echo "=== Laravel Scheduler Status ==="
+          echo "Cron jobs for www-data user:"
+          sudo crontab -u www-data -l || echo "No cron jobs found"
 
           echo "=== Deployment completed successfully! ==="
           EOT
