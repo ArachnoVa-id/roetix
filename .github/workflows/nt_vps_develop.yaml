@@ -132,7 +132,7 @@ jobs:
 
           echo "Installing Redis server..."
           sudo apt install -y redis-server
-
+          
           echo "Configuring Redis..."
           sudo systemctl enable redis-server
           sudo systemctl start redis-server
@@ -142,28 +142,14 @@ jobs:
           sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
           rm composer-setup.php
 
-          # Create Laravel directories with proper permissions BEFORE composer install
-          echo "Creating Laravel directories with proper permissions..."
-          mkdir -p storage/framework/{cache,sessions,views}
-          mkdir -p storage/logs bootstrap/cache
-
-          # Set proper ownership and permissions
-          sudo chown -R $USER:www-data storage bootstrap/cache
-          chmod -R 775 storage bootstrap/cache
-
-          # Create .env file from example (without running artisan key:generate yet)
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+          # Laravel setup
+          # If env not exist
           if [ ! -f .env ]; then
-              echo "Creating .env file from example..."
+              echo "Creating .env file..."
               cp .env.example .env
+              php artisan key:generate
           fi
-
-          # Now run composer install FIRST
-          echo "Running composer install..."
-          composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
-
-          # NOW we can run artisan commands since vendor/autoload.php exists
-          echo "Generating Laravel application key..."
-          php artisan key:generate
 
           echo "Installing Node.js and npm..."
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -173,65 +159,12 @@ jobs:
           npm install
           npm run build
 
-          # Check if nginx is installed, install if missing
-          if ! command -v nginx > /dev/null; then
-              echo "Nginx not found, installing..."
-              sudo apt update
-              sudo apt install -y nginx
-              sudo systemctl enable nginx
-              sudo systemctl start nginx
-          else
-              echo "Nginx is already installed."
-          fi
+          echo "Fixing Laravel directory permissions..."
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
 
-          # Install MariaDB server if missing
-          if ! systemctl list-units --full -all | grep -q mariadb.service; then
-              echo "MariaDB server not found, installing..."
-              sudo apt update
-              sudo apt install -y mariadb-server
-              sudo systemctl enable mariadb
-              sudo systemctl start mariadb
-          else
-              echo "MariaDB server already installed."
-          fi
-
-          # Install PHP MySQL extension if missing
-          if ! dpkg -l | grep -q php8.3-mysql; then
-              echo "Installing PHP MySQL extension..."
-              sudo apt update
-              sudo apt install -y php8.3-mysql
-              # Restart php-fpm to apply new extension
-              sudo systemctl restart php8.3-fpm
-          else
-              echo "PHP MySQL extension already installed."
-          fi
-
-          # Path to nginx config inside your repo
-          REPO_NGINX_CONF=~/novatix/app/develop/nginx.conf
-          NGINX_CONF_PATH=/etc/nginx/sites-available/novatix
-          NGINX_ENABLED_PATH=/etc/nginx/sites-enabled/novatix
-
-          if [ ! -f "$NGINX_CONF_PATH" ]; then
-              echo "Nginx config not found in sites-available, copying from repo..."
-              sudo cp "$REPO_NGINX_CONF" "$NGINX_CONF_PATH"
-              echo "Creating symlink in sites-enabled..."
-              sudo ln -sf "$NGINX_CONF_PATH" "$NGINX_ENABLED_PATH"
-              echo "Testing nginx config..."
-              sudo nginx -t
-              echo "Reloading nginx service..."
-              sudo systemctl reload nginx
-          else
-              echo "Nginx config already exists at $NGINX_CONF_PATH, skipping..."
-          fi
-
-          # Install certbot and python3-certbot-nginx if missing
-          if ! command -v certbot > /dev/null; then
-              echo "Certbot not found, installing certbot and python3-certbot-nginx..."
-              sudo apt update
-              sudo apt install -y certbot python3-certbot-nginx
-          else
-              echo "Certbot already installed."
-          fi
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
 
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
@@ -249,17 +182,25 @@ jobs:
           [Unit]
           Description=NovaTix Laravel Queue Worker
           After=network.target redis.service
+          Requires=redis.service
 
           [Service]
           Type=simple
           User=www-data
           Group=www-data
           Restart=always
-          RestartSec=5
-          StartLimitInterval=60s
-          StartLimitBurst=3
+          RestartSec=10
+          StartLimitInterval=300s
+          StartLimitBurst=5
           WorkingDirectory=/var/www/novatix_staging
-          ExecStart=/usr/bin/php artisan queue:work redis --sleep=1 --tries=3 --timeout=60 --memory=512
+          Environment=HOME=/var/www
+          Environment=USER=www-data
+          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan config:cache'
+          ExecStart=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan queue:work redis --sleep=1 --tries=3 --timeout=60 --memory=512 --verbose'
+          ExecReload=/bin/kill -USR2 $MAINPID
+          KillMode=mixed
+          KillSignal=SIGTERM
+          TimeoutStopSec=60
           StandardOutput=journal
           StandardError=journal
           SyslogIdentifier=novatix-queue
@@ -273,17 +214,25 @@ jobs:
           [Unit]
           Description=NovaTix Event Adjust Users Worker
           After=network.target redis.service
+          Requires=redis.service
 
           [Service]
           Type=simple
           User=www-data
           Group=www-data
           Restart=always
-          RestartSec=10
-          StartLimitInterval=60s
-          StartLimitBurst=3
+          RestartSec=15
+          StartLimitInterval=300s
+          StartLimitBurst=5
           WorkingDirectory=/var/www/novatix_staging
-          ExecStart=/usr/bin/php artisan event:adjust-users --continuous
+          Environment=HOME=/var/www
+          Environment=USER=www-data
+          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan config:cache'
+          ExecStart=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan event:adjust-users --continuous'
+          ExecReload=/bin/kill -USR2 $MAINPID
+          KillMode=mixed
+          KillSignal=SIGTERM
+          TimeoutStopSec=60
           StandardOutput=journal
           StandardError=journal
           SyslogIdentifier=novatix-event-adjust
@@ -321,14 +270,9 @@ jobs:
           cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
           #!/bin/bash
           cd ~/novatix/app/develop
-
-          # Ensure proper permissions before running artisan commands
-          sudo chown -R $USER:www-data storage bootstrap/cache
-          chmod -R 775 storage bootstrap/cache
-
-          php artisan config:clear
-          php artisan cache:clear
-          php artisan route:cache
+          sudo php artisan config:clear
+          sudo php artisan cache:clear
+          sudo php artisan route:cache
           EOT
           chmod +x ~/novatix/setups/deploy_laravel.sh
 
@@ -336,16 +280,30 @@ jobs:
           echo "Creating restart_services.sh..."
           cat > ~/novatix/setups/restart_services.sh << 'EOT'
           #!/bin/bash
+          echo "Stopping Laravel workers..."
+          sudo systemctl stop novatix-queue-worker
+          sudo systemctl stop novatix-event-adjust
+          
+          echo "Resetting service failure counters..."
+          sudo systemctl reset-failed novatix-queue-worker
+          sudo systemctl reset-failed novatix-event-adjust
+          
           echo "Restarting PHP-FPM..."
           sudo systemctl restart php8.3-fpm
-
+          
           echo "Restarting Redis..."
           sudo systemctl restart redis-server
-
-          echo "Restarting Laravel workers..."
-          sudo systemctl restart novatix-queue-worker
-          sudo systemctl restart novatix-event-adjust
-
+          
+          echo "Waiting for Redis to be ready..."
+          sleep 3
+          
+          echo "Starting Laravel workers..."
+          sudo systemctl start novatix-queue-worker
+          sudo systemctl start novatix-event-adjust
+          
+          echo "Waiting for services to stabilize..."
+          sleep 5
+          
           echo "Checking service status..."
           sudo systemctl status redis-server --no-pager -l
           sudo systemctl status novatix-queue-worker --no-pager -l
@@ -373,6 +331,65 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/start_workers.sh
 
+          # debug_workers.sh
+          echo "Creating debug_workers.sh..."
+          cat > ~/novatix/setups/debug_workers.sh << 'EOT'
+          #!/bin/bash
+          echo "=== Debug Laravel Workers ==="
+          echo "Current directory: $(pwd)"
+          echo "Checking if staging directory exists..."
+          ls -la /var/www/novatix_staging/
+          echo ""
+          echo "Checking Laravel environment..."
+          cd /var/www/novatix_staging
+          echo "Working directory: $(pwd)"
+          echo "PHP version: $(php -v | head -n 1)"
+          echo ""
+          echo "Testing Laravel commands..."
+          echo "--- Config Cache ---"
+          sudo -u www-data php artisan config:cache
+          echo ""
+          echo "--- Queue Connection Test ---"
+          sudo -u www-data php artisan queue:failed
+          echo ""
+          echo "--- Redis Connection Test ---"
+          sudo -u www-data php artisan tinker --execute="echo 'Redis test: '; try { \Illuminate\Support\Facades\Redis::ping(); echo 'SUCCESS'; } catch(Exception \$e) { echo 'FAILED: ' . \$e->getMessage(); }"
+          echo ""
+          echo "--- Event Adjust Command Test ---"
+          sudo -u www-data timeout 10 php artisan event:adjust-users --continuous || echo "Command test completed"
+          echo ""
+          echo "--- Queue Worker Test ---"
+          sudo -u www-data timeout 10 php artisan queue:work redis --sleep=1 --tries=3 --timeout=60 --verbose || echo "Queue worker test completed"
+          EOT
+          chmod +x ~/novatix/setups/debug_workers.sh
+
+          # fix_permissions.sh
+          echo "Creating fix_permissions.sh..."
+          cat > ~/novatix/setups/fix_permissions.sh << 'EOT'
+          #!/bin/bash
+          echo "Fixing permissions for Laravel application..."
+          cd /var/www/novatix_staging
+          
+          # Fix ownership
+          sudo chown -R www-data:www-data /var/www/novatix_staging
+          
+          # Fix directory permissions
+          sudo find /var/www/novatix_staging -type d -exec chmod 755 {} \;
+          sudo find /var/www/novatix_staging -type f -exec chmod 644 {} \;
+          
+          # Fix specific Laravel directories
+          sudo chmod -R 775 storage bootstrap/cache
+          sudo chmod +x artisan
+          
+          # Create necessary directories if they don't exist
+          sudo -u www-data mkdir -p storage/framework/{cache,sessions,views}
+          sudo -u www-data mkdir -p storage/logs
+          sudo -u www-data mkdir -p bootstrap/cache
+          
+          echo "Permissions fixed!"
+          EOT
+          chmod +x ~/novatix/setups/fix_permissions.sh
+
           # check_workers.sh
           echo "Creating check_workers.sh..."
           cat > ~/novatix/setups/check_workers.sh << 'EOT'
@@ -389,10 +406,10 @@ jobs:
           sudo systemctl status redis-server --no-pager -l
           echo ""
           echo "Recent logs from queue worker:"
-          sudo journalctl -u novatix-queue-worker --no-pager -n 10
+          sudo journalctl -u novatix-queue-worker --no-pager -n 15
           echo ""
           echo "Recent logs from event adjust worker:"
-          sudo journalctl -u novatix-event-adjust --no-pager -n 10
+          sudo journalctl -u novatix-event-adjust --no-pager -n 15
           EOT
           chmod +x ~/novatix/setups/check_workers.sh
 
@@ -422,51 +439,24 @@ jobs:
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-          # Define directory paths
-          DEV_DIR=~/novatix/app/develop
-          SYMLINK_PATH=/var/www/novatix_staging
+          sudo rm -rf /var/www/novatix_staging
+          sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
+          sudo chown -R www-data:www-data /var/www/novatix_staging
+          cd /var/www/novatix_staging
 
-          # Ensure directory exists
-          mkdir -p "$DEV_DIR"
-
-          # Link to /var/www/novatix
-          sudo rm -rf "$SYMLINK_PATH"
-          sudo ln -s "$DEV_DIR" "$SYMLINK_PATH"
-
-          cd "$DEV_DIR"
-
-          echo "Ensuring Laravel directory permissions are correct..."
-          mkdir -p storage/framework/{cache,sessions,views}
-          mkdir -p storage/logs bootstrap/cache
-
-          # Set proper ownership and permissions
-          sudo chown -R $USER:www-data storage bootstrap/cache
-          sudo chmod -R 775 storage bootstrap/cache
-
-          # Set ownership for the symlink
-          sudo chown -R www-data:www-data "$SYMLINK_PATH"
-
-          # Run deployment commands with proper error handling
-          echo "Running composer install..."
-          composer install --no-interaction --prefer-dist --optimize-autoloader
-
-          echo "Installing and building npm assets..."
-          npm install
-          npm run build
-
-          echo "Running Laravel migrations..."
-          php artisan migrate --force
-
-          echo "Creating storage link..."
-          php artisan storage:link
-
-          echo "Clearing and caching Laravel configurations..."
           php artisan config:clear
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
           php artisan migrate
           php artisan storage:link
+          EOF
+
+      - name: Fix Permissions and Debug
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            ~/novatix/setups/fix_permissions.sh
+            ~/novatix/setups/debug_workers.sh
           EOF
 
       - name: Restart Services on VPS
