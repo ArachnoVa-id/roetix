@@ -62,6 +62,13 @@ jobs:
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
 
+      - name: Restart PHP-FPM and reload Nginx
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            sudo systemctl restart php8.3-fpm
+            sudo systemctl reload nginx
+          EOF
+
       - name: Deploy Laravel on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/deploy_laravel.sh"
 
@@ -101,6 +108,13 @@ jobs:
           npm run build
           php artisan migrate --force
           php artisan storage:link
+
+          echo "Fixing Laravel directory permissions..."
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
+
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          sudo chmod -R 775 storage bootstrap/cache
 
           php artisan config:clear
           php artisan config:cache

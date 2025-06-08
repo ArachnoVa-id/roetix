@@ -211,13 +211,6 @@ jobs:
               echo "Certbot already installed."
           fi
 
-          echo "Fixing Laravel directory permissions..."
-          mkdir -p storage/framework/{cache,sessions,views}
-          mkdir -p storage/logs bootstrap/cache
-
-          sudo chown -R www-data:www-data storage bootstrap/cache
-          sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
-
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
 
@@ -261,20 +254,42 @@ jobs:
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
 
-      - name: Link Staging Directory
+      - name: Deploy Laravel Project to VPS
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-          sudo rm -rf /var/www/novatix_staging
-          sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
-          sudo chown -R www-data:www-data /var/www/novatix_staging
-          cd /var/www/novatix_staging
+          # Define directory paths
+          PROD_DIR=~/novatix/app/production
+          SYMLINK_PATH=/var/www/novatix
+
+          # Ensure directory exists
+          mkdir -p "$PROD_DIR"
+
+          # Link to /var/www/novatix
+          sudo rm -rf "$SYMLINK_PATH"
+          sudo ln -s "$PROD_DIR" "$SYMLINK_PATH"
+          sudo chown -R www-data:www-data "$SYMLINK_PATH"
+          cd "$SYMLINK_PATH"
+
+          # Run deployment commands
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+          npm install
+          npm run build
+          php artisan migrate --force
+          php artisan storage:link
+
+          echo "Fixing Laravel directory permissions..."
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
+
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          sudo chmod -R 775 storage bootstrap/cache
 
           php artisan config:clear
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
-          php artisan migrate
-          php artisan storage:link
+
           EOF
+
