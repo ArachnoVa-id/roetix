@@ -894,18 +894,31 @@ class PaymentController extends Controller
             // Send email outside of transaction to prevent rollback on email failure
             if ($status === OrderStatus::COMPLETED->value) {
                 try {
+                    // Get event details
+                    $event = $order->getSingleEvent();
+
+                    // Render the email template
+                    $emailHtml = view('emails.order-confirmation', [
+                        'order' => $order,
+                        'event' => $event,
+                        'tickets' => $updatedTickets,
+                        'user' => $user,
+                        'userContact' => $userContact
+                    ])->render();
+
                     $resendMailer = new ResendMailer();
                     $resendMailer->send(
                         to: $userContact->email,
-                        subject: "Successful Ticket Payment for Order #{$order->order_code}",
-                        html: '
-                        <h1>Thank you for your purchase!</h1>
-                        <p>Your order has been successfully processed.</p>
-                        <p>Order Code: ' . $order->order_code . '</p>
-                        <p>Total Price: ' . number_format($order->total_price, 2) . '</p>
-                        <p>Event: ' . $order->getSingleEvent()->name . '</p>
-                        <p>Tickets: ' . implode(',', array_map(fn($item) => $item['seat_number'], $updatedTickets)) . '</p>'
+                        subject: "🎫 Your Tickets are Confirmed - Order #{$order->order_code}",
+                        html: $emailHtml
                     );
+
+                    // Log successful email send
+                    Log::info('Order confirmation email sent successfully', [
+                        'order_code' => $order->order_code,
+                        'user_id' => $user->id,
+                        'email' => $userContact->email
+                    ]);
                 } catch (\Exception $e) {
                     // Log the email failure but don't break the system
                     Log::error('Failed to send order completion email ' . $e->getMessage(), [
