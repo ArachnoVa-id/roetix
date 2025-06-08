@@ -3,35 +3,41 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\Event;
+use App\Jobs\AdjustUsersJob;
 
 class AdjustUsers extends Command
 {
-    protected $signature = 'event:adjust-users';
+    protected $signature = 'event:adjust-users {--continuous : Run continuously via jobs}';
     protected $description = 'Removes expired users from all events';
 
     public function handle()
     {
-        $this->info('CleanupExpiredUsers command started.');
+        if ($this->option('continuous')) {
+            $this->info('Starting continuous user adjustment via queue jobs...');
 
-        try {
-            $this->info("Cleaning expired users for events");
+            // Dispatch the first job, which will schedule subsequent ones
+            AdjustUsersJob::dispatch();
 
-            if (cache()->lock('adjust_users_lock', 10)->get()) {
-                try {
-                    Event::adjustUsers();
-                    $this->info("Successfully cleaned expired users for events");
-                } finally {
-                    cache()->forget('adjust_users_lock');
+            $this->info('Job dispatched. Use "php artisan queue:work" to process jobs.');
+        } else {
+            // Original synchronous behavior for manual testing
+            $this->info('Running one-time user adjustment...');
+
+            try {
+                if (cache()->lock('adjust_users_lock', 10)->get()) {
+                    try {
+                        \App\Models\Event::adjustUsers();
+                        $this->info("Successfully cleaned expired users for events");
+                    } finally {
+                        cache()->forget('adjust_users_lock');
+                    }
+                } else {
+                    $this->warn("AdjustUsers skipped: lock is currently held by another process.");
                 }
-            } else {
-                $this->warn("AdjustUsers skipped: lock is currently held by another process.");
+            } catch (\Throwable $e) {
+                $this->error("Failed to clean up events " . $e->getMessage());
             }
-        } catch (\Throwable $e) {
-            $this->error("Failed to clean up events " . $e->getMessage());
         }
-
-        $this->info('AdjustUsers command finished.');
 
         return 0;
     }

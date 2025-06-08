@@ -30,7 +30,6 @@ use Illuminate\Support\Facades\Http;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Mail;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Validator;
 
@@ -571,6 +570,7 @@ class PaymentController extends Controller
 
         // Append the origin ip (host) of the request to data
         $data['origin_ip'] = $request->ip();
+        $data['host'] = $request->getHost();
 
         // Log the callback data
         DevNoSQLData::create([
@@ -627,6 +627,7 @@ class PaymentController extends Controller
 
         // Append the origin ip (host) of the request to data
         $data['origin_ip'] = $request->ip();
+        $data['host'] = $request->getHost();
 
         // Log the callback data
         DevNoSQLData::create([
@@ -676,6 +677,7 @@ class PaymentController extends Controller
 
         // Append the origin ip (host) of the request to data
         $data['origin_ip'] = $request->ip();
+        $data['host'] = $request->getHost();
 
         // Log the callback data
         DevNoSQLData::create([
