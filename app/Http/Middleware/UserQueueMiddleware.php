@@ -52,7 +52,6 @@ class UserQueueMiddleware
         }
 
         // ✅ Always work with latest data
-        $trafficNumber = Event::countOnlineUsers($event);
         $current_user = (object) Event::getUser($event, $user);
 
         // ✅ Ensure valid user
