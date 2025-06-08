@@ -178,7 +178,7 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
 
-          # setup_worker_services.sh - FIXED: Better service configuration
+          # setup_worker_services.sh - FIXED: Better service configuration with proper cron setup
           echo "Creating setup_worker_services.sh..."
           cat > ~/novatix/setups/setup_worker_services.sh << 'EOT'
           #!/bin/bash
@@ -214,9 +214,24 @@ jobs:
           WantedBy=multi-user.target
           EOTS
 
-          # Set up Laravel scheduler via cron instead of systemd
+          # FIXED: Set up Laravel scheduler via cron with proper sudo privileges
           echo "Setting up Laravel scheduler via cron..."
-          (crontab -u www-data -l 2>/dev/null; echo "* * * * * cd /var/www/novatix_staging && php artisan schedule:run >> /dev/null 2>&1") | crontab -u www-data -
+          # Create a temporary cron file
+          TEMP_CRON=$(mktemp)
+
+          # Get existing cron jobs for www-data (if any) and add our job
+          sudo crontab -u www-data -l 2>/dev/null > "$TEMP_CRON" || echo "" > "$TEMP_CRON"
+
+          # Check if our cron job already exists to avoid duplicates
+          if ! grep -q "cd /var/www/novatix_staging && php artisan schedule:run" "$TEMP_CRON"; then
+              echo "* * * * * cd /var/www/novatix_staging && php artisan schedule:run >> /dev/null 2>&1" >> "$TEMP_CRON"
+          fi
+
+          # Install the cron file
+          sudo crontab -u www-data "$TEMP_CRON"
+
+          # Clean up
+          rm "$TEMP_CRON"
 
           echo "Reloading systemd daemon..."
           sudo systemctl daemon-reload
