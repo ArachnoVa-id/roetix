@@ -528,6 +528,9 @@ jobs:
           sudo chown -R www-data:www-data /var/www/novatix_staging
           cd /var/www/novatix_staging
 
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
+
           php artisan config:clear
           php artisan config:cache
           php artisan route:cache
