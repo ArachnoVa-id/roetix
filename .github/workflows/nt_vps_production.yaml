@@ -41,13 +41,19 @@ jobs:
               echo "Repository not found. Checking existing directory..."
               if [ -n "$(ls -A app/production 2>/dev/null)" ]; then
                   echo "Existing directory found but not a Git repository. Removing everything..."
-                  rm -rf app/production
+                  sudo rm -rf app/production
               fi
               echo "Cloning repository..."
               git clone --branch main ${{ secrets.GIT_REPO }} app/production
           else
               echo "Repository found. Pulling latest changes..."
               cd app/production
+
+              # Fix permissions before git operations
+              echo "Fixing permissions before git operations..."
+              sudo chown -R $USER:$USER .
+              sudo chmod -R 755 .
+
               git config --global --add safe.directory $(pwd)
               git reset --hard HEAD
               git clean -fd
@@ -66,12 +72,18 @@ jobs:
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
           cd ~/novatix/app/production
 
+          # Backup .env if it exists
+          if [ -f .env ]; then
+              echo "Backing up existing .env file..."
+              cp .env .env.backup
+          fi
+
           # Create Laravel directories with proper permissions BEFORE composer install
           echo "Creating Laravel directories with proper permissions..."
-          mkdir -p storage/framework/{cache,sessions,views}
-          mkdir -p storage/logs bootstrap/cache
+          mkdir -p storage/framework/{cache,sessions,views,testing}
+          mkdir -p storage/{logs,app/public,app/private,debugbar,sql} bootstrap/cache
 
-          # Set proper ownership and permissions
+          # Set proper ownership and permissions for Laravel operations
           sudo chown -R $USER:www-data storage bootstrap/cache
           chmod -R 775 storage bootstrap/cache
 
@@ -80,6 +92,9 @@ jobs:
               echo "Creating .env file..."
               cp .env.example .env
               php artisan key:generate
+          elif [ -f .env.backup ]; then
+              echo "Restoring .env from backup..."
+              mv .env.backup .env
           fi
 
           # Now run composer install for production
@@ -114,15 +129,12 @@ jobs:
           cd "$PROD_DIR"
 
           echo "Ensuring Laravel directory permissions are correct..."
-          mkdir -p storage/framework/{cache,sessions,views}
-          mkdir -p storage/logs bootstrap/cache
+          mkdir -p storage/framework/{cache,sessions,views,testing}
+          mkdir -p storage/{logs,app/public,app/private,debugbar,sql} bootstrap/cache
 
           # Set proper ownership and permissions
           sudo chown -R $USER:www-data storage bootstrap/cache
           sudo chmod -R 775 storage bootstrap/cache
-
-          # Set ownership for the symlink
-          sudo chown -R www-data:www-data "$SYMLINK_PATH"
 
           echo "Running Laravel migrations..."
           php artisan migrate --force
@@ -136,9 +148,10 @@ jobs:
           php artisan route:cache
           php artisan view:cache
 
-          # Final permission fix
-          sudo chown -R www-data:www-data storage bootstrap/cache
-          sudo chmod -R 775 storage bootstrap/cache
+          # Final permission setup - set web server as owner but keep user in group
+          sudo chown -R www-data:www-data "$SYMLINK_PATH"
+          # Ensure the user can still modify files when needed
+          sudo chmod -R g+w "$SYMLINK_PATH/storage" "$SYMLINK_PATH/bootstrap/cache"
 
           EOF
 
