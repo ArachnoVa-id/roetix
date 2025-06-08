@@ -181,8 +181,8 @@ jobs:
           sudo tee /etc/systemd/system/novatix-queue-worker.service > /dev/null << 'EOTS'
           [Unit]
           Description=NovaTix Laravel Queue Worker
-          After=network.target redis.service mysql.service
-          Requires=redis.service
+          After=network.target redis.service
+          Wants=redis.service
 
           [Service]
           Type=simple
@@ -190,18 +190,13 @@ jobs:
           Group=www-data
           Restart=always
           RestartSec=10
-          StartLimitInterval=300s
+          StartLimitInterval=300
           StartLimitBurst=5
           WorkingDirectory=/var/www/novatix_staging
           Environment=HOME=/var/www
           Environment=USER=www-data
-          Environment=PHP_INI_SCAN_DIR=/etc/php/8.3/cli/conf.d
-          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan config:cache'
-          ExecStart=/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=512 --verbose --no-interaction
-          ExecReload=/bin/kill -USR2 $MAINPID
-          KillMode=mixed
-          KillSignal=SIGTERM
-          TimeoutStopSec=60
+          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && php artisan config:cache'
+          ExecStart=/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=512 --verbose
           StandardOutput=journal
           StandardError=journal
           SyslogIdentifier=novatix-queue
@@ -210,12 +205,12 @@ jobs:
           WantedBy=multi-user.target
           EOTS
 
-          # Create systemd service for event adjustment worker (if this is a custom command)
+          # Create systemd service for event adjustment worker
           sudo tee /etc/systemd/system/novatix-event-adjust.service > /dev/null << 'EOTS'
           [Unit]
           Description=NovaTix Event Adjust Users Worker
-          After=network.target redis.service mysql.service
-          Requires=redis.service
+          After=network.target redis.service
+          Wants=redis.service
 
           [Service]
           Type=simple
@@ -223,18 +218,13 @@ jobs:
           Group=www-data
           Restart=always
           RestartSec=15
-          StartLimitInterval=300s
+          StartLimitInterval=300
           StartLimitBurst=5
           WorkingDirectory=/var/www/novatix_staging
           Environment=HOME=/var/www
           Environment=USER=www-data
-          Environment=PHP_INI_SCAN_DIR=/etc/php/8.3/cli/conf.d
-          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan config:cache'
-          ExecStart=/usr/bin/php artisan event:adjust-users --continuous --no-interaction
-          ExecReload=/bin/kill -USR2 $MAINPID
-          KillMode=mixed
-          KillSignal=SIGTERM
-          TimeoutStopSec=60
+          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && php artisan config:cache'
+          ExecStart=/usr/bin/php artisan event:adjust-users --continuous
           StandardOutput=journal
           StandardError=journal
           SyslogIdentifier=novatix-event-adjust
@@ -243,24 +233,10 @@ jobs:
           WantedBy=multi-user.target
           EOTS
 
-          # Create log rotation config
-          sudo tee /etc/logrotate.d/novatix-workers > /dev/null << 'EOTS'
-          /var/www/novatix_staging/storage/logs/*.log {
-              daily
-              missingok
-              rotate 14
-              compress
-              notifempty
-              create 0644 www-data www-data
-              postrotate
-                  systemctl reload novatix-queue-worker
-                  systemctl reload novatix-event-adjust
-              endscript
-          }
-          EOTS
-
-          echo "Enabling and starting worker services..."
+          echo "Reloading systemd daemon..."
           sudo systemctl daemon-reload
+
+          echo "Enabling services..."
           sudo systemctl enable novatix-queue-worker
           sudo systemctl enable novatix-event-adjust
 
@@ -282,13 +258,15 @@ jobs:
           echo "Creating restart_services.sh..."
           cat > ~/novatix/setups/restart_services.sh << 'EOT'
           #!/bin/bash
+          set -e
+
           echo "Stopping Laravel workers..."
-          sudo systemctl stop novatix-queue-worker
-          sudo systemctl stop novatix-event-adjust
+          sudo systemctl stop novatix-queue-worker || true
+          sudo systemctl stop novatix-event-adjust || true
 
           echo "Resetting service failure counters..."
-          sudo systemctl reset-failed novatix-queue-worker
-          sudo systemctl reset-failed novatix-event-adjust
+          sudo systemctl reset-failed novatix-queue-worker || true
+          sudo systemctl reset-failed novatix-event-adjust || true
 
           echo "Restarting PHP-FPM..."
           sudo systemctl restart php8.3-fpm
@@ -297,19 +275,41 @@ jobs:
           sudo systemctl restart redis-server
 
           echo "Waiting for Redis to be ready..."
-          sleep 3
+          sleep 5
+
+          # Verify Redis is actually ready
+          until sudo systemctl is-active --quiet redis-server; do
+              echo "Waiting for Redis to start..."
+              sleep 2
+          done
 
           echo "Starting Laravel workers..."
           sudo systemctl start novatix-queue-worker
+          sleep 3
           sudo systemctl start novatix-event-adjust
 
           echo "Waiting for services to stabilize..."
-          sleep 5
+          sleep 10
 
-          echo "Checking service status..."
+          echo "Final service status check..."
           sudo systemctl status redis-server --no-pager -l
           sudo systemctl status novatix-queue-worker --no-pager -l
           sudo systemctl status novatix-event-adjust --no-pager -l
+
+          # Check if services are actually running
+          if ! sudo systemctl is-active --quiet novatix-queue-worker; then
+              echo "ERROR: Queue worker failed to start"
+              sudo journalctl -u novatix-queue-worker --no-pager -n 20
+              exit 1
+          fi
+
+          if ! sudo systemctl is-active --quiet novatix-event-adjust; then
+              echo "ERROR: Event adjust worker failed to start"
+              sudo journalctl -u novatix-event-adjust --no-pager -n 20
+              exit 1
+          fi
+
+          echo "All services started successfully!"
           EOT
           chmod +x ~/novatix/setups/restart_services.sh
 
@@ -435,42 +435,84 @@ jobs:
           # Create validate_environment.sh
           cat > ~/novatix/setups/validate_environment.sh << 'EOT'
           #!/bin/bash
-          echo "=== Validating Laravel Environment ==="
+          echo "=== Enhanced Laravel Environment Validation ==="
           cd /var/www/novatix_staging
 
-          # Check if required files exist
+          # Check current user and permissions
+          echo "Current user: $(whoami)"
+          echo "Directory owner: $(ls -ld /var/www/novatix_staging | awk '{print $3":"$4}')"
+
+          # Verify .env file
           if [ ! -f ".env" ]; then
               echo "Creating .env file..."
               cp .env.example .env
-              php artisan key:generate
+              sudo chown www-data:www-data .env
+              sudo -u www-data php artisan key:generate
           fi
 
-          # Ensure database is ready
-          echo "Running database migrations..."
-          sudo -u www-data php artisan migrate --force
+          # Test basic Laravel functionality
+          echo "Testing Laravel boot..."
+          sudo -u www-data php artisan --version
 
-          # Clear and cache config
-          echo "Clearing and caching configuration..."
+          # Clear all caches first
+          echo "Clearing all caches..."
           sudo -u www-data php artisan config:clear
-          sudo -u www-data php artisan config:cache
-          sudo -u www-data php artisan route:cache
+          sudo -u www-data php artisan cache:clear
+          sudo -u www-data php artisan route:clear
+          sudo -u www-data php artisan view:clear
 
           # Test database connection
           echo "Testing database connection..."
-          sudo -u www-data php artisan migrate:status
+          if sudo -u www-data php artisan migrate:status > /dev/null 2>&1; then
+              echo "✓ Database connection successful"
+          else
+              echo "✗ Database connection failed"
+              echo "Running migrations..."
+              sudo -u www-data php artisan migrate --force
+          fi
 
-          # Test Redis connection
+          # Test Redis connection with detailed output
           echo "Testing Redis connection..."
-          sudo -u www-data php artisan tinker --execute="
+          sudo -u www-data php -r "
           try {
-              \Illuminate\Support\Facades\Redis::ping();
-              echo 'Redis: Connected successfully';
+              \$redis = new Redis();
+              if (!\$redis->connect('127.0.0.1', 6379, 5)) {
+                  throw new Exception('Could not connect to Redis');
+              }
+              echo 'Redis connection: SUCCESS' . PHP_EOL;
+
+              \$redis->set('laravel_test', 'working');
+              \$result = \$redis->get('laravel_test');
+              if (\$result === 'working') {
+                  echo 'Redis read/write: SUCCESS' . PHP_EOL;
+              } else {
+                  echo 'Redis read/write: FAILED' . PHP_EOL;
+              }
+              \$redis->del('laravel_test');
+              \$redis->close();
           } catch(Exception \$e) {
-              echo 'Redis: Connection failed - ' . \$e->getMessage();
+              echo 'Redis connection: FAILED - ' . \$e->getMessage() . PHP_EOL;
+              exit(1);
           }
           "
 
-          echo "Environment validation completed!"
+          # Test Laravel's Redis connection
+          echo "Testing Laravel Redis configuration..."
+          sudo -u www-data php artisan tinker --execute="
+          try {
+              \Illuminate\Support\Facades\Redis::connection('default')->ping();
+              echo 'Laravel Redis: Connected successfully';
+          } catch(Exception \$e) {
+              echo 'Laravel Redis: Connection failed - ' . \$e->getMessage();
+              throw \$e;
+          }
+          "
+
+          # Cache configuration after tests pass
+          echo "Caching configuration..."
+          sudo -u www-data php artisan config:cache
+
+          echo "Environment validation completed successfully!"
           EOT
           chmod +x ~/novatix/setups/validate_environment.sh
 
@@ -575,6 +617,25 @@ jobs:
 
       - name: Enhanced Debug Before Service Start
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/debug_workers.sh"
+
+      - name: Debug Service Failures
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            echo "=== Detailed Service Logs ==="
+            echo "Queue Worker Logs (last 50 lines):"
+            sudo journalctl -u novatix-queue-worker --no-pager -n 50 --since "10 minutes ago"
+            echo ""
+            echo "Event Adjust Logs (last 50 lines):"
+            sudo journalctl -u novatix-event-adjust --no-pager -n 50 --since "10 minutes ago"
+            echo ""
+            echo "=== Manual Command Test ==="
+            cd /var/www/novatix_staging
+            echo "Testing queue:work manually:"
+            sudo -u www-data timeout 10 php artisan queue:work redis --sleep=3 --tries=3 --verbose --no-interaction
+            echo ""
+            echo "Testing event:adjust-users manually:"
+            sudo -u www-data timeout 10 php artisan event:adjust-users --continuous --no-interaction
+          EOF
 
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
