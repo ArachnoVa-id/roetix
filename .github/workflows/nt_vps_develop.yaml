@@ -138,20 +138,24 @@ jobs:
           echo "Creating Laravel directories with proper permissions..."
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
-          
+
           # Set proper ownership and permissions
           sudo chown -R $USER:www-data storage bootstrap/cache
           chmod -R 775 storage bootstrap/cache
-          
-          # Create .env file before composer install to avoid Laravel configuration issues
+
+          # Create .env file from example (without running artisan key:generate yet)
           if [ ! -f .env ]; then
-              echo "Creating .env file..."
+              echo "Creating .env file from example..."
               cp .env.example .env
-              php artisan key:generate
           fi
 
-          # Now run composer install
+          # Now run composer install FIRST
+          echo "Running composer install..."
           composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
+          # NOW we can run artisan commands since vendor/autoload.php exists
+          echo "Generating Laravel application key..."
+          php artisan key:generate
 
           echo "Installing Node.js and npm..."
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -229,11 +233,11 @@ jobs:
           cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
           #!/bin/bash
           cd ~/novatix/app/develop
-          
+
           # Ensure proper permissions before running artisan commands
           sudo chown -R $USER:www-data storage bootstrap/cache
           chmod -R 775 storage bootstrap/cache
-          
+
           php artisan config:clear
           php artisan cache:clear
           php artisan route:cache
@@ -281,7 +285,7 @@ jobs:
           # Set proper ownership and permissions
           sudo chown -R $USER:www-data storage bootstrap/cache
           chmod -R 775 storage bootstrap/cache
-          
+
           # Set ownership for the symlink
           sudo chown -R www-data:www-data "$SYMLINK_PATH"
 
