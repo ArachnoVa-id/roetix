@@ -10,4 +10,4 @@ Artisan::command('inspire', function () {
 
 // Schedule the command to run every minute
 app(Schedule::class)->command('orders:update-expired')->everyMinute();
-app(Schedule::class)->command('event:adjust-users')->everyMinute();
+app(Schedule::class)->command('event:adjust-users')->everyFiveMinutes();

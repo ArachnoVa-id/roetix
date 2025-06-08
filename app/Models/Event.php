@@ -89,14 +89,14 @@ class Event extends Model
 
         // Create user_logs table with UNIQUE constraint on user_id to prevent duplicate users
         $query = "
-    CREATE TABLE IF NOT EXISTS user_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL UNIQUE,
-        status TEXT NULL,
-        start_time DATETIME NULL,
-        expected_kick DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )";
+        CREATE TABLE IF NOT EXISTS user_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL UNIQUE,
+            status TEXT NULL,
+            start_time DATETIME NULL,
+            expected_kick DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )";
 
         $pdo->exec($query);
     }
@@ -111,6 +111,13 @@ class Event extends Model
         // if user is admin, skip queue
         if ($user->isAdmin()) {
             return;
+        }
+
+        // Check if user already exists in the queue
+        $userQueue = self::getUser($event, $user);
+        if ($userQueue) {
+            Auth::logout();
+            throw new Exception('User already logged in or queued.');
         }
 
         $pdo = self::getPdo($event);
@@ -143,7 +150,7 @@ class Event extends Model
         $duration = $eventVariables->active_users_duration;
 
         $start = Carbon::now();
-        $end = $start->copy()->addMinutes($duration);
+        $end = $start->copy()->addMinutes($duration)->addSeconds(15); // Add 15 seconds buffer
 
         $stmt = $pdo->prepare("UPDATE user_logs SET status = 'online', start_time = ?, expected_kick = ? WHERE user_id = ?");
         $stmt->execute([$start, $end, $user->id]);
@@ -244,10 +251,10 @@ class Event extends Model
 
             // 1. Kick users whose expected_kick has passed or is NULL
             $stmt = $pdo->prepare("
-            SELECT * FROM user_logs
-            WHERE expected_kick < ?
-            ORDER BY created_at ASC
-        ");
+                SELECT * FROM user_logs
+                WHERE expected_kick < ?
+                ORDER BY created_at ASC
+            ");
             $stmt->execute([$now]);
             $expiredUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -258,29 +265,50 @@ class Event extends Model
             foreach ($expiredUsers as $expiredUser) {
                 $userModel = $users->get($expiredUser['user_id']);
                 if ($userModel) {
-                    // $command?->info("Kicking user {$expiredUser['user_id']} from event {$event->slug}");
                     self::logoutUserAndPromoteNext($event, $userModel);
                 }
             }
 
-            // 2. Promote waiting users up to active_users_threshold
+            // 2. Re-broadcast still online users in case stuck in loading
+            $stmt = $pdo->prepare("
+                SELECT * FROM user_logs
+                WHERE status = 'online'
+            ");
+            $stmt->execute();
+            $onlineUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $userIds = array_column($onlineUsers, 'user_id');
+            $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+            foreach ($onlineUsers as $onlineUser) {
+                $userModel = $users->get($onlineUser['user_id']);
+                if ($userModel) {
+                    // Re-publish MQTT message for online users
+                    $mqttData = [
+                        'event' => 'user_promoted',
+                        'user_id' => $userModel->id,
+                        'start_time' => $onlineUser['start_time'],
+                        'expected_kick' => $onlineUser['expected_kick']
+                    ];
+
+                    self::publishMqtt($mqttData, $event->slug);
+                }
+            }
+
+            // 3. Promote waiting users up to active_users_threshold
             $maxOnline = $event->eventVariables->active_users_threshold ?? 0;
             $currentOnlineCount = self::countOnlineUsers($event);
             $availableSlots = max(0, $maxOnline - $currentOnlineCount);
 
-            // $command?->info("Event {$event->slug} has {$currentOnlineCount} online users, available slots: {$availableSlots}");
             if ($availableSlots <= 0) {
-                // $command?->info("No available slots to promote users for event {$event->slug}");
                 continue;
             }
 
             // Get waiting users regardless of expected_online
             $stmt = $pdo->prepare("
-            SELECT * FROM user_logs
-            WHERE status = 'waiting'
-            ORDER BY created_at ASC
-            LIMIT ?
-        ");
+                SELECT * FROM user_logs
+                WHERE status = 'waiting'
+                ORDER BY created_at ASC
+                LIMIT ?
+            ");
             $stmt->execute([$availableSlots]);
             $readyUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -291,13 +319,12 @@ class Event extends Model
                 $userModel = $userModels->get($userRow['user_id']);
                 if ($userModel) {
                     self::promoteUser($event, $userModel);
-                    // $command?->info("Promoted user {$userModel->id} to online for event {$event->slug}");
                 }
             }
         }
     }
 
-    public static function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
+    public static function publishMqtt(array $data, string $mqtt_code = "defaultcode")
     {
         $server = 'broker.emqx.io';
         $port = 1883;

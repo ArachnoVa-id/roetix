@@ -104,7 +104,7 @@ Route::domain('{client}.' . config('app.domain'))
             ->name('client.formRegistration');
 
         // Auth
-        Route::get('login', [AuthenticatedSessionController::class, 'login'])
+        Route::get('login/{message?}', [AuthenticatedSessionController::class, 'login'])
             ->name('client.login');
         Route::get('privateLogin', [AuthenticatedSessionController::class, 'privateLogin'])
             ->name('client.privateLogin');

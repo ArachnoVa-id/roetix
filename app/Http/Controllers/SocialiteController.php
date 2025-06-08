@@ -43,14 +43,8 @@ class SocialiteController extends Controller
                 try {
                     Event::loginUser($event, $user);
                 } catch (\Throwable $e) {
-                    return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client]);
+                    return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client, 'message' => $e->getMessage()]);
                 }
-
-                // if ($event) {
-                //     $trafficNumber = \App\Models\TrafficNumbersSlug::where('event_id', $event->id)->first();
-                //     $trafficNumber->increment('active_sessions');
-                //     $trafficNumber->save();
-                // }
 
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             } else {
