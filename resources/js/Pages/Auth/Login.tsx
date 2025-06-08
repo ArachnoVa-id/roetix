@@ -53,6 +53,9 @@ export default function Login({
     // alert message if exist
     if (message) {
         alert(message);
+        window.location.replace(
+            route(client ? 'client.login' : 'login', client),
+        );
     }
 
     return (

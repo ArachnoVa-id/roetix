@@ -12,7 +12,6 @@ use App\Http\Controllers\UserPageController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\TicketScanController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\QueueController;
 
 Route::domain(config('app.domain'))
     ->middleware('verify.maindomain')
@@ -100,14 +99,12 @@ Route::domain(config('app.domain'))
 Route::domain('{client}.' . config('app.domain'))
     ->middleware(['verify.subdomain'])
     ->group(function () {
-        Route::get('queue/status', [QueueController::class, 'status']);
-
         // Bypass to NoSQL
         Route::post('formRegistration', [ProfileController::class, 'bypassToNoSQL'])
             ->name('client.formRegistration');
 
         // Auth
-        Route::get('login', [AuthenticatedSessionController::class, 'login'])
+        Route::get('login/{message?}', [AuthenticatedSessionController::class, 'login'])
             ->name('client.login');
         Route::get('privateLogin', [AuthenticatedSessionController::class, 'privateLogin'])
             ->name('client.privateLogin');
