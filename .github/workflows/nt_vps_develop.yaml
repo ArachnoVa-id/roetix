@@ -261,7 +261,7 @@ jobs:
 
           # Define directory paths
           DEV_DIR=~/novatix/app/develop
-          SYMLINK_PATH=/var/www/novatix
+          SYMLINK_PATH=/var/www/novatix_develop
 
           # Ensure directory exists
           mkdir -p "$DEV_DIR"
@@ -284,6 +284,7 @@ jobs:
           mkdir -p storage/logs bootstrap/cache
 
           sudo chmod -R 775 storage bootstrap/cache
+          sudo chown -R www-data:www-data storage bootstrap/cache
 
           php artisan config:clear
           php artisan config:cache

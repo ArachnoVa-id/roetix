@@ -114,6 +114,7 @@ jobs:
           mkdir -p storage/logs bootstrap/cache
 
           sudo chmod -R 775 storage bootstrap/cache
+          sudo chown -R www-data:www-data storage bootstrap/cache
 
           php artisan config:clear
           php artisan config:cache
