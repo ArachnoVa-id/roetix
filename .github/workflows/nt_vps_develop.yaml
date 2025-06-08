@@ -260,15 +260,15 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
           # Define directory paths
-          PROD_DIR=~/novatix/app/production
+          DEV_DIR=~/novatix/app/develop
           SYMLINK_PATH=/var/www/novatix
 
           # Ensure directory exists
-          mkdir -p "$PROD_DIR"
+          mkdir -p "$DEV_DIR"
 
           # Link to /var/www/novatix
           sudo rm -rf "$SYMLINK_PATH"
-          sudo ln -s "$PROD_DIR" "$SYMLINK_PATH"
+          sudo ln -s "$DEV_DIR" "$SYMLINK_PATH"
           sudo chown -R www-data:www-data "$SYMLINK_PATH"
           cd "$SYMLINK_PATH"
 
