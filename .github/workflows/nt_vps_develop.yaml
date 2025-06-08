@@ -132,7 +132,7 @@ jobs:
 
           echo "Installing Redis server..."
           sudo apt install -y redis-server
-          
+
           echo "Configuring Redis..."
           sudo systemctl enable redis-server
           sudo systemctl start redis-server
@@ -181,7 +181,7 @@ jobs:
           sudo tee /etc/systemd/system/novatix-queue-worker.service > /dev/null << 'EOTS'
           [Unit]
           Description=NovaTix Laravel Queue Worker
-          After=network.target redis.service
+          After=network.target redis.service mysql.service
           Requires=redis.service
 
           [Service]
@@ -195,8 +195,9 @@ jobs:
           WorkingDirectory=/var/www/novatix_staging
           Environment=HOME=/var/www
           Environment=USER=www-data
+          Environment=PHP_INI_SCAN_DIR=/etc/php/8.3/cli/conf.d
           ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan config:cache'
-          ExecStart=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan queue:work redis --sleep=1 --tries=3 --timeout=60 --memory=512 --verbose'
+          ExecStart=/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=512 --verbose --no-interaction
           ExecReload=/bin/kill -USR2 $MAINPID
           KillMode=mixed
           KillSignal=SIGTERM
@@ -209,11 +210,11 @@ jobs:
           WantedBy=multi-user.target
           EOTS
 
-          # Create systemd service for event adjustment worker
+          # Create systemd service for event adjustment worker (if this is a custom command)
           sudo tee /etc/systemd/system/novatix-event-adjust.service > /dev/null << 'EOTS'
           [Unit]
           Description=NovaTix Event Adjust Users Worker
-          After=network.target redis.service
+          After=network.target redis.service mysql.service
           Requires=redis.service
 
           [Service]
@@ -227,8 +228,9 @@ jobs:
           WorkingDirectory=/var/www/novatix_staging
           Environment=HOME=/var/www
           Environment=USER=www-data
+          Environment=PHP_INI_SCAN_DIR=/etc/php/8.3/cli/conf.d
           ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan config:cache'
-          ExecStart=/bin/bash -c 'cd /var/www/novatix_staging && /usr/bin/php artisan event:adjust-users --continuous'
+          ExecStart=/usr/bin/php artisan event:adjust-users --continuous --no-interaction
           ExecReload=/bin/kill -USR2 $MAINPID
           KillMode=mixed
           KillSignal=SIGTERM
@@ -283,27 +285,27 @@ jobs:
           echo "Stopping Laravel workers..."
           sudo systemctl stop novatix-queue-worker
           sudo systemctl stop novatix-event-adjust
-          
+
           echo "Resetting service failure counters..."
           sudo systemctl reset-failed novatix-queue-worker
           sudo systemctl reset-failed novatix-event-adjust
-          
+
           echo "Restarting PHP-FPM..."
           sudo systemctl restart php8.3-fpm
-          
+
           echo "Restarting Redis..."
           sudo systemctl restart redis-server
-          
+
           echo "Waiting for Redis to be ready..."
           sleep 3
-          
+
           echo "Starting Laravel workers..."
           sudo systemctl start novatix-queue-worker
           sudo systemctl start novatix-event-adjust
-          
+
           echo "Waiting for services to stabilize..."
           sleep 5
-          
+
           echo "Checking service status..."
           sudo systemctl status redis-server --no-pager -l
           sudo systemctl status novatix-queue-worker --no-pager -l
@@ -331,37 +333,146 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/start_workers.sh
 
-          # debug_workers.sh
-          echo "Creating debug_workers.sh..."
+          # Enhanced debug_workers.sh
           cat > ~/novatix/setups/debug_workers.sh << 'EOT'
           #!/bin/bash
-          echo "=== Debug Laravel Workers ==="
+          echo "=== Enhanced Debug Laravel Workers ==="
+          echo "Current user: $(whoami)"
           echo "Current directory: $(pwd)"
-          echo "Checking if staging directory exists..."
-          ls -la /var/www/novatix_staging/
+          echo "Timestamp: $(date)"
           echo ""
-          echo "Checking Laravel environment..."
+
+          echo "=== Environment Check ==="
+          echo "Checking if staging directory exists..."
+          if [ -d "/var/www/novatix_staging" ]; then
+              echo "✓ Staging directory exists"
+              ls -la /var/www/novatix_staging/ | head -10
+          else
+              echo "✗ Staging directory missing"
+              exit 1
+          fi
+          echo ""
+
+          echo "=== Laravel Environment Check ==="
           cd /var/www/novatix_staging
           echo "Working directory: $(pwd)"
           echo "PHP version: $(php -v | head -n 1)"
+          echo "PHP user: $(sudo -u www-data whoami)"
           echo ""
-          echo "Testing Laravel commands..."
-          echo "--- Config Cache ---"
-          sudo -u www-data php artisan config:cache
+
+          echo "=== .env File Check ==="
+          if [ -f ".env" ]; then
+              echo "✓ .env file exists"
+              echo "Environment: $(grep APP_ENV .env || echo 'APP_ENV not set')"
+              echo "Database: $(grep DB_CONNECTION .env || echo 'DB_CONNECTION not set')"
+              echo "Redis: $(grep REDIS_HOST .env || echo 'REDIS_HOST not set')"
+          else
+              echo "✗ .env file missing"
+          fi
           echo ""
+
+          echo "=== Database Connection Test ==="
+          sudo -u www-data php artisan migrate:status 2>&1 || echo "Database connection failed"
+          echo ""
+
+          echo "=== Redis Connection Test ==="
+          echo "Testing Redis connection..."
+          sudo -u www-data php -r "
+          try {
+              \$redis = new Redis();
+              \$redis->connect('127.0.0.1', 6379);
+              echo 'Redis connection: SUCCESS' . PHP_EOL;
+              \$redis->set('test_key', 'test_value');
+              echo 'Redis write test: SUCCESS' . PHP_EOL;
+              \$redis->close();
+          } catch(Exception \$e) {
+              echo 'Redis connection: FAILED - ' . \$e->getMessage() . PHP_EOL;
+          }
+          "
+          echo ""
+
+          echo "=== Laravel Commands Test ==="
+          echo "Testing Laravel commands as www-data user..."
+
+          echo "--- Config Cache Test ---"
+          sudo -u www-data php artisan config:cache 2>&1
+          echo ""
+
           echo "--- Queue Connection Test ---"
-          sudo -u www-data php artisan queue:failed
+          sudo -u www-data php artisan queue:monitor 2>&1 | head -5
           echo ""
-          echo "--- Redis Connection Test ---"
-          sudo -u www-data php artisan tinker --execute="echo 'Redis test: '; try { \Illuminate\Support\Facades\Redis::ping(); echo 'SUCCESS'; } catch(Exception \$e) { echo 'FAILED: ' . \$e->getMessage(); }"
+
+          echo "--- Available Artisan Commands ---"
+          sudo -u www-data php artisan list | grep -E "(queue|event)" || echo "No queue/event commands found"
           echo ""
-          echo "--- Event Adjust Command Test ---"
-          sudo -u www-data timeout 10 php artisan event:adjust-users --continuous || echo "Command test completed"
+
+          echo "=== Manual Command Test ==="
+          echo "Testing queue:work command manually (10 seconds)..."
+          timeout 10 sudo -u www-data php artisan queue:work redis --sleep=3 --tries=3 --verbose --no-interaction 2>&1 || echo "Queue work test completed"
           echo ""
-          echo "--- Queue Worker Test ---"
-          sudo -u www-data timeout 10 php artisan queue:work redis --sleep=1 --tries=3 --timeout=60 --verbose || echo "Queue worker test completed"
+
+          echo "Testing event:adjust-users command manually (10 seconds)..."
+          timeout 10 sudo -u www-data php artisan event:adjust-users --continuous --no-interaction 2>&1 || echo "Event adjust command test completed"
+          echo ""
+
+          echo "=== System Resources ==="
+          echo "Memory usage:"
+          free -h
+          echo ""
+          echo "Disk usage:"
+          df -h /var/www/novatix_staging
+          echo ""
+
+          echo "=== Service Logs ==="
+          echo "Recent queue worker logs:"
+          sudo journalctl -u novatix-queue-worker --no-pager -n 10 --since "5 minutes ago"
+          echo ""
+          echo "Recent event adjust logs:"
+          sudo journalctl -u novatix-event-adjust --no-pager -n 10 --since "5 minutes ago"
           EOT
           chmod +x ~/novatix/setups/debug_workers.sh
+
+          # Create validate_environment.sh
+          cat > ~/novatix/setups/validate_environment.sh << 'EOT'
+          #!/bin/bash
+          echo "=== Validating Laravel Environment ==="
+          cd /var/www/novatix_staging
+
+          # Check if required files exist
+          if [ ! -f ".env" ]; then
+              echo "Creating .env file..."
+              cp .env.example .env
+              php artisan key:generate
+          fi
+
+          # Ensure database is ready
+          echo "Running database migrations..."
+          sudo -u www-data php artisan migrate --force
+
+          # Clear and cache config
+          echo "Clearing and caching configuration..."
+          sudo -u www-data php artisan config:clear
+          sudo -u www-data php artisan config:cache
+          sudo -u www-data php artisan route:cache
+
+          # Test database connection
+          echo "Testing database connection..."
+          sudo -u www-data php artisan migrate:status
+
+          # Test Redis connection
+          echo "Testing Redis connection..."
+          sudo -u www-data php artisan tinker --execute="
+          try {
+              \Illuminate\Support\Facades\Redis::ping();
+              echo 'Redis: Connected successfully';
+          } catch(Exception \$e) {
+              echo 'Redis: Connection failed - ' . \$e->getMessage();
+          }
+          "
+
+          echo "Environment validation completed!"
+          EOT
+          chmod +x ~/novatix/setups/validate_environment.sh
 
           # fix_permissions.sh
           echo "Creating fix_permissions.sh..."
@@ -369,23 +480,23 @@ jobs:
           #!/bin/bash
           echo "Fixing permissions for Laravel application..."
           cd /var/www/novatix_staging
-          
+
           # Fix ownership
           sudo chown -R www-data:www-data /var/www/novatix_staging
-          
+
           # Fix directory permissions
           sudo find /var/www/novatix_staging -type d -exec chmod 755 {} \;
           sudo find /var/www/novatix_staging -type f -exec chmod 644 {} \;
-          
+
           # Fix specific Laravel directories
           sudo chmod -R 775 storage bootstrap/cache
           sudo chmod +x artisan
-          
+
           # Create necessary directories if they don't exist
           sudo -u www-data mkdir -p storage/framework/{cache,sessions,views}
           sudo -u www-data mkdir -p storage/logs
           sudo -u www-data mkdir -p bootstrap/cache
-          
+
           echo "Permissions fixed!"
           EOT
           chmod +x ~/novatix/setups/fix_permissions.sh
@@ -458,6 +569,12 @@ jobs:
             ~/novatix/setups/fix_permissions.sh
             ~/novatix/setups/debug_workers.sh
           EOF
+
+      - name: Validate Environment Before Starting Services
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/validate_environment.sh"
+
+      - name: Enhanced Debug Before Service Start
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/debug_workers.sh"
 
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
