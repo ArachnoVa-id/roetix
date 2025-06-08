@@ -30,7 +30,6 @@ use Illuminate\Support\Facades\Http;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Mail;
 use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Validator;
 
@@ -571,6 +570,7 @@ class PaymentController extends Controller
 
         // Append the origin ip (host) of the request to data
         $data['origin_ip'] = $request->ip();
+        $data['host'] = $request->getHost();
 
         // Log the callback data
         DevNoSQLData::create([
@@ -627,6 +627,7 @@ class PaymentController extends Controller
 
         // Append the origin ip (host) of the request to data
         $data['origin_ip'] = $request->ip();
+        $data['host'] = $request->getHost();
 
         // Log the callback data
         DevNoSQLData::create([
@@ -676,6 +677,7 @@ class PaymentController extends Controller
 
         // Append the origin ip (host) of the request to data
         $data['origin_ip'] = $request->ip();
+        $data['host'] = $request->getHost();
 
         // Log the callback data
         DevNoSQLData::create([
@@ -836,6 +838,7 @@ class PaymentController extends Controller
     {
         try {
             DB::beginTransaction();
+
             // Find order first
             $order = Order::where('order_code', $orderCode)->first();
             if (!$order) {
@@ -874,7 +877,6 @@ class PaymentController extends Controller
                 if ($ticket) { // Ensure the ticket exists before updating
                     $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
                     $ticket->save();
-
                     $updatedTickets[] = [
                         "id" => $ticket->id,
                         "status" => $status,
@@ -886,24 +888,48 @@ class PaymentController extends Controller
                 }
             }
 
-            if ($status === OrderStatus::COMPLETED->value) {
-                // Send email
-                $resendMailer = new ResendMailer();
+            // Commit the transaction before attempting to send email
+            DB::commit();
 
-                $resendMailer->send(
-                    to: $userContact->email,
-                    subject: "Successful Ticket Payment for Order #{$order->order_code}",
-                    html: '
-                        <h1>Thank you for your purchase!</h1>
-                        <p>Your order has been successfully processed.</p>
-                        <p>Order Code: ' . $order->order_code . '</p>
-                        <p>Total Price: ' . number_format($order->total_price, 2) . '</p>
-                        <p>Event: ' . $order->getSingleEvent()->name . '</p>
-                        <p>Tickets: ' . implode(',', array_map(fn($item) => $item['seat_number'], $updatedTickets)) . '</p>'
-                );
+            // Send email outside of transaction to prevent rollback on email failure
+            if ($status === OrderStatus::COMPLETED->value) {
+                try {
+                    // Get event details
+                    $event = $order->getSingleEvent();
+
+                    // Render the email template
+                    $emailHtml = view('emails.order-confirmation', [
+                        'order' => $order,
+                        'event' => $event,
+                        'tickets' => $updatedTickets,
+                        'user' => $user,
+                        'userContact' => $userContact
+                    ])->render();
+
+                    $resendMailer = new ResendMailer();
+                    $resendMailer->send(
+                        to: $userContact->email,
+                        subject: "🎫 Your Tickets are Confirmed - Order #{$order->order_code}",
+                        html: $emailHtml
+                    );
+
+                    // Log successful email send
+                    Log::info('Order confirmation email sent successfully', [
+                        'order_code' => $order->order_code,
+                        'user_id' => $user->id,
+                        'email' => $userContact->email
+                    ]);
+                } catch (\Exception $e) {
+                    // Log the email failure but don't break the system
+                    Log::error('Failed to send order completion email ' . $e->getMessage(), [
+                        'order_code' => $order->order_code,
+                        'user_id' => $user->id,
+                        'email' => $userContact->email,
+                    ]);
+                }
             }
 
-            DB::commit();
+            // Publish MQTT message about successful ticket update
             $this->publishMqtt(data: [
                 'event' => "update_ticket_status",
                 'data' => $updatedTickets

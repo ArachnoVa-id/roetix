@@ -23,7 +23,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function login(string $client = ''): Response
+    public function login(string $client = '', string $message = ''): Response
     {
         if ($client) {
             // Get the event and associated venue
@@ -49,7 +49,8 @@ class AuthenticatedSessionController extends Controller
             'event' => $event,
             'client' => $client,
             'props' => (is_array($props) ? $props : $props->getSecure()),
-            'privateLogin' => false
+            'privateLogin' => false,
+            'message' => $message
         ]);
     }
 
@@ -94,7 +95,7 @@ class AuthenticatedSessionController extends Controller
             try {
                 Event::loginUser($event, $user);
             } catch (\Throwable $e) {
-                return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client]);
+                return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client, 'message' => $e->getMessage()]);
             }
 
             // redirecting to
@@ -117,12 +118,6 @@ class AuthenticatedSessionController extends Controller
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
         } else if ($userModel->isReceptionist()) {
             if ($client && $event) { // Jika receptionist login via subdomain DENGAN event valid
-                try {
-                    Event::loginUser($event, $userModel);
-                } catch (\Throwable $e) {
-                    Log::error("Receptionist failed loginUser to event queue: " . $e->getMessage());
-                    return redirect()->route('client.home', ['client' => $client]); // Fallback ke home client jika antrian
-                }
                 return redirect()->route('client.events.scan.show', ['client' => $client, 'event_slug' => $event->slug]);
             } else { // Jika receptionist login dari main domain atau subdomain tanpa event (misal: hanya novatix.id/login)
                 Log::warning("Receptionist login without specific event context. Redirecting to main login as fallback.");
