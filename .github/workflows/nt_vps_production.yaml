@@ -28,10 +28,11 @@ jobs:
           echo "Ensuring folder structure..."
           mkdir -p ~/novatix/app/production
 
-          # Ensure update_repo_prod.sh exists
           echo "Creating update_repo_prod.sh..."
           cat > ~/novatix/setups/update_repo_prod.sh << 'EOT'
           #!/bin/bash
+          set -e
+
           mkdir -p ~/novatix/app/production
           cd ~/novatix
 
@@ -46,17 +47,13 @@ jobs:
           else
               echo "Repository found. Pulling latest changes..."
               cd app/production
-
-              git config --global --add safe.directory $(pwd)  # ✅ fix dubious ownership
-
+              git config --global --add safe.directory $(pwd)
               git reset --hard HEAD
               git clean -fd
               git pull origin main --force
           fi
-
           EOT
           chmod +x ~/novatix/setups/update_repo_prod.sh
-
           EOF
 
       - name: Update Repository on VPS
@@ -64,6 +61,13 @@ jobs:
 
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
+
+      - name: Restart PHP-FPM and reload Nginx
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            sudo systemctl restart php8.3-fpm
+            sudo systemctl reload nginx
+          EOF
 
       - name: Deploy Laravel on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/deploy_laravel.sh"
@@ -86,13 +90,9 @@ jobs:
       - name: Deploy Laravel Project to VPS
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
-          set -e
+          set -euxo pipefail
 
-          # Ensure project directory exists
-          sudo mkdir -p ~/novatix/app/production
-
-          # Change ownership to www-data for Laravel folders before installation
-          sudo chown -R www-data:www-data ~/novatix/app/production
+          mkdir -p ~/novatix/app/production
 
           # Link to /var/www/novatix
           SYMLINK_TARGET=$(realpath ~/novatix/app/production)
@@ -102,23 +102,22 @@ jobs:
 
           cd /var/www/novatix
 
-          # Prepare folders and fix permissions early
-          mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
-          sudo chown -R www-data:www-data bootstrap/cache storage
-          sudo chmod -R 775 bootstrap/cache storage
-          sudo chmod g+s bootstrap/cache storage
+          # Run composer, npm and artisan
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+          npm install
+          npm run build
+          php artisan migrate --force
+          php artisan storage:link
 
-          # Run composer, npm and artisan as www-data user
-          sudo -u www-data composer install --no-interaction --prefer-dist --optimize-autoloader
-          sudo -u www-data npm install
-          sudo -u www-data npm run build
-          sudo -u www-data php artisan migrate
-          sudo -u www-data php artisan storage:link
+          echo "Fixing Laravel directory permissions..."
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
 
-          # Final ownership fix
-          sudo chown -R www-data:www-data bootstrap/cache storage
-          sudo chmod -R 775 bootstrap/cache storage
-          sudo chmod g+s bootstrap/cache storage
+          sudo chmod -R 775 storage bootstrap/cache
+
+          php artisan config:clear
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
 
           EOF
-
