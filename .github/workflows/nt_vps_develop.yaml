@@ -142,7 +142,19 @@ jobs:
           sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
           rm composer-setup.php
 
+          # FIX: Create directories and set permissions BEFORE running composer
+          echo "Creating Laravel directories and fixing permissions..."
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
+
+          # Set proper ownership and permissions BEFORE composer install
+          sudo chown -R $USER:$USER .
+          chmod -R 755 storage bootstrap/cache
+          chmod -R 777 storage/logs storage/framework
+
+          echo "Installing Composer dependencies..."
           composer install --no-interaction --prefer-dist --optimize-autoloader
+
           # Laravel setup
           # If env not exist
           if [ ! -f .env ]; then
@@ -159,10 +171,7 @@ jobs:
           npm install
           npm run build
 
-          echo "Fixing Laravel directory permissions..."
-          mkdir -p storage/framework/{cache,sessions,views}
-          mkdir -p storage/logs bootstrap/cache
-
+          echo "Final permission fix for web server..."
           sudo chown -R www-data:www-data storage bootstrap/cache
           sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
 
@@ -527,9 +536,6 @@ jobs:
           sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
           sudo chown -R www-data:www-data /var/www/novatix_staging
           cd /var/www/novatix_staging
-
-          sudo chown -R www-data:www-data storage bootstrap/cache
-          sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
 
           php artisan config:clear
           php artisan config:cache
