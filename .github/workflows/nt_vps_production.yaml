@@ -85,9 +85,14 @@ jobs:
           # Now run composer install for production
           composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
 
-          echo "Installing and building npm assets..."
-          npm install --omit=dev
+          echo "Installing npm dependencies (including dev dependencies for build)..."
+          npm install
+
+          echo "Building assets..."
           npm run build
+
+          echo "Cleaning up dev dependencies..."
+          npm prune --omit=dev
           EOF
 
       - name: Deploy Laravel Project to VPS
