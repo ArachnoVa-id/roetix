@@ -87,29 +87,23 @@ jobs:
 
           mkdir -p ~/novatix/app/production
 
-          # Recreate symlink to production folder
+          # Link to /var/www/novatix
           SYMLINK_TARGET=$(realpath ~/novatix/app/production)
           sudo rm -rf /var/www/novatix
           sudo ln -sfn "$SYMLINK_TARGET" /var/www/novatix
+          sudo chown -R www-data:www-data /var/www/novatix
 
           cd /var/www/novatix
 
-          # Prepare Laravel folders
-          mkdir -p bootstrap/cache \
-                   storage/framework/{cache,sessions,views} \
-                   storage/logs
-
-          # Fix only necessary permissions
-          sudo chown -R :www-data storage bootstrap/cache
-          sudo chmod -R 775 storage bootstrap/cache
-          sudo chmod g+s storage bootstrap/cache
-
-          # Laravel deployment steps
+          # Run composer, npm and artisan
           composer install --no-interaction --prefer-dist --optimize-autoloader
           npm install
           npm run build
-
-          php artisan migrate --force
+          php artisan config:clear
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan migrate
           php artisan storage:link
 
           EOF
