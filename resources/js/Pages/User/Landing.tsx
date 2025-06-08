@@ -11,7 +11,7 @@ import {
     PendingTransactionResponseItem,
     SeatItem,
 } from '@/types/seatmap';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -51,11 +51,13 @@ export default function Landing({
     userEndSessionDatetime,
     paymentGateway,
 }: LandingProps) {
+    const user = usePage().props.auth.user;
+
     const { data, setData, errors } = useForm<MerchForm>({
         user_full_name: '',
         user_id_no: '',
         user_address: '',
-        user_email: '',
+        user_email: user.email || '',
         user_phone_num: '',
         user_sizes: [],
         accessor: '',
@@ -1225,32 +1227,6 @@ export default function Landing({
                                 <InputError
                                     className="mt-2"
                                     message={errors.user_id_no}
-                                />
-                            </div>
-
-                            <div className="min-w-[250px] flex-1">
-                                <InputLabel
-                                    htmlFor="user_email"
-                                    value="Email Address"
-                                    style={{
-                                        color: props.text_primary_color,
-                                    }}
-                                />
-                                <TextInput
-                                    type="email"
-                                    id="user_email"
-                                    className="mt-1 block w-full"
-                                    value={data.user_email}
-                                    onChange={(e) =>
-                                        setData('user_email', e.target.value)
-                                    }
-                                    style={{
-                                        color: props.text_secondary_color,
-                                    }}
-                                />
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.user_email}
                                 />
                             </div>
 
