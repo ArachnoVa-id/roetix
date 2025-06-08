@@ -134,14 +134,24 @@ jobs:
           sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
           rm composer-setup.php
 
-          composer install --no-interaction --prefer-dist --optimize-autoloader
-          # Laravel setup
-          # If env not exist
+          # Create Laravel directories with proper permissions BEFORE composer install
+          echo "Creating Laravel directories with proper permissions..."
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
+          
+          # Set proper ownership and permissions
+          sudo chown -R $USER:www-data storage bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+          
+          # Create .env file before composer install to avoid Laravel configuration issues
           if [ ! -f .env ]; then
               echo "Creating .env file..."
               cp .env.example .env
               php artisan key:generate
           fi
+
+          # Now run composer install
+          composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
           echo "Installing Node.js and npm..."
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -219,9 +229,14 @@ jobs:
           cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
           #!/bin/bash
           cd ~/novatix/app/develop
-          sudo php artisan config:clear
-          sudo php artisan cache:clear
-          sudo php artisan route:cache
+          
+          # Ensure proper permissions before running artisan commands
+          sudo chown -R $USER:www-data storage bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+          
+          php artisan config:clear
+          php artisan cache:clear
+          php artisan route:cache
           EOT
           chmod +x ~/novatix/setups/deploy_laravel.sh
 
@@ -241,19 +256,6 @@ jobs:
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
 
-      - name: Restart PHP-FPM and reload Nginx
-        run: |
-          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            sudo systemctl restart php8.3-fpm
-            sudo systemctl reload nginx
-          EOF
-
-      - name: Deploy Laravel on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/deploy_laravel.sh"
-
-      - name: Restart Services on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
-
       - name: Deploy Laravel Project to VPS
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
@@ -269,27 +271,52 @@ jobs:
           # Link to /var/www/novatix
           sudo rm -rf "$SYMLINK_PATH"
           sudo ln -s "$DEV_DIR" "$SYMLINK_PATH"
-          sudo chown -R www-data:www-data "$SYMLINK_PATH"
-          cd "$SYMLINK_PATH"
 
-          echo "Fixing Laravel directory permissions..."
+          cd "$DEV_DIR"
+
+          echo "Ensuring Laravel directory permissions are correct..."
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
 
-          sudo chmod -R 775 storage bootstrap/cache
-          sudo chown -R www-data:www-data storage bootstrap/cache
+          # Set proper ownership and permissions
+          sudo chown -R $USER:www-data storage bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+          
+          # Set ownership for the symlink
+          sudo chown -R www-data:www-data "$SYMLINK_PATH"
 
-          # Run deployment commands
+          # Run deployment commands with proper error handling
+          echo "Running composer install..."
           composer install --no-interaction --prefer-dist --optimize-autoloader
+
+          echo "Installing and building npm assets..."
           npm install
           npm run build
+
+          echo "Running Laravel migrations..."
           php artisan migrate --force
+
+          echo "Creating storage link..."
           php artisan storage:link
 
+          echo "Clearing and caching Laravel configurations..."
           php artisan config:clear
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
 
+          # Final permission fix
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+
           EOF
 
+      - name: Deploy Laravel on VPS
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/deploy_laravel.sh"
+
+      - name: Restart Services on VPS
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            sudo systemctl restart php8.3-fpm
+            sudo systemctl reload nginx
+          EOF

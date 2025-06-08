@@ -20,12 +20,13 @@ jobs:
           chmod 600 ~/.ssh/av_rsa
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Ensure Folder Structure & Create Scripts
+      - name: Create Production Repository Update Script
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
           set -e
 
-          echo "Ensuring folder structure..."
+          echo "Ensuring production folder structure..."
           mkdir -p ~/novatix/app/production
 
           echo "Creating update_repo_prod.sh..."
@@ -38,7 +39,7 @@ jobs:
 
           if [ ! -d "app/production/.git" ]; then
               echo "Repository not found. Checking existing directory..."
-              if [ -n "$(ls -A app 2>/dev/null)" ]; then
+              if [ -n "$(ls -A app/production 2>/dev/null)" ]; then
                   echo "Existing directory found but not a Git repository. Removing everything..."
                   rm -rf app/production
               fi
@@ -54,71 +55,87 @@ jobs:
           fi
           EOT
           chmod +x ~/novatix/setups/update_repo_prod.sh
+
           EOF
 
       - name: Update Repository on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo_prod.sh"
 
-      - name: Install Dependencies on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
-
-      - name: Restart PHP-FPM and reload Nginx
+      - name: Setup Production Environment
         run: |
-          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            sudo systemctl restart php8.3-fpm
-            sudo systemctl reload nginx
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
+          cd ~/novatix/app/production
+
+          # Create Laravel directories with proper permissions BEFORE composer install
+          echo "Creating Laravel directories with proper permissions..."
+          mkdir -p storage/framework/{cache,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
+
+          # Set proper ownership and permissions
+          sudo chown -R $USER:www-data storage bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+
+          # Create .env file before composer install to avoid Laravel configuration issues
+          if [ ! -f .env ]; then
+              echo "Creating .env file..."
+              cp .env.example .env
+              php artisan key:generate
+          fi
+
+          # Now run composer install for production
+          composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
+
+          echo "Installing and building npm assets..."
+          npm install --omit=dev
+          npm run build
           EOF
-
-      - name: Deploy Laravel on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/deploy_laravel.sh"
-
-      - name: Restart Services on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
-
-  update-production:
-    runs-on: ubuntu-latest
-    needs: vps-sync
-
-    steps:
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/av_rsa
-          chmod 600 ~/.ssh/av_rsa
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy Laravel Project to VPS
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
-          set -euxo pipefail
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-          mkdir -p ~/novatix/app/production
+          # Define directory paths for production
+          PROD_DIR=~/novatix/app/production
+          SYMLINK_PATH=/var/www/novatix
+
+          # Ensure directory exists
+          mkdir -p "$PROD_DIR"
 
           # Link to /var/www/novatix
-          SYMLINK_TARGET=$(realpath ~/novatix/app/production)
-          sudo rm -rf /var/www/novatix
-          sudo ln -sfn "$SYMLINK_TARGET" /var/www/novatix
-          sudo chown -R www-data:www-data /var/www/novatix
+          sudo rm -rf "$SYMLINK_PATH"
+          sudo ln -s "$PROD_DIR" "$SYMLINK_PATH"
 
-          cd /var/www/novatix
+          cd "$PROD_DIR"
 
-          echo "Fixing Laravel directory permissions..."
+          echo "Ensuring Laravel directory permissions are correct..."
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
 
-          sudo chmod -R 775 storage bootstrap/cache
-          sudo chown -R www-data:www-data storage bootstrap/cache
+          # Set proper ownership and permissions
+          sudo chown -R $USER:www-data storage bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
 
-          # Run composer, npm and artisan
-          composer install --no-interaction --prefer-dist --optimize-autoloader
-          npm install
-          npm run build
+          # Set ownership for the symlink
+          sudo chown -R www-data:www-data "$SYMLINK_PATH"
+
+          echo "Running Laravel migrations..."
           php artisan migrate --force
+
+          echo "Creating storage link..."
           php artisan storage:link
 
+          echo "Clearing and caching Laravel configurations..."
           php artisan config:clear
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
 
+          # Final permission fix
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+
           EOF
+
+      - name: Restart Services on VPS (Reuse existing script)
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
