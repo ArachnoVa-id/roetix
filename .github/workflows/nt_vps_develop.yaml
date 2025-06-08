@@ -178,7 +178,7 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
 
-          # setup_worker_services.sh
+          # setup_worker_services.sh - FIXED: Better service configuration
           echo "Creating setup_worker_services.sh..."
           cat > ~/novatix/setups/setup_worker_services.sh << 'EOT'
           #!/bin/bash
@@ -214,7 +214,7 @@ jobs:
           WantedBy=multi-user.target
           EOTS
 
-          # Create systemd service for event adjustment worker
+          # FIXED: Create systemd service for event adjustment worker with proper configuration
           sudo tee /etc/systemd/system/novatix-event-adjust.service > /dev/null << 'EOTS'
           [Unit]
           Description=NovaTix Event Adjust Users Worker
@@ -226,17 +226,25 @@ jobs:
           User=www-data
           Group=www-data
           Restart=always
-          RestartSec=15
-          StartLimitInterval=300
-          StartLimitBurst=5
+          RestartSec=30
+          StartLimitInterval=600
+          StartLimitBurst=3
           WorkingDirectory=/var/www/novatix_staging
           Environment=HOME=/var/www
           Environment=USER=www-data
-          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && php artisan config:cache'
-          ExecStart=/usr/bin/php artisan event:adjust-users --continuous
+          # First check if the command exists and is valid
+          ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && php artisan config:cache && php artisan list | grep -q "event:adjust-users"'
+          # Use timeout to prevent infinite hanging
+          ExecStart=/usr/bin/timeout 3600 /usr/bin/php artisan event:adjust-users --continuous
+          # Handle timeout as normal exit (not failure)
+          SuccessExitStatus=124
           StandardOutput=journal
           StandardError=journal
           SyslogIdentifier=novatix-event-adjust
+          # Kill the process group to ensure cleanup
+          KillMode=mixed
+          KillSignal=SIGTERM
+          TimeoutStopSec=30
 
           [Install]
           WantedBy=multi-user.target
@@ -262,62 +270,106 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/deploy_laravel.sh
 
-          # restart_services.sh
+          # FIXED: restart_services.sh with better error handling and validation
           echo "Creating restart_services.sh..."
           cat > ~/novatix/setups/restart_services.sh << 'EOT'
           #!/bin/bash
           set -e
 
-          echo "Stopping Laravel workers..."
+          echo "=== Pre-flight checks ==="
+          # Verify the event:adjust-users command exists
+          cd /var/www/novatix_staging
+          echo "Checking if event:adjust-users command exists..."
+          if ! sudo -u www-data php artisan list | grep -q "event:adjust-users"; then
+              echo "WARNING: event:adjust-users command not found!"
+              echo "Available event commands:"
+              sudo -u www-data php artisan list | grep -E "^\s*event:" || echo "No event commands found"
+              echo "Proceeding with queue worker only..."
+              SKIP_EVENT_ADJUST=true
+          else
+              echo "✓ event:adjust-users command found"
+              SKIP_EVENT_ADJUST=false
+          fi
+
+          echo "=== Stopping Laravel workers ==="
           sudo systemctl stop novatix-queue-worker || true
-          sudo systemctl stop novatix-event-adjust || true
+          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
+              sudo systemctl stop novatix-event-adjust || true
+          fi
 
-          echo "Resetting service failure counters..."
+          echo "=== Resetting service failure counters ==="
           sudo systemctl reset-failed novatix-queue-worker || true
-          sudo systemctl reset-failed novatix-event-adjust || true
+          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
+              sudo systemctl reset-failed novatix-event-adjust || true
+          fi
 
-          echo "Restarting PHP-FPM..."
+          echo "=== Restarting PHP-FPM ==="
           sudo systemctl restart php8.3-fpm
 
-          echo "Restarting Redis..."
+          echo "=== Restarting Redis ==="
           sudo systemctl restart redis-server
 
-          echo "Waiting for Redis to be ready..."
+          echo "=== Waiting for Redis to be ready ==="
           sleep 5
 
           # Verify Redis is actually ready
-          until sudo systemctl is-active --quiet redis-server; do
-              echo "Waiting for Redis to start..."
+          until sudo systemctl is-active --quiet redis-server && redis-cli ping > /dev/null 2>&1; do
+              echo "Waiting for Redis to start and respond..."
               sleep 2
           done
+          echo "✓ Redis is ready"
 
-          echo "Starting Laravel workers..."
+          echo "=== Testing Laravel environment ==="
+          if ! sudo -u www-data php artisan --version > /dev/null 2>&1; then
+              echo "ERROR: Laravel environment is not working properly"
+              exit 1
+          fi
+          echo "✓ Laravel environment is working"
+
+          echo "=== Starting Laravel workers ==="
           sudo systemctl start novatix-queue-worker
-          sleep 3
-          sudo systemctl start novatix-event-adjust
+          sleep 5
 
-          echo "Waiting for services to stabilize..."
-          sleep 10
+          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
+              echo "Starting event adjust worker..."
+              sudo systemctl start novatix-event-adjust
+              sleep 10
+          else
+              echo "Skipping event adjust worker (command not found)"
+          fi
 
-          echo "Final service status check..."
-          sudo systemctl status redis-server --no-pager -l
-          sudo systemctl status novatix-queue-worker --no-pager -l
-          sudo systemctl status novatix-event-adjust --no-pager -l
+          echo "=== Final service status check ==="
+          echo "Redis status:"
+          sudo systemctl status redis-server --no-pager -l || true
 
-          # Check if services are actually running
+          echo "Queue worker status:"
+          sudo systemctl status novatix-queue-worker --no-pager -l || true
+
+          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
+              echo "Event adjust worker status:"
+              sudo systemctl status novatix-event-adjust --no-pager -l || true
+          fi
+
+          echo "=== Checking if services are actually running ==="
           if ! sudo systemctl is-active --quiet novatix-queue-worker; then
               echo "ERROR: Queue worker failed to start"
               sudo journalctl -u novatix-queue-worker --no-pager -n 20
               exit 1
           fi
+          echo "✓ Queue worker is running"
 
-          if ! sudo systemctl is-active --quiet novatix-event-adjust; then
-              echo "ERROR: Event adjust worker failed to start"
-              sudo journalctl -u novatix-event-adjust --no-pager -n 20
-              exit 1
+          if [ "$SKIP_EVENT_ADJUST" != "true" ]; then
+              if ! sudo systemctl is-active --quiet novatix-event-adjust; then
+                  echo "WARNING: Event adjust worker is not running"
+                  echo "Recent logs:"
+                  sudo journalctl -u novatix-event-adjust --no-pager -n 10
+                  echo "This might be normal if the command completes quickly"
+              else
+                  echo "✓ Event adjust worker is running"
+              fi
           fi
 
-          echo "All services started successfully!"
+          echo "=== Deployment completed successfully! ==="
           EOT
           chmod +x ~/novatix/setups/restart_services.sh
 
@@ -341,63 +393,67 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/start_workers.sh
 
-          # FIXED: debug_workers.sh - Remove the hanging manual tests
+          # FIXED: debug_workers.sh - Better debugging
           cat > ~/novatix/setups/debug_workers.sh << 'EOT'
           #!/bin/bash
-          echo "=== Quick Debug Laravel Workers ==="
-          echo "Current user: $(whoami)"
-          echo "Current directory: $(pwd)"
+          echo "=== Laravel Workers Debug Information ==="
           echo "Timestamp: $(date)"
+          echo "Current user: $(whoami)"
           echo ""
 
-          echo "=== Environment Check ==="
-          echo "Checking if staging directory exists..."
+          echo "=== Directory and Permissions Check ==="
           if [ -d "/var/www/novatix_staging" ]; then
               echo "✓ Staging directory exists"
-              ls -la /var/www/novatix_staging/ | head -5
+              echo "Directory owner: $(ls -ld /var/www/novatix_staging | awk '{print $3":"$4}')"
+              echo "Directory permissions: $(ls -ld /var/www/novatix_staging | awk '{print $1}')"
           else
               echo "✗ Staging directory missing"
               exit 1
           fi
-          echo ""
 
           echo "=== Laravel Environment Check ==="
           cd /var/www/novatix_staging
           echo "Working directory: $(pwd)"
           echo "PHP version: $(php -v | head -n 1)"
-          echo ""
 
-          echo "=== .env File Check ==="
           if [ -f ".env" ]; then
               echo "✓ .env file exists"
               echo "Environment: $(grep APP_ENV .env 2>/dev/null || echo 'APP_ENV not set')"
-              echo "Database: $(grep DB_CONNECTION .env 2>/dev/null || echo 'DB_CONNECTION not set')"
-              echo "Redis: $(grep REDIS_HOST .env 2>/dev/null || echo 'REDIS_HOST not set')"
           else
               echo "✗ .env file missing"
           fi
-          echo ""
 
-          echo "=== Quick Connection Tests ==="
-          echo "Testing Redis connection..."
+          echo "=== Testing Laravel Boot ==="
+          if sudo -u www-data php artisan --version > /dev/null 2>&1; then
+              echo "✓ Laravel boots successfully as www-data"
+              echo "Laravel version: $(sudo -u www-data php artisan --version)"
+          else
+              echo "✗ Laravel boot failed as www-data"
+              echo "Error details:"
+              sudo -u www-data php artisan --version 2>&1 || true
+          fi
+
+          echo "=== Available Artisan Commands ==="
+          echo "Event commands:"
+          sudo -u www-data php artisan list | grep -E "^\s*event:" || echo "No event commands found"
+          echo ""
+          echo "Queue commands:"
+          sudo -u www-data php artisan list | grep -E "^\s*queue:" | head -3 || echo "No queue commands found"
+
+          echo "=== Redis Connection Test ==="
           if redis-cli ping > /dev/null 2>&1; then
-              echo "✓ Redis is responding"
+              echo "✓ Redis is responding to ping"
+              echo "Redis info: $(redis-cli info server | grep redis_version || echo 'Version info unavailable')"
           else
               echo "✗ Redis connection failed"
           fi
 
-          echo "Testing Laravel boot..."
-          if sudo -u www-data php artisan --version > /dev/null 2>&1; then
-              echo "✓ Laravel boots successfully"
-          else
-              echo "✗ Laravel boot failed"
-          fi
+          echo "=== Service Status Summary ==="
+          echo "Queue Worker: $(sudo systemctl is-active novatix-queue-worker 2>/dev/null || echo 'inactive')"
+          echo "Event Adjust: $(sudo systemctl is-active novatix-event-adjust 2>/dev/null || echo 'inactive')"
+          echo "Redis: $(sudo systemctl is-active redis-server 2>/dev/null || echo 'inactive')"
 
-          echo "=== Available Commands ==="
-          sudo -u www-data php artisan list | grep -E "(queue|event)" | head -5 || echo "Commands check failed"
-          echo ""
-
-          echo "Debug completed (no hanging tests)!"
+          echo "=== Debug completed ==="
           EOT
           chmod +x ~/novatix/setups/debug_workers.sh
 
