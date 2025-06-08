@@ -305,7 +305,6 @@ jobs:
           #!/bin/bash
           echo "Stopping Laravel workers..."
           sudo systemctl stop novatix-queue-worker
-          sudo systemctl stop novatix-event-adjust
           EOT
           chmod +x ~/novatix/setups/stop_workers.sh
 
@@ -315,7 +314,6 @@ jobs:
           #!/bin/bash
           echo "Starting Laravel workers..."
           sudo systemctl start novatix-queue-worker
-          sudo systemctl start novatix-event-adjust
           EOT
           chmod +x ~/novatix/setups/start_workers.sh
 
@@ -376,7 +374,6 @@ jobs:
 
           echo "=== Service Status Summary ==="
           echo "Queue Worker: $(sudo systemctl is-active novatix-queue-worker 2>/dev/null || echo 'inactive')"
-          echo "Event Adjust: $(sudo systemctl is-active novatix-event-adjust 2>/dev/null || echo 'inactive')"
           echo "Redis: $(sudo systemctl is-active redis-server 2>/dev/null || echo 'inactive')"
 
           echo "=== Debug completed ==="
@@ -474,17 +471,11 @@ jobs:
           echo "Queue Worker Status:"
           sudo systemctl status novatix-queue-worker --no-pager -l
           echo ""
-          echo "Event Adjust Worker Status:"
-          sudo systemctl status novatix-event-adjust --no-pager -l
-          echo ""
           echo "Redis Status:"
           sudo systemctl status redis-server --no-pager -l
           echo ""
           echo "Recent logs from queue worker:"
           sudo journalctl -u novatix-queue-worker --no-pager -n 10
-          echo ""
-          echo "Recent logs from event adjust worker:"
-          sudo journalctl -u novatix-event-adjust --no-pager -n 10
           EOT
           chmod +x ~/novatix/setups/check_workers.sh
 
