@@ -274,22 +274,24 @@ jobs:
 
           # Run deployment commands
           composer install --no-interaction --prefer-dist --optimize-autoloader
-          npm install
-          npm run build
-          php artisan migrate --force
-          php artisan storage:link
+          sudo npm install
+          sudo npm run build
+          sudo php artisan migrate --force
+          sudo php artisan storage:link
 
           echo "Fixing Laravel directory permissions..."
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
 
           sudo chown -R www-data:www-data storage bootstrap/cache
-          sudo chmod -R 775 storage bootstrap/cache
+          sudo find storage -type d -exec chmod 775 {} \;
+          sudo find storage -type f -exec chmod 664 {} \;
+          sudo chmod -R 775 bootstrap/cache
 
-          php artisan config:clear
-          php artisan config:cache
-          php artisan route:cache
-          php artisan view:cache
+          sudo php artisan config:clear
+          sudo php artisan config:cache
+          sudo php artisan route:cache
+          sudo php artisan view:cache
 
           EOF
 
