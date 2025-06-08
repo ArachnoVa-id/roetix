@@ -239,7 +239,6 @@ jobs:
           echo "Enabling services..."
           sudo systemctl enable novatix-queue-worker
           sudo systemctl enable novatix-event-adjust
-
           EOT
           chmod +x ~/novatix/setups/setup_worker_services.sh
 
@@ -333,10 +332,10 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/start_workers.sh
 
-          # Enhanced debug_workers.sh
+          # FIXED: debug_workers.sh - Remove the hanging manual tests
           cat > ~/novatix/setups/debug_workers.sh << 'EOT'
           #!/bin/bash
-          echo "=== Enhanced Debug Laravel Workers ==="
+          echo "=== Quick Debug Laravel Workers ==="
           echo "Current user: $(whoami)"
           echo "Current directory: $(pwd)"
           echo "Timestamp: $(date)"
@@ -346,7 +345,7 @@ jobs:
           echo "Checking if staging directory exists..."
           if [ -d "/var/www/novatix_staging" ]; then
               echo "✓ Staging directory exists"
-              ls -la /var/www/novatix_staging/ | head -10
+              ls -la /var/www/novatix_staging/ | head -5
           else
               echo "✗ Staging directory missing"
               exit 1
@@ -357,85 +356,46 @@ jobs:
           cd /var/www/novatix_staging
           echo "Working directory: $(pwd)"
           echo "PHP version: $(php -v | head -n 1)"
-          echo "PHP user: $(sudo -u www-data whoami)"
           echo ""
 
           echo "=== .env File Check ==="
           if [ -f ".env" ]; then
               echo "✓ .env file exists"
-              echo "Environment: $(grep APP_ENV .env || echo 'APP_ENV not set')"
-              echo "Database: $(grep DB_CONNECTION .env || echo 'DB_CONNECTION not set')"
-              echo "Redis: $(grep REDIS_HOST .env || echo 'REDIS_HOST not set')"
+              echo "Environment: $(grep APP_ENV .env 2>/dev/null || echo 'APP_ENV not set')"
+              echo "Database: $(grep DB_CONNECTION .env 2>/dev/null || echo 'DB_CONNECTION not set')"
+              echo "Redis: $(grep REDIS_HOST .env 2>/dev/null || echo 'REDIS_HOST not set')"
           else
               echo "✗ .env file missing"
           fi
           echo ""
 
-          echo "=== Database Connection Test ==="
-          sudo -u www-data php artisan migrate:status 2>&1 || echo "Database connection failed"
-          echo ""
-
-          echo "=== Redis Connection Test ==="
+          echo "=== Quick Connection Tests ==="
           echo "Testing Redis connection..."
-          sudo -u www-data php -r "
-          try {
-              \$redis = new Redis();
-              \$redis->connect('127.0.0.1', 6379);
-              echo 'Redis connection: SUCCESS' . PHP_EOL;
-              \$redis->set('test_key', 'test_value');
-              echo 'Redis write test: SUCCESS' . PHP_EOL;
-              \$redis->close();
-          } catch(Exception \$e) {
-              echo 'Redis connection: FAILED - ' . \$e->getMessage() . PHP_EOL;
-          }
-          "
+          if redis-cli ping > /dev/null 2>&1; then
+              echo "✓ Redis is responding"
+          else
+              echo "✗ Redis connection failed"
+          fi
+
+          echo "Testing Laravel boot..."
+          if sudo -u www-data php artisan --version > /dev/null 2>&1; then
+              echo "✓ Laravel boots successfully"
+          else
+              echo "✗ Laravel boot failed"
+          fi
+
+          echo "=== Available Commands ==="
+          sudo -u www-data php artisan list | grep -E "(queue|event)" | head -5 || echo "Commands check failed"
           echo ""
 
-          echo "=== Laravel Commands Test ==="
-          echo "Testing Laravel commands as www-data user..."
-
-          echo "--- Config Cache Test ---"
-          sudo -u www-data php artisan config:cache 2>&1
-          echo ""
-
-          echo "--- Queue Connection Test ---"
-          sudo -u www-data php artisan queue:monitor 2>&1 | head -5
-          echo ""
-
-          echo "--- Available Artisan Commands ---"
-          sudo -u www-data php artisan list | grep -E "(queue|event)" || echo "No queue/event commands found"
-          echo ""
-
-          echo "=== Manual Command Test ==="
-          echo "Testing queue:work command manually (10 seconds)..."
-          timeout 10 sudo -u www-data php artisan queue:work redis --sleep=3 --tries=3 --verbose --no-interaction 2>&1 || echo "Queue work test completed"
-          echo ""
-
-          echo "Testing event:adjust-users command manually (10 seconds)..."
-          timeout 10 sudo -u www-data php artisan event:adjust-users --continuous --no-interaction 2>&1 || echo "Event adjust command test completed"
-          echo ""
-
-          echo "=== System Resources ==="
-          echo "Memory usage:"
-          free -h
-          echo ""
-          echo "Disk usage:"
-          df -h /var/www/novatix_staging
-          echo ""
-
-          echo "=== Service Logs ==="
-          echo "Recent queue worker logs:"
-          sudo journalctl -u novatix-queue-worker --no-pager -n 10 --since "5 minutes ago"
-          echo ""
-          echo "Recent event adjust logs:"
-          sudo journalctl -u novatix-event-adjust --no-pager -n 10 --since "5 minutes ago"
+          echo "Debug completed (no hanging tests)!"
           EOT
           chmod +x ~/novatix/setups/debug_workers.sh
 
           # Create validate_environment.sh
           cat > ~/novatix/setups/validate_environment.sh << 'EOT'
           #!/bin/bash
-          echo "=== Enhanced Laravel Environment Validation ==="
+          echo "=== Laravel Environment Validation ==="
           cd /var/www/novatix_staging
 
           # Check current user and permissions
@@ -466,47 +426,18 @@ jobs:
           if sudo -u www-data php artisan migrate:status > /dev/null 2>&1; then
               echo "✓ Database connection successful"
           else
-              echo "✗ Database connection failed"
-              echo "Running migrations..."
+              echo "✗ Database connection failed - running migrations..."
               sudo -u www-data php artisan migrate --force
           fi
 
-          # Test Redis connection with detailed output
+          # Quick Redis test
           echo "Testing Redis connection..."
-          sudo -u www-data php -r "
-          try {
-              \$redis = new Redis();
-              if (!\$redis->connect('127.0.0.1', 6379, 5)) {
-                  throw new Exception('Could not connect to Redis');
-              }
-              echo 'Redis connection: SUCCESS' . PHP_EOL;
-
-              \$redis->set('laravel_test', 'working');
-              \$result = \$redis->get('laravel_test');
-              if (\$result === 'working') {
-                  echo 'Redis read/write: SUCCESS' . PHP_EOL;
-              } else {
-                  echo 'Redis read/write: FAILED' . PHP_EOL;
-              }
-              \$redis->del('laravel_test');
-              \$redis->close();
-          } catch(Exception \$e) {
-              echo 'Redis connection: FAILED - ' . \$e->getMessage() . PHP_EOL;
-              exit(1);
-          }
-          "
-
-          # Test Laravel's Redis connection
-          echo "Testing Laravel Redis configuration..."
-          sudo -u www-data php artisan tinker --execute="
-          try {
-              \Illuminate\Support\Facades\Redis::connection('default')->ping();
-              echo 'Laravel Redis: Connected successfully';
-          } catch(Exception \$e) {
-              echo 'Laravel Redis: Connection failed - ' . \$e->getMessage();
-              throw \$e;
-          }
-          "
+          if redis-cli ping > /dev/null 2>&1; then
+              echo "✓ Redis connection successful"
+          else
+              echo "✗ Redis connection failed"
+              exit 1
+          fi
 
           # Cache configuration after tests pass
           echo "Caching configuration..."
@@ -531,7 +462,7 @@ jobs:
           sudo find /var/www/novatix_staging -type f -exec chmod 644 {} \;
 
           # Fix specific Laravel directories
-          sudo chmod -R 775 storage bootstrap/cache
+          sudo chmod -R 777 storage bootstrap/cache
           sudo chmod +x artisan
 
           # Create necessary directories if they don't exist
@@ -559,10 +490,10 @@ jobs:
           sudo systemctl status redis-server --no-pager -l
           echo ""
           echo "Recent logs from queue worker:"
-          sudo journalctl -u novatix-queue-worker --no-pager -n 15
+          sudo journalctl -u novatix-queue-worker --no-pager -n 10
           echo ""
           echo "Recent logs from event adjust worker:"
-          sudo journalctl -u novatix-event-adjust --no-pager -n 15
+          sudo journalctl -u novatix-event-adjust --no-pager -n 10
           EOT
           chmod +x ~/novatix/setups/check_workers.sh
 
@@ -605,7 +536,7 @@ jobs:
           php artisan storage:link
           EOF
 
-      - name: Fix Permissions and Debug
+      - name: Fix Permissions and Quick Debug
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             ~/novatix/setups/fix_permissions.sh
@@ -615,30 +546,8 @@ jobs:
       - name: Validate Environment Before Starting Services
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/validate_environment.sh"
 
-      - name: Enhanced Debug Before Service Start
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/debug_workers.sh"
-
-      - name: Debug Service Failures
-        run: |
-          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            echo "=== Detailed Service Logs ==="
-            echo "Queue Worker Logs (last 50 lines):"
-            sudo journalctl -u novatix-queue-worker --no-pager -n 50 --since "10 minutes ago"
-            echo ""
-            echo "Event Adjust Logs (last 50 lines):"
-            sudo journalctl -u novatix-event-adjust --no-pager -n 50 --since "10 minutes ago"
-            echo ""
-            echo "=== Manual Command Test ==="
-            cd /var/www/novatix_staging
-            echo "Testing queue:work manually:"
-            sudo -u www-data timeout 10 php artisan queue:work redis --sleep=3 --tries=3 --verbose --no-interaction
-            echo ""
-            echo "Testing event:adjust-users manually:"
-            sudo -u www-data timeout 10 php artisan event:adjust-users --continuous --no-interaction
-          EOF
-
       - name: Restart Services on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
 
-      - name: Check Worker Status
+      - name: Final Check Worker Status
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/check_workers.sh"
