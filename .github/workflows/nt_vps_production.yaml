@@ -102,19 +102,19 @@ jobs:
 
           cd /var/www/novatix
 
-          # Run composer, npm and artisan
-          composer install --no-interaction --prefer-dist --optimize-autoloader
-          npm install
-          npm run build
-          php artisan migrate --force
-          php artisan storage:link
-
           echo "Fixing Laravel directory permissions..."
           mkdir -p storage/framework/{cache,sessions,views}
           mkdir -p storage/logs bootstrap/cache
 
           sudo chmod -R 775 storage bootstrap/cache
           sudo chown -R www-data:www-data storage bootstrap/cache
+
+          # Run composer, npm and artisan
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+          npm install
+          npm run build
+          php artisan migrate --force
+          php artisan storage:link
 
           php artisan config:clear
           php artisan config:cache
