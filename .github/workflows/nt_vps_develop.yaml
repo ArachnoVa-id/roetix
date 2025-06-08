@@ -127,7 +127,15 @@ jobs:
 
           echo "Installing required PHP extensions and PHP-FPM..."
           sudo apt install -y php8.3 php8.3-cli php8.3-fpm php8.3-sqlite3 unzip curl git \
-          php8.3-dom php8.3-xml php8.3-intl php8.3-curl php8.3-zip php8.3-gd php8.3-mbstring
+          php8.3-dom php8.3-xml php8.3-intl php8.3-curl php8.3-zip php8.3-gd php8.3-mbstring \
+          php8.3-redis
+
+          echo "Installing Redis server..."
+          sudo apt install -y redis-server
+
+          echo "Configuring Redis..."
+          sudo systemctl enable redis-server
+          sudo systemctl start redis-server
 
           echo "Installing Composer..."
           php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
@@ -161,6 +169,86 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
 
+          # setup_worker_services.sh
+          echo "Creating setup_worker_services.sh..."
+          cat > ~/novatix/setups/setup_worker_services.sh << 'EOT'
+          #!/bin/bash
+          set -e
+
+          echo "Setting up Laravel worker services..."
+
+          # Create systemd service for queue worker
+          sudo tee /etc/systemd/system/novatix-queue-worker.service > /dev/null << 'EOTS'
+          [Unit]
+          Description=NovaTix Laravel Queue Worker
+          After=network.target redis.service
+
+          [Service]
+          Type=simple
+          User=www-data
+          Group=www-data
+          Restart=always
+          RestartSec=5
+          StartLimitInterval=60s
+          StartLimitBurst=3
+          WorkingDirectory=/var/www/novatix_staging
+          ExecStart=/usr/bin/php artisan queue:work redis --sleep=1 --tries=3 --timeout=60 --memory=512
+          StandardOutput=journal
+          StandardError=journal
+          SyslogIdentifier=novatix-queue
+
+          [Install]
+          WantedBy=multi-user.target
+          EOTS
+
+          # Create systemd service for event adjustment worker
+          sudo tee /etc/systemd/system/novatix-event-adjust.service > /dev/null << 'EOTS'
+          [Unit]
+          Description=NovaTix Event Adjust Users Worker
+          After=network.target redis.service
+
+          [Service]
+          Type=simple
+          User=www-data
+          Group=www-data
+          Restart=always
+          RestartSec=10
+          StartLimitInterval=60s
+          StartLimitBurst=3
+          WorkingDirectory=/var/www/novatix_staging
+          ExecStart=/usr/bin/php artisan event:adjust-users --continuous
+          StandardOutput=journal
+          StandardError=journal
+          SyslogIdentifier=novatix-event-adjust
+
+          [Install]
+          WantedBy=multi-user.target
+          EOTS
+
+          # Create log rotation config
+          sudo tee /etc/logrotate.d/novatix-workers > /dev/null << 'EOTS'
+          /var/www/novatix_staging/storage/logs/*.log {
+              daily
+              missingok
+              rotate 14
+              compress
+              notifempty
+              create 0644 www-data www-data
+              postrotate
+                  systemctl reload novatix-queue-worker
+                  systemctl reload novatix-event-adjust
+              endscript
+          }
+          EOTS
+
+          echo "Enabling and starting worker services..."
+          sudo systemctl daemon-reload
+          sudo systemctl enable novatix-queue-worker
+          sudo systemctl enable novatix-event-adjust
+
+          EOT
+          chmod +x ~/novatix/setups/setup_worker_services.sh
+
           # deploy_laravel.sh
           echo "Creating deploy_laravel.sh..."
           cat > ~/novatix/setups/deploy_laravel.sh << 'EOT'
@@ -176,9 +264,65 @@ jobs:
           echo "Creating restart_services.sh..."
           cat > ~/novatix/setups/restart_services.sh << 'EOT'
           #!/bin/bash
+          echo "Restarting PHP-FPM..."
           sudo systemctl restart php8.3-fpm
+
+          echo "Restarting Redis..."
+          sudo systemctl restart redis-server
+
+          echo "Restarting Laravel workers..."
+          sudo systemctl restart novatix-queue-worker
+          sudo systemctl restart novatix-event-adjust
+
+          echo "Checking service status..."
+          sudo systemctl status redis-server --no-pager -l
+          sudo systemctl status novatix-queue-worker --no-pager -l
+          sudo systemctl status novatix-event-adjust --no-pager -l
           EOT
           chmod +x ~/novatix/setups/restart_services.sh
+
+          # stop_workers.sh
+          echo "Creating stop_workers.sh..."
+          cat > ~/novatix/setups/stop_workers.sh << 'EOT'
+          #!/bin/bash
+          echo "Stopping Laravel workers..."
+          sudo systemctl stop novatix-queue-worker
+          sudo systemctl stop novatix-event-adjust
+          EOT
+          chmod +x ~/novatix/setups/stop_workers.sh
+
+          # start_workers.sh
+          echo "Creating start_workers.sh..."
+          cat > ~/novatix/setups/start_workers.sh << 'EOT'
+          #!/bin/bash
+          echo "Starting Laravel workers..."
+          sudo systemctl start novatix-queue-worker
+          sudo systemctl start novatix-event-adjust
+          EOT
+          chmod +x ~/novatix/setups/start_workers.sh
+
+          # check_workers.sh
+          echo "Creating check_workers.sh..."
+          cat > ~/novatix/setups/check_workers.sh << 'EOT'
+          #!/bin/bash
+          echo "Checking Laravel workers status..."
+          echo "=================================="
+          echo "Queue Worker Status:"
+          sudo systemctl status novatix-queue-worker --no-pager -l
+          echo ""
+          echo "Event Adjust Worker Status:"
+          sudo systemctl status novatix-event-adjust --no-pager -l
+          echo ""
+          echo "Redis Status:"
+          sudo systemctl status redis-server --no-pager -l
+          echo ""
+          echo "Recent logs from queue worker:"
+          sudo journalctl -u novatix-queue-worker --no-pager -n 10
+          echo ""
+          echo "Recent logs from event adjust worker:"
+          sudo journalctl -u novatix-event-adjust --no-pager -n 10
+          EOT
+          chmod +x ~/novatix/setups/check_workers.sh
 
           EOF
 
@@ -187,6 +331,9 @@ jobs:
 
       - name: Install Dependencies on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies.sh"
+
+      - name: Setup Worker Services
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/setup_worker_services.sh"
 
       - name: Restart PHP-FPM and reload Nginx
         run: |
@@ -197,9 +344,6 @@ jobs:
 
       - name: Deploy Laravel on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/deploy_laravel.sh"
-
-      - name: Restart Services on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
 
       - name: Link Staging Directory
         run: |
@@ -218,3 +362,9 @@ jobs:
           php artisan migrate
           php artisan storage:link
           EOF
+
+      - name: Restart Services on VPS
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
+
+      - name: Check Worker Status
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/check_workers.sh"
