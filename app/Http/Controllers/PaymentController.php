@@ -104,7 +104,7 @@ class PaymentController extends Controller
             }
 
             // If the user_id_no is less than 10 characters, return error
-            if (isset($request->extra_data['user_id_no']) && strlen($request->extra_data['user_id_no']) < 16) {
+            if (isset($request->extra_data['user_id_no']) && strlen($request->extra_data['user_id_no']) < 10) {
                 throw new \Exception('Your ID Number must be at least 10 characters long');
             }
 
@@ -162,7 +162,7 @@ class PaymentController extends Controller
 
             if ($tickets->count() !== $seats->count()) {
                 DB::rollBack();
-                throw new \Exception('Failed to lock seats');
+                throw new \Exception('These seats are already taken, please choose another seat');
             }
 
             $itemDetails = [];
