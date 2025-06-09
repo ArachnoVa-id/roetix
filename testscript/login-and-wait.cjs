@@ -3,10 +3,10 @@ const { chromium } = require('playwright');
 const PASSWORD = 'password123';
 const userCount = parseInt(process.argv[2], 10) || 20;
 const DOMAIN = process.argv[3] || 'http://test.dev-staging-novatix.id';
-const DELAY = parseInt(process.argv[4], 10) || 20000;
+const startUser = parseInt(process.argv[4], 10) || 1;
 
 const USERS = Array.from({ length: userCount }, (_, i) => ({
-    email: `testuser${i + 1}@example.com`,
+    email: `testuser${startUser + i}@example.com`,
     password: PASSWORD,
 }));
 
@@ -171,6 +171,8 @@ const loginAndMonitor = async (user, label) => {
     const browser = await chromium.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'], // For better stability
+        // Uncomment the line below to use system Chrome instead of Playwright's Chromium
+        // executablePath: '/usr/bin/google-chrome', // Adjust path as needed
     });
     const context = await browser.newContext({
         // Set reasonable timeouts
@@ -206,29 +208,61 @@ const loginAndMonitor = async (user, label) => {
         );
 
         // Update session status
-        sessions[sessionIndex].status = 'logged_in';
+        if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+            sessions[sessionIndex].status = 'logged_in';
 
-        // Wait for page to stabilize
-        await page.waitForTimeout(DELAY);
+        // Wait for either queue or landing page to appear (no fixed timeout)
+        console.log(
+            `⏳ [${label}] Waiting for page to load (queue or landing page)...`,
+        );
 
-        // Determine current page state
-        const isQueueVisible = await page.locator('#queue-wrapper').isVisible();
-        const isLandingVisible = await page
-            .locator('#landing-wrapper')
-            .isVisible();
+        let isQueueVisible = false;
+        let isLandingVisible = false;
+
+        try {
+            // Wait for either queue wrapper or landing wrapper to appear
+            // This will wait indefinitely until one of them shows up
+            await Promise.race([
+                page.locator('#queue-wrapper').waitFor({ timeout: 0 }), // No timeout
+                page.locator('#landing-wrapper').waitFor({ timeout: 0 }), // No timeout
+            ]);
+
+            console.log(
+                `✅ [${label}] Page content loaded, checking current state...`,
+            );
+
+            // Now check which one is actually visible
+            isQueueVisible = await page.locator('#queue-wrapper').isVisible();
+            isLandingVisible = await page
+                .locator('#landing-wrapper')
+                .isVisible();
+        } catch (error) {
+            console.log(
+                `⚠️ [${label}] Error waiting for page elements: ${error.message}`,
+            );
+
+            // Fallback: check current visibility anyway
+            isQueueVisible = await page.locator('#queue-wrapper').isVisible();
+            isLandingVisible = await page
+                .locator('#landing-wrapper')
+                .isVisible();
+        }
 
         if (isLandingVisible) {
             console.log(
                 `🎯 [${label}] Directly landed on main page - no queue!`,
             );
-            sessions[sessionIndex].status = 'active';
+            if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+                sessions[sessionIndex].status = 'active';
 
             // Monitor session
             const sessionResult = await monitorSession(page, label);
-            sessions[sessionIndex].status = sessionResult;
+            if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+                sessions[sessionIndex].status = sessionResult;
         } else if (isQueueVisible) {
             console.log(`🪑 [${label}] Entered queue - starting monitoring...`);
-            sessions[sessionIndex].status = 'in_queue';
+            if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+                sessions[sessionIndex].status = 'in_queue';
 
             // Extract initial queue information
             await extractQueueInfo(page, label);
@@ -237,40 +271,157 @@ const loginAndMonitor = async (user, label) => {
             const queueResult = await monitorQueue(page, label);
 
             if (queueResult === 'promoted') {
-                sessions[sessionIndex].status = 'active';
+                if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+                    sessions[sessionIndex].status = 'active';
                 console.log(
                     `🎉 [${label}] Successfully promoted! Starting session monitoring...`,
                 );
 
                 // Monitor session after promotion
                 const sessionResult = await monitorSession(page, label);
-                sessions[sessionIndex].status = sessionResult;
+                if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+                    sessions[sessionIndex].status = sessionResult;
             } else if (queueResult === 'expired') {
-                sessions[sessionIndex].status = 'expired';
+                if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+                    sessions[sessionIndex].status = 'expired';
                 console.log(`❌ [${label}] Session expired while in queue`);
             } else {
-                sessions[sessionIndex].status = 'timeout';
+                if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+                    sessions[sessionIndex].status = 'timeout';
                 console.log(`⏱️ [${label}] Queue monitoring timed out`);
             }
         } else {
             console.log(
-                `❓ [${label}] Unknown post-login state. URL: ${page.url()}`,
+                `❓ [${label}] Neither queue nor landing page detected initially. URL: ${page.url()}`,
             );
-            sessions[sessionIndex].status = 'unknown';
 
-            // Try to extract any available information
-            const pageContent = await page.content();
-            if (pageContent.includes('queue') || pageContent.includes('wait')) {
+            // Wait a bit more with a reasonable timeout and try again
+            console.log(
+                `🔍 [${label}] Waiting up to 30 seconds for content to appear...`,
+            );
+
+            try {
+                await Promise.race([
+                    page.locator('#queue-wrapper').waitFor({ timeout: 30000 }),
+                    page
+                        .locator('#landing-wrapper')
+                        .waitFor({ timeout: 30000 }),
+                ]);
+
+                // Re-check after waiting
+                const isQueueVisibleRetry = await page
+                    .locator('#queue-wrapper')
+                    .isVisible();
+                const isLandingVisibleRetry = await page
+                    .locator('#landing-wrapper')
+                    .isVisible();
+
+                if (isLandingVisibleRetry) {
+                    console.log(
+                        `🎯 [${label}] Landing page appeared after additional wait!`,
+                    );
+                    if (
+                        sessions[sessionIndex] &&
+                        sessions[sessionIndex]?.status
+                    )
+                        sessions[sessionIndex].status = 'active';
+                    const sessionResult = await monitorSession(page, label);
+                    if (
+                        sessions[sessionIndex] &&
+                        sessions[sessionIndex]?.status
+                    )
+                        sessions[sessionIndex].status = sessionResult;
+                } else if (isQueueVisibleRetry) {
+                    console.log(
+                        `🪑 [${label}] Queue page appeared after additional wait!`,
+                    );
+                    if (
+                        sessions[sessionIndex] &&
+                        sessions[sessionIndex]?.status
+                    )
+                        sessions[sessionIndex].status = 'in_queue';
+                    await extractQueueInfo(page, label);
+                    const queueResult = await monitorQueue(page, label);
+
+                    if (queueResult === 'promoted') {
+                        if (
+                            sessions[sessionIndex] &&
+                            sessions[sessionIndex]?.status
+                        )
+                            sessions[sessionIndex].status = 'active';
+                        console.log(
+                            `🎉 [${label}] Successfully promoted! Starting session monitoring...`,
+                        );
+                        const sessionResult = await monitorSession(page, label);
+                        if (
+                            sessions[sessionIndex] &&
+                            sessions[sessionIndex]?.status
+                        )
+                            sessions[sessionIndex].status = sessionResult;
+                    } else if (queueResult === 'expired') {
+                        if (
+                            sessions[sessionIndex] &&
+                            sessions[sessionIndex]?.status
+                        )
+                            sessions[sessionIndex].status = 'expired';
+                        console.log(
+                            `❌ [${label}] Session expired while in queue`,
+                        );
+                    } else {
+                        if (
+                            sessions[sessionIndex] &&
+                            sessions[sessionIndex]?.status
+                        )
+                            sessions[sessionIndex].status = 'timeout';
+                        console.log(`⏱️ [${label}] Queue monitoring timed out`);
+                    }
+                } else {
+                    throw new Error('Still no valid page state after retry');
+                }
+            } catch (retryError) {
                 console.log(
-                    `🔍 [${label}] Page might be loading queue content...`,
+                    `❌ [${label}] Still unknown state after 30s wait: ${retryError.message}`,
                 );
-                await page.waitForTimeout(5000);
-                await extractQueueInfo(page, label);
+                if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+                    sessions[sessionIndex].status = 'unknown';
+
+                // Debug information
+                const pageContent = await page.content();
+                console.log(`🔍 [${label}] Page content analysis:`);
+
+                if (
+                    pageContent.includes('queue') ||
+                    pageContent.includes('Queue')
+                ) {
+                    console.log(
+                        `🪑 [${label}] Page contains queue-related content`,
+                    );
+                } else if (
+                    pageContent.includes('landing') ||
+                    pageContent.includes('dashboard')
+                ) {
+                    console.log(
+                        `🎯 [${label}] Page contains landing/dashboard content`,
+                    );
+                } else if (
+                    pageContent.includes('login') ||
+                    pageContent.includes('Login')
+                ) {
+                    console.log(
+                        `🔁 [${label}] Still on login page - credentials might be wrong`,
+                    );
+                } else {
+                    console.log(`❓ [${label}] Unknown page content`);
+                }
+
+                console.log(`🌐 [${label}] Current URL: ${page.url()}`);
+                console.log(`📄 [${label}] Page title: ${await page.title()}`);
             }
         }
     } catch (err) {
         console.error(`❗ [${label}] Error: ${err.message}`);
-        sessions[sessionIndex].status = 'error';
+        if (sessions[sessionIndex] && sessions[sessionIndex]?.status)
+            sessions[sessionIndex].status = 'error';
     } finally {
         console.log(
             `🚪 [${label}] Closing browser. Final status: ${sessions[sessionIndex]?.status}`,
@@ -381,10 +532,13 @@ process.stdin.on('data', async (key) => {
 (async () => {
     console.log('🚀 Starting enhanced queue simulation...');
     console.log(`📋 Configuration:`);
-    console.log(`   - Users: ${userCount}`);
+    console.log(
+        `   - Users: ${userCount} (${startUser} to ${startUser + userCount - 1})`,
+    );
     console.log(`   - Domain: ${DOMAIN}`);
-    console.log(`   - Delay: ${DELAY}ms`);
-    console.log(`   - Users: ${USERS.map((u) => u.email).join(', ')}`);
+    console.log(
+        `   - User range: testuser${startUser}@example.com to testuser${startUser + userCount - 1}@example.com`,
+    );
     console.log('\n🎮 Controls:');
     console.log('   - Press "q" to gracefully logout all users');
     console.log('   - Press "s" to show session status');
@@ -393,7 +547,9 @@ process.stdin.on('data', async (key) => {
 
     try {
         await Promise.all(
-            USERS.map((user, i) => loginAndMonitor(user, `User ${i + 1}`)),
+            USERS.map((user, i) =>
+                loginAndMonitor(user, `User ${startUser + i}`),
+            ),
         );
 
         console.log('\n🎯 All user sessions completed');

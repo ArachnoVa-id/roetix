@@ -1205,12 +1205,14 @@ export default function Landing({
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
                                     htmlFor="user_id_no"
-                                    value="ID Number (NIK/KTP/SIM)"
+                                    value="ID Number (NIK / SIM / Kartu Pelajar / etc)"
                                     style={{
                                         color: props.text_primary_color,
                                     }}
                                 />
                                 <TextInput
+                                    type="number"
+                                    maxLength={16}
                                     id="user_id_no"
                                     className="mt-1 block w-full"
                                     value={data.user_id_no}
