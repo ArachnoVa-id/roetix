@@ -102,7 +102,7 @@ const ScanTicket: React.FC = () => {
             setNotification({ type: null, message: '' });
 
             try {
-                const url = route('events.scan.store', { client });
+                const url = route('client.scan.store', { client });
                 const response = await axios.post<
                     ApiSuccessResponse<ScannedTicket>
                 >(url, {
@@ -178,23 +178,27 @@ const ScanTicket: React.FC = () => {
             scanIntervalRef.current = null;
         }
 
+        // Clear video element SEBELUM stop stream
+        if (videoRef.current) {
+            videoRef.current.pause();
+            videoRef.current.srcObject = null;
+            // TAMBAHKAN INI UNTUK FORCE CLEANUP
+            videoRef.current.load();
+        }
+
         // Stop camera stream
         if (streamRef.current) {
             streamRef.current.getTracks().forEach((track) => {
+                console.log('Stopping track:', track.kind, track.readyState);
                 track.stop();
             });
             streamRef.current = null;
         }
 
-        // Clear video element
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-            videoRef.current.pause();
-        }
-
         setCameraError('');
         lastScannedCodeRef.current = '';
         isCameraStartingRef.current = false;
+        await new Promise((resolve) => setTimeout(resolve, 300));
     }, []);
 
     const startCamera = useCallback(async () => {
@@ -212,7 +216,7 @@ const ScanTicket: React.FC = () => {
             await stopCamera();
 
             // Wait a bit to ensure cleanup
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 500));
 
             if (!navigator.mediaDevices?.getUserMedia) {
                 throw new Error('Camera not supported in this browser');
@@ -233,13 +237,14 @@ const ScanTicket: React.FC = () => {
 
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+                videoRef.current.load();
 
                 // Wait for video to be ready
                 await new Promise<void>((resolve, reject) => {
                     const video = videoRef.current!;
                     const timeout = setTimeout(
                         () => reject(new Error('Video load timeout')),
-                        5000,
+                        10000,
                     );
 
                     const onLoadedMetadata = () => {
@@ -250,8 +255,18 @@ const ScanTicket: React.FC = () => {
                         );
                         resolve();
                     };
+                    const onCanPlay = () => {
+                        clearTimeout(timeout);
+                        video.removeEventListener('canplay', onCanPlay);
+                        video.removeEventListener(
+                            'loadedmetadata',
+                            onLoadedMetadata,
+                        );
+                        resolve();
+                    };
 
                     video.addEventListener('loadedmetadata', onLoadedMetadata);
+                    video.addEventListener('canplay', onCanPlay);
                 });
 
                 await videoRef.current.play();
@@ -355,7 +370,7 @@ const ScanTicket: React.FC = () => {
 
         setIsFetchingHistory(true);
         try {
-            const url = route('events.scanned.history', {
+            const url = route('client.scanned.history', {
                 client: client,
                 event_slug: event.slug,
             });
