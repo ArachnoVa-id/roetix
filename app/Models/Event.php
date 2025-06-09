@@ -122,13 +122,6 @@ class Event extends Model
 
         $pdo = self::getPdo($event);
 
-        $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
-        $stmt->execute([$user->id]);
-
-        if ($stmt->fetch(PDO::FETCH_ASSOC)) {
-            throw new Exception('User already queued or logged in.');
-        }
-
         $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
         $stmt->execute([$user->id]);
 
@@ -210,6 +203,8 @@ class Event extends Model
             $stmt->execute([$user->id]);
 
             $pdo->commit();
+
+            Auth::logout();
         } catch (Throwable $e) {
             $pdo->rollBack();
             throw $e;
