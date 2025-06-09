@@ -50,7 +50,9 @@ jobs:
           php artisan key:generate
 
       - name: Install Node.js dependencies
-        run: npm ci
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
 
       - name: Build frontend assets with Vite
         run: npm run build
@@ -113,7 +115,7 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/update_repo.sh
 
-          # FIXED: install_dependencies.sh - Removed --production flag and added proper TypeScript setup
+          # FIXED: install_dependencies.sh - Use npm install instead of npm ci
           echo "Creating install_dependencies.sh..."
           cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
           #!/bin/bash
