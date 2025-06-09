@@ -25,7 +25,7 @@ class UpdateExpiredOrders extends Command
 
             foreach ($expiredOrders as $order) {
                 PaymentController::updateStatus(
-                    $order->id,
+                    $order->order_code,
                     OrderStatus::CANCELLED->value,
                     []
                 );

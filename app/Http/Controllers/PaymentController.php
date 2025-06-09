@@ -100,7 +100,10 @@ class PaymentController extends Controller
                 ->first();
 
             if ($existingRecord) {
-                throw new \Exception('Your ID Number is already used, please use another number');
+                // if exisiting record has acccessor in the data, then reject because it is a valid previous transaction
+                if (isset($existingRecord->data['accessor']) && !empty($existingRecord->data['accessor'])) {
+                    throw new \Exception('Your ID Number is already used, please use another number');
+                }
             }
 
             // If the user_id_no is less than 10 characters, return error
