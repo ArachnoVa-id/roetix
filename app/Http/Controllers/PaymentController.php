@@ -103,6 +103,11 @@ class PaymentController extends Controller
                 throw new \Exception('Your ID Number is already used, please use another number');
             }
 
+            // If the user_id_no is less than 10 characters, return error
+            if (isset($request->extra_data['user_id_no']) && strlen($request->extra_data['user_id_no']) < 16) {
+                throw new \Exception('Your ID Number must be at least 10 characters long');
+            }
+
             $noSQLRecord = DevNoSQLData::create([
                 'collection' => 'roetixUserData',
                 'data' => $request->extra_data,
@@ -294,7 +299,7 @@ class PaymentController extends Controller
                 }
             } else {
                 // Handle free order, auto complete
-                $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
+                PaymentController::updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
                 $accessor = 'free';
             }
 
@@ -473,7 +478,7 @@ class PaymentController extends Controller
             'team_id' => $event->team_id,
             'total_price' => $totalWithTax,
             'status' => OrderStatus::PENDING,
-            'expired_at' => now()->addMinutes(10),
+            'expired_at' => now()->addHour(1),
             'payment_gateway' => $variables->payment_gateway,
         ];
 
@@ -498,6 +503,11 @@ class PaymentController extends Controller
         Event $event
     ) {
         $variables = $event->eventVariables;
+
+        $order = Order::where('order_code', $orderCode)->first();
+        if (! $order) {
+            throw new \Exception('Order not found');
+        }
 
         // Select endpoint
         $tripay_baseUrl = $variables->tripay_is_production ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
@@ -581,6 +591,21 @@ class PaymentController extends Controller
             throw new \Exception("Tripay charge failed: " . $response->json()['message']);
         }
 
+        // Update order expires at to follow timeout
+        $timeout = Carbon::createFromTimestamp($timeout)->toDateTimeString();
+
+        // Min timeout 12 min, max 30 min
+        if (Carbon::now()->diffInMinutes($timeout) < 12) {
+            $timeout = Carbon::now()->addMinutes(12)->toDateTimeString();
+        } elseif (Carbon::now()->diffInMinutes($timeout) > 30) {
+            $timeout = Carbon::now()->addMinutes(30)->toDateTimeString();
+        }
+
+        // Update order with timeout
+        $order->update([
+            'expired_at' => $timeout,
+        ]);
+
         $responseData = $response->json()['data'];
         // Store transaction
         DevNoSQLData::create([
@@ -638,17 +663,17 @@ class PaymentController extends Controller
             switch ($data['transaction_status']) {
                 case 'capture':
                 case 'settlement':
-                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
 
                 case 'pending':
-                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::PENDING->value, $data);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
-                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
                     break;
             }
 
@@ -684,11 +709,11 @@ class PaymentController extends Controller
             // Process the callback based on transaction status
             switch ($data['payment_status_code']) {
                 case '2':
-                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
 
                 case '1':
-                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::PENDING->value, $data);
                     break;
 
                 case '3':
@@ -696,7 +721,7 @@ class PaymentController extends Controller
                 case '5':
                 case '7':
                 case '8':
-                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
                     break;
                 default:
                     throw new \Exception('Invalid status');
@@ -739,17 +764,17 @@ class PaymentController extends Controller
             // Process the callback based on transaction status
             switch ($data['status']) {
                 case 'PAID':
-                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
 
                 case 'UNPAID':
-                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::PENDING->value, $data);
                     break;
 
                 case 'EXPIRED':
                 case 'REFUND':
                 case 'FAILED':
-                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
                     break;
                 default:
                     throw new \Exception('Invalid status');
@@ -877,7 +902,7 @@ class PaymentController extends Controller
     /**
      * Update order status in the database
      */
-    private function updateStatus($orderCode, $status, $transactionData)
+    public static function updateStatus($orderCode, $status, $transactionData)
     {
         try {
             DB::beginTransaction();
@@ -973,12 +998,12 @@ class PaymentController extends Controller
             }
 
             // Publish MQTT message about successful ticket update
-            $this->publishMqtt(data: [
+            PaymentController::publishMqtt(data: [
                 'event' => "update_ticket_status",
                 'data' => $updatedTickets
             ]);
         } catch (\Exception $e) {
-            $this->publishMqtt(data: [
+            PaymentController::publishMqtt(data: [
                 'message' => $e,
             ]);
             DB::rollBack();
@@ -1118,10 +1143,6 @@ class PaymentController extends Controller
                 }
             }
 
-            // $this->publishMqtt(data: [
-            //     'event' => "update_ticket_status",
-            //     'data' => $updatedTickets
-            // ]);
             DB::commit();
             return response()->json([
                 'success' => true,
@@ -1172,7 +1193,7 @@ class PaymentController extends Controller
         }
     }
 
-    public function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
+    public static function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
     {
         $server = 'broker.emqx.io';
         $port = 1883;
