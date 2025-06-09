@@ -42,6 +42,11 @@ class PaymentController extends Controller
     // disini nanti taro eventnya
     public function charge(Request $request, string $client = "")
     {
+        // Reject other than role user
+        if (! Auth::check() || ! User::find(Auth::id())->isUser()) {
+            return response()->json(['message' => 'Only users can buy tickets!'], 401);
+        }
+
         // Validate
         $request->validate([
             'email' => 'required|email',
@@ -94,16 +99,23 @@ class PaymentController extends Controller
                 ], 422);
             }
 
-            // Custom validation for uniqueness in JSON field
-            $existingRecord = DevNoSQLData::where('collection', 'roetixUserData')
+            // Check if user_id_no exists with a completed order
+            $hasActiveOrderWithSameId = DevNoSQLData::where('collection', 'roetixUserData')
                 ->whereJsonContains('data->user_id_no', $request->extra_data['user_id_no'] ?? '')
-                ->first();
+                ->whereRaw('JSON_EXTRACT(data, "$.accessor") IS NOT NULL')
+                ->whereExists(function ($query) {
+                    $query->select(DB::raw(1))
+                        ->from('orders')
+                        ->whereRaw('orders.accessor = JSON_UNQUOTE(JSON_EXTRACT(dev_nosql_data.data, "$.accessor"))')
+                        ->whereIn('orders.status', [
+                            OrderStatus::COMPLETED->value,
+                            OrderStatus::PENDING->value
+                        ]);
+                })
+                ->exists();
 
-            if ($existingRecord) {
-                // if exisiting record has acccessor in the data, then reject because it is a valid previous transaction
-                if (isset($existingRecord->data['accessor']) && !empty($existingRecord->data['accessor'])) {
-                    throw new \Exception('Your ID Number is already used, please use another number');
-                }
+            if ($hasActiveOrderWithSameId) {
+                throw new \Exception('Your ID Number is already used in an active order. Please use another number.');
             }
 
             // If the user_id_no is less than 10 characters, return error
@@ -196,7 +208,7 @@ class PaymentController extends Controller
             $team = Team::find($event->team_id);
             if (! $team) {
                 DB::rollBack();
-                throw new \Exception('Team not found');
+                throw new \Exception('Event team not found');
             }
 
             $orderCode = Order::keyGen(OrderType::AUTO, $event);
@@ -232,6 +244,9 @@ class PaymentController extends Controller
                     "id" => $ticket->id,
                     "status" => TicketStatus::IN_TRANSACTION,
                     "seat_id" => $ticket->seat_id,
+                    "seat_number" => $ticket->seat->seat_number,
+                    "ticket_category_id" => $ticket->ticket_category_id,
+                    "ticket_type" => $ticket->ticket_type,
                 ];
             }
 
@@ -317,6 +332,12 @@ class PaymentController extends Controller
 
             DB::commit();
 
+            // Publish MQTT message about successful ticket update
+            PaymentController::publishMqtt(data: [
+                'event' => "update_ticket_status",
+                'data' => $updatedTickets
+            ]);
+
             return response()->json([
                 'accessor' => $accessor,
                 'transaction_id' => $orderCode,
@@ -324,7 +345,7 @@ class PaymentController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'System failed to process payment! ' . $e->getMessage() . '.'], 500);
+            return response()->json(['message' => 'System failed: ' . $e->getMessage()], 500);
         } finally {
             optional($lock)->release();
         }
@@ -544,6 +565,7 @@ class PaymentController extends Controller
         $userQueue = Event::getUser($event, $customer); // Replace YourQueueClass with actual class name
 
         // Calculate timeout based on user's expected_kick time
+        $timeout = null;
         if ($userQueue && isset($userQueue['expected_kick'])) {
             $expectedKick = Carbon::parse($userQueue['expected_kick']);
             // format e.g. 2025-06-09 11:57:59
@@ -646,11 +668,6 @@ class PaymentController extends Controller
             'data' => $data,
         ]);
 
-        // // Only 172.68.164.43 (cloudflare midtrans)
-        // if ($request->ip() != '172.68.164.43') {
-        //     return response()->json(['error' => 'Forbidden request origin'], 403);
-        // }
-
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
@@ -752,11 +769,6 @@ class PaymentController extends Controller
             'collection' => 'tripay_callbacks',
             'data' => $data,
         ]);
-
-        // Only accept from 162.158.189.25 (cloudflare tripay)
-        // if ($request->ip() != '162.158.189.25') {
-        //     return response()->json(['error' => 'Forbidden request origin'], 403);
-        // }
 
         if (!isset($identifier, $data['status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
@@ -946,11 +958,19 @@ class PaymentController extends Controller
             foreach ($ticketOrders as $ticketOrder) {
                 $ticket = Ticket::find($ticketOrder->ticket_id);
                 if ($ticket) { // Ensure the ticket exists before updating
-                    $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
+                    // determine ticketStatus by all possible OrderStatus input
+                    $ticketStatus = match ($status) {
+                        OrderStatus::COMPLETED->value => TicketStatus::BOOKED->value,
+                        OrderStatus::PENDING->value => TicketStatus::IN_TRANSACTION->value,
+                        OrderStatus::CANCELLED->value => TicketStatus::AVAILABLE->value,
+                        default => $ticket->status,
+                    };
+
+                    $ticket->status = $ticketStatus;
                     $ticket->save();
                     $updatedTickets[] = [
                         "id" => $ticket->id,
-                        "status" => $status,
+                        "status" => $ticketStatus,
                         "seat_id" => $ticket->seat_id,
                         "seat_number" => $ticket->seat->seat_number,
                         "ticket_category_id" => $ticket->ticket_category_id,
@@ -1116,34 +1136,9 @@ class PaymentController extends Controller
                 throw new \Exception('No pending orders found');
             }
 
-            $updatedTickets = [];
-
             foreach ($orders as $order) {
-                // Update order status
-                $order->status = OrderStatus::CANCELLED;
-                $order->save();
-
-                // Update ticket statuses
-                $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
-                foreach ($ticketOrders as $ticketOrder) {
-                    $ticket = Ticket::find($ticketOrder->ticket_id);
-                    if ($ticket) {
-                        $ticket->status = TicketStatus::AVAILABLE;
-                        $ticket->save();
-
-                        $updatedTickets[] = [
-                            "id" => $ticket->id,
-                            "status" => $ticket->status,
-                            "seat_id" => $ticket->seat_id,
-                            "ticket_category_id" => $ticket->ticket_category_id,
-                            "ticket_type" => $ticket->ticket_type,
-                        ];
-                    }
-
-                    // Set current status to cancelled
-                    $ticketOrder->status = TicketOrderStatus::DEACTIVATED;
-                    $ticketOrder->save();
-                }
+                // Call updateStatus to cancel the order
+                PaymentController::updateStatus($order->order_code, OrderStatus::CANCELLED->value, []);
             }
 
             DB::commit();
