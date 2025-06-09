@@ -8,6 +8,8 @@ interface CustomButtonProps {
     type?: 'button' | 'submit' | 'reset';
     href?: string;
     disabled?: boolean;
+    hrefTarget?: string;
+    hrefRel?: string;
 }
 
 export default function CustomButton({
@@ -17,6 +19,7 @@ export default function CustomButton({
     type = 'button',
     href,
     disabled = false,
+    hrefTarget = '_self',
 }: CustomButtonProps) {
     const baseClass =
         'flex items-center justify-center space-x-2 text-white rounded-lg font-semibold transition duration-200';
@@ -32,8 +35,7 @@ export default function CustomButton({
             <a
                 href={href}
                 className={mergedClass}
-                target="_blank"
-                rel="noreferrer"
+                target={hrefTarget}
             >
                 {children}
             </a>
