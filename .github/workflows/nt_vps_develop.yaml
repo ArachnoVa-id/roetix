@@ -113,7 +113,7 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/update_repo.sh
 
-          # install_dependencies.sh - FIXED: Better error handling and Laravel setup
+          # FIXED: install_dependencies.sh - Removed --production flag and added proper TypeScript setup
           echo "Creating install_dependencies.sh..."
           cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
           #!/bin/bash
@@ -163,14 +163,44 @@ jobs:
               sudo apt install -y nodejs
           fi
 
-          echo "Installing npm dependencies and building assets..."
-          npm install --production
-          npm run build
+          echo "Cleaning npm cache and node_modules..."
+          rm -rf node_modules package-lock.json
+          npm cache clean --force
+
+          echo "Installing ALL npm dependencies (including devDependencies for build)..."
+          npm install --legacy-peer-deps
+
+          echo "Checking TypeScript and Vite availability..."
+          if [ -f "node_modules/.bin/tsc" ]; then
+              echo "✓ TypeScript compiler found"
+          else
+              echo "✗ TypeScript compiler not found, installing globally..."
+              sudo npm install -g typescript
+          fi
+
+          if [ -f "node_modules/.bin/vite" ]; then
+              echo "✓ Vite found"
+          else
+              echo "✗ Vite not found in node_modules"
+              ls -la node_modules/.bin/ | grep -E "(vite|tsc)" || echo "No build tools found"
+          fi
+
+          echo "Building assets with detailed output..."
+          npm run build 2>&1 | tee build.log || {
+              echo "Build failed! Here's the detailed log:"
+              cat build.log
+              echo "Package.json scripts:"
+              cat package.json | grep -A 10 -B 2 '"scripts"'
+              echo "Node modules bin directory:"
+              ls -la node_modules/.bin/ | head -20
+              exit 1
+          }
 
           echo "Final permission fix for web server..."
           sudo chown -R www-data:www-data storage bootstrap/cache
           sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
 
+          echo "Build completed successfully!"
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
 
@@ -230,7 +260,7 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/setup_worker_services.sh
 
-          # FIXED: setup_laravel_environment.sh - New script to properly setup Laravel
+          # setup_laravel_environment.sh
           echo "Creating setup_laravel_environment.sh..."
           cat > ~/novatix/setups/setup_laravel_environment.sh << 'EOT'
           #!/bin/bash
@@ -304,7 +334,7 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/setup_laravel_environment.sh
 
-          # FIXED: restart_services.sh - Better error handling with Laravel environment check
+          # restart_services.sh
           echo "Creating restart_services.sh..."
           cat > ~/novatix/setups/restart_services.sh << 'EOT'
           #!/bin/bash
@@ -395,6 +425,51 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/restart_services.sh
 
+          # NEW: TypeScript debugging script
+          echo "Creating debug_typescript.sh..."
+          cat > ~/novatix/setups/debug_typescript.sh << 'EOT'
+          #!/bin/bash
+          cd /var/www/novatix_staging
+          echo "=== TypeScript Build Debug ==="
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo ""
+
+          echo "=== Package.json scripts ==="
+          cat package.json | grep -A 10 -B 2 '"scripts"' || echo "No scripts found"
+          echo ""
+
+          echo "=== Available build tools ==="
+          ls -la node_modules/.bin/ | grep -E "(vite|tsc|tsx)" || echo "No build tools found"
+          echo ""
+
+          echo "=== TypeScript config ==="
+          if [ -f "tsconfig.json" ]; then
+              echo "✓ tsconfig.json exists"
+              head -20 tsconfig.json
+          else
+              echo "✗ tsconfig.json not found"
+          fi
+          echo ""
+
+          echo "=== Vite config ==="
+          if [ -f "vite.config.js" ] || [ -f "vite.config.ts" ]; then
+              echo "✓ Vite config exists"
+              ls -la vite.config.*
+          else
+              echo "✗ Vite config not found"
+          fi
+          echo ""
+
+          echo "=== Installed packages (key ones) ==="
+          npm list --depth=0 | grep -E "(react|inertia|headless|typescript|vite)" || echo "Key packages not found"
+          echo ""
+
+          echo "=== Build attempt with verbose output ==="
+          npm run build 2>&1 | head -50 || echo "Build failed"
+          EOT
+          chmod +x ~/novatix/setups/debug_typescript.sh
+
           # Utility scripts for debugging
           cat > ~/novatix/setups/debug_laravel.sh << 'EOT'
           #!/bin/bash
@@ -472,6 +547,9 @@ jobs:
 
       - name: Setup Laravel Environment
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/setup_laravel_environment.sh"
+
+      - name: Debug TypeScript Build Issues
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/debug_typescript.sh"
 
       - name: Debug Laravel Before Service Restart
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/debug_laravel.sh"
