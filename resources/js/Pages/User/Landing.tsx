@@ -69,26 +69,26 @@ export default function Landing({
     useEffect(() => {
         setDisabledByForm(
             selectedSeats.length > 0 &&
-                (!data.user_full_name ||
-                    !data.user_id_no ||
-                    !data.user_phone_num ||
-                    !data.user_email ||
-                    (selectedSeats.filter(
-                        (seat) => seat.ticket_type?.toLowerCase() === 'nobles',
-                    ).length > 0 &&
-                        (!data.user_address ||
-                            selectedSeats
-                                .filter(
-                                    (seat) =>
-                                        seat.ticket_type?.toLowerCase() ===
-                                        'nobles',
-                                )
-                                .some(
-                                    (seat, idx) =>
-                                        !data.user_sizes ||
-                                        !data.user_sizes[idx] ||
-                                        data.user_sizes[idx].trim() === '',
-                                )))),
+            (!data.user_full_name ||
+                !data.user_id_no ||
+                !data.user_phone_num ||
+                !data.user_email ||
+                (selectedSeats.filter(
+                    (seat) => seat.ticket_type?.toLowerCase() === 'nobles',
+                ).length > 0 &&
+                    (!data.user_address ||
+                        selectedSeats
+                            .filter(
+                                (seat) =>
+                                    seat.ticket_type?.toLowerCase() ===
+                                    'nobles',
+                            )
+                            .some(
+                                (seat, idx) =>
+                                    !data.user_sizes ||
+                                    !data.user_sizes[idx] ||
+                                    data.user_sizes[idx].trim() === '',
+                            )))),
         );
     }, [data, selectedSeats]);
 
@@ -363,8 +363,6 @@ export default function Landing({
                     (err) => {
                         if (err) {
                             console.error('MQTT Publish Error:', err);
-                        } else {
-                            // console.log('MQTT Message Sent:', message);
                         }
                     },
                 );
@@ -687,57 +685,56 @@ export default function Landing({
                                                         style={{
                                                             backgroundColor:
                                                                 event.status ===
-                                                                'active'
+                                                                    'active'
                                                                     ? 'rgba(34, 197, 94, 0.1)'
                                                                     : event.status ===
                                                                         'planned'
-                                                                      ? 'rgba(59, 130, 246, 0.1)'
-                                                                      : event.status ===
-                                                                          'completed'
-                                                                        ? 'rgba(107, 114, 128, 0.1)'
-                                                                        : 'rgba(239, 68, 68, 0.1)',
+                                                                        ? 'rgba(59, 130, 246, 0.1)'
+                                                                        : event.status ===
+                                                                            'completed'
+                                                                            ? 'rgba(107, 114, 128, 0.1)'
+                                                                            : 'rgba(239, 68, 68, 0.1)',
                                                         }}
                                                     >
                                                         <div
-                                                            className={`h-2 w-2 rounded-full ${
-                                                                event.status ===
+                                                            className={`h-2 w-2 rounded-full ${event.status ===
                                                                 'active'
-                                                                    ? 'bg-green-500'
+                                                                ? 'bg-green-500'
+                                                                : event.status ===
+                                                                    'planned'
+                                                                    ? 'bg-blue-500'
                                                                     : event.status ===
-                                                                        'planned'
-                                                                      ? 'bg-blue-500'
-                                                                      : event.status ===
-                                                                          'completed'
+                                                                        'completed'
                                                                         ? 'bg-gray-500'
                                                                         : 'bg-red-500'
-                                                            } mr-2 animate-pulse`}
+                                                                } mr-2 animate-pulse`}
                                                         ></div>
                                                         <span
                                                             className="text-sm font-medium"
                                                             style={{
                                                                 color:
                                                                     event.status ===
-                                                                    'active'
+                                                                        'active'
                                                                         ? '#16a34a'
                                                                         : event.status ===
                                                                             'planned'
-                                                                          ? '#2563eb'
-                                                                          : event.status ===
-                                                                              'completed'
-                                                                            ? '#4b5563'
-                                                                            : '#dc2626',
+                                                                            ? '#2563eb'
+                                                                            : event.status ===
+                                                                                'completed'
+                                                                                ? '#4b5563'
+                                                                                : '#dc2626',
                                                             }}
                                                         >
                                                             {event.status ===
-                                                            'active'
+                                                                'active'
                                                                 ? 'Active'
                                                                 : event.status ===
                                                                     'planned'
-                                                                  ? 'Planned'
-                                                                  : event.status ===
-                                                                      'completed'
-                                                                    ? 'Completed'
-                                                                    : 'Cancelled'}
+                                                                    ? 'Planned'
+                                                                    : event.status ===
+                                                                        'completed'
+                                                                        ? 'Completed'
+                                                                        : 'Cancelled'}
                                                         </span>
                                                     </div>
                                                 )}
@@ -1026,9 +1023,9 @@ export default function Landing({
                                                 categoryPrices.find(
                                                     (p) =>
                                                         p.ticket_category_id ===
-                                                            category.id &&
+                                                        category.id &&
                                                         p.timeline_id ===
-                                                            currentTimeline.id,
+                                                        currentTimeline.id,
                                                 );
                                             if (priceEntry) {
                                                 price = priceEntry.price;
@@ -1049,7 +1046,7 @@ export default function Landing({
                                                     style={{
                                                         backgroundColor:
                                                             ticketTypeColors[
-                                                                type
+                                                            type
                                                             ],
                                                     }}
                                                 />
@@ -1239,7 +1236,7 @@ export default function Landing({
                                     }}
                                 />
                                 <TextInput
-                                    type="tel"
+                                    type="number"
                                     id="user_phone_num"
                                     className="mt-1 block w-full"
                                     value={data.user_phone_num}
@@ -1357,7 +1354,7 @@ export default function Landing({
                                                             return newSizes;
                                                         })(
                                                             data.user_sizes ||
-                                                                [],
+                                                            [],
                                                         ),
                                                     )
                                                 }
@@ -1705,7 +1702,7 @@ export default function Landing({
                                                     onError: (error) => {
                                                         showError(
                                                             'Failed to proceed with payment. Error: ' +
-                                                                error,
+                                                            error,
                                                         );
                                                         reject(error);
                                                     },

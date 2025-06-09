@@ -205,8 +205,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                         (err) => {
                             if (err) {
                                 console.error('MQTT Publish Error:', err);
-                            } else {
-                                console.log('MQTT Message Sent:', message);
                             }
                         },
                     );

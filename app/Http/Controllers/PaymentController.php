@@ -23,6 +23,7 @@ use PhpMqtt\Client\MqttClient;
 use App\Enums\TicketOrderStatus;
 use App\Models\UserContact;
 use App\Services\ResendMailer;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -506,7 +507,26 @@ class PaymentController extends Controller
 
         // Generate signature
         $customer = $request->user();
-        $timestamp = now()->addMinutes(10)->timestamp;
+        $userQueue = Event::getUser($event, $customer); // Replace YourQueueClass with actual class name
+
+        // Calculate timeout based on user's expected_kick time
+        if ($userQueue && isset($userQueue['expected_kick'])) {
+            $expectedKick = Carbon::parse($userQueue['expected_kick']);
+            $now = Carbon::now();
+
+            // If user's session has already expired, use minimum timeout (1 minute)
+            if ($expectedKick->isPast()) {
+                $timeout = $now->addMinutes(1)->timestamp;
+            } else {
+                // Use the user's remaining time, but ensure minimum 1 minute
+                $remainingMinutes = max(1, $now->diffInMinutes($expectedKick));
+                $timeout = $now->addMinutes($remainingMinutes)->timestamp;
+            }
+        } else {
+            // Fallback to 10 minutes if user is not in queue (admin or error case)
+            $timeout = now()->addMinutes(10)->timestamp;
+        }
+
         $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
 
         // Construct payload
@@ -528,7 +548,7 @@ class PaymentController extends Controller
                 ];
             })->values()->toArray(),
             "return_url" => route('payment.tripayReturn'),
-            "expired_time" => $timestamp,
+            "expired_time" => $timeout,
             "signature" => $signature,
         ];
 
@@ -805,7 +825,7 @@ class PaymentController extends Controller
         // Validate required parameters
         $validator = Validator::make($data, [
             'tripay_merchant_ref' => 'required|string|max:32',
-            'tripay_reference'    => 'required|string|max:32',
+            'tripay_reference' => 'required|string|max:32',
         ]);
 
         if ($validator->fails()) {
@@ -824,11 +844,10 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'error' => 'Event not found'], 404);
         }
 
-        // Redirect to my_tickets
-        return redirect()->route(
-            'client.my_tickets',
-            ['client' => $event->slug,]
-        );
+        // Method 1: Using view with JavaScript to replace history
+        $redirectUrl = route('client.my_tickets', ['client' => $event->slug]);
+
+        return response()->view('redirect-replace', compact('redirectUrl'));
     }
 
     /**

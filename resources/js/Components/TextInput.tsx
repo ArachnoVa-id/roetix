@@ -27,6 +27,18 @@ export default forwardRef(function TextInput(
         }
     }, [isFocused]);
 
+    const handleInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (type === 'number') {
+            // Remove any non-numeric characters
+            const sanitizedValue = event.target.value.replace(/[^0-9.-]/g, '');
+            event.target.value = sanitizedValue;
+        }
+        // You can also add a check here to prevent the input if it's not a number
+        // if (type === 'number' && isNaN(Number(event.target.value))) {
+        //     event.preventDefault(); // Prevents the input
+        // }
+    };
+
     return (
         <input
             {...props}
@@ -36,6 +48,7 @@ export default forwardRef(function TextInput(
                 className
             }
             ref={localRef}
+            onInput={handleInput} // Add the onInput event handler
         />
     );
 });
