@@ -37,8 +37,9 @@ class SocialiteController extends Controller
             $userExists = $user !== null;
             $userHasCorrectGoogleId = $userExists && $user->google_id === $google_resp->id;
 
+            $event = \App\Models\Event::where('slug', $client)->first();
+
             if ($userHasCorrectGoogleId) {
-                $event = \App\Models\Event::where('slug', $client)->first();
 
                 try {
                     Event::loginUser($event, $user);
@@ -106,7 +107,12 @@ class SocialiteController extends Controller
                     'auth_user' => $userData,
                 ]);
 
-                Auth::login($userData);
+                try {
+                    Event::loginUser($event, $user);
+                } catch (\Throwable $e) {
+                    return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client, 'message' => $e->getMessage()]);
+                }
+
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             }
         } catch (\Throwable $e) {
