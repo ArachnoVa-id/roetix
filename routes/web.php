@@ -134,7 +134,6 @@ Route::domain('{client}.' . config('app.domain'))
                 Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
                     ->name('client.my_tickets');
 
-
                 // FOR THE SCAN PAGE (show method)
                 Route::get('/scan', [TicketScanController::class, 'show'])->name('client.scan');
 

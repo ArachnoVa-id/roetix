@@ -52,7 +52,7 @@ class ValidateSubdomain
 
         // for receptionist, reject effort to go to buy and check tickets
         $user = User::find(Auth::id());
-        if ($user && ($user->isReceptionist() || $user->isAdmin())) {
+        if ($user && ($user->isReceptionist())) {
             if ($url === 'client.home' || $url === 'client.my_tickets') {
                 return redirect()->route('client.scan', ['client' => $event->slug]);
             }
