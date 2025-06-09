@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\OrderStatus;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Console\Command;
 use App\Models\Order;
 use Carbon\Carbon;
@@ -23,8 +24,11 @@ class UpdateExpiredOrders extends Command
             $count = $expiredOrders->count();
 
             foreach ($expiredOrders as $order) {
-                $order->status = OrderStatus::CANCELLED;
-                $order->save();
+                PaymentController::updateStatus(
+                    $order->id,
+                    OrderStatus::CANCELLED->value,
+                    []
+                );
             }
 
             if ($count > 0) {
