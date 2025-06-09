@@ -167,6 +167,8 @@ class UserPageController extends Controller
                 throw new \Exception('User not found.');
             }
 
+            $venue->name = $event->location;
+
             $content = [
                 'appName' => config('app.name'),
                 'client' => $client,

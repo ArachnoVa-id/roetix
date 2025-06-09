@@ -39,7 +39,7 @@ class UserQueueMiddleware
 
         // If user is admin, bypass
         $userData = User::find($user->id);
-        if ($userData->isAdmin()) {
+        if ($userData->isAdmin() || $userData->isReceptionist()) {
             return $next($request);
         }
 
@@ -86,6 +86,7 @@ class UserQueueMiddleware
             $batch = ceil($position / $threshold);
             $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
             $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
+            $expected_end = Carbon::parse($expected_end)->addSeconds(20)->toDateTimeString();
 
             return Inertia::render('User/Overload', [
                 'client' => $client,
