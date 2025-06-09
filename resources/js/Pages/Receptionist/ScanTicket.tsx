@@ -80,7 +80,7 @@ const ScanTicket: React.FC = () => {
 
         setIsFetchingHistory(true);
         try {
-            const url = route('events.scanned.history', {
+            const url = route('client.scanned.history', {
                 client: client,
                 event_slug: event.slug,
             });
@@ -141,7 +141,6 @@ const ScanTicket: React.FC = () => {
 
             // Prevent rapid re-scanning of the same code
             if (lastScannedCodeRef.current === codeToSubmit.trim()) {
-                console.log('Skipping duplicate scan:', codeToSubmit);
                 return;
             }
             lastScannedCodeRef.current = codeToSubmit.trim();
@@ -150,7 +149,7 @@ const ScanTicket: React.FC = () => {
             setNotification({ type: null, message: '' }); // Clear previous notification
 
             try {
-                const url = route('events.scan.store', { client });
+                const url = route('client.scan.store', { client });
 
                 const response = await axios.post<
                     ApiSuccessResponse<ScannedTicket>
@@ -289,7 +288,6 @@ const ScanTicket: React.FC = () => {
                     code.data.trim() &&
                     code.data.trim() !== lastScannedCodeRef.current
                 ) {
-                    console.log('QR Code detected:', code.data.trim());
                     setTicketCode(code.data.trim());
                     submitTicketCode(code.data.trim());
                 }
@@ -304,21 +302,16 @@ const ScanTicket: React.FC = () => {
     ]);
 
     const stopCamera = useCallback(() => {
-        console.log('Stopping camera...');
 
         if (scanIntervalRef.current) {
             clearInterval(scanIntervalRef.current);
             scanIntervalRef.current = null;
-            console.log('Stopped QR scanning interval.');
         }
 
         if (currentStreamRef.current) {
             currentStreamRef.current.getTracks().forEach((track) => {
                 if (track.readyState === 'live') {
                     track.stop();
-                    console.log(
-                        `Stopped track: ${track.kind} (id: ${track.id})`,
-                    );
                 }
             });
             currentStreamRef.current = null;
@@ -332,11 +325,9 @@ const ScanTicket: React.FC = () => {
         setIsCameraActive(false);
         setCameraError('');
         lastScannedCodeRef.current = '';
-        console.log('Camera stop process completed.');
     }, []);
 
     const startCamera = useCallback(async () => {
-        console.log('Starting camera...');
         setCameraError('');
 
         if (!videoRef.current) {
@@ -358,14 +349,8 @@ const ScanTicket: React.FC = () => {
             const desiredFacingMode = useFrontCamera ? 'user' : 'environment';
 
             if (videoTrack && currentFacingMode === desiredFacingMode) {
-                console.log(
-                    'Camera already active with desired facing mode, no restart needed.',
-                );
                 return;
             } else {
-                console.log(
-                    'Facing mode needs to change, stopping current stream.',
-                );
                 stopCamera();
                 await new Promise((resolve) => setTimeout(resolve, 100));
             }
@@ -390,7 +375,6 @@ const ScanTicket: React.FC = () => {
         };
 
         try {
-            console.log('Requesting camera with constraints:', constraints);
             const stream =
                 await navigator.mediaDevices.getUserMedia(constraints);
 
@@ -398,7 +382,6 @@ const ScanTicket: React.FC = () => {
                 throw new Error('No stream received from getUserMedia');
             }
 
-            console.log('Camera stream obtained:', stream);
             currentStreamRef.current = stream;
 
             if (videoRef.current) {
@@ -412,7 +395,6 @@ const ScanTicket: React.FC = () => {
                     const onLoadedMetadata = () => {
                         if (resolved) return;
                         resolved = true;
-                        console.log('Video metadata loaded');
                         video.removeEventListener(
                             'loadedmetadata',
                             onLoadedMetadata,
@@ -450,7 +432,6 @@ const ScanTicket: React.FC = () => {
                 });
 
                 await videoRef.current.play();
-                console.log('Video playing successfully');
             }
 
             setIsCameraActive(true);
@@ -488,14 +469,12 @@ const ScanTicket: React.FC = () => {
     }, [useFrontCamera, isCameraActive, stopCamera, clearNotification]);
 
     const toggleCameraFacingMode = useCallback(() => {
-        console.log('Toggling camera facing mode');
         setUseFrontCamera((prev) => !prev);
     }, []);
 
     const toggleScanning = useCallback(() => {
         setIsScanning((prev) => {
             const newValue = !prev;
-            console.log('Toggle scanning: Setting isScanning to', newValue);
             return newValue;
         });
     }, []);
@@ -504,19 +483,14 @@ const ScanTicket: React.FC = () => {
 
     // Effect 1: Handle camera start/stop based on isScanning
     useEffect(() => {
-        console.log('--- Primary Camera Effect --- isScanning:', isScanning);
-
         if (isScanning) {
-            console.log('Starting camera due to isScanning = true');
             startCamera();
         } else {
-            console.log('Stopping camera due to isScanning = false');
             stopCamera();
         }
 
         // Cleanup on unmount or when isScanning changes
         return () => {
-            console.log('--- Primary Camera Effect Cleanup ---');
             stopCamera();
         };
     }, [isScanning, startCamera, stopCamera]); // REMOVED startCamera and stopCamera from dependencies
@@ -524,16 +498,8 @@ const ScanTicket: React.FC = () => {
 
     // Effect 2: Handle camera facing mode change
     useEffect(() => {
-        console.log(
-            '--- Camera Facing Mode Effect --- useFrontCamera:',
-            useFrontCamera,
-            'isScanning:',
-            isScanning,
-        );
-
         // Only restart camera if we're currently scanning
         if (isScanning && isCameraActive) {
-            console.log('Restarting camera for facing mode change');
             startCamera();
         }
     }, [useFrontCamera, isCameraActive, isScanning, startCamera]); // REMOVED dependencies that cause loops
@@ -541,21 +507,10 @@ const ScanTicket: React.FC = () => {
 
     // Effect 3: Handle QR scanner interval
     useEffect(() => {
-        console.log(
-            '--- QR Scanner Effect --- isScanning:',
-            isScanning,
-            'isCameraActive:',
-            isCameraActive,
-            'isLoading:',
-            isLoading,
-        );
-
         if (isScanning && isCameraActive && !isLoading) {
-            console.log('Starting QR scanner interval.');
             startQrScanner();
         } else {
             if (scanIntervalRef.current) {
-                console.log('Stopping QR scanner interval.');
                 clearInterval(scanIntervalRef.current);
                 scanIntervalRef.current = null;
             }
@@ -563,7 +518,6 @@ const ScanTicket: React.FC = () => {
 
         return () => {
             if (scanIntervalRef.current) {
-                console.log('QR Scanner Effect Cleanup.');
                 clearInterval(scanIntervalRef.current);
                 scanIntervalRef.current = null;
             }
@@ -574,7 +528,7 @@ const ScanTicket: React.FC = () => {
     // Effect 4: Final cleanup on component unmount
     useEffect(() => {
         return () => {
-            console.log('Component unmounting. Final camera stop.');
+            ('Component unmounting. Final camera stop.');
             if (currentStreamRef.current) {
                 currentStreamRef.current.getTracks().forEach((track) => {
                     track.stop();
@@ -659,11 +613,10 @@ const ScanTicket: React.FC = () => {
                     {/* Notification Section - Floating/Integrated */}
                     {notification.type && (
                         <div
-                            className={`mb-8 flex items-center justify-between rounded-xl p-4 text-white shadow-lg transition-all duration-300 ${
-                                notification.type === 'success'
+                            className={`mb-8 flex items-center justify-between rounded-xl p-4 text-white shadow-lg transition-all duration-300 ${notification.type === 'success'
                                     ? 'bg-green-500/90'
                                     : 'bg-red-500/90'
-                            } backdrop-blur-sm`}
+                                } backdrop-blur-sm`}
                         >
                             <div className="flex items-center">
                                 {notification.type === 'success' ? (
@@ -754,11 +707,10 @@ const ScanTicket: React.FC = () => {
                                     autoPlay
                                     playsInline
                                     muted
-                                    className={`h-full w-full object-cover ${
-                                        isScanning && isCameraActive
+                                    className={`h-full w-full object-cover ${isScanning && isCameraActive
                                             ? ''
                                             : 'hidden'
-                                    }`}
+                                        }`}
                                     style={{
                                         transform: useFrontCamera
                                             ? 'scaleX(-1)'
@@ -801,11 +753,10 @@ const ScanTicket: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={toggleScanning}
-                                    className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
-                                        isScanning
+                                    className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 ${isScanning
                                             ? 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400 active:bg-red-700'
                                             : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400 active:bg-green-700'
-                                    } shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
+                                        } shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
                                     disabled={isLoading}
                                 >
                                     {isScanning
@@ -954,21 +905,19 @@ const ScanTicket: React.FC = () => {
                                     {scannedTickets.map((ticket) => (
                                         <div
                                             key={ticket.id}
-                                            className={`rounded-lg border-l-4 p-4 shadow-md transition-transform duration-150 hover:scale-[1.01] ${
-                                                ticket.status === 'success'
+                                            className={`rounded-lg border-l-4 p-4 shadow-md transition-transform duration-150 hover:scale-[1.01] ${ticket.status === 'success'
                                                     ? 'border-green-400 bg-green-500/20'
                                                     : 'border-red-400 bg-red-500/20'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="mb-2 flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <div
-                                                        className={`mr-3 h-3 w-3 rounded-full ${
-                                                            ticket.status ===
-                                                            'success'
+                                                        className={`mr-3 h-3 w-3 rounded-full ${ticket.status ===
+                                                                'success'
                                                                 ? 'bg-green-400'
                                                                 : 'bg-red-400'
-                                                        }`}
+                                                            }`}
                                                     />
                                                     <span className="font-mono text-base font-bold">
                                                         {ticket.ticket_code}
@@ -997,11 +946,10 @@ const ScanTicket: React.FC = () => {
                                                 </p>
                                             )}
                                             <p
-                                                className={`text-sm ${
-                                                    ticket.status === 'success'
+                                                className={`text-sm ${ticket.status === 'success'
                                                         ? 'text-green-200'
                                                         : 'text-red-200'
-                                                }`}
+                                                    }`}
                                             >
                                                 {ticket.message}
                                             </p>

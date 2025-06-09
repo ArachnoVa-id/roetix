@@ -10,7 +10,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 
 const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
-    callback,
+    extraData,
     disabled,
     client,
     selectedSeats,
@@ -155,6 +155,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 tax_amount: calculatedTaxAmount, // Tax amount
                 total_with_tax: calculatedTotal, // Total with tax
                 grouped_items: groupedItems,
+                extra_data: extraData,
             };
 
             // Set up axios for the request
@@ -176,9 +177,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             // Handle the response
             if (response.data && response.data.accessor) {
                 const accessor = response.data.accessor;
-
-                // Wait for callback to complete BEFORE navigating
-                await callback(accessor);
 
                 if (accessor === 'free') {
                     toasterFunction.showSuccess(
@@ -205,8 +203,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                         (err) => {
                             if (err) {
                                 console.error('MQTT Publish Error:', err);
-                            } else {
-                                console.log('MQTT Message Sent:', message);
                             }
                         },
                     );

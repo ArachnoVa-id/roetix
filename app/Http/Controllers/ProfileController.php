@@ -16,14 +16,6 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
-    public function bypassToNoSQL(Request $request)
-    {
-        DevNoSQLData::create([
-            'collection' => 'roetixUserData',
-            'data' => $request->all(),
-        ]);
-    }
-
     /**
      * Display the user's profile form.
      */
