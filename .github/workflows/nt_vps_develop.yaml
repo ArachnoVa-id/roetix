@@ -153,7 +153,7 @@ jobs:
 
           # Set proper ownership and permissions BEFORE composer install
           sudo chown -R $USER:$USER .
-          chmod -R 755 storage bootstrap/cache
+          chmod -R 777 storage bootstrap/cache
           chmod -R 777 storage/logs storage/framework
 
           echo "Installing Composer dependencies..."
@@ -275,29 +275,49 @@ jobs:
           if [ ! -f ".env" ]; then
               echo "Creating .env file from example..."
               cp .env.example .env
-              sudo chown www-data:www-data .env
-              chmod 644 .env
+              echo "Setting ownership and permissions for .env file..."
+              sudo chown www-data:www-data .env || echo "Warning: Could not change .env ownership"
+              sudo chmod 644 .env || echo "Warning: Could not change .env permissions"
           fi
 
           # Generate app key if not set
-          if ! grep -q "APP_KEY=base64:" .env; then
+          if ! grep -q "APP_KEY=base64:" .env 2>/dev/null; then
               echo "Generating Laravel application key..."
-              sudo -u www-data php artisan key:generate --force
+              sudo -u www-data php artisan key:generate --force || {
+                  echo "Failed to generate key as www-data, trying as current user..."
+                  php artisan key:generate --force
+                  sudo chown www-data:www-data .env || echo "Warning: Could not change .env ownership after key generation"
+              }
           fi
 
           # Create storage directories
           echo "Creating storage directories..."
-          sudo -u www-data mkdir -p storage/framework/{cache,sessions,views}
-          sudo -u www-data mkdir -p storage/logs
-          sudo -u www-data mkdir -p bootstrap/cache
+          sudo -u www-data mkdir -p storage/framework/{cache,sessions,views} 2>/dev/null || {
+              echo "Creating directories as current user first..."
+              mkdir -p storage/framework/{cache,sessions,views}
+          }
+          sudo -u www-data mkdir -p storage/logs 2>/dev/null || mkdir -p storage/logs
+          sudo -u www-data mkdir -p bootstrap/cache 2>/dev/null || mkdir -p bootstrap/cache
 
           # Fix all permissions
           echo "Fixing permissions..."
-          sudo chown -R www-data:www-data /var/www/novatix_staging
-          sudo find /var/www/novatix_staging -type d -exec chmod 755 {} \;
-          sudo find /var/www/novatix_staging -type f -exec chmod 644 {} \;
-          sudo chmod -R 777 storage bootstrap/cache
-          sudo chmod +x artisan
+          echo "Setting ownership to www-data..."
+          sudo chown -R www-data:www-data /var/www/novatix_staging || echo "Warning: Could not change all ownership"
+
+          echo "Setting directory permissions..."
+          sudo find /var/www/novatix_staging -type d -exec chmod 755 {} \; 2>/dev/null || echo "Warning: Could not set all directory permissions"
+
+          echo "Setting file permissions..."
+          sudo find /var/www/novatix_staging -type f -exec chmod 644 {} \; 2>/dev/null || echo "Warning: Could not set all file permissions"
+
+          echo "Setting storage and cache permissions..."
+          sudo chmod -R 777 storage bootstrap/cache 2>/dev/null || {
+              echo "Fallback: Setting permissions without sudo..."
+              chmod -R 777 storage bootstrap/cache 2>/dev/null || echo "Warning: Could not set storage permissions"
+          }
+
+          echo "Making artisan executable..."
+          sudo chmod +x artisan 2>/dev/null || chmod +x artisan 2>/dev/null || echo "Warning: Could not make artisan executable"
 
           # Clear all Laravel caches
           echo "Clearing Laravel caches..."
@@ -519,6 +539,90 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/check_workers.sh
 
+          # NEW: Permission diagnostic and fix script
+          cat > ~/novatix/setups/fix_permissions.sh << 'EOT'
+          #!/bin/bash
+          echo "=== Permission Diagnostic and Fix Script ==="
+          cd /var/www/novatix_staging
+
+          echo "Current user: $(whoami)"
+          echo "Current directory: $(pwd)"
+          echo "Directory exists: $([ -d /var/www/novatix_staging ] && echo 'Yes' || echo 'No')"
+          echo ""
+
+          echo "=== Current Ownership and Permissions ==="
+          echo "Project directory:"
+          ls -la /var/www/ | grep novatix || echo "No novatix directory found"
+          echo ""
+          echo "Key files:"
+          ls -la .env 2>/dev/null || echo ".env file not found"
+          ls -la artisan 2>/dev/null || echo "artisan file not found"
+          echo ""
+          echo "Storage directory:"
+          ls -la storage/ 2>/dev/null || echo "storage directory not found"
+          echo ""
+
+          echo "=== Attempting to fix permissions ==="
+
+          # Method 1: Try with sudo
+          echo "Trying to set ownership with sudo..."
+          if sudo chown -R www-data:www-data /var/www/novatix_staging 2>/dev/null; then
+              echo "✓ Successfully set ownership to www-data"
+          else
+              echo "✗ Could not set ownership to www-data"
+
+              # Method 2: Try with current user
+              echo "Trying to set ownership to current user..."
+              CURRENT_USER=$(whoami)
+              if sudo chown -R $CURRENT_USER:$CURRENT_USER /var/www/novatix_staging 2>/dev/null; then
+                  echo "✓ Successfully set ownership to $CURRENT_USER"
+              else
+                  echo "✗ Could not change ownership at all"
+              fi
+          fi
+
+          # Set directory permissions
+          echo "Setting directory permissions..."
+          find /var/www/novatix_staging -type d -exec chmod 755 {} \; 2>/dev/null || echo "Warning: Could not set directory permissions"
+
+          # Set file permissions
+          echo "Setting file permissions..."
+          find /var/www/novatix_staging -type f -exec chmod 644 {} \; 2>/dev/null || echo "Warning: Could not set file permissions"
+
+          # Special permissions for Laravel
+          echo "Setting Laravel-specific permissions..."
+          chmod -R 777 storage bootstrap/cache 2>/dev/null || echo "Warning: Could not set storage/cache permissions"
+          chmod +x artisan 2>/dev/null || echo "Warning: Could not make artisan executable"
+
+          # Create .env if missing
+          if [ ! -f ".env" ]; then
+              echo "Creating .env file..."
+              cp .env.example .env 2>/dev/null && echo "✓ .env created" || echo "✗ Could not create .env"
+          fi
+
+          echo ""
+          echo "=== Final Status Check ==="
+          echo ".env exists: $([ -f .env ] && echo 'Yes' || echo 'No')"
+          echo "artisan executable: $([ -x artisan ] && echo 'Yes' || echo 'No')"
+          echo "storage writable: $([ -w storage ] && echo 'Yes' || echo 'No')"
+
+          echo ""
+          echo "=== Laravel Test ==="
+          if php artisan --version >/dev/null 2>&1; then
+              echo "✓ Laravel works with current user"
+              php artisan --version
+          else
+              echo "✗ Laravel doesn't work with current user"
+          fi
+
+          if sudo -u www-data php artisan --version >/dev/null 2>&1; then
+              echo "✓ Laravel works with www-data user"
+          else
+              echo "✗ Laravel doesn't work with www-data user"
+          fi
+          EOT
+          chmod +x ~/novatix/setups/fix_permissions.sh
+
           EOF
 
       - name: Update Repository on VPS
@@ -546,6 +650,9 @@ jobs:
               exit 1
           fi
           EOF
+
+      - name: Fix Permissions Before Laravel Setup
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/fix_permissions.sh"
 
       - name: Setup Laravel Environment
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/setup_laravel_environment.sh"
