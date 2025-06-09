@@ -1684,32 +1684,7 @@ export default function Landing({
                             selectedSeats.length > 0 &&
                             isBookingAllowed && (
                                 <ProceedTransactionButton
-                                    callback={async (accessor) => {
-                                        await new Promise((resolve, reject) => {
-                                            router.post(
-                                                route(
-                                                    'client.formRegistration',
-                                                    {
-                                                        client,
-                                                    },
-                                                ),
-                                                { ...data, accessor },
-                                                {
-                                                    preserveScroll: true,
-                                                    onSuccess: () => {
-                                                        resolve(true);
-                                                    },
-                                                    onError: (error) => {
-                                                        showError(
-                                                            'Failed to proceed with payment. Error: ' +
-                                                            error,
-                                                        );
-                                                        reject(error);
-                                                    },
-                                                },
-                                            );
-                                        });
-                                    }}
+                                    extraData={data}
                                     disabled={disabledByForm}
                                     client={client}
                                     selectedSeats={selectedSeats}

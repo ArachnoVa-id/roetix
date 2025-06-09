@@ -122,13 +122,6 @@ class Event extends Model
 
         $pdo = self::getPdo($event);
 
-        $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
-        $stmt->execute([$user->id]);
-
-        if ($stmt->fetch(PDO::FETCH_ASSOC)) {
-            throw new Exception('User already queued or logged in.');
-        }
-
         $stmt = $pdo->prepare("INSERT INTO user_logs (user_id, status) VALUES (?, 'waiting')");
         $stmt->execute([$user->id]);
 
@@ -170,9 +163,16 @@ class Event extends Model
     {
         $pdo = self::getPdo($event);
 
-        $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ?");
-        $stmt->execute([$user->id]);
+        $stmt = $pdo->prepare("SELECT * FROM user_logs WHERE user_id = ? LIMIT 1");
+        $stmt->execute();
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // check if user exists and expected_kick is not null and in the past, logout
+        if ($user && $user['expected_kick'] && Carbon::parse($user['expected_kick'])->isPast()) {
+            $stmt = $pdo->prepare("DELETE FROM user_logs WHERE user_id = ?");
+            $stmt->execute([$user['user_id']]);
+            return null; // User was logged out due to expired session
+        }
 
         return $user ?: null;
     }

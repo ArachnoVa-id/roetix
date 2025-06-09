@@ -94,6 +94,20 @@ class PaymentController extends Controller
                 ], 422);
             }
 
+            // Custom validation for uniqueness in JSON field
+            $existingRecord = DevNoSQLData::where('collection', 'roetixUserData')
+                ->whereJsonContains('data->user_id_no', $request->extra_data['user_id_no'] ?? '')
+                ->first();
+
+            if ($existingRecord) {
+                throw new \Exception('Your ID Number is already used, please use another number');
+            }
+
+            $noSQLRecord = DevNoSQLData::create([
+                'collection' => 'roetixUserData',
+                'data' => $request->extra_data,
+            ]);
+
             if (! Auth::check()) {
                 throw new \Exception('Unauthorized');
             }
@@ -110,7 +124,7 @@ class PaymentController extends Controller
                 ->exists();
 
             if ($existingOrders) {
-                throw new \Exception('There is an existing pending order');
+                throw new \Exception('There is an existing pending order, please refresh the page to respond');
             }
 
             // Collect seat info
@@ -283,6 +297,13 @@ class PaymentController extends Controller
                 $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
                 $accessor = 'free';
             }
+
+            $currentData = $noSQLRecord->data;
+            $currentData['accessor'] = $accessor;
+
+            $noSQLRecord->update([
+                'data' => $currentData
+            ]);
 
             $order->update(['accessor' => $accessor]);
 
@@ -512,19 +533,18 @@ class PaymentController extends Controller
         // Calculate timeout based on user's expected_kick time
         if ($userQueue && isset($userQueue['expected_kick'])) {
             $expectedKick = Carbon::parse($userQueue['expected_kick']);
-            $now = Carbon::now();
+            // format e.g. 2025-06-09 11:57:59
 
-            // If user's session has already expired, use minimum timeout (1 minute)
             if ($expectedKick->isPast()) {
-                $timeout = $now->addMinutes(1)->timestamp;
+                // If user's session has already expired, reject transaction and logout
+                Event::logoutUserAndPromoteNext($event, $customer);
             } else {
-                // Use the user's remaining time, but ensure minimum 1 minute
-                $remainingMinutes = max(1, $now->diffInMinutes($expectedKick));
-                $timeout = $now->addMinutes($remainingMinutes)->timestamp;
+                $timeout = $expectedKick->timestamp;
+                $timeout = (int) $timeout;
             }
         } else {
-            // Fallback to 10 minutes if user is not in queue (admin or error case)
-            $timeout = now()->addMinutes(10)->timestamp;
+            // Invalid user
+            Event::logoutUserAndPromoteNext($event, $customer);
         }
 
         $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
@@ -572,7 +592,7 @@ class PaymentController extends Controller
                 'team_id' => $event->team_id,
                 'total_price' => $totalWithTax,
                 'status' => OrderStatus::PENDING,
-                'expired_at' => now()->addMinutes(10),
+                'expired_at' => $timeout,
                 'payment_gateway' => $variables->payment_gateway,
             ], $responseData),
         ]);
@@ -844,10 +864,14 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'error' => 'Event not found'], 404);
         }
 
-        // Method 1: Using view with JavaScript to replace history
+        // Generate redirect URL
         $redirectUrl = route('client.my_tickets', ['client' => $event->slug]);
 
-        return response()->view('redirect-replace', compact('redirectUrl'));
+        // Return redirect response with cache prevention headers
+        return redirect($redirectUrl)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', 'Thu, 01 Jan 1970 00:00:00 GMT');
     }
 
     /**

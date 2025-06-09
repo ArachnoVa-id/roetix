@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Event;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,6 +48,14 @@ class ValidateSubdomain
             }
         } else if ($url === 'client.login' || $url === 'client.privateLogin') {
             return redirect()->route('client.home', ['client' => $event->slug]);
+        }
+
+        // for receptionist, reject effort to go to buy and check tickets
+        $user = User::find(Auth::id());
+        if ($user && ($user->isReceptionist() || $user->isAdmin())) {
+            if ($url === 'client.home' || $url === 'client.my_tickets') {
+                return redirect()->route('client.scan', ['client' => $event->slug]);
+            }
         }
 
         return $next($request);

@@ -433,13 +433,13 @@ const Ziggy = {
             domain: '{client}.dev-staging-novatix.id',
             parameters: ['client'],
         },
-        'client.events.scan.show': {
+        'client.client.scan': {
             uri: 'events\/{event_slug}\/scan',
             methods: ['GET', 'HEAD'],
             domain: '{client}.dev-staging-novatix.id',
             parameters: ['client', 'event_slug'],
         },
-        'client.events.scan.store': {
+        'client.client.scan.store': {
             uri: 'events\/{event_slug}\/scan',
             methods: ['POST'],
             domain: '{client}.dev-staging-novatix.id',

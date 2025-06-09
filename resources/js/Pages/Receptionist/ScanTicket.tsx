@@ -80,7 +80,7 @@ const ScanTicket: React.FC = () => {
 
         setIsFetchingHistory(true);
         try {
-            const url = route('events.scanned.history', {
+            const url = route('client.scanned.history', {
                 client: client,
                 event_slug: event.slug,
             });
@@ -149,7 +149,7 @@ const ScanTicket: React.FC = () => {
             setNotification({ type: null, message: '' }); // Clear previous notification
 
             try {
-                const url = route('events.scan.store', { client });
+                const url = route('client.scan.store', { client });
 
                 const response = await axios.post<
                     ApiSuccessResponse<ScannedTicket>
@@ -613,11 +613,10 @@ const ScanTicket: React.FC = () => {
                     {/* Notification Section - Floating/Integrated */}
                     {notification.type && (
                         <div
-                            className={`mb-8 flex items-center justify-between rounded-xl p-4 text-white shadow-lg transition-all duration-300 ${
-                                notification.type === 'success'
+                            className={`mb-8 flex items-center justify-between rounded-xl p-4 text-white shadow-lg transition-all duration-300 ${notification.type === 'success'
                                     ? 'bg-green-500/90'
                                     : 'bg-red-500/90'
-                            } backdrop-blur-sm`}
+                                } backdrop-blur-sm`}
                         >
                             <div className="flex items-center">
                                 {notification.type === 'success' ? (
@@ -708,11 +707,10 @@ const ScanTicket: React.FC = () => {
                                     autoPlay
                                     playsInline
                                     muted
-                                    className={`h-full w-full object-cover ${
-                                        isScanning && isCameraActive
+                                    className={`h-full w-full object-cover ${isScanning && isCameraActive
                                             ? ''
                                             : 'hidden'
-                                    }`}
+                                        }`}
                                     style={{
                                         transform: useFrontCamera
                                             ? 'scaleX(-1)'
@@ -755,11 +753,10 @@ const ScanTicket: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={toggleScanning}
-                                    className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
-                                        isScanning
+                                    className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 ${isScanning
                                             ? 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400 active:bg-red-700'
                                             : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400 active:bg-green-700'
-                                    } shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
+                                        } shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
                                     disabled={isLoading}
                                 >
                                     {isScanning
@@ -908,21 +905,19 @@ const ScanTicket: React.FC = () => {
                                     {scannedTickets.map((ticket) => (
                                         <div
                                             key={ticket.id}
-                                            className={`rounded-lg border-l-4 p-4 shadow-md transition-transform duration-150 hover:scale-[1.01] ${
-                                                ticket.status === 'success'
+                                            className={`rounded-lg border-l-4 p-4 shadow-md transition-transform duration-150 hover:scale-[1.01] ${ticket.status === 'success'
                                                     ? 'border-green-400 bg-green-500/20'
                                                     : 'border-red-400 bg-red-500/20'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="mb-2 flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <div
-                                                        className={`mr-3 h-3 w-3 rounded-full ${
-                                                            ticket.status ===
-                                                            'success'
+                                                        className={`mr-3 h-3 w-3 rounded-full ${ticket.status ===
+                                                                'success'
                                                                 ? 'bg-green-400'
                                                                 : 'bg-red-400'
-                                                        }`}
+                                                            }`}
                                                     />
                                                     <span className="font-mono text-base font-bold">
                                                         {ticket.ticket_code}
@@ -951,11 +946,10 @@ const ScanTicket: React.FC = () => {
                                                 </p>
                                             )}
                                             <p
-                                                className={`text-sm ${
-                                                    ticket.status === 'success'
+                                                className={`text-sm ${ticket.status === 'success'
                                                         ? 'text-green-200'
                                                         : 'text-red-200'
-                                                }`}
+                                                    }`}
                                             >
                                                 {ticket.message}
                                             </p>

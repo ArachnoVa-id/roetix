@@ -172,9 +172,8 @@ export default function Authenticated({
         }
 
         try {
-            const url = route('events.scan.show', {
+            const url = route('client.scan', {
                 client: client,
-                event_slug: event.slug,
             });
             window.location.href = url;
         } catch (error) {
@@ -228,6 +227,9 @@ export default function Authenticated({
                                             : ''
                                     }
                                     active={route().current('client.home')}
+                                    className={
+                                        showScanTicketLink ? 'hidden' : ''
+                                    }
                                 >
                                     Buy Ticket
                                 </NavLink>
@@ -242,6 +244,9 @@ export default function Authenticated({
                                     active={route().current(
                                         'client.my_tickets',
                                     )}
+                                    className={
+                                        showScanTicketLink ? 'hidden' : ''
+                                    }
                                 >
                                     My Tickets
                                 </NavLink>
@@ -250,9 +255,7 @@ export default function Authenticated({
                                     <NavLink
                                         eventProps={props}
                                         href="#"
-                                        active={route().current(
-                                            'events.scan.show',
-                                        )}
+                                        active={route().current('client.scan')}
                                         onClick={(e) => {
                                             e.preventDefault();
                                             handleScanNavigation();
@@ -368,6 +371,7 @@ export default function Authenticated({
                             eventProps={props}
                             href={client ? route('client.home', client) : ''}
                             active={route().current('client.home')}
+                            className={showScanTicketLink ? 'hidden' : ''}
                         >
                             Buy Ticket
                         </ResponsiveNavLink>
@@ -378,6 +382,7 @@ export default function Authenticated({
                                 client ? route('client.my_tickets', client) : ''
                             }
                             active={route().current('client.my_tickets')}
+                            className={showScanTicketLink ? 'hidden' : ''}
                         >
                             My Tickets
                         </ResponsiveNavLink>
@@ -386,7 +391,7 @@ export default function Authenticated({
                             <ResponsiveNavLink
                                 eventProps={props}
                                 href="#"
-                                active={route().current('events.scan.show')}
+                                active={route().current('client.scan')}
                                 onClick={(e) => {
                                     e.preventDefault();
                                     handleScanNavigation();
@@ -487,7 +492,8 @@ export default function Authenticated({
                         >
                             {userEndSessionDatetime
                                 ? `Remaining Time: ${formatCountdown(countdown)}`
-                                : `Admin View`}
+                                : user.role.charAt(0).toUpperCase() + user.role.slice(1) + ` View`
+                            }
                         </span>
                     </div>
                 </div>

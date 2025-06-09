@@ -99,10 +99,6 @@ Route::domain(config('app.domain'))
 Route::domain('{client}.' . config('app.domain'))
     ->middleware(['verify.subdomain'])
     ->group(function () {
-        // Bypass to NoSQL
-        Route::post('formRegistration', [ProfileController::class, 'bypassToNoSQL'])
-            ->name('client.formRegistration');
-
         // Auth
         Route::get('login/{message?}', [AuthenticatedSessionController::class, 'login'])
             ->name('client.login');
@@ -140,13 +136,13 @@ Route::domain('{client}.' . config('app.domain'))
 
 
                 // FOR THE SCAN PAGE (show method)
-                Route::get('/events/{event_slug}/scan', [TicketScanController::class, 'show'])->name('events.scan.show');
+                Route::get('/scan', [TicketScanController::class, 'show'])->name('client.scan');
 
                 // FOR THE SCAN ACTION (store method, e.g., POST request)
-                Route::post('/scan', [TicketScanController::class, 'scan'])->name('events.scan.store');
+                Route::post('/scan', [TicketScanController::class, 'scan'])->name('client.scan.store');
 
                 // FOR THE HISTORY (get method)
-                Route::get('/events/{event_slug}/scanned-history', [TicketScanController::class, 'getScannedHistory'])->name('events.scanned.history');
+                Route::get('/scanned-history', [TicketScanController::class, 'getScannedHistory'])->name('client.scanned.history');
 
                 Route::prefix('api')->group(function () {
                     // Use a simple GET route with no path parameters

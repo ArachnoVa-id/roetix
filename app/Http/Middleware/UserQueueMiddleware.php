@@ -39,7 +39,7 @@ class UserQueueMiddleware
 
         // If user is admin, bypass
         $userData = User::find($user->id);
-        if ($userData->isAdmin()) {
+        if ($userData->isAdmin() || $userData->isReceptionist()) {
             return $next($request);
         }
 
