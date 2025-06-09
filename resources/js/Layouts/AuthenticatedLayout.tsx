@@ -281,7 +281,9 @@ export default function Authenticated({
                                         className="h-8 rounded-lg"
                                         loading="eager"
                                     />
-                                    {user.first_name + ' ' + user.last_name}
+                                    {user.first_name +
+                                        ' ' +
+                                        (user.last_name || '')}
                                 </NavLink>
                                 <NavLink
                                     className={

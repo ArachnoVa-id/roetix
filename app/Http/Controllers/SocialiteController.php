@@ -103,9 +103,10 @@ class SocialiteController extends Controller
 
                 DB::commit();
 
-                session([
-                    'auth_user' => $userData,
-                ]);
+                $user = User::find($userData->id);
+                if (!$user) {
+                    throw new Exception('User not found after creation');
+                }
 
                 try {
                     Event::loginUser($event, $user);
