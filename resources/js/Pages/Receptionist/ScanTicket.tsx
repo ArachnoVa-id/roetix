@@ -1,13 +1,12 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
-    ApiErrorResponse, // Generic now
-    ApiSuccessResponse, // Generic now
+    ApiErrorResponse,
+    ApiSuccessResponse,
     ScannedTicketData,
 } from '@/types/front-end';
 import { PageProps } from '@inertiajs/core';
-
 import { Head, usePage } from '@inertiajs/react';
-import axios from 'axios';
+import axios from 'axios'; // Keep AxiosError import, it's used in type guard
 import jsQR from 'jsqr';
 import React, {
     FormEvent,
@@ -35,11 +34,11 @@ const ScanTicket: React.FC = () => {
         userEndSessionDatetime,
     } = page.props;
 
+    // State management
     const [ticketCode, setTicketCode] = useState<string>('');
     const [useFrontCamera, setUseFrontCamera] = useState<boolean>(false);
-    const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-    const [isScanning, setIsScanning] = useState<boolean>(false); // Controls both camera and QR scanning
-    const [isLoading, setIsLoading] = useState<boolean>(false); // For API submission
+    const [isScanning, setIsScanning] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
     const [cameraError, setCameraError] = useState<string>('');
     const [scannedTickets, setScannedTickets] = useState<ScannedTicket[]>([]);
     const [notification, setNotification] = useState<NotificationState>({
@@ -48,98 +47,51 @@ const ScanTicket: React.FC = () => {
     });
     const [isFetchingHistory, setIsFetchingHistory] = useState<boolean>(true);
 
+    // Refs
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const currentStreamRef = useRef<MediaStream | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const lastScannedCodeRef = useRef<string>('');
-    const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isCameraStartingRef = useRef<boolean>(false);
 
+    // Utility functions
     const clearNotification = useCallback(() => {
-        if (scanTimeoutRef.current) {
-            clearTimeout(scanTimeoutRef.current);
+        if (notificationTimeoutRef.current) {
+            clearTimeout(notificationTimeoutRef.current);
         }
-        scanTimeoutRef.current = setTimeout(() => {
+        notificationTimeoutRef.current = setTimeout(() => {
             setNotification({ type: null, message: '' });
         }, 3000);
     }, []);
 
-    const fetchScannedTicketsHistory = useCallback(async () => {
-        if (!event || !event.slug) {
-            console.error(
-                'Error: Event data or slug missing for history fetch.',
-            );
-            setIsFetchingHistory(false);
-            setNotification({
-                type: 'error',
-                message: 'Event data or slug missing for history.',
-            });
+    const showNotification = useCallback(
+        (type: 'success' | 'error', message: string) => {
+            setNotification({ type, message });
             clearNotification();
-            return;
-        }
-
-        setIsFetchingHistory(true);
-        try {
-            const url = route('events.scanned.history', {
-                client: client,
-                event_slug: event.slug,
-            });
-            const response =
-                await axios.get<ApiSuccessResponse<ScannedTicket[]>>(url);
-            if (response.data && response.data.data) {
-                setScannedTickets(response.data.data);
-            } else {
-                setScannedTickets([]);
-            }
-        } catch (error) {
-            console.error('Failed to fetch scanned tickets history:', error);
-            setNotification({
-                type: 'error',
-                message: 'Failed to load scan history.',
-            });
-            clearNotification();
-        } finally {
-            setIsFetchingHistory(false);
-        }
-    }, [client, event, clearNotification]);
-
-    useEffect(() => {
-        fetchScannedTicketsHistory();
-    }, [fetchScannedTicketsHistory]);
+        },
+        [clearNotification],
+    );
 
     const addOrUpdateScannedTicket = useCallback(
         (newTicketData: ScannedTicket) => {
             setScannedTickets((prev) => {
-                const updatedPrev = prev.filter(
+                const filtered = prev.filter(
                     (ticket) => ticket.id !== newTicketData.id,
                 );
-                return [newTicketData, ...updatedPrev];
+                return [newTicketData, ...filtered];
             });
         },
         [],
     );
 
+    // API calls (moved before camera/QR scanning as submitTicketCode is a dependency)
     const submitTicketCode = useCallback(
         async (codeToSubmit: string) => {
-            if (isLoading || !codeToSubmit.trim()) return;
-            if (!event || !event.slug) {
-                const errorMsg = 'Event data is missing for scanning.';
-                setNotification({
-                    type: 'error',
-                    message: errorMsg,
-                });
-                addOrUpdateScannedTicket({
-                    id: `local-error-${Date.now()}`,
-                    ticket_code: codeToSubmit,
-                    scanned_at: new Date().toISOString(),
-                    status: 'error',
-                    message: errorMsg,
-                });
-                clearNotification();
-                return;
-            }
+            if (isLoading || !codeToSubmit.trim() || !event?.slug) return;
 
-            // Prevent rapid re-scanning of the same code
+            // Prevent rapid re-scanning
             if (lastScannedCodeRef.current === codeToSubmit.trim()) {
                 console.log('Skipping duplicate scan:', codeToSubmit);
                 return;
@@ -147,11 +99,10 @@ const ScanTicket: React.FC = () => {
             lastScannedCodeRef.current = codeToSubmit.trim();
 
             setIsLoading(true);
-            setNotification({ type: null, message: '' }); // Clear previous notification
+            setNotification({ type: null, message: '' });
 
             try {
                 const url = route('events.scan.store', { client });
-
                 const response = await axios.post<
                     ApiSuccessResponse<ScannedTicket>
                 >(url, {
@@ -162,42 +113,35 @@ const ScanTicket: React.FC = () => {
                 const successMsg =
                     response.data?.message ||
                     `Ticket ${codeToSubmit} scanned successfully!`;
-                setNotification({
-                    type: 'success',
-                    message: successMsg,
-                });
+                showNotification('success', successMsg);
 
                 if (response.data?.data) {
                     addOrUpdateScannedTicket(response.data.data);
                 }
-                setTicketCode(''); // Clear manual input after successful scan
+                setTicketCode('');
             } catch (error: unknown) {
+                // Changed to unknown
                 let errorMessage =
                     'An unknown error occurred while processing the ticket.';
-                let ticketStatus: ScannedTicket['status'] = 'error';
+                const ticketStatus: ScannedTicket['status'] = 'error';
                 let scannedTicketData: ScannedTicket | undefined = undefined;
 
                 if (axios.isAxiosError(error)) {
+                    // Using type guard
                     const responseData = error.response?.data as
                         | ApiErrorResponse<ScannedTicket>
                         | undefined;
-
                     if (responseData?.message) {
                         errorMessage = responseData.message;
                     }
                     if (error.response?.status === 409 && responseData?.data) {
-                        // Conflict (e.g., already scanned)
                         scannedTicketData = responseData.data;
-                        ticketStatus = 'error'; // Still an 'error' from operation perspective
                         errorMessage =
                             scannedTicketData.message || errorMessage;
                     }
-                } else if (error instanceof Error) {
-                    errorMessage = error.message;
                 }
 
-                setNotification({ type: 'error', message: errorMessage });
-
+                showNotification('error', errorMessage);
                 addOrUpdateScannedTicket(
                     scannedTicketData || {
                         id: `local-error-${Date.now()}`,
@@ -207,32 +151,147 @@ const ScanTicket: React.FC = () => {
                         message: errorMessage,
                     },
                 );
-
-                console.error('Error submitting ticket code:', error);
             } finally {
                 setIsLoading(false);
-                clearNotification();
-                // Allow re-scanning the same code after a brief delay
+                // Allow re-scanning after delay
                 setTimeout(() => {
                     lastScannedCodeRef.current = '';
                 }, 2000);
             }
         },
-        [isLoading, client, event, clearNotification, addOrUpdateScannedTicket],
+        [
+            isLoading,
+            client,
+            event?.slug,
+            showNotification,
+            addOrUpdateScannedTicket,
+        ],
     );
 
-    const startQrScanner = useCallback(() => {
-        if (
-            !videoRef.current ||
-            !canvasRef.current ||
-            !isScanning ||
-            !isCameraActive ||
-            isLoading // Do not scan if an API request is loading
-        ) {
-            if (scanIntervalRef.current) {
-                clearInterval(scanIntervalRef.current);
-                scanIntervalRef.current = null;
+    // Camera management
+    const stopCamera = useCallback(async () => {
+        console.log('Stopping camera...');
+
+        // Stop QR scanning
+        if (scanIntervalRef.current) {
+            clearInterval(scanIntervalRef.current);
+            scanIntervalRef.current = null;
+        }
+
+        // Stop camera stream
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => {
+                track.stop();
+            });
+            streamRef.current = null;
+        }
+
+        // Clear video element
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+            videoRef.current.pause();
+        }
+
+        setCameraError('');
+        lastScannedCodeRef.current = '';
+        isCameraStartingRef.current = false;
+    }, []);
+
+    const startCamera = useCallback(async () => {
+        if (isCameraStartingRef.current) {
+            console.log('Camera already starting, skipping...');
+            return;
+        }
+
+        isCameraStartingRef.current = true;
+        console.log('Starting camera...');
+        setCameraError('');
+
+        try {
+            // Stop any existing camera first
+            await stopCamera();
+
+            // Wait a bit to ensure cleanup
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                throw new Error('Camera not supported in this browser');
             }
+
+            const constraints: MediaStreamConstraints = {
+                video: {
+                    facingMode: useFrontCamera ? 'user' : 'environment',
+                    width: { ideal: 640, max: 1280 },
+                    height: { ideal: 480, max: 720 },
+                },
+                audio: false,
+            };
+
+            const stream =
+                await navigator.mediaDevices.getUserMedia(constraints);
+            streamRef.current = stream;
+
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+
+                // Wait for video to be ready
+                await new Promise<void>((resolve, reject) => {
+                    const video = videoRef.current!;
+                    const timeout = setTimeout(
+                        () => reject(new Error('Video load timeout')),
+                        5000,
+                    );
+
+                    const onLoadedMetadata = () => {
+                        clearTimeout(timeout);
+                        video.removeEventListener(
+                            'loadedmetadata',
+                            onLoadedMetadata,
+                        );
+                        resolve();
+                    };
+
+                    video.addEventListener('loadedmetadata', onLoadedMetadata);
+                });
+
+                await videoRef.current.play();
+            }
+
+            console.log('Camera started successfully');
+        } catch (error: unknown) {
+            // Changed to unknown
+            console.error('Error starting camera:', error);
+
+            let message = 'Could not access camera. ';
+            if (error instanceof DOMException) {
+                // Type guard for DOMException
+                if (error.name === 'NotAllowedError') {
+                    message += 'Permission denied. Please allow camera access.';
+                } else if (error.name === 'NotFoundError') {
+                    message += 'No camera found on this device.';
+                } else if (error.name === 'NotReadableError') {
+                    message +=
+                        'Camera is already in use by another application.';
+                } else {
+                    message += error.message || 'Unknown error occurred.';
+                }
+            } else if (error instanceof Error) {
+                // Type guard for generic Error
+                message += error.message || 'Unknown error occurred.';
+            } else {
+                message += 'An unexpected error occurred.';
+            }
+
+            setCameraError(message);
+            showNotification('error', message);
+        } finally {
+            isCameraStartingRef.current = false;
+        }
+    }, [useFrontCamera, stopCamera, showNotification]);
+
+    // QR Code scanning (now defined after submitTicketCode)
+    const startQrScanning = useCallback(() => {
+        if (!videoRef.current || !canvasRef.current || isLoading) {
             return;
         }
 
@@ -241,28 +300,20 @@ const ScanTicket: React.FC = () => {
         const context = canvas.getContext('2d', { willReadFrequently: true });
 
         if (!context) {
-            setNotification({
-                type: 'error',
-                message: 'Could not get canvas context.',
-            });
-            clearNotification();
+            showNotification('error', 'Could not get canvas context.');
             return;
         }
 
-        // Clear any existing interval to prevent multiple scanners running
         if (scanIntervalRef.current) {
             clearInterval(scanIntervalRef.current);
-            scanIntervalRef.current = null;
         }
 
         scanIntervalRef.current = setInterval(() => {
             if (
                 video.readyState === video.HAVE_ENOUGH_DATA &&
-                isScanning &&
-                isCameraActive &&
                 video.videoWidth > 0 &&
                 video.videoHeight > 0 &&
-                !isLoading // Re-check isLoading inside interval
+                !isLoading
             ) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
@@ -274,7 +325,6 @@ const ScanTicket: React.FC = () => {
                     canvas.width,
                     canvas.height,
                 );
-
                 const code = jsQR(
                     imageData.data,
                     imageData.width,
@@ -285,322 +335,116 @@ const ScanTicket: React.FC = () => {
                 );
 
                 if (
-                    code &&
-                    code.data.trim() &&
+                    code?.data?.trim() &&
                     code.data.trim() !== lastScannedCodeRef.current
                 ) {
                     console.log('QR Code detected:', code.data.trim());
-                    setTicketCode(code.data.trim());
                     submitTicketCode(code.data.trim());
                 }
             }
-        }, 100); // Scan every 100ms
-    }, [
-        isScanning,
-        isCameraActive,
-        isLoading,
-        submitTicketCode,
-        clearNotification,
-    ]);
+        }, 200); // Reduced frequency to 200ms
+    }, [isLoading, showNotification, submitTicketCode]); // Added submitTicketCode dependency
 
-    const stopCamera = useCallback(() => {
-        console.log('Stopping camera...');
-
-        if (scanIntervalRef.current) {
-            clearInterval(scanIntervalRef.current);
-            scanIntervalRef.current = null;
-            console.log('Stopped QR scanning interval.');
-        }
-
-        if (currentStreamRef.current) {
-            currentStreamRef.current.getTracks().forEach((track) => {
-                if (track.readyState === 'live') {
-                    track.stop();
-                    console.log(
-                        `Stopped track: ${track.kind} (id: ${track.id})`,
-                    );
-                }
-            });
-            currentStreamRef.current = null;
-        }
-
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-            videoRef.current.pause();
-        }
-
-        setIsCameraActive(false);
-        setCameraError('');
-        lastScannedCodeRef.current = '';
-        console.log('Camera stop process completed.');
-    }, []);
-
-    const startCamera = useCallback(async () => {
-        console.log('Starting camera...');
-        setCameraError('');
-
-        if (!videoRef.current) {
-            console.error('Video ref not available. Cannot start camera.');
-            setCameraError('Camera display element not found.');
-            setNotification({
-                type: 'error',
-                message: 'Camera display element not found.',
-            });
-            clearNotification();
-            setIsCameraActive(false);
+    const fetchScannedTicketsHistory = useCallback(async () => {
+        if (!event?.slug) {
+            console.error('Event slug missing for history fetch.');
+            setIsFetchingHistory(false);
+            showNotification('error', 'Event data missing for history.');
             return;
         }
 
-        // Check if we already have the correct stream
-        if (currentStreamRef.current && isCameraActive) {
-            const videoTrack = currentStreamRef.current.getVideoTracks()[0];
-            const currentFacingMode = videoTrack?.getSettings().facingMode;
-            const desiredFacingMode = useFrontCamera ? 'user' : 'environment';
-
-            if (videoTrack && currentFacingMode === desiredFacingMode) {
-                console.log(
-                    'Camera already active with desired facing mode, no restart needed.',
-                );
-                return;
-            } else {
-                console.log(
-                    'Facing mode needs to change, stopping current stream.',
-                );
-                stopCamera();
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        }
-
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            const error = 'Camera not supported in this browser or environment';
-            setCameraError(error);
-            setNotification({ type: 'error', message: error });
-            clearNotification();
-            setIsCameraActive(false);
-            return;
-        }
-
-        const constraints: MediaStreamConstraints = {
-            video: {
-                facingMode: useFrontCamera ? 'user' : 'environment',
-                width: { ideal: 640, max: 1280 },
-                height: { ideal: 480, max: 720 },
-            },
-            audio: false,
-        };
-
+        setIsFetchingHistory(true);
         try {
-            console.log('Requesting camera with constraints:', constraints);
-            const stream =
-                await navigator.mediaDevices.getUserMedia(constraints);
+            const url = route('events.scanned.history', {
+                client: client,
+                event_slug: event.slug,
+            });
 
-            if (!stream) {
-                throw new Error('No stream received from getUserMedia');
-            }
+            const response =
+                await axios.get<ApiSuccessResponse<ScannedTicket[]>>(url);
 
-            console.log('Camera stream obtained:', stream);
-            currentStreamRef.current = stream;
-
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-
-                // Wait for video metadata to load before playing
-                await new Promise<void>((resolve, reject) => {
-                    const video = videoRef.current!;
-                    let resolved = false;
-
-                    const onLoadedMetadata = () => {
-                        if (resolved) return;
-                        resolved = true;
-                        console.log('Video metadata loaded');
-                        video.removeEventListener(
-                            'loadedmetadata',
-                            onLoadedMetadata,
-                        );
-                        video.removeEventListener('error', onError);
-                        resolve();
-                    };
-
-                    const onError = (e: Event) => {
-                        if (resolved) return;
-                        resolved = true;
-                        console.error('Video error during load:', e);
-                        video.removeEventListener(
-                            'loadedmetadata',
-                            onLoadedMetadata,
-                        );
-                        video.removeEventListener('error', onError);
-                        reject(new Error('Video failed to load'));
-                    };
-
-                    video.addEventListener('loadedmetadata', onLoadedMetadata);
-                    video.addEventListener('error', onError);
-
-                    setTimeout(() => {
-                        if (!resolved) {
-                            resolved = true;
-                            video.removeEventListener(
-                                'loadedmetadata',
-                                onLoadedMetadata,
-                            );
-                            video.removeEventListener('error', onError);
-                            resolve();
-                        }
-                    }, 3000);
-                });
-
-                await videoRef.current.play();
-                console.log('Video playing successfully');
-            }
-
-            setIsCameraActive(true);
-            setNotification({ type: null, message: '' });
-        } catch (err: unknown) {
-            console.error('Error starting camera:', err);
-
-            let camMessage = 'Could not access camera. ';
-
-            if (err instanceof Error) {
-                if (err.name === 'NotAllowedError') {
-                    camMessage +=
-                        'Permission denied. Please allow camera access.';
-                } else if (err.name === 'NotFoundError') {
-                    camMessage += 'No camera found on this device.';
-                } else if (err.name === 'NotReadableError') {
-                    camMessage +=
-                        'Camera is already in use by another application.';
-                } else if (err.name === 'OverconstrainedError') {
-                    camMessage += 'Camera constraints not supported by device.';
-                } else if (err.name === 'AbortError') {
-                    camMessage += 'Camera access was aborted.';
-                } else {
-                    camMessage += `${err.name}: ${err.message}`;
-                }
+            if (response.data?.data) {
+                setScannedTickets(response.data.data);
             } else {
-                camMessage += 'Unknown error occurred.';
+                setScannedTickets([]);
             }
-
-            setCameraError(camMessage);
-            setNotification({ type: 'error', message: camMessage });
-            clearNotification();
-            setIsCameraActive(false);
+        } catch (error) {
+            console.error('Failed to fetch scanned tickets history:', error);
+            showNotification('error', 'Failed to load scan history.');
+            setScannedTickets([]);
+        } finally {
+            setIsFetchingHistory(false);
         }
-    }, [useFrontCamera, isCameraActive, stopCamera, clearNotification]);
+    }, [client, event?.slug, showNotification]);
+
+    // Event handlers
+    const toggleScanning = useCallback(async () => {
+        setIsScanning((prev) => !prev);
+    }, []);
 
     const toggleCameraFacingMode = useCallback(() => {
-        console.log('Toggling camera facing mode');
         setUseFrontCamera((prev) => !prev);
     }, []);
-
-    const toggleScanning = useCallback(() => {
-        setIsScanning((prev) => {
-            const newValue = !prev;
-            console.log('Toggle scanning: Setting isScanning to', newValue);
-            return newValue;
-        });
-    }, []);
-
-    // FIXED: Separated effects to prevent infinite loops
-
-    // Effect 1: Handle camera start/stop based on isScanning
-    useEffect(() => {
-        console.log('--- Primary Camera Effect --- isScanning:', isScanning);
-
-        if (isScanning) {
-            console.log('Starting camera due to isScanning = true');
-            startCamera();
-        } else {
-            console.log('Stopping camera due to isScanning = false');
-            stopCamera();
-        }
-
-        // Cleanup on unmount or when isScanning changes
-        return () => {
-            console.log('--- Primary Camera Effect Cleanup ---');
-            stopCamera();
-        };
-    }, [isScanning, startCamera, stopCamera]); // REMOVED startCamera and stopCamera from dependencies
-    // ijin ngubah sek bang biar bisa merge ke roetix
-
-    // Effect 2: Handle camera facing mode change
-    useEffect(() => {
-        console.log(
-            '--- Camera Facing Mode Effect --- useFrontCamera:',
-            useFrontCamera,
-            'isScanning:',
-            isScanning,
-        );
-
-        // Only restart camera if we're currently scanning
-        if (isScanning && isCameraActive) {
-            console.log('Restarting camera for facing mode change');
-            startCamera();
-        }
-    }, [useFrontCamera, isCameraActive, isScanning, startCamera]); // REMOVED dependencies that cause loops
-    // ijin ngubah sek bang biar bisa merge ke roetix
-
-    // Effect 3: Handle QR scanner interval
-    useEffect(() => {
-        console.log(
-            '--- QR Scanner Effect --- isScanning:',
-            isScanning,
-            'isCameraActive:',
-            isCameraActive,
-            'isLoading:',
-            isLoading,
-        );
-
-        if (isScanning && isCameraActive && !isLoading) {
-            console.log('Starting QR scanner interval.');
-            startQrScanner();
-        } else {
-            if (scanIntervalRef.current) {
-                console.log('Stopping QR scanner interval.');
-                clearInterval(scanIntervalRef.current);
-                scanIntervalRef.current = null;
-            }
-        }
-
-        return () => {
-            if (scanIntervalRef.current) {
-                console.log('QR Scanner Effect Cleanup.');
-                clearInterval(scanIntervalRef.current);
-                scanIntervalRef.current = null;
-            }
-        };
-    }, [isScanning, isCameraActive, isLoading, startQrScanner]); // REMOVED startQrScanner from dependencies
-    // ijin ngubah sek bang biar bisa merge ke roetix
-
-    // Effect 4: Final cleanup on component unmount
-    useEffect(() => {
-        return () => {
-            console.log('Component unmounting. Final camera stop.');
-            if (currentStreamRef.current) {
-                currentStreamRef.current.getTracks().forEach((track) => {
-                    track.stop();
-                });
-            }
-            if (scanIntervalRef.current) {
-                clearInterval(scanIntervalRef.current);
-            }
-            if (scanTimeoutRef.current) {
-                clearTimeout(scanTimeoutRef.current);
-            }
-        };
-    }, []); // Empty dependency array - only runs on mount/unmount
 
     const handleManualSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!ticketCode.trim()) {
-            setNotification({
-                type: 'error',
-                message: 'Ticket code cannot be empty.',
-            });
-            clearNotification();
+            showNotification('error', 'Ticket code cannot be empty.');
             return;
         }
         submitTicketCode(ticketCode.trim());
     };
+
+    // Effects
+    useEffect(() => {
+        fetchScannedTicketsHistory();
+    }, [fetchScannedTicketsHistory]);
+
+    // Main camera control effect
+    useEffect(() => {
+        let mounted = true;
+
+        const handleCameraControl = async () => {
+            if (isScanning) {
+                await startCamera();
+                if (mounted) {
+                    startQrScanning();
+                }
+            } else {
+                if (scanIntervalRef.current) {
+                    clearInterval(scanIntervalRef.current);
+                    scanIntervalRef.current = null;
+                }
+                await stopCamera();
+            }
+        };
+
+        handleCameraControl();
+
+        return () => {
+            mounted = false;
+            if (scanIntervalRef.current) {
+                clearInterval(scanIntervalRef.current);
+                scanIntervalRef.current = null;
+            }
+            stopCamera(); // Ensure stopCamera is called when the component unmounts
+        };
+    }, [isScanning, useFrontCamera, startCamera, startQrScanning, stopCamera]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((track) => track.stop());
+            }
+            if (scanIntervalRef.current) {
+                clearInterval(scanIntervalRef.current);
+            }
+            if (notificationTimeoutRef.current) {
+                clearTimeout(notificationTimeoutRef.current);
+            }
+        };
+    }, []);
 
     if (!event) {
         return (
@@ -630,13 +474,8 @@ const ScanTicket: React.FC = () => {
             props={pageConfigProps}
             userEndSessionDatetime={userEndSessionDatetime}
             header={
-                <div
-                    style={{
-                        color: pageConfigProps.text_primary_color,
-                    }}
-                    className="py-6 sm:py-8"
-                >
-                    <h2 className="header-dynamic-color leading-tigh text-3xl font-extrabold drop-shadow-md md:text-4xl">
+                <div style={{ color: pageConfigProps.text_primary_color }}>
+                    <h2 className="header-dynamic-color text-3xl font-extrabold leading-tight drop-shadow-md md:text-4xl">
                         Scan Ticket for {event.name}
                     </h2>
                     {event.location && (
@@ -656,7 +495,7 @@ const ScanTicket: React.FC = () => {
                 }}
             >
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    {/* Notification Section - Floating/Integrated */}
+                    {/* Notification */}
                     {notification.type && (
                         <div
                             className={`mb-8 flex items-center justify-between rounded-xl p-4 text-white shadow-lg transition-all duration-300 ${
@@ -668,12 +507,11 @@ const ScanTicket: React.FC = () => {
                             <div className="flex items-center">
                                 {notification.type === 'success' ? (
                                     <svg
-                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="mr-3 h-6 w-6"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                         strokeWidth={1.5}
                                         stroke="currentColor"
-                                        className="mr-3 h-6 w-6"
                                     >
                                         <path
                                             strokeLinecap="round"
@@ -683,12 +521,11 @@ const ScanTicket: React.FC = () => {
                                     </svg>
                                 ) : (
                                     <svg
-                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="mr-3 h-6 w-6"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                         strokeWidth={1.5}
                                         stroke="currentColor"
-                                        className="mr-3 h-6 w-6"
                                     >
                                         <path
                                             strokeLinecap="round"
@@ -707,15 +544,13 @@ const ScanTicket: React.FC = () => {
                                 }
                                 className="ml-4 text-white opacity-80 transition-opacity hover:opacity-100"
                                 aria-label="Close notification"
-                                title="Close notification"
                             >
                                 <svg
-                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     strokeWidth={1.5}
                                     stroke="currentColor"
-                                    className="h-5 w-5"
                                 >
                                     <path
                                         strokeLinecap="round"
@@ -727,9 +562,9 @@ const ScanTicket: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Main content grid - camera and history */}
+                    {/* Main content grid */}
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                        {/* Camera Scanner Section (Left) */}
+                        {/* Camera Scanner Section */}
                         <div className="relative flex flex-col items-center justify-center rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
                             <h3 className="mb-6 text-2xl font-bold">
                                 Camera Scanner
@@ -739,44 +574,30 @@ const ScanTicket: React.FC = () => {
                                 <div className="mb-6 w-full rounded-lg bg-yellow-100/20 p-4 text-yellow-200 backdrop-blur-sm">
                                     <strong className="block text-lg">
                                         Camera Issue:
-                                    </strong>{' '}
+                                    </strong>
                                     <p className="text-sm">{cameraError}</p>
                                 </div>
                             )}
 
-                            {/* Camera Feed / Placeholder */}
+                            {/* Camera Feed */}
                             <div className="relative mb-6 aspect-video w-full overflow-hidden rounded-xl border-2 border-white/50 bg-gray-900 shadow-lg">
-                                {/* Always render the video, control its display */}
                                 <video
                                     ref={videoRef}
-                                    width="100%"
-                                    height="auto"
+                                    className={`h-full w-full object-cover ${isScanning && streamRef.current ? '' : 'hidden'} ${useFrontCamera ? 'scale-x-[-1]' : ''}`}
                                     autoPlay
                                     playsInline
                                     muted
-                                    className={`h-full w-full object-cover ${
-                                        isScanning && isCameraActive
-                                            ? ''
-                                            : 'hidden'
-                                    }`}
-                                    style={{
-                                        transform: useFrontCamera
-                                            ? 'scaleX(-1)'
-                                            : 'none',
-                                    }}
                                 />
 
-                                {/* Placeholder content when camera is inactive */}
-                                {!isScanning || !isCameraActive ? (
+                                {(!isScanning || !streamRef.current) && (
                                     <div className="absolute inset-0 flex h-full items-center justify-center bg-gray-800/80">
                                         <div className="text-center">
                                             <svg
-                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="mx-auto mb-4 h-20 w-20 text-gray-400"
                                                 fill="none"
                                                 viewBox="0 0 24 24"
                                                 strokeWidth={1.5}
                                                 stroke="currentColor"
-                                                className="mx-auto mb-4 h-20 w-20 text-gray-400"
                                             >
                                                 <path
                                                     strokeLinecap="round"
@@ -792,32 +613,38 @@ const ScanTicket: React.FC = () => {
                                             </p>
                                         </div>
                                     </div>
-                                ) : null}
+                                )}
                                 <canvas ref={canvasRef} className="hidden" />
                             </div>
 
-                            {/* Camera control buttons */}
+                            {/* Camera Controls */}
                             <div className="mb-8 flex flex-wrap justify-center gap-3">
                                 <button
                                     type="button"
                                     onClick={toggleScanning}
                                     className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
                                         isScanning
-                                            ? 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400 active:bg-red-700'
-                                            : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400 active:bg-green-700'
-                                    } shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
-                                    disabled={isLoading}
+                                            ? 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400'
+                                            : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400'
+                                    } shadow-lg disabled:cursor-not-allowed disabled:opacity-50`}
+                                    disabled={
+                                        isLoading || isCameraStartingRef.current
+                                    }
                                 >
                                     {isScanning
                                         ? 'Stop Camera'
                                         : 'Start Camera & Scan'}
                                 </button>
+
                                 {isScanning && (
                                     <button
                                         type="button"
                                         onClick={toggleCameraFacingMode}
-                                        className={`rounded-full bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-400 focus:ring-offset-2 active:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
-                                        disabled={isLoading || !isCameraActive}
+                                        className="rounded-full bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                        disabled={
+                                            isLoading ||
+                                            isCameraStartingRef.current
+                                        }
                                     >
                                         Switch to{' '}
                                         {useFrontCamera ? 'Back' : 'Front'}{' '}
@@ -837,8 +664,6 @@ const ScanTicket: React.FC = () => {
                                 >
                                     <input
                                         type="text"
-                                        name="ticket_code_manual"
-                                        id="ticket_code_manual"
                                         className="block flex-1 rounded-full border border-white/30 bg-white/20 p-3 text-white placeholder-gray-300 focus:border-blue-300 focus:ring-blue-300"
                                         placeholder="Enter ticket code"
                                         value={ticketCode}
@@ -849,25 +674,14 @@ const ScanTicket: React.FC = () => {
                                     />
                                     <button
                                         type="submit"
-                                        className={`rounded-full bg-gray-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-400 active:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none`}
+                                        className="rounded-full bg-gray-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
                                         disabled={
                                             isLoading || !ticketCode.trim()
-                                        }
-                                        aria-label={
-                                            isLoading
-                                                ? 'Submitting...'
-                                                : 'Submit ticket code'
-                                        }
-                                        title={
-                                            isLoading
-                                                ? 'Submitting...'
-                                                : 'Submit ticket code'
                                         }
                                     >
                                         {isLoading ? (
                                             <svg
                                                 className="mx-auto h-5 w-5 animate-spin text-white"
-                                                xmlns="http://www.w3.org/2000/svg"
                                                 fill="none"
                                                 viewBox="0 0 24 24"
                                             >
@@ -893,7 +707,7 @@ const ScanTicket: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Scanned Tickets History (Right) */}
+                        {/* Scanned Tickets History */}
                         <div className="flex flex-col rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
                             <h3 className="mb-6 text-2xl font-bold">
                                 Scanned Tickets History ({scannedTickets.length}
@@ -904,7 +718,6 @@ const ScanTicket: React.FC = () => {
                                 <div className="flex flex-grow flex-col items-center justify-center py-8 text-gray-300">
                                     <svg
                                         className="mx-auto h-16 w-16 animate-spin text-gray-400"
-                                        xmlns="http://www.w3.org/2000/svg"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                     >
@@ -977,31 +790,23 @@ const ScanTicket: React.FC = () => {
                                                 <span className="text-xs text-gray-300">
                                                     {new Date(
                                                         ticket.scanned_at,
-                                                    ).toLocaleString()}{' '}
+                                                    ).toLocaleString()}
                                                 </span>
                                             </div>
                                             {ticket.attendee_name && (
                                                 <p className="mb-1 text-sm">
-                                                    <strong className="font-semibold">
-                                                        Attendee:
-                                                    </strong>{' '}
+                                                    <strong>Attendee:</strong>{' '}
                                                     {ticket.attendee_name}
                                                 </p>
                                             )}
                                             {ticket.ticket_type && (
                                                 <p className="mb-1 text-sm text-gray-300">
-                                                    <strong className="font-semibold">
-                                                        Type:
-                                                    </strong>{' '}
+                                                    <strong>Type:</strong>{' '}
                                                     {ticket.ticket_type}
                                                 </p>
                                             )}
                                             <p
-                                                className={`text-sm ${
-                                                    ticket.status === 'success'
-                                                        ? 'text-green-200'
-                                                        : 'text-red-200'
-                                                }`}
+                                                className={`text-sm ${ticket.status === 'success' ? 'text-green-200' : 'text-red-200'}`}
                                             >
                                                 {ticket.message}
                                             </p>
