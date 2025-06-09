@@ -290,7 +290,7 @@ export default function Authenticated({
                                 </NavLink>
                                 <NavLink
                                     className={
-                                        user.role === 'user' ? 'hidden' : ''
+                                        user.role === 'admin' ? '' : 'hidden'
                                     }
                                     eventProps={props}
                                     href="#"
@@ -438,7 +438,7 @@ export default function Authenticated({
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 eventProps={props}
-                                className={user.role === 'user' ? 'hidden' : ''}
+                                className={user.role === 'admin' ? '' : 'hidden'}
                                 href="#"
                                 onClick={() => {
                                     window.location.href = route('home');
