@@ -178,11 +178,10 @@ const ScanTicket: React.FC = () => {
             scanIntervalRef.current = null;
         }
 
-        // Clear video element SEBELUM stop stream
+        // Clear video element BEFORE stopping stream
         if (videoRef.current) {
             videoRef.current.pause();
             videoRef.current.srcObject = null;
-            // TAMBAHKAN INI UNTUK FORCE CLEANUP
             videoRef.current.load();
         }
 
@@ -198,7 +197,9 @@ const ScanTicket: React.FC = () => {
         setCameraError('');
         lastScannedCodeRef.current = '';
         isCameraStartingRef.current = false;
-        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // Longer delay to ensure complete cleanup
+        await new Promise((resolve) => setTimeout(resolve, 500));
     }, []);
 
     const startCamera = useCallback(async () => {
@@ -215,8 +216,8 @@ const ScanTicket: React.FC = () => {
             // Stop any existing camera first
             await stopCamera();
 
-            // Wait a bit to ensure cleanup
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            // Wait longer to ensure complete cleanup
+            await new Promise((resolve) => setTimeout(resolve, 800));
 
             if (!navigator.mediaDevices?.getUserMedia) {
                 throw new Error('Camera not supported in this browser');
@@ -231,55 +232,112 @@ const ScanTicket: React.FC = () => {
                 audio: false,
             };
 
+            console.log('Requesting media with constraints:', constraints);
             const stream =
                 await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
 
             if (videoRef.current) {
-                videoRef.current.srcObject = stream;
+                // Clear any existing srcObject first
+                videoRef.current.srcObject = null;
                 videoRef.current.load();
 
-                // Wait for video to be ready
+                // Wait a bit before setting new stream
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
+                videoRef.current.srcObject = stream;
+
+                // Wait for video to be ready with more robust handling
                 await new Promise<void>((resolve, reject) => {
                     const video = videoRef.current!;
                     const timeout = setTimeout(
                         () => reject(new Error('Video load timeout')),
-                        10000,
+                        15000, // Increased timeout
                     );
 
-                    const onLoadedMetadata = () => {
-                        clearTimeout(timeout);
-                        video.removeEventListener(
-                            'loadedmetadata',
-                            onLoadedMetadata,
-                        );
-                        resolve();
+                    let resolved = false;
+                    const resolveOnce = () => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            video.removeEventListener(
+                                'loadedmetadata',
+                                onLoadedMetadata,
+                            );
+                            video.removeEventListener('canplay', onCanPlay);
+                            video.removeEventListener(
+                                'loadeddata',
+                                onLoadedData,
+                            );
+                            resolve();
+                        }
                     };
+
+                    const onLoadedMetadata = () => {
+                        console.log('Video metadata loaded');
+                        // Don't resolve yet, wait for more
+                    };
+
+                    const onLoadedData = () => {
+                        console.log('Video data loaded');
+                        // Don't resolve yet, wait for canplay
+                    };
+
                     const onCanPlay = () => {
-                        clearTimeout(timeout);
-                        video.removeEventListener('canplay', onCanPlay);
-                        video.removeEventListener(
-                            'loadedmetadata',
-                            onLoadedMetadata,
-                        );
-                        resolve();
+                        console.log('Video can play');
+                        resolveOnce();
                     };
 
                     video.addEventListener('loadedmetadata', onLoadedMetadata);
+                    video.addEventListener('loadeddata', onLoadedData);
                     video.addEventListener('canplay', onCanPlay);
+
+                    // Force load if not already loading
+                    if (video.readyState === 0) {
+                        video.load();
+                    }
                 });
 
+                // Additional wait before playing
+                await new Promise((resolve) => setTimeout(resolve, 200));
+
+                console.log(
+                    'About to play video, readyState:',
+                    videoRef.current.readyState,
+                );
                 await videoRef.current.play();
+
+                // Verify video is actually playing
+                await new Promise<void>((resolve, reject) => {
+                    const video = videoRef.current!;
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Video failed to start playing'));
+                    }, 5000);
+
+                    const checkPlaying = () => {
+                        if (
+                            !video.paused &&
+                            !video.ended &&
+                            video.readyState > 2
+                        ) {
+                            clearTimeout(timeout);
+                            console.log('Video confirmed playing');
+                            resolve();
+                        } else {
+                            setTimeout(checkPlaying, 100);
+                        }
+                    };
+
+                    checkPlaying();
+                });
             }
 
             console.log('Camera started successfully');
         } catch (error: unknown) {
-            // Changed to unknown
             console.error('Error starting camera:', error);
 
             let message = 'Could not access camera. ';
             if (error instanceof DOMException) {
-                // Type guard for DOMException
                 if (error.name === 'NotAllowedError') {
                     message += 'Permission denied. Please allow camera access.';
                 } else if (error.name === 'NotFoundError') {
@@ -291,7 +349,6 @@ const ScanTicket: React.FC = () => {
                     message += error.message || 'Unknown error occurred.';
                 }
             } else if (error instanceof Error) {
-                // Type guard for generic Error
                 message += error.message || 'Unknown error occurred.';
             } else {
                 message += 'An unexpected error occurred.';
@@ -299,6 +356,9 @@ const ScanTicket: React.FC = () => {
 
             setCameraError(message);
             showNotification('error', message);
+
+            // Ensure cleanup on error
+            await stopCamera();
         } finally {
             isCameraStartingRef.current = false;
         }
@@ -307,6 +367,7 @@ const ScanTicket: React.FC = () => {
     // QR Code scanning (now defined after submitTicketCode)
     const startQrScanning = useCallback(() => {
         if (!videoRef.current || !canvasRef.current || isLoading) {
+            console.log('Cannot start QR scanning: missing refs or loading');
             return;
         }
 
@@ -323,42 +384,50 @@ const ScanTicket: React.FC = () => {
             clearInterval(scanIntervalRef.current);
         }
 
+        console.log('Starting QR scanning...');
+
         scanIntervalRef.current = setInterval(() => {
             if (
                 video.readyState === video.HAVE_ENOUGH_DATA &&
                 video.videoWidth > 0 &&
                 video.videoHeight > 0 &&
+                !video.paused &&
+                !video.ended &&
                 !isLoading
             ) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                try {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                const imageData = context.getImageData(
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height,
-                );
-                const code = jsQR(
-                    imageData.data,
-                    imageData.width,
-                    imageData.height,
-                    {
-                        inversionAttempts: 'dontInvert',
-                    },
-                );
+                    const imageData = context.getImageData(
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height,
+                    );
+                    const code = jsQR(
+                        imageData.data,
+                        imageData.width,
+                        imageData.height,
+                        {
+                            inversionAttempts: 'dontInvert',
+                        },
+                    );
 
-                if (
-                    code?.data?.trim() &&
-                    code.data.trim() !== lastScannedCodeRef.current
-                ) {
-                    console.log('QR Code detected:', code.data.trim());
-                    submitTicketCode(code.data.trim());
+                    if (
+                        code?.data?.trim() &&
+                        code.data.trim() !== lastScannedCodeRef.current
+                    ) {
+                        console.log('QR Code detected:', code.data.trim());
+                        submitTicketCode(code.data.trim());
+                    }
+                } catch (error) {
+                    console.warn('QR scanning error:', error);
                 }
             }
-        }, 200); // Reduced frequency to 200ms
-    }, [isLoading, showNotification, submitTicketCode]); // Added submitTicketCode dependency
+        }, 200);
+    }, [isLoading, showNotification, submitTicketCode]);
 
     const fetchScannedTicketsHistory = useCallback(async () => {
         if (!event?.slug) {
@@ -418,19 +487,35 @@ const ScanTicket: React.FC = () => {
     // Main camera control effect
     useEffect(() => {
         let mounted = true;
+        let cleanupPromise: Promise<void> | null = null;
 
         const handleCameraControl = async () => {
-            if (isScanning) {
-                await startCamera();
+            try {
+                if (isScanning) {
+                    console.log('Effect: Starting camera...');
+                    await startCamera();
+                    if (mounted) {
+                        // Additional delay before starting QR scanning
+                        setTimeout(() => {
+                            if (mounted) {
+                                startQrScanning();
+                            }
+                        }, 500);
+                    }
+                } else {
+                    console.log('Effect: Stopping camera...');
+                    if (scanIntervalRef.current) {
+                        clearInterval(scanIntervalRef.current);
+                        scanIntervalRef.current = null;
+                    }
+                    cleanupPromise = stopCamera();
+                    await cleanupPromise;
+                }
+            } catch (error) {
+                console.error('Camera control error:', error);
                 if (mounted) {
-                    startQrScanning();
+                    showNotification('error', 'Failed to control camera');
                 }
-            } else {
-                if (scanIntervalRef.current) {
-                    clearInterval(scanIntervalRef.current);
-                    scanIntervalRef.current = null;
-                }
-                await stopCamera();
             }
         };
 
@@ -442,9 +527,20 @@ const ScanTicket: React.FC = () => {
                 clearInterval(scanIntervalRef.current);
                 scanIntervalRef.current = null;
             }
-            stopCamera(); // Ensure stopCamera is called when the component unmounts
+
+            // Don't await here, just start the cleanup
+            if (!cleanupPromise) {
+                stopCamera().catch(console.error);
+            }
         };
-    }, [isScanning, useFrontCamera, startCamera, startQrScanning, stopCamera]);
+    }, [
+        isScanning,
+        useFrontCamera,
+        startCamera,
+        startQrScanning,
+        stopCamera,
+        showNotification,
+    ]);
 
     // Cleanup on unmount
     useEffect(() => {
