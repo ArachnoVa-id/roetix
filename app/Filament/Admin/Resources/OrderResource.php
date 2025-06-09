@@ -151,7 +151,7 @@ class OrderResource extends Resource
                             ->required()
                             ->preload()
                             ->disabled($modelExists),
-                        Forms\Components\DatePicker::make('expired_at')
+                        Forms\Components\DateTimePicker::make('expired_at')
                             ->label('Expired At')
                             ->format('Y-m-d H:i:s')
                             ->default(now()->addHours(1))
