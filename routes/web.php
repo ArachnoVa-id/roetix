@@ -130,7 +130,7 @@ Route::domain('{client}.' . config('app.domain'))
             });
 
             // Fix: Add auth middleware to my_tickets route to ensure user authentication
-            Route::middleware('auth')->group(function () {
+            Route::middleware('auth.client')->group(function () {
                 Route::get('/my_tickets', [UserPageController::class, 'my_tickets'])
                     ->name('client.my_tickets');
 

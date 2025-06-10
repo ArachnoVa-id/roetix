@@ -1,10 +1,11 @@
 const { chromium } = require('playwright');
 
 const PASSWORD = 'password123';
-const userCount = parseInt(process.argv[2], 10) || 20;
-let DOMAIN = process.argv[3] || 'http://test.dev-staging-novatix.id';
-const startUser = parseInt(process.argv[4], 10) || 1;
-const dontCareMode = process.argv[5] === 'true' || process.argv[5] === '1';
+const dontCareMode = process.argv[2] === 'true' || process.argv[5] === '1';
+const userCount = parseInt(process.argv[3], 10) || 20;
+const userPerSecond = parseInt(process.argv[4], 10) || 1;
+let DOMAIN = process.argv[5] || 'http://test.dev-staging-novatix.id';
+const startUser = parseInt(process.argv[6], 10) || 1;
 
 // Clean up domain URL to handle trailing slashes
 DOMAIN = DOMAIN.replace(/\/+$/, '');
@@ -36,6 +37,7 @@ const displayFooter = () => {
         '🚀 Enhanced Queue Simulation',
         `📋 Configuration:`,
         `   - Users: ${userCount} (${startUser} to ${startUser + userCount - 1})`,
+        `   - Users per second: ${userPerSecond}`,
         `   - Domain: ${DOMAIN}`,
         `   - Mode: ${dontCareMode ? "SPAM (Don't Care)" : 'MONITOR'}`,
         `   - User range: testuser${startUser}@example.com to testuser${startUser + userCount - 1}@example.com`,
@@ -1070,17 +1072,20 @@ async function main() {
     const promises = USERS.map((user, index) => {
         const label = `User ${startUser + index}`;
         return new Promise((resolve) => {
-            setTimeout(async () => {
-                try {
-                    await loginAndMonitor(user, label);
-                    resolve();
-                } catch (error) {
-                    console.error(
-                        `💥 [${label}] Fatal error: ${error.message}`,
-                    );
-                    resolve();
-                }
-            }, index * 1000); // 1 second delay between each user
+            setTimeout(
+                async () => {
+                    try {
+                        await loginAndMonitor(user, label);
+                        resolve();
+                    } catch (error) {
+                        console.error(
+                            `💥 [${label}] Fatal error: ${error.message}`,
+                        );
+                        resolve();
+                    }
+                },
+                index * (1000 / userPerSecond),
+            );
         });
     });
 
