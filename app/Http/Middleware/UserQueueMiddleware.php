@@ -81,12 +81,19 @@ class UserQueueMiddleware
         // ✅ If waiting, check if next in queue
         if ($current_user->status === 'waiting') {
             $position = Event::getUserPosition($event, $user);
+            $onlineUsers = Event::countOnlineUsers($event);
+            $supposedOnlineSlot = $threshold - $onlineUsers;
 
             // Estimate waiting time
-            $batch = ceil($position / $threshold);
-            $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
-            $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
-            $expected_end = Carbon::parse($expected_end)->addSeconds(20)->toDateTimeString();
+            $expected_end = null;
+            if ($position <= $supposedOnlineSlot) {
+                // this means the user is supposed to be online, so try waiting by giving expected_end as 20 seconds
+                $expected_end = Carbon::now()->addSeconds(20)->toDateTimeString();
+            } else {
+                $batch = ceil($position / $threshold);
+                $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
+                $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
+            }
 
             return Inertia::render('User/Overload', [
                 'client' => $client,
