@@ -206,23 +206,18 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/install_dependencies.sh
 
-          # setup_worker_services.sh - Enhanced with multiple workers
+          # setup_worker_services.sh
           echo "Creating setup_worker_services.sh..."
           cat > ~/novatix/setups/setup_worker_services.sh << 'EOT'
           #!/bin/bash
           set -e
 
-          echo "Setting up Laravel worker services with multiple workers..."
+          echo "Setting up Laravel worker services..."
 
-          # Remove old single worker service if exists
-          sudo systemctl stop novatix-queue-worker || true
-          sudo systemctl disable novatix-queue-worker || true
-          sudo rm -f /etc/systemd/system/novatix-queue-worker.service
-
-          # Create systemd service template for multiple queue workers
-          sudo tee /etc/systemd/system/novatix-queue-worker@.service > /dev/null << 'EOTS'
+          # Create systemd service for queue worker
+          sudo tee /etc/systemd/system/novatix-queue-worker.service > /dev/null << 'EOTS'
           [Unit]
-          Description=NovaTix Laravel Queue Worker %i
+          Description=NovaTix Laravel Queue Worker
           After=network.target redis.service
           Wants=redis.service
 
@@ -231,41 +226,23 @@ jobs:
           User=www-data
           Group=www-data
           Restart=always
-          RestartSec=5
+          RestartSec=10
           StartLimitInterval=300
-          StartLimitBurst=10
+          StartLimitBurst=5
           WorkingDirectory=/var/www/novatix_staging
           Environment=HOME=/var/www
           Environment=USER=www-data
-          Environment=WORKER_ID=%i
           ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && php artisan config:cache'
-          ExecStart=/usr/bin/php artisan queue:work redis --sleep=1 --tries=3 --max-time=1800 --memory=256 --verbose --name=worker-%i
+          ExecStart=/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=512 --verbose
           StandardOutput=journal
           StandardError=journal
-          SyslogIdentifier=novatix-queue-%i
+          SyslogIdentifier=novatix-queue
 
           [Install]
           WantedBy=multi-user.target
           EOTS
 
-          # Create a service to manage all workers
-          sudo tee /etc/systemd/system/novatix-queue-workers.service > /dev/null << 'EOTS'
-          [Unit]
-          Description=NovaTix Laravel Queue Workers Manager
-          After=network.target redis.service
-          Wants=redis.service
-
-          [Service]
-          Type=oneshot
-          RemainAfterExit=yes
-          ExecStart=/bin/bash -c 'for i in {1..6}; do systemctl start novatix-queue-worker@$i; done'
-          ExecStop=/bin/bash -c 'for i in {1..6}; do systemctl stop novatix-queue-worker@$i; done'
-
-          [Install]
-          WantedBy=multi-user.target
-          EOTS
-
-          # Set up Laravel scheduler via cron (unchanged)
+          # Set up Laravel scheduler via cron
           echo "Setting up Laravel scheduler via cron..."
           TEMP_CRON=$(mktemp)
           sudo crontab -u www-data -l 2>/dev/null > "$TEMP_CRON" || echo "" > "$TEMP_CRON"
@@ -280,140 +257,10 @@ jobs:
           echo "Reloading systemd daemon..."
           sudo systemctl daemon-reload
 
-          echo "Enabling queue workers manager service..."
-          sudo systemctl enable novatix-queue-workers
-
-          # Enable individual worker services
-          for i in {1..6}; do
-              sudo systemctl enable novatix-queue-worker@$i
-          done
-
-          echo "Queue worker services setup completed!"
-          echo "You now have 6 worker processes that will be managed by novatix-queue-workers.service"
+          echo "Enabling queue worker service..."
+          sudo systemctl enable novatix-queue-worker
           EOT
           chmod +x ~/novatix/setups/setup_worker_services.sh
-
-          # Enhanced restart_services.sh - Updated for multiple workers
-          echo "Creating enhanced restart_services.sh..."
-          cat > ~/novatix/setups/restart_services.sh << 'EOT'
-          #!/bin/bash
-          set -e
-
-          echo "=== Stopping Laravel queue workers ==="
-          sudo systemctl stop novatix-queue-workers || true
-
-          # Stop individual workers if they're running
-          for i in {1..6}; do
-              sudo systemctl stop novatix-queue-worker@$i || true
-              sudo systemctl reset-failed novatix-queue-worker@$i || true
-          done
-
-          echo "=== Restarting PHP-FPM ==="
-          sudo systemctl restart php8.3-fpm
-
-          echo "=== Restarting Redis ==="
-          sudo systemctl restart redis-server
-
-          echo "=== Waiting for Redis to be ready ==="
-          sleep 5
-
-          # Verify Redis is ready
-          until sudo systemctl is-active --quiet redis-server && redis-cli ping > /dev/null 2>&1; do
-              echo "Waiting for Redis to start and respond..."
-              sleep 2
-          done
-          echo "✓ Redis is ready"
-
-          echo "=== Testing Laravel environment ==="
-          cd /var/www/novatix_staging
-
-          if [ ! -f "artisan" ]; then
-              echo "ERROR: artisan file not found in /var/www/novatix_staging"
-              exit 1
-          fi
-
-          if [ ! -f ".env" ]; then
-              echo "ERROR: .env file not found"
-              exit 1
-          fi
-
-          if sudo -u www-data php artisan --version > /dev/null 2>&1; then
-              echo "✓ Laravel environment is working"
-              echo "Laravel version: $(sudo -u www-data php artisan --version)"
-          else
-              echo "ERROR: Laravel environment is not working properly"
-              exit 1
-          fi
-
-          echo "=== Starting Laravel queue workers ==="
-          sudo systemctl start novatix-queue-workers
-          sleep 10
-
-          echo "=== Final service status check ==="
-          echo "Redis status:"
-          sudo systemctl status redis-server --no-pager -l || true
-
-          echo "Queue workers manager status:"
-          sudo systemctl status novatix-queue-workers --no-pager -l || true
-
-          echo "Individual worker status:"
-          for i in {1..6}; do
-              echo "Worker $i status:"
-              if sudo systemctl is-active --quiet novatix-queue-worker@$i; then
-                  echo "✓ Worker $i is running"
-              else
-                  echo "✗ Worker $i is not running"
-                  sudo journalctl -u novatix-queue-worker@$i --no-pager -n 5
-              fi
-          done
-
-          echo "=== Active queue processes ==="
-          ps aux | grep "queue:work" | grep -v grep || echo "No queue workers found in process list"
-
-          echo "=== Laravel Scheduler Status ==="
-          echo "Cron jobs for www-data user:"
-          sudo crontab -u www-data -l || echo "No cron jobs found"
-
-          echo "=== Deployment completed successfully! ==="
-          EOT
-          chmod +x ~/novatix/setups/restart_services.sh
-
-          # Enhanced check_workers.sh for multiple workers
-          cat > ~/novatix/setups/check_workers.sh << 'EOT'
-          #!/bin/bash
-          echo "=== Multiple Laravel Workers Status ==="
-
-          echo "Queue Workers Manager Status:"
-          sudo systemctl status novatix-queue-workers --no-pager -l
-          echo ""
-
-          echo "Individual Worker Status:"
-          for i in {1..6}; do
-              echo "--- Worker $i ---"
-              sudo systemctl status novatix-queue-worker@$i --no-pager -l
-              echo ""
-          done
-
-          echo "Redis Status:"
-          sudo systemctl status redis-server --no-pager -l
-          echo ""
-
-          echo "Active Queue Processes:"
-          ps aux | grep "queue:work" | grep -v grep || echo "No queue workers found"
-          echo ""
-
-          echo "Recent logs from all workers:"
-          for i in {1..6}; do
-              echo "--- Worker $i logs ---"
-              sudo journalctl -u novatix-queue-worker@$i --no-pager -n 5 --since "5 minutes ago"
-              echo ""
-          done
-
-          echo "=== Queue Statistics ==="
-          echo "Jobs in queue:"
-          redis-cli llen "queues:default" 2>/dev/null || echo "Could not connect to Redis"
-          EOT
-          chmod +x ~/novatix/setups/check_workers.sh
 
           # setup_laravel_environment.sh
           echo "Creating setup_laravel_environment.sh..."
