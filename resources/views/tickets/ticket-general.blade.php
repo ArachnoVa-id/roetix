@@ -135,7 +135,7 @@
                     padding: 1px 6px;
                     border-radius: 6px;
                     font-family: monospace;
-                    color: {{ $eventVars->primary_color }};
+                    color: {{ $eventVars->text_primary_color }};
                     font-weight: bold;
                   ">
                     {{ $ticket->ticket_code ?? 'N/A' }}
