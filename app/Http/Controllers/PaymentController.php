@@ -988,11 +988,20 @@ class PaymentController extends Controller
                     // Get event details
                     $event = $order->getSingleEvent();
 
+                    // Get from DB
+                    $updatedTicketsObj = [];
+                    foreach ($updatedTickets as $ticket) {
+                        $ticketObj = Ticket::find($ticket['id']);
+                        if ($ticketObj) {
+                            $updatedTicketsObj[] = $ticketObj;
+                        }
+                    }
+
                     // Render the email template
                     $emailHtml = view('emails.order-confirmation', [
                         'order' => $order,
                         'event' => $event,
-                        'tickets' => $updatedTickets,
+                        'tickets' => $updatedTicketsObj,
                         'user' => $user,
                         'userContact' => $userContact
                     ])->render();
