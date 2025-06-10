@@ -4,8 +4,10 @@ const PASSWORD = 'password123';
 const dontCareMode = process.argv[2] === 'true' || process.argv[5] === '1';
 const userCount = parseInt(process.argv[3], 10) || 20;
 const userPerSecond = parseInt(process.argv[4], 10) || 1;
-let DOMAIN = process.argv[5] || 'http://test.dev-staging-novatix.id';
-const startUser = parseInt(process.argv[6], 10) || 1;
+const batchSize = parseInt(process.argv[5], 10) || 50;
+const batchDelay = parseInt(process.argv[6], 10) || 5000; // milliseconds
+let DOMAIN = process.argv[7] || 'http://test.dev-staging-novatix.id';
+const startUser = parseInt(process.argv[8], 10) || 1;
 
 // Clean up domain URL to handle trailing slashes
 DOMAIN = DOMAIN.replace(/\/+$/, '');
@@ -38,6 +40,8 @@ const displayFooter = () => {
         `📋 Configuration:`,
         `   - Users: ${userCount} (${startUser} to ${startUser + userCount - 1})`,
         `   - Users per second: ${userPerSecond}`,
+        `   - Batch size: ${batchSize}`,
+        `   - Batch delay: ${batchDelay}ms`,
         `   - Domain: ${DOMAIN}`,
         `   - Mode: ${dontCareMode ? "SPAM (Don't Care)" : 'MONITOR'}`,
         `   - User range: testuser${startUser}@example.com to testuser${startUser + userCount - 1}@example.com`,
@@ -1068,26 +1072,35 @@ async function main() {
     console.log(`🌐 Domain: ${DOMAIN}`);
     console.log('⌨️  Press "h" for help');
 
-    // Launch sessions with staggered start (1 second apart)
-    const promises = USERS.map((user, index) => {
-        const label = `User ${startUser + index}`;
-        return new Promise((resolve) => {
-            setTimeout(
-                async () => {
-                    try {
-                        await loginAndMonitor(user, label);
-                        resolve();
-                    } catch (error) {
-                        console.error(
-                            `💥 [${label}] Fatal error: ${error.message}`,
-                        );
-                        resolve();
-                    }
-                },
-                index * (1000 / userPerSecond),
-            );
+    // Launch sessions in batches
+    const promises = [];
+    for (let i = 0; i < USERS.length; i += batchSize) {
+        const batch = USERS.slice(i, i + batchSize);
+        const batchIndex = Math.floor(i / batchSize);
+
+        batch.forEach((user, userIndex) => {
+            const globalIndex = i + userIndex;
+            const label = `User ${startUser + globalIndex}`;
+            const promise = new Promise((resolve) => {
+                setTimeout(
+                    async () => {
+                        try {
+                            await loginAndMonitor(user, label);
+                            resolve();
+                        } catch (error) {
+                            console.error(
+                                `💥 [${label}] Fatal error: ${error.message}`,
+                            );
+                            resolve();
+                        }
+                    },
+                    batchIndex * batchDelay +
+                        userIndex * (1000 / userPerSecond),
+                );
+            });
+            promises.push(promise);
         });
-    });
+    }
 
     // Wait for all sessions to complete
     await Promise.all(promises);
