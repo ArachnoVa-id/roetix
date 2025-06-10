@@ -209,7 +209,10 @@ export default function Overload({
                     className="text-center text-sm"
                     style={{ color: text_secondary_color || '#6b7280' }}
                 >
-                    <p>Keep this page open to stay in line.</p>
+                    <p>
+                        Keep this page open and please check it frequently
+                        <br /> as you might join faster than expected.
+                    </p>
                 </div>
             </div>
         </div>

@@ -485,6 +485,7 @@ export default function Authenticated({
                             }}
                         />
                         <span
+                            id="session-timer"
                             className="relative font-bold"
                             style={{
                                 color: props.text_primary_color,

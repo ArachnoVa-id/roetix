@@ -143,7 +143,7 @@ class Event extends Model
         $duration = $eventVariables->active_users_duration;
 
         $start = Carbon::now();
-        $end = $start->copy()->addMinutes($duration)->addSeconds(15); // Add 15 seconds buffer
+        $end = $start->copy()->addMinutes($duration);
 
         $stmt = $pdo->prepare("UPDATE user_logs SET status = 'online', start_time = ?, expected_kick = ? WHERE user_id = ?");
         $stmt->execute([$start, $end, $user->id]);
