@@ -11,11 +11,10 @@ import {
     PendingTransactionResponseItem,
     SeatItem,
 } from '@/types/seatmap';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Mqttclient from '../Seat/components/Mqttclient';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
 
 interface TicketUpdate {
@@ -112,6 +111,11 @@ export default function Landing({
             try {
                 const payload = JSON.parse(message.toString());
                 const updates = payload.data as TicketUpdate[];
+                type UpdatedSeat = {
+                    id: string;
+                    name: string;
+                };
+                const updatedSeatsId = [] as UpdatedSeat[];
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
@@ -122,6 +126,13 @@ export default function Landing({
                     );
 
                     if (update) {
+                        if (selectedSeats.some((s) => s.id === item.id)) {
+                            updatedSeatsId.push({
+                                id: item.id,
+                                name: item.seat_number,
+                            });
+                        }
+
                         return {
                             ...item,
                             status: update.status,
@@ -130,6 +141,24 @@ export default function Landing({
 
                     return item;
                 });
+
+                // remove updatedSeatsId contents from selectedSeats and notify users which seats taken by someone else
+                setSelectedSeats((prevSeats) =>
+                    prevSeats.filter(
+                        (seat) =>
+                            !updatedSeatsId.some(
+                                (updatedSeat) => updatedSeat.id === seat.id,
+                            ),
+                    ),
+                );
+
+                if (updatedSeatsId.length > 0) {
+                    showError(
+                        `Seats ${updatedSeatsId
+                            .map((s) => s.name)
+                            .join(', ')} have been taken by someone else.`,
+                    );
+                }
 
                 setLayoutItems(updatedItems);
                 setLayoutState((prevLayout) => ({
@@ -339,33 +368,33 @@ export default function Landing({
 
             if (response.data.success) {
                 // logic publish
-                const updated_tickets: { seat_id: string; status: string }[] =
-                    [];
+                // const updated_tickets: { seat_id: string; status: string }[] =
+                //     [];
 
-                for (const transaction of pendingTransactions) {
-                    for (const seat of transaction.seats) {
-                        updated_tickets.push({
-                            seat_id: seat.seat_id,
-                            status: 'available',
-                        });
-                    }
-                }
+                // for (const transaction of pendingTransactions) {
+                //     for (const seat of transaction.seats) {
+                //         updated_tickets.push({
+                //             seat_id: seat.seat_id,
+                //             status: 'available',
+                //         });
+                //     }
+                // }
 
-                const message = JSON.stringify({
-                    event: 'update_ticket_status',
-                    data: updated_tickets,
-                });
+                // const message = JSON.stringify({
+                //     event: 'update_ticket_status',
+                //     data: updated_tickets,
+                // });
 
-                Mqttclient.publish(
-                    'novatix/midtrans/defaultcode',
-                    message,
-                    { qos: 1 },
-                    (err) => {
-                        if (err) {
-                            console.error('MQTT Publish Error:', err);
-                        }
-                    },
-                );
+                // Mqttclient.publish(
+                //     'novatix/midtrans/defaultcode',
+                //     message,
+                //     { qos: 1 },
+                //     (err) => {
+                //         if (err) {
+                //             console.error('MQTT Publish Error:', err);
+                //         }
+                //     },
+                // );
 
                 showSuccess('Payment cancelled successfully');
                 window.location.reload();

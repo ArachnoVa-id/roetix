@@ -18,6 +18,10 @@ class SocialiteController extends Controller
 {
     public function googleLogin(string $client = "")
     {
+        if (Auth::check()) {
+            return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
+        }
+
         session(['client' => $client]);
 
         $redirect = Socialite::driver('google')->redirect();
