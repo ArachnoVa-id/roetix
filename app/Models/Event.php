@@ -191,7 +191,7 @@ class Event extends Model
         return $stmt->fetchColumn();
     }
 
-    public static function logoutUserAndPromoteNext($event, $user)
+    public static function logoutUser($event, $user)
     {
         $pdo = self::getPdo($event);
 
@@ -217,11 +217,9 @@ class Event extends Model
             ORDER BY created_at ASC LIMIT 1
         ");
         $nextStmt->execute();
-        $nextUserId = $nextStmt->fetchColumn() ?: '';
 
         $mqttData = [
-            'event' => 'user_logout',
-            'next_user_id' => $nextUserId,
+            'event' => 'user_logout'
         ];
         self::publishMqtt($mqttData, $event->slug);
 
@@ -260,7 +258,7 @@ class Event extends Model
             foreach ($expiredUsers as $expiredUser) {
                 $userModel = $users->get($expiredUser['user_id']);
                 if ($userModel) {
-                    self::logoutUserAndPromoteNext($event, $userModel);
+                    self::logoutUser($event, $userModel);
                 }
             }
 

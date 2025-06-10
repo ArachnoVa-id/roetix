@@ -4,6 +4,7 @@ const PASSWORD = 'password123';
 const userCount = parseInt(process.argv[2], 10) || 20;
 let DOMAIN = process.argv[3] || 'http://test.dev-staging-novatix.id';
 const startUser = parseInt(process.argv[4], 10) || 1;
+const dontCareMode = process.argv[5] === 'true' || process.argv[5] === '1';
 
 // Clean up domain URL to handle trailing slashes
 DOMAIN = DOMAIN.replace(/\/+$/, '');
@@ -36,6 +37,7 @@ const displayFooter = () => {
         `📋 Configuration:`,
         `   - Users: ${userCount} (${startUser} to ${startUser + userCount - 1})`,
         `   - Domain: ${DOMAIN}`,
+        `   - Mode: ${dontCareMode ? "SPAM (Don't Care)" : 'MONITOR'}`,
         `   - User range: testuser${startUser}@example.com to testuser${startUser + userCount - 1}@example.com`,
         '',
         '🎮 Controls:',
@@ -679,188 +681,220 @@ const loginAndMonitor = async (user, label) => {
                 .isVisible();
         }
 
-        if (isLandingVisible) {
-            if (reportingControls.queueProgress) {
+        if (dontCareMode) {
+            // Don't care mode - just confirm we reached queue/landing then exit
+            if (isLandingVisible) {
                 console.log(
-                    `🎯 [${label}] Directly landed on main page - no queue!`,
+                    `🎯 [${label}] Reached landing page - closing (don't-care mode)`,
                 );
-            }
-            updateSessionStatus(sessionIndex, 'active');
-
-            // Monitor session indefinitely
-            const sessionResult = await monitorSession(
-                page,
-                label,
-                sessionIndex,
-            );
-            updateSessionStatus(sessionIndex, sessionResult);
-        } else if (isQueueVisible) {
-            if (reportingControls.queueProgress) {
-                console.log(
-                    `🪑 [${label}] Entered queue - starting monitoring...`,
-                );
-            }
-            updateSessionStatus(sessionIndex, 'in_queue');
-
-            // Extract initial queue information
-            await extractQueueInfo(page, label, sessionIndex);
-
-            // Monitor queue until promotion (no timeout)
-            const queueResult = await monitorQueue(page, label, sessionIndex);
-
-            if (queueResult === 'promoted') {
                 updateSessionStatus(sessionIndex, 'active');
+            } else if (isQueueVisible) {
+                console.log(
+                    `🪑 [${label}] Reached queue - closing (don't-care mode)`,
+                );
+                updateSessionStatus(sessionIndex, 'in_queue');
+            } else {
+                console.log(
+                    `❓ [${label}] Unknown state - closing (don't-care mode)`,
+                );
+                updateSessionStatus(sessionIndex, 'unknown');
+            }
+            // Exit immediately without monitoring
+            return;
+        } else {
+            if (isLandingVisible) {
                 if (reportingControls.queueProgress) {
                     console.log(
-                        `🎉 [${label}] Successfully promoted! Starting session monitoring...`,
+                        `🎯 [${label}] Directly landed on main page - no queue!`,
                     );
                 }
+                updateSessionStatus(sessionIndex, 'active');
 
-                // Monitor session after promotion
+                // Monitor session indefinitely
                 const sessionResult = await monitorSession(
                     page,
                     label,
                     sessionIndex,
                 );
                 updateSessionStatus(sessionIndex, sessionResult);
-            } else if (queueResult === 'expired') {
-                updateSessionStatus(sessionIndex, 'expired');
+            } else if (isQueueVisible) {
                 if (reportingControls.queueProgress) {
-                    console.log(`❌ [${label}] Session expired while in queue`);
+                    console.log(
+                        `🪑 [${label}] Entered queue - starting monitoring...`,
+                    );
                 }
-            } else {
-                updateSessionStatus(sessionIndex, 'unknown');
-                if (reportingControls.queueProgress) {
-                    console.log(`❓ [${label}] Unknown queue exit state`);
-                }
-            }
-        } else {
-            if (reportingControls.queueProgress) {
-                console.log(
-                    `❓ [${label}] Neither queue nor landing page detected initially. URL: ${page.url()}`,
+                updateSessionStatus(sessionIndex, 'in_queue');
+
+                // Extract initial queue information
+                await extractQueueInfo(page, label, sessionIndex);
+
+                // Monitor queue until promotion (no timeout)
+                const queueResult = await monitorQueue(
+                    page,
+                    label,
+                    sessionIndex,
                 );
 
-                // Wait more with reasonable timeout and try again
-                console.log(
-                    `🔍 [${label}] Waiting up to 30 seconds for content to appear...`,
-                );
-            }
-
-            try {
-                await Promise.race([
-                    page.locator('#queue-wrapper').waitFor({ timeout: 30000 }),
-                    page
-                        .locator('#landing-wrapper')
-                        .waitFor({ timeout: 30000 }),
-                ]);
-
-                const isQueueVisibleRetry = await page
-                    .locator('#queue-wrapper')
-                    .isVisible();
-                const isLandingVisibleRetry = await page
-                    .locator('#landing-wrapper')
-                    .isVisible();
-
-                if (isLandingVisibleRetry) {
+                if (queueResult === 'promoted') {
+                    updateSessionStatus(sessionIndex, 'active');
                     if (reportingControls.queueProgress) {
                         console.log(
-                            `🎯 [${label}] Landing page appeared after additional wait!`,
+                            `🎉 [${label}] Successfully promoted! Starting session monitoring...`,
                         );
                     }
-                    updateSessionStatus(sessionIndex, 'active');
+
+                    // Monitor session after promotion
                     const sessionResult = await monitorSession(
                         page,
                         label,
                         sessionIndex,
                     );
                     updateSessionStatus(sessionIndex, sessionResult);
-                } else if (isQueueVisibleRetry) {
+                } else if (queueResult === 'expired') {
+                    updateSessionStatus(sessionIndex, 'expired');
                     if (reportingControls.queueProgress) {
                         console.log(
-                            `🪑 [${label}] Queue page appeared after additional wait!`,
+                            `❌ [${label}] Session expired while in queue`,
                         );
                     }
-                    updateSessionStatus(sessionIndex, 'in_queue');
-                    await extractQueueInfo(page, label, sessionIndex);
-                    const queueResult = await monitorQueue(
-                        page,
-                        label,
-                        sessionIndex,
+                } else {
+                    updateSessionStatus(sessionIndex, 'unknown');
+                    if (reportingControls.queueProgress) {
+                        console.log(`❓ [${label}] Unknown queue exit state`);
+                    }
+                }
+            } else {
+                if (reportingControls.queueProgress) {
+                    console.log(
+                        `❓ [${label}] Neither queue nor landing page detected initially. URL: ${page.url()}`,
                     );
 
-                    if (queueResult === 'promoted') {
-                        updateSessionStatus(sessionIndex, 'active');
+                    // Wait more with reasonable timeout and try again
+                    console.log(
+                        `🔍 [${label}] Waiting up to 30 seconds for content to appear...`,
+                    );
+                }
+
+                try {
+                    await Promise.race([
+                        page
+                            .locator('#queue-wrapper')
+                            .waitFor({ timeout: 30000 }),
+                        page
+                            .locator('#landing-wrapper')
+                            .waitFor({ timeout: 30000 }),
+                    ]);
+
+                    const isQueueVisibleRetry = await page
+                        .locator('#queue-wrapper')
+                        .isVisible();
+                    const isLandingVisibleRetry = await page
+                        .locator('#landing-wrapper')
+                        .isVisible();
+
+                    if (isLandingVisibleRetry) {
                         if (reportingControls.queueProgress) {
                             console.log(
-                                `🎉 [${label}] Successfully promoted! Starting session monitoring...`,
+                                `🎯 [${label}] Landing page appeared after additional wait!`,
                             );
                         }
+                        updateSessionStatus(sessionIndex, 'active');
                         const sessionResult = await monitorSession(
                             page,
                             label,
                             sessionIndex,
                         );
                         updateSessionStatus(sessionIndex, sessionResult);
-                    } else if (queueResult === 'expired') {
-                        updateSessionStatus(sessionIndex, 'expired');
+                    } else if (isQueueVisibleRetry) {
                         if (reportingControls.queueProgress) {
                             console.log(
-                                `❌ [${label}] Session expired while in queue`,
+                                `🪑 [${label}] Queue page appeared after additional wait!`,
                             );
                         }
+                        updateSessionStatus(sessionIndex, 'in_queue');
+                        await extractQueueInfo(page, label, sessionIndex);
+                        const queueResult = await monitorQueue(
+                            page,
+                            label,
+                            sessionIndex,
+                        );
+
+                        if (queueResult === 'promoted') {
+                            updateSessionStatus(sessionIndex, 'active');
+                            if (reportingControls.queueProgress) {
+                                console.log(
+                                    `🎉 [${label}] Successfully promoted! Starting session monitoring...`,
+                                );
+                            }
+                            const sessionResult = await monitorSession(
+                                page,
+                                label,
+                                sessionIndex,
+                            );
+                            updateSessionStatus(sessionIndex, sessionResult);
+                        } else if (queueResult === 'expired') {
+                            updateSessionStatus(sessionIndex, 'expired');
+                            if (reportingControls.queueProgress) {
+                                console.log(
+                                    `❌ [${label}] Session expired while in queue`,
+                                );
+                            }
+                        } else {
+                            updateSessionStatus(sessionIndex, 'unknown');
+                            if (reportingControls.queueProgress) {
+                                console.log(
+                                    `❓ [${label}] Unknown queue exit after retry`,
+                                );
+                            }
+                        }
                     } else {
-                        updateSessionStatus(sessionIndex, 'unknown');
-                        if (reportingControls.queueProgress) {
+                        throw new Error(
+                            'Still no valid page state after retry',
+                        );
+                    }
+                } catch (retryError) {
+                    if (reportingControls.queueProgress) {
+                        console.log(
+                            `❌ [${label}] Still unknown state after 30s wait: ${retryError.message}`,
+                        );
+                    }
+                    updateSessionStatus(sessionIndex, 'unknown');
+
+                    // Debug information
+                    if (reportingControls.queueProgress) {
+                        const pageContent = await page.content();
+                        console.log(`🔍 [${label}] Page content analysis:`);
+
+                        if (
+                            pageContent.includes('queue') ||
+                            pageContent.includes('Queue')
+                        ) {
                             console.log(
-                                `❓ [${label}] Unknown queue exit after retry`,
+                                `🪑 [${label}] Page contains queue-related content`,
                             );
+                        } else if (
+                            pageContent.includes('landing') ||
+                            pageContent.includes('dashboard')
+                        ) {
+                            console.log(
+                                `🎯 [${label}] Page contains landing/dashboard content`,
+                            );
+                        } else if (
+                            pageContent.includes('login') ||
+                            pageContent.includes('Login')
+                        ) {
+                            console.log(
+                                `🔁 [${label}] Still on login page - credentials might be wrong`,
+                            );
+                        } else {
+                            console.log(`❓ [${label}] Unknown page content`);
                         }
+
+                        console.log(`🌐 [${label}] Current URL: ${page.url()}`);
+                        console.log(
+                            `📄 [${label}] Page title: ${await page.title()}`,
+                        );
                     }
-                } else {
-                    throw new Error('Still no valid page state after retry');
-                }
-            } catch (retryError) {
-                if (reportingControls.queueProgress) {
-                    console.log(
-                        `❌ [${label}] Still unknown state after 30s wait: ${retryError.message}`,
-                    );
-                }
-                updateSessionStatus(sessionIndex, 'unknown');
-
-                // Debug information
-                if (reportingControls.queueProgress) {
-                    const pageContent = await page.content();
-                    console.log(`🔍 [${label}] Page content analysis:`);
-
-                    if (
-                        pageContent.includes('queue') ||
-                        pageContent.includes('Queue')
-                    ) {
-                        console.log(
-                            `🪑 [${label}] Page contains queue-related content`,
-                        );
-                    } else if (
-                        pageContent.includes('landing') ||
-                        pageContent.includes('dashboard')
-                    ) {
-                        console.log(
-                            `🎯 [${label}] Page contains landing/dashboard content`,
-                        );
-                    } else if (
-                        pageContent.includes('login') ||
-                        pageContent.includes('Login')
-                    ) {
-                        console.log(
-                            `🔁 [${label}] Still on login page - credentials might be wrong`,
-                        );
-                    } else {
-                        console.log(`❓ [${label}] Unknown page content`);
-                    }
-
-                    console.log(`🌐 [${label}] Current URL: ${page.url()}`);
-                    console.log(
-                        `📄 [${label}] Page title: ${await page.title()}`,
-                    );
                 }
             }
         }
@@ -997,6 +1031,9 @@ process.stdin.on('data', async (key) => {
         toggleReporting('sessionProgress');
     }
     if (key === 'h' || key === 'H') {
+        console.log(
+            `   Mode: ${dontCareMode ? 'SPAM (users login then disconnect)' : 'MONITOR (full tracking)'}`,
+        );
         console.log('\n🎮 Available Controls:');
         console.log('   q/Q - Gracefully logout all users');
         console.log('   r/R - Toggle queue progress reporting');
@@ -1022,7 +1059,9 @@ refreshDisplay();
 
 // Launch all user sessions
 async function main() {
-    console.log('🚀 Starting Enhanced Queue Simulation...');
+    console.log(
+        `🚀 Starting ${dontCareMode ? 'Spam Login' : 'Enhanced Queue'} Simulation...`,
+    );
     console.log(`📊 Target users: ${userCount}`);
     console.log(`🌐 Domain: ${DOMAIN}`);
     console.log('⌨️  Press "h" for help');
