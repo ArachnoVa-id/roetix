@@ -335,7 +335,7 @@ class PaymentController extends Controller
             // Publish MQTT message about successful ticket update
             Event::publishMqtt(data: [
                 'event' => "update_ticket_status",
-                'data' => $updatedTickets
+                'data' => $updatedTickets,
             ]);
 
             return response()->json([
@@ -1035,9 +1035,6 @@ class PaymentController extends Controller
                 'data' => $updatedTickets
             ]);
         } catch (\Exception $e) {
-            Event::publishMqtt(data: [
-                'message' => $e,
-            ]);
             DB::rollBack();
             throw $e;
         }

@@ -152,7 +152,6 @@
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
       margin-bottom: 20px;
       position: relative;
       z-index: 1;
@@ -165,6 +164,7 @@
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
       border-top: 3px solid {{ $primaryColor }};
       backdrop-filter: blur(5px);
+      margin-bottom: 12px;
     }
 
     .info-label {
@@ -233,7 +233,6 @@
 
     .ticket-details-grid {
       grid-template-columns: 1fr !important;
-      gap: 15px;
     }
 
     .ticket-qr-section {
@@ -442,10 +441,6 @@
         padding: 30px 20px;
       }
 
-      .info-grid {
-        grid-template-columns: 1fr;
-      }
-
       .tickets-grid {
         grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
       }
@@ -457,11 +452,6 @@
   <div class="email-container">
     <div class="header">
       <div class="header-content">
-        <div class="success-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-          </svg>
-        </div>
         <h1>Payment Successful!</h1>
         <p>Your tickets for {{ $event->name }} have been confirmed</p>
       </div>
@@ -515,22 +505,21 @@
           <div class="event-info">
             <div class="info-label">Event Details</div>
             <div class="info-value" style="margin-bottom: 10px;">{{ $event->name }}</div>
-            <div
-              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-top: 15px;">
               <div>
                 <div style="font-size: 12px; color: {{ $primaryColor }}; font-weight: 600; margin-bottom: 5px;">📍
                   LOCATION</div>
-                <div style="font-size: 14px;">{{ $event->location ?? 'TBA' }}</div>
+                <div style="font-size: 14px; margin-bottom: 5px;">{{ $event->location ?? 'TBA' }}</div>
               </div>
               <div>
                 <div style="font-size: 12px; color: {{ $primaryColor }}; font-weight: 600; margin-bottom: 5px;">📅 DATE
                 </div>
-                <div style="font-size: 14px;">{{ $event->getEventDate() ?? 'TBA' }}</div>
+                <div style="font-size: 14px; margin-bottom: 5px;">{{ $event->getEventDate() ?? 'TBA' }}</div>
               </div>
               <div>
                 <div style="font-size: 12px; color: {{ $primaryColor }}; font-weight: 600; margin-bottom: 5px;">🕒 TIME
                 </div>
-                <div style="font-size: 14px;">{{ $event->getEventTime() ?? 'TBA' }}</div>
+                <div style="font-size: 14px; margin-bottom: 5px;">{{ $event->getEventTime() ?? 'TBA' }}</div>
               </div>
             </div>
           </div>
@@ -547,15 +536,20 @@
         </h3>
 
         @foreach ($tickets as $ticket)
+          @php
+            $qrUrl =
+                $ticket->getQRCodeUrl() ?? ($ticket->getQRCodeUrlQuickChart() ?? ($ticket->getQRCodeUrlMonkey() ?? ''));
+          @endphp
+
           <div
             style="
-        border: 2px solid {{ $ticket->getColor() ?? $primaryColor }};
-        border-radius: 15px;
-        margin-bottom: 20px;
-        overflow: hidden;
-        background: linear-gradient(135deg, {{ $primaryColor }}05, {{ $secondaryColor }}05);
-        position: relative;
-    ">
+                border: 2px solid {{ $ticket->getColor() ?? $primaryColor }};
+                border-radius: 15px;
+                margin-bottom: 20px;
+                overflow: hidden;
+                background: linear-gradient(135deg, {{ $primaryColor }}05, {{ $secondaryColor }}05);
+                position: relative;
+            ">
             <!-- Ticket Header -->
             <div
               style="
@@ -563,20 +557,19 @@
             color: white;
             padding: 15px 20px;
             font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            text-align: center;
         ">
-              <div>
-                <div style="font-size: 16px;">{{ $ticket->ticket_type }}</div>
-                <div style="font-size: 12px; opacity: 0.8;">Ticket #{{ $ticket->id }}</div>
-              </div>
+              <div style="font-size: 16px;">{{ $ticket->ticket_type }}</div>
+              <div style="font-size: 12px; opacity: 0.8;">Ticket #{{ $ticket->id }}</div>
               <div
                 style="
                 background: rgba(255,255,255,0.2);
                 padding: 8px 15px;
                 border-radius: 20px;
                 font-size: 14px;
+                margin-top: 10px;
             ">
                 {{ $ticket->seat ? 'Seat ' . $ticket->seat->seat_number : 'General Admission' }}
               </div>
@@ -584,7 +577,7 @@
 
             <!-- Ticket Content -->
             <div style="padding: 20px;">
-              <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; align-items: start;">
+              <div style="display: grid; grid-template-columns: 2fr 1fr; align-items: start;">
 
                 <!-- Ticket Details -->
                 <div>
@@ -654,17 +647,21 @@
                     ">
                     SCAN FOR ENTRY
                   </div>
-                  <div
-                    style="
-                        padding: 10px;
-                        background: white;
-                        border-radius: 10px;
-                        border: 2px solid {{ $ticket->getColor() ?? $primaryColor }};
-                        display: inline-block;
+                  @if ($qrUrl)
+                    <img src="{{ $qrUrl }}" alt="QR Code"
+                      style="
+                        display: block; /* Ensures the image is treated as a block element */
+                        margin: 0 auto; /* Centers the image horizontally */
+                        width: 100%;
+                        height: auto; /* Maintains aspect ratio */
+                        max-width: 300px; /* Optional: Set a max width for the image */
+                        border: 5px solid {{ $ticket->getColor() }};
+                        border-radius: 12px;
+                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
                     ">
-                    <img src="data:image/svg+xml;base64,{{ $ticket->getQRCode() }}" alt="QR Code"
-                      style="width: 100px; height: 100px; display: block;">
-                  </div>
+                  @else
+                    <p>QR Code unavailable</p>
+                  @endif
                   <div
                     style="
                         color: {{ $textPrimaryColor }};
@@ -675,6 +672,7 @@
                     Present at venue entrance
                   </div>
                 </div>
+
               </div>
             </div>
 
@@ -688,7 +686,7 @@
             opacity: 0.8;
             border-top: 1px solid {{ $primaryColor }}20;
         ">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: grid; grid-template-columns: 1fr; text-align: center;">
                 <div>
                   <strong>Order Date:</strong> {{ $ticket->order_date ?? $order->created_at->format('M d, Y') }}
                 </div>
@@ -716,15 +714,13 @@
       </div>
 
       <!-- Call to Action Section -->
-      <div class="cta-section">
+      {{-- <div class="cta-section">
         <h3 style="color: {{ $primaryColor }}; margin-bottom: 15px; font-size: 18px;">What's Next?</h3>
         <p style="margin-bottom: 20px; color: {{ $textPrimaryColor }}; opacity: 0.8;">
           Check your email for detailed e-tickets and event information
         </p>
-        <a href="{{ route('user.orders') }}" class="cta-button">View My Orders</a>
 
-        <div
-          style="margin-top: 25px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+        <div style="margin-top: 25px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
           <div style="text-align: center; padding: 15px;">
             <div
               style="width: 40px; height: 40px; background: {{ $primaryColor }}20; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
@@ -761,7 +757,7 @@
             <div style="font-size: 11px; opacity: 0.7;">Add to calendar</div>
           </div>
         </div>
-      </div>
+      </div> --}}
 
       <!-- Customer Support -->
       <div
@@ -777,9 +773,9 @@
         <div style="font-size: 14px; color: {{ $textPrimaryColor }}; opacity: 0.8; margin-bottom: 15px;">
           If you have any questions about your order or need assistance, our support team is here to help.
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
-          <a href="mailto:support@example.com"
-            style="display: flex; align-items: center; padding: 8px 12px; background: {{ $primaryColor }}10; color: {{ $primaryColor }}; text-decoration: none; border-radius: 8px; font-size: 12px; font-weight: 600;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+          <a href={{ 'mailto:' . config('app.email', '') }}
+            style="display: flex; align-items: center; padding: 8px 12px; background: {{ $primaryColor }}10; color: {{ $primaryColor }}; text-decoration: none; border-radius: 8px; font-size: 12px; font-weight: 600; margin-bottom: 5px;">
             <svg style="width: 14px; height: 14px; margin-right: 6px; fill: {{ $primaryColor }};"
               viewBox="0 0 24 24">
               <path
@@ -787,9 +783,9 @@
             </svg>
             Email Support
           </a>
-          <a href="tel:+1234567890"
-            style="display: flex; align-items: center; padding: 8px 12px; background: {{ $secondaryColor }}10; color: {{ $secondaryColor }}; text-decoration: none; border-radius: 8px; font-size: 12px; font-weight: 600;">
-            <svg style="width: 14px; height: 14px; margin-right: 6px; fill: {{ $secondaryColor }};"
+          <a href={{ $eventVars->contact_person }}
+            style="display: flex; align-items: center; padding: 8px 12px; background: {{ $primaryColor }}10; color: {{ $primaryColor }}; text-decoration: none; border-radius: 8px; font-size: 12px; font-weight: 600;">
+            <svg style="width: 14px; height: 14px; margin-right: 6px; fill: {{ $primaryColor }};"
               viewBox="0 0 24 24">
               <path
                 d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z" />
@@ -806,8 +802,7 @@
 
       <div
         style="margin: 20px 0; padding: 20px 0; border-top: 1px solid rgba(255,255,255,0.2); border-bottom: 1px solid rgba(255,255,255,0.2);">
-        <div
-          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; text-align: left;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); text-align: center;">
           <div>
             <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px; color: white;">Event Information</h4>
             <p style="font-size: 12px; margin-bottom: 5px;">{{ $event->name }}</p>
@@ -816,14 +811,14 @@
           </div>
           <div>
             <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px; color: white;">Contact Us</h4>
-            <p style="font-size: 12px; margin-bottom: 5px;">📧 support@example.com</p>
-            <p style="font-size: 12px; margin-bottom: 5px;">📞 +1 (555) 123-4567</p>
-            <p style="font-size: 12px;">🌐 www.example.com</p>
+            {{-- <p style="font-size: 12px; margin-bottom: 5px;">📧 {{ config('app.email', '') }}</p> --}}
+            <p style="font-size: 12px; margin-bottom: 5px;">📞 {{ $eventVars->contact_person }}</p>
+            <p style="font-size: 12px;">🌐 {{ 'https://' . $event->slug . '.' . config('app.domain', '') }}</p>
           </div>
         </div>
       </div>
 
-      <div class="social-links">
+      {{-- <div class="social-links">
         <a href="#" title="Facebook">
           <svg style="width: 16px; height: 16px; fill: currentColor; vertical-align: middle;" viewBox="0 0 24 24">
             <path
@@ -852,9 +847,9 @@
           </svg>
           LinkedIn
         </a>
-      </div>
+      </div> --}}
 
-      <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
+      <div>
         <p style="font-size: 12px; opacity: 0.6; margin-bottom: 8px;">
           This email was sent to you because you purchased tickets for {{ $event->name }}.
         </p>

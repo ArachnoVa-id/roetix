@@ -217,11 +217,9 @@ class Event extends Model
             ORDER BY created_at ASC LIMIT 1
         ");
         $nextStmt->execute();
-        $nextUserId = $nextStmt->fetchColumn() ?: '';
 
         $mqttData = [
-            'event' => 'user_logout',
-            'next_user_id' => $nextUserId,
+            'event' => 'user_logout'
         ];
         self::publishMqtt($mqttData, $event->slug);
 
