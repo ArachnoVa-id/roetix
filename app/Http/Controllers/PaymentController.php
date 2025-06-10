@@ -333,7 +333,7 @@ class PaymentController extends Controller
             DB::commit();
 
             // Publish MQTT message about successful ticket update
-            PaymentController::publishMqtt(data: [
+            Event::publishMqtt(data: [
                 'event' => "update_ticket_status",
                 'data' => $updatedTickets
             ]);
@@ -572,14 +572,14 @@ class PaymentController extends Controller
 
             if ($expectedKick->isPast()) {
                 // If user's session has already expired, reject transaction and logout
-                Event::logoutUserAndPromoteNext($event, $customer);
+                Event::logoutUser($event, $customer);
             } else {
                 $timeout = $expectedKick->timestamp;
                 $timeout = (int) $timeout;
             }
         } else {
             // Invalid user
-            Event::logoutUserAndPromoteNext($event, $customer);
+            Event::logoutUser($event, $customer);
         }
 
         $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
@@ -1030,12 +1030,12 @@ class PaymentController extends Controller
             }
 
             // Publish MQTT message about successful ticket update
-            PaymentController::publishMqtt(data: [
+            Event::publishMqtt(data: [
                 'event' => "update_ticket_status",
                 'data' => $updatedTickets
             ]);
         } catch (\Exception $e) {
-            PaymentController::publishMqtt(data: [
+            Event::publishMqtt(data: [
                 'message' => $e,
             ]);
             DB::rollBack();
@@ -1197,49 +1197,6 @@ class PaymentController extends Controller
             );
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to download orders: ' . $e->getMessage()], 500);
-        }
-    }
-
-    public static function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
-    {
-        $server = 'broker.emqx.io';
-        $port = 1883;
-        $clientId = 'novatix_midtrans' . rand(100, 999);
-        $username = 'emqx';
-        $password = 'public';
-        $mqtt_version = MqttClient::MQTT_3_1_1;
-
-        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
-        // Atau fallback static jika belum support param client_name
-        $topic = 'novatix/midtrans/defaultcode';
-
-        $conn_settings = (new ConnectionSettings)
-            ->setUsername($username)
-            ->setPassword($password)
-            ->setLastWillMessage('client disconnected')
-            ->setLastWillTopic('emqx/last-will')
-            ->setLastWillQualityOfService(1);
-
-        $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-
-        try {
-            $mqtt->connect($conn_settings, true);
-
-            // Pastikan koneksi sukses sebelum publish
-            if ($mqtt->isConnected()) {
-                $mqtt->publish(
-                    $topic,
-                    json_encode($data),
-                    0 // QoS
-                );
-                Log::info('MQTT Publish success to topic: ' . $topic, $data);
-            } else {
-                Log::warning('MQTT not connected. Skipped publishing to topic: ' . $topic);
-            }
-
-            $mqtt->disconnect();
-        } catch (\Throwable $th) {
-            Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
 }

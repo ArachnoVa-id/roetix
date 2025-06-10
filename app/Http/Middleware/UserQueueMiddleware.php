@@ -66,7 +66,7 @@ class UserQueueMiddleware
             $expectedEnd = Carbon::parse($current_user->expected_kick);
 
             if ($now->gte($expectedEnd)) {
-                Event::logoutUserAndPromoteNext($event, $user, $this);
+                Event::logoutUser($event, $user, $this);
                 Auth::logout();
 
                 $request->session()->invalidate();
@@ -93,7 +93,7 @@ class UserQueueMiddleware
             } else {
                 $batch = ceil($position / $threshold);
                 $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
-                $totalBuffer = $buffer * $batch;
+                $totalBuffer = $buffer * ($batch - 1);
                 $expected_end = Carbon::now()->addMinutes($totalMinutes)->addSeconds($totalBuffer)->toDateTimeString();
             }
 

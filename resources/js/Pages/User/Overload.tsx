@@ -58,14 +58,11 @@ export default function Overload({
 
                     // Events relevant to this user
                     if (
-                        (e.event === 'user_logout' &&
-                            e.user_id === event.user_id) ||
+                        e.event === 'user_logout' ||
                         (e.event === 'user_login' &&
                             e.user_id === event.user_id) ||
                         (e.event === 'user_promoted' &&
-                            e.user_id === event.user_id) ||
-                        (e.event === 'user_logout' &&
-                            e.next_user_id === event.user_id)
+                            e.user_id === event.user_id)
                     ) {
                         return true;
                     }
