@@ -128,7 +128,7 @@ class Event extends Model
         // Optionally trigger adjust immediately
         if (cache()->lock('adjust_users_lock', 10)->get()) {
             try {
-                self::adjustUsers();
+                self::adjustUsers($event->id);
             } finally {
                 cache()->forget('adjust_users_lock');
             }
@@ -226,17 +226,31 @@ class Event extends Model
         // Attempt to call adjustUsers if it's not already running
         if (cache()->lock('adjust_users_lock', 10)->get()) {
             try {
-                self::adjustUsers();
+                self::adjustUsers($event->id);
             } finally {
                 cache()->forget('adjust_users_lock');
             }
         }
     }
 
-    public static function adjustUsers()
+    public static function adjustUsers($specificEventId = null)
     {
-        // Get only active events
-        $activeEvents = Event::where('status', 'active')->get();
+        if ($specificEventId) {
+            // Process single event
+            $event = Event::where('id', $specificEventId)
+                ->where('status', 'active')
+                ->first();
+
+            if (!$event) {
+                Log::warning("Event {$specificEventId} not found or not active");
+                return;
+            }
+
+            $activeEvents = collect([$event]);
+        } else {
+            // Process all active events (legacy behavior)
+            $activeEvents = Event::where('status', 'active')->get();
+        }
 
         foreach ($activeEvents as $event) {
             $pdo = self::getPdo($event);
@@ -244,10 +258,10 @@ class Event extends Model
 
             // 1. Kick users whose expected_kick has passed or is NULL
             $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE expected_kick < ?
-                ORDER BY created_at ASC
-            ");
+            SELECT * FROM user_logs
+            WHERE expected_kick < ?
+            ORDER BY created_at ASC
+        ");
             $stmt->execute([$now]);
             $expiredUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -264,13 +278,15 @@ class Event extends Model
 
             // 2. Re-broadcast still online users in case stuck in loading
             $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE status = 'online'
-            ");
+            SELECT * FROM user_logs
+            WHERE status = 'online'
+        ");
             $stmt->execute();
             $onlineUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
             $userIds = array_column($onlineUsers, 'user_id');
             $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+
             foreach ($onlineUsers as $onlineUser) {
                 $userModel = $users->get($onlineUser['user_id']);
                 if ($userModel) {
@@ -281,7 +297,6 @@ class Event extends Model
                         'start_time' => $onlineUser['start_time'],
                         'expected_kick' => $onlineUser['expected_kick']
                     ];
-
                     self::publishMqtt($mqttData, $event->slug);
                 }
             }
@@ -297,11 +312,11 @@ class Event extends Model
 
             // Get waiting users regardless of expected_online
             $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE status = 'waiting'
-                ORDER BY created_at ASC
-                LIMIT ?
-            ");
+            SELECT * FROM user_logs
+            WHERE status = 'waiting'
+            ORDER BY created_at ASC
+            LIMIT ?
+        ");
             $stmt->execute([$availableSlots]);
             $readyUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
