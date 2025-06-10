@@ -97,6 +97,99 @@ class Ticket extends Model
         return $qrCode;
     }
 
+    public function getQRCodeUrl()
+    {
+        // Using QR Server API (free service)
+        $baseUrl = 'https://api.qrserver.com/v1/create-qr-code/';
+
+        $params = [
+            'size' => '300x300',
+            'data' => $this->ticket_code,
+            'format' => 'png',
+            'margin' => '10',
+            'qzone' => '1',
+            'bgcolor' => 'ffffff',
+            'color' => '000000'
+        ];
+
+        $queryString = http_build_query($params);
+        $qrCodeUrl = $baseUrl . '?' . $queryString;
+
+        return $qrCodeUrl;
+    }
+
+    // Alternative function using QuickChart API
+    public function getQRCodeUrlQuickChart()
+    {
+        $baseUrl = 'https://quickchart.io/qr';
+
+        $params = [
+            'text' => $this->ticket_code,
+            'size' => '300',
+            'format' => 'png',
+            'margin' => '10'
+        ];
+
+        $queryString = http_build_query($params);
+        $qrCodeUrl = $baseUrl . '?' . $queryString;
+
+        return $qrCodeUrl;
+    }
+
+    // Alternative function using QRCode Monkey API (requires API key for commercial use)
+    public function getQRCodeUrlMonkey()
+    {
+        $baseUrl = 'https://api.qrcode-monkey.com/qr/custom';
+
+        $data = [
+            'data' => $this->ticket_code,
+            'config' => [
+                'body' => 'square',
+                'eye' => 'frame0',
+                'eyeBall' => 'ball0',
+                'erf1' => [],
+                'erf2' => [],
+                'erf3' => [],
+                'brf1' => [],
+                'brf2' => [],
+                'brf3' => [],
+                'bodyColor' => '#000000',
+                'bgColor' => '#FFFFFF',
+                'eye1Color' => '#000000',
+                'eye2Color' => '#000000',
+                'eye3Color' => '#000000',
+                'eyeBall1Color' => '#000000',
+                'eyeBall2Color' => '#000000',
+                'eyeBall3Color' => '#000000',
+                'gradientColor1' => '',
+                'gradientColor2' => '',
+                'gradientType' => 'linear',
+                'gradientOnEyes' => 'true',
+                'logo' => '',
+                'logoMode' => 'default'
+            ],
+            'size' => 300,
+            'download' => 'imageUrl',
+            'file' => 'png'
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $baseUrl);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        $result = json_decode($response, true);
+        return $result['imageUrl'] ?? null;
+    }
+
     public function getColor()
     {
         $category = $this->ticketCategory;
