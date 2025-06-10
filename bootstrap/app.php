@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'auth.client' => \App\Http\Middleware\AuthClient::class,
             'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
             'verify.subdomain' => \App\Http\Middleware\ValidateSubdomain::class,
             'verify.maindomain' => \App\Http\Middleware\ValidateMainDomain::class,
