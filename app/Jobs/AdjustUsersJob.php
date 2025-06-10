@@ -126,7 +126,7 @@ class AdjustUsersJob implements ShouldQueue
                 throw $e;
             }
 
-            // Schedule the next job to run in 10 seconds (legacy behavior)
+            // Schedule the next job to run in 10 seconds
             self::dispatch()->delay(now()->addSeconds(10));
             Log::info('AdjustUsersJob finished (legacy mode)');
         }
