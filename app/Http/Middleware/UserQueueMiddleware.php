@@ -86,13 +86,15 @@ class UserQueueMiddleware
 
             // Estimate waiting time
             $expected_end = null;
+            $buffer = 20;
             if ($position <= $supposedOnlineSlot) {
                 // this means the user is supposed to be online, so try waiting by giving expected_end as 20 seconds
-                $expected_end = Carbon::now()->addSeconds(20)->toDateTimeString();
+                $expected_end = Carbon::now()->addSeconds($buffer)->toDateTimeString();
             } else {
                 $batch = ceil($position / $threshold);
                 $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
-                $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
+                $totalBuffer = $buffer * $batch;
+                $expected_end = Carbon::now()->addMinutes($totalMinutes)->addSeconds($totalBuffer)->toDateTimeString();
             }
 
             return Inertia::render('User/Overload', [
