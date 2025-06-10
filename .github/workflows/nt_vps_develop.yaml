@@ -1,4 +1,4 @@
-name: NovaTix VPS Develop
+name: NovaTix VPS Deploy
 
 # This workflow is designed to deploy the NovaTix application to a VPS server.
 on:
@@ -80,7 +80,7 @@ jobs:
 
       - name: Ensure Folder Structure & Create Scripts
         run: |
-          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'SCRIPT_EOF'
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           set -e
 
@@ -89,7 +89,7 @@ jobs:
 
           # update_repo.sh
           echo "Creating update_repo.sh..."
-          cat > ~/novatix/setups/update_repo.sh << 'EOT'
+          cat > ~/novatix/setups/update_repo.sh << 'SCRIPT_INNER_EOF'
           #!/bin/bash
           set -e
           mkdir -p ~/novatix/app/develop
@@ -112,12 +112,12 @@ jobs:
               git config --global --add safe.directory ~/novatix/app/develop
               git pull origin develop --force
           fi
-          EOT
+          SCRIPT_INNER_EOF
           chmod +x ~/novatix/setups/update_repo.sh
 
-          # FIXED: install_dependencies.sh - Use npm install instead of npm ci
+          # install_dependencies.sh
           echo "Creating install_dependencies.sh..."
-          cat > ~/novatix/setups/install_dependencies.sh << 'EOT'
+          cat > ~/novatix/setups/install_dependencies.sh << 'SCRIPT_INNER_EOF'
           #!/bin/bash
           set -e
           cd ~/novatix/app/develop
@@ -203,21 +203,26 @@ jobs:
           sudo chmod -R 777 storage storage/* bootstrap/cache bootstrap/cache/*
 
           echo "Build completed successfully!"
-          EOT
+          SCRIPT_INNER_EOF
           chmod +x ~/novatix/setups/install_dependencies.sh
 
-          # setup_worker_services.sh
+          # setup_worker_services.sh - Enhanced with multiple workers
           echo "Creating setup_worker_services.sh..."
-          cat > ~/novatix/setups/setup_worker_services.sh << 'EOT'
+          cat > ~/novatix/setups/setup_worker_services.sh << 'SCRIPT_INNER_EOF'
           #!/bin/bash
           set -e
 
-          echo "Setting up Laravel worker services..."
+          echo "Setting up Laravel worker services with multiple workers..."
 
-          # Create systemd service for queue worker
-          sudo tee /etc/systemd/system/novatix-queue-worker.service > /dev/null << 'EOTS'
+          # Remove old single worker service if exists
+          sudo systemctl stop novatix-queue-worker || true
+          sudo systemctl disable novatix-queue-worker || true
+          sudo rm -f /etc/systemd/system/novatix-queue-worker.service
+
+          # Create systemd service template for multiple queue workers
+          sudo tee /etc/systemd/system/novatix-queue-worker@.service > /dev/null << 'SCRIPT_SERVICE_EOF'
           [Unit]
-          Description=NovaTix Laravel Queue Worker
+          Description=NovaTix Laravel Queue Worker %i
           After=network.target redis.service
           Wants=redis.service
 
@@ -226,21 +231,39 @@ jobs:
           User=www-data
           Group=www-data
           Restart=always
-          RestartSec=10
+          RestartSec=5
           StartLimitInterval=300
-          StartLimitBurst=5
+          StartLimitBurst=10
           WorkingDirectory=/var/www/novatix_staging
           Environment=HOME=/var/www
           Environment=USER=www-data
+          Environment=WORKER_ID=%i
           ExecStartPre=/bin/bash -c 'cd /var/www/novatix_staging && php artisan config:cache'
-          ExecStart=/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=512 --verbose
+          ExecStart=/usr/bin/php artisan queue:work redis --sleep=1 --tries=3 --max-time=1800 --memory=256 --verbose --name=worker-%i
           StandardOutput=journal
           StandardError=journal
-          SyslogIdentifier=novatix-queue
+          SyslogIdentifier=novatix-queue-%i
 
           [Install]
           WantedBy=multi-user.target
-          EOTS
+          SCRIPT_SERVICE_EOF
+
+          # Create a service to manage all workers
+          sudo tee /etc/systemd/system/novatix-queue-workers.service > /dev/null << 'SCRIPT_SERVICE_EOF'
+          [Unit]
+          Description=NovaTix Laravel Queue Workers Manager
+          After=network.target redis.service
+          Wants=redis.service
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/bin/bash -c 'for i in {1..6}; do systemctl start novatix-queue-worker@\$i; done'
+          ExecStop=/bin/bash -c 'for i in {1..6}; do systemctl stop novatix-queue-worker@\$i; done'
+
+          [Install]
+          WantedBy=multi-user.target
+          SCRIPT_SERVICE_EOF
 
           # Set up Laravel scheduler via cron
           echo "Setting up Laravel scheduler via cron..."
@@ -257,14 +280,22 @@ jobs:
           echo "Reloading systemd daemon..."
           sudo systemctl daemon-reload
 
-          echo "Enabling queue worker service..."
-          sudo systemctl enable novatix-queue-worker
-          EOT
+          echo "Enabling queue workers manager service..."
+          sudo systemctl enable novatix-queue-workers
+
+          # Enable individual worker services
+          for i in {1..6}; do
+              sudo systemctl enable novatix-queue-worker@\$i
+          done
+
+          echo "Queue worker services setup completed!"
+          echo "You now have 6 worker processes that will be managed by novatix-queue-workers.service"
+          SCRIPT_INNER_EOF
           chmod +x ~/novatix/setups/setup_worker_services.sh
 
           # setup_laravel_environment.sh
           echo "Creating setup_laravel_environment.sh..."
-          cat > ~/novatix/setups/setup_laravel_environment.sh << 'EOT'
+          cat > ~/novatix/setups/setup_laravel_environment.sh << 'SCRIPT_INNER_EOF'
           #!/bin/bash
           set -e
           cd /var/www/novatix_staging
@@ -305,10 +336,10 @@ jobs:
           sudo chown -R www-data:www-data /var/www/novatix_staging || echo "Warning: Could not change all ownership"
 
           echo "Setting directory permissions..."
-          sudo find /var/www/novatix_staging -type d -exec chmod 755 {} \; 2>/dev/null || echo "Warning: Could not set all directory permissions"
+          sudo find /var/www/novatix_staging -type d -exec chmod 755 {} \\; 2>/dev/null || echo "Warning: Could not set all directory permissions"
 
           echo "Setting file permissions..."
-          sudo find /var/www/novatix_staging -type f -exec chmod 644 {} \; 2>/dev/null || echo "Warning: Could not set all file permissions"
+          sudo find /var/www/novatix_staging -type f -exec chmod 644 {} \\; 2>/dev/null || echo "Warning: Could not set all file permissions"
 
           echo "Setting storage and cache permissions..."
           sudo chmod -R 777 storage bootstrap/cache 2>/dev/null || {
@@ -330,7 +361,7 @@ jobs:
           echo "Testing Laravel environment..."
           if sudo -u www-data php artisan --version > /dev/null 2>&1; then
               echo "✓ Laravel environment is working"
-              echo "Laravel version: $(sudo -u www-data php artisan --version)"
+              echo "Laravel version: \$(sudo -u www-data php artisan --version)"
           else
               echo "✗ Laravel environment test failed"
               echo "Error details:"
@@ -353,20 +384,23 @@ jobs:
           sudo -u www-data php artisan view:cache
 
           echo "=== Laravel environment setup completed successfully! ==="
-          EOT
+          SCRIPT_INNER_EOF
           chmod +x ~/novatix/setups/setup_laravel_environment.sh
 
           # restart_services.sh
           echo "Creating restart_services.sh..."
-          cat > ~/novatix/setups/restart_services.sh << 'EOT'
+          cat > ~/novatix/setups/restart_services.sh << 'SCRIPT_INNER_EOF'
           #!/bin/bash
           set -e
 
-          echo "=== Stopping Laravel queue worker ==="
-          sudo systemctl stop novatix-queue-worker || true
+          echo "=== Stopping Laravel queue workers ==="
+          sudo systemctl stop novatix-queue-workers || true
 
-          echo "=== Resetting service failure counters ==="
-          sudo systemctl reset-failed novatix-queue-worker || true
+          # Stop individual workers if they're running
+          for i in {1..6}; do
+              sudo systemctl stop novatix-queue-worker@\$i || true
+              sudo systemctl reset-failed novatix-queue-worker@\$i || true
+          done
 
           echo "=== Restarting PHP-FPM ==="
           sudo systemctl restart php8.3-fpm
@@ -387,7 +421,6 @@ jobs:
           echo "=== Testing Laravel environment ==="
           cd /var/www/novatix_staging
 
-          # More detailed Laravel environment test
           if [ ! -f "artisan" ]; then
               echo "ERROR: artisan file not found in /var/www/novatix_staging"
               exit 1
@@ -398,63 +431,91 @@ jobs:
               exit 1
           fi
 
-          # Test with better error reporting
           if sudo -u www-data php artisan --version > /dev/null 2>&1; then
               echo "✓ Laravel environment is working"
-              echo "Laravel version: $(sudo -u www-data php artisan --version)"
+              echo "Laravel version: \$(sudo -u www-data php artisan --version)"
           else
               echo "ERROR: Laravel environment is not working properly"
-              echo "=== Debugging Information ==="
-              echo "Current directory: $(pwd)"
-              echo "Directory contents:"
-              ls -la
-              echo "PHP version: $(php -v | head -n 1)"
-              echo "www-data user test:"
-              sudo -u www-data whoami
-              echo "Artisan file permissions:"
-              ls -la artisan
-              echo "Error details:"
-              sudo -u www-data php artisan --version 2>&1 || true
-              echo "=== End Debugging ==="
               exit 1
           fi
 
-          echo "=== Starting Laravel queue worker ==="
-          sudo systemctl start novatix-queue-worker
-          sleep 5
+          echo "=== Starting Laravel queue workers ==="
+          sudo systemctl start novatix-queue-workers
+          sleep 10
 
           echo "=== Final service status check ==="
           echo "Redis status:"
           sudo systemctl status redis-server --no-pager -l || true
 
-          echo "Queue worker status:"
-          sudo systemctl status novatix-queue-worker --no-pager -l || true
+          echo "Queue workers manager status:"
+          sudo systemctl status novatix-queue-workers --no-pager -l || true
 
-          echo "=== Checking if queue worker is actually running ==="
-          if ! sudo systemctl is-active --quiet novatix-queue-worker; then
-              echo "WARNING: Queue worker failed to start"
-              sudo journalctl -u novatix-queue-worker --no-pager -n 20
-              echo "Continuing deployment without queue worker..."
-          else
-              echo "✓ Queue worker is running"
-          fi
+          echo "Individual worker status:"
+          for i in {1..6}; do
+              echo "Worker \$i status:"
+              if sudo systemctl is-active --quiet novatix-queue-worker@\$i; then
+                  echo "✓ Worker \$i is running"
+              else
+                  echo "✗ Worker \$i is not running"
+                  sudo journalctl -u novatix-queue-worker@\$i --no-pager -n 5
+              fi
+          done
+
+          echo "=== Active queue processes ==="
+          ps aux | grep "queue:work" | grep -v grep || echo "No queue workers found in process list"
 
           echo "=== Laravel Scheduler Status ==="
           echo "Cron jobs for www-data user:"
           sudo crontab -u www-data -l || echo "No cron jobs found"
 
           echo "=== Deployment completed successfully! ==="
-          EOT
+          SCRIPT_INNER_EOF
           chmod +x ~/novatix/setups/restart_services.sh
 
-          # NEW: TypeScript debugging script
-          echo "Creating debug_typescript.sh..."
-          cat > ~/novatix/setups/debug_typescript.sh << 'EOT'
+          # check_workers.sh for multiple workers
+          cat > ~/novatix/setups/check_workers.sh << 'SCRIPT_INNER_EOF'
+          #!/bin/bash
+          echo "=== Multiple Laravel Workers Status ==="
+
+          echo "Queue Workers Manager Status:"
+          sudo systemctl status novatix-queue-workers --no-pager -l
+          echo ""
+
+          echo "Individual Worker Status:"
+          for i in {1..6}; do
+              echo "--- Worker \$i ---"
+              sudo systemctl status novatix-queue-worker@\$i --no-pager -l
+              echo ""
+          done
+
+          echo "Redis Status:"
+          sudo systemctl status redis-server --no-pager -l
+          echo ""
+
+          echo "Active Queue Processes:"
+          ps aux | grep "queue:work" | grep -v grep || echo "No queue workers found"
+          echo ""
+
+          echo "Recent logs from all workers:"
+          for i in {1..6}; do
+              echo "--- Worker \$i logs ---"
+              sudo journalctl -u novatix-queue-worker@\$i --no-pager -n 5 --since "5 minutes ago"
+              echo ""
+          done
+
+          echo "=== Queue Statistics ==="
+          echo "Jobs in queue:"
+          redis-cli llen "queues:default" 2>/dev/null || echo "Could not connect to Redis"
+          SCRIPT_INNER_EOF
+          chmod +x ~/novatix/setups/check_workers.sh
+
+          # Utility scripts for debugging
+          cat > ~/novatix/setups/debug_typescript.sh << 'SCRIPT_INNER_EOF'
           #!/bin/bash
           cd /var/www/novatix_staging
           echo "=== TypeScript Build Debug ==="
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
+          echo "Node version: \$(node --version)"
+          echo "NPM version: \$(npm --version)"
           echo ""
 
           echo "=== Package.json scripts ==="
@@ -489,29 +550,28 @@ jobs:
 
           echo "=== Build attempt with verbose output ==="
           npm run build 2>&1 | head -50 || echo "Build failed"
-          EOT
+          SCRIPT_INNER_EOF
           chmod +x ~/novatix/setups/debug_typescript.sh
 
-          # Utility scripts for debugging
-          cat > ~/novatix/setups/debug_laravel.sh << 'EOT'
+          cat > ~/novatix/setups/debug_laravel.sh << 'SCRIPT_INNER_EOF'
           #!/bin/bash
           echo "=== Laravel Debug Information ==="
           cd /var/www/novatix_staging
 
-          echo "Current directory: $(pwd)"
-          echo "PHP version: $(php -v | head -n 1)"
-          echo "Composer version: $(composer --version 2>/dev/null || echo 'Composer not found')"
+          echo "Current directory: \$(pwd)"
+          echo "PHP version: \$(php -v | head -n 1)"
+          echo "Composer version: \$(composer --version 2>/dev/null || echo 'Composer not found')"
           echo ""
 
           echo "=== File Structure Check ==="
-          echo "Artisan exists: $([ -f artisan ] && echo 'Yes' || echo 'No')"
-          echo ".env exists: $([ -f .env ] && echo 'Yes' || echo 'No')"
-          echo "vendor directory exists: $([ -d vendor ] && echo 'Yes' || echo 'No')"
+          echo "Artisan exists: \$([ -f artisan ] && echo 'Yes' || echo 'No')"
+          echo ".env exists: \$([ -f .env ] && echo 'Yes' || echo 'No')"
+          echo "vendor directory exists: \$([ -d vendor ] && echo 'Yes' || echo 'No')"
           echo ""
 
           echo "=== Permissions Check ==="
-          echo "Directory owner: $(ls -ld . | awk '{print $3":"$4}')"
-          echo "Artisan permissions: $(ls -l artisan 2>/dev/null || echo 'artisan not found')"
+          echo "Directory owner: \$(ls -ld . | awk '{print \$3\":\"\$4}')"
+          echo "Artisan permissions: \$(ls -l artisan 2>/dev/null || echo 'artisan not found')"
           echo ""
 
           echo "=== Laravel Environment Test ==="
@@ -522,32 +582,17 @@ jobs:
               echo "Error:"
               sudo -u www-data php artisan --version 2>&1 || true
           fi
-          EOT
+          SCRIPT_INNER_EOF
           chmod +x ~/novatix/setups/debug_laravel.sh
 
-          cat > ~/novatix/setups/check_workers.sh << 'EOT'
-          #!/bin/bash
-          echo "=== Laravel Workers Status ==="
-          echo "Queue Worker Status:"
-          sudo systemctl status novatix-queue-worker --no-pager -l
-          echo ""
-          echo "Redis Status:"
-          sudo systemctl status redis-server --no-pager -l
-          echo ""
-          echo "Recent logs from queue worker:"
-          sudo journalctl -u novatix-queue-worker --no-pager -n 10
-          EOT
-          chmod +x ~/novatix/setups/check_workers.sh
-
-          # NEW: Permission diagnostic and fix script
-          cat > ~/novatix/setups/fix_permissions.sh << 'EOT'
+          cat > ~/novatix/setups/fix_permissions.sh << 'SCRIPT_INNER_EOF'
           #!/bin/bash
           echo "=== Permission Diagnostic and Fix Script ==="
           cd /var/www/novatix_staging
 
-          echo "Current user: $(whoami)"
-          echo "Current directory: $(pwd)"
-          echo "Directory exists: $([ -d /var/www/novatix_staging ] && echo 'Yes' || echo 'No')"
+          echo "Current user: \$(whoami)"
+          echo "Current directory: \$(pwd)"
+          echo "Directory exists: \$([ -d /var/www/novatix_staging ] && echo 'Yes' || echo 'No')"
           echo ""
 
           echo "=== Current Ownership and Permissions ==="
@@ -573,9 +618,9 @@ jobs:
 
               # Method 2: Try with current user
               echo "Trying to set ownership to current user..."
-              CURRENT_USER=$(whoami)
-              if sudo chown -R $CURRENT_USER:$CURRENT_USER /var/www/novatix_staging 2>/dev/null; then
-                  echo "✓ Successfully set ownership to $CURRENT_USER"
+              CURRENT_USER=\$(whoami)
+              if sudo chown -R \$CURRENT_USER:\$CURRENT_USER /var/www/novatix_staging 2>/dev/null; then
+                  echo "✓ Successfully set ownership to \$CURRENT_USER"
               else
                   echo "✗ Could not change ownership at all"
               fi
@@ -583,11 +628,11 @@ jobs:
 
           # Set directory permissions
           echo "Setting directory permissions..."
-          find /var/www/novatix_staging -type d -exec chmod 755 {} \; 2>/dev/null || echo "Warning: Could not set directory permissions"
+          find /var/www/novatix_staging -type d -exec chmod 755 {} \\; 2>/dev/null || echo "Warning: Could not set directory permissions"
 
           # Set file permissions
           echo "Setting file permissions..."
-          find /var/www/novatix_staging -type f -exec chmod 644 {} \; 2>/dev/null || echo "Warning: Could not set file permissions"
+          find /var/www/novatix_staging -type f -exec chmod 644 {} \\; 2>/dev/null || echo "Warning: Could not set file permissions"
 
           # Special permissions for Laravel
           echo "Setting Laravel-specific permissions..."
@@ -602,9 +647,9 @@ jobs:
 
           echo ""
           echo "=== Final Status Check ==="
-          echo ".env exists: $([ -f .env ] && echo 'Yes' || echo 'No')"
-          echo "artisan executable: $([ -x artisan ] && echo 'Yes' || echo 'No')"
-          echo "storage writable: $([ -w storage ] && echo 'Yes' || echo 'No')"
+          echo ".env exists: \$([ -f .env ] && echo 'Yes' || echo 'No')"
+          echo "artisan executable: \$([ -x artisan ] && echo 'Yes' || echo 'No')"
+          echo "storage writable: \$([ -w storage ] && echo 'Yes' || echo 'No')"
 
           echo ""
           echo "=== Laravel Test ==="
@@ -620,10 +665,10 @@ jobs:
           else
               echo "✗ Laravel doesn't work with www-data user"
           fi
-          EOT
+          SCRIPT_INNER_EOF
           chmod +x ~/novatix/setups/fix_permissions.sh
 
-          EOF
+          SCRIPT_EOF
 
       - name: Update Repository on VPS
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo.sh"
@@ -636,7 +681,7 @@ jobs:
 
       - name: Link Staging Directory
         run: |
-          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'LINK_EOF'
           echo "Linking staging directory..."
           sudo rm -rf /var/www/novatix_staging
           sudo ln -s ~/novatix/app/develop /var/www/novatix_staging
@@ -649,7 +694,7 @@ jobs:
               echo "✗ Failed to create symbolic link"
               exit 1
           fi
-          EOF
+          LINK_EOF
 
       - name: Fix Permissions Before Laravel Setup
         run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/fix_permissions.sh"
