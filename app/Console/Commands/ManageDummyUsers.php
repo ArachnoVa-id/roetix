@@ -10,12 +10,13 @@ use Illuminate\Support\Facades\Hash;
 
 class ManageDummyUsers extends Command
 {
-    protected $signature = 'dummy-users {action : launch or destroy} {--count=100}';
+    protected $signature = 'dummy-users {action : launch or destroy} {--count=100} {--verbose=false}';
     protected $description = 'Create or remove dummy users';
 
     public function handle()
     {
         $action = $this->argument('action');
+        $verbose = (bool) $this->argument('verbose');
         $count = (int) $this->option('count');
 
         if ($action === 'launch') {
@@ -36,7 +37,7 @@ class ManageDummyUsers extends Command
                     'contact_info' => $contact->id,
                 ]);
 
-                $this->info("Created user: {$user->email}");
+                if ($verbose) $this->info("Created user: {$user->email}");
             }
 
             $this->info("Dummy users created: {$count}");
@@ -48,7 +49,7 @@ class ManageDummyUsers extends Command
                     $user->contactInfo()->delete();
                 }
                 $user->delete();
-                $this->info("Deleted user: {$user->email}");
+                if ($verbose) $this->info("Deleted user: {$user->email}");
             }
 
             $this->info('Dummy users deleted.');
