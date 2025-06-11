@@ -648,7 +648,8 @@
                     SCAN FOR ENTRY
                   </div>
                   @if ($qrUrl)
-                    <img src="{{ $qrUrl }}" alt="QR Code"
+                    <img src="{{ $qrUrl }}"
+                      alt="If the QR Code is not shown, please press 'Show Images' on top of the email. If the issue persists, please report to the admin."
                       style="
                         display: block; /* Ensures the image is treated as a block element */
                         margin: 0 auto; /* Centers the image horizontally */
