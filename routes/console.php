@@ -9,5 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 // Schedule the command to run every minute
-app(Schedule::class)->command('orders:update-expired')->everyMinute();
+app(Schedule::class)->command('orders:update-expired')->everyFiveMinutes();
 app(Schedule::class)->command('event:adjust-users')->everyFiveMinutes();

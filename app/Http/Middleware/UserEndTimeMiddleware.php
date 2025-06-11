@@ -33,37 +33,4 @@ class UserEndTimeMiddleware
 
         return $next($request);
     }
-
-    public function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
-    {
-        $server = 'broker.emqx.io';
-        $port = 1883;
-        $clientId = 'novatix_midtrans' . rand(100, 999);
-        $usrname = 'emqx';
-        $password = 'public';
-        $mqtt_version = MqttClient::MQTT_3_1_1;
-        $sanitized_mqtt_code = str_replace('-', '', $mqtt_code);
-        $topic = 'novatix/midtrans/defaultcode/';
-
-        $conn_settings = (new ConnectionSettings)
-            ->setUsername($usrname)
-            ->setPassword($password)
-            ->setLastWillMessage('client disconnected')
-            ->setLastWillTopic('emqx/last-will')
-            ->setLastWillQualityOfService(1);
-
-        $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-
-        try {
-            $mqtt->connect($conn_settings, true);
-            $mqtt->publish(
-                $topic,
-                json_encode($data),
-                0
-            );
-            $mqtt->disconnect();
-        } catch (\Throwable $th) {
-            Log::error('MQTT Publish Failed: ' . $th->getMessage());
-        }
-    }
 }

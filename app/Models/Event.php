@@ -46,59 +46,18 @@ class Event extends Model
         'team'
     ];
 
-    protected static function getPdo($event)
+    // Add this to your Event model
+    private static $connections = [];
+
+    public static function getPdo($event)
     {
-        $path = storage_path("sql/events/{$event->id}.db");
+        $eventId = $event->id;
 
-        $dir = dirname($path);
-        File::ensureDirectoryExists($dir);
-
-        if (!file_exists($path)) {
-            self::createQueueSqlite($event);
-            touch($path);
-            chmod($path, 0666);  // writable by all users (or adjust to your needs)
+        if (!isset(self::$connections[$eventId])) {
+            self::$connections[$eventId] = self::createQueueSqlite($event);
         }
 
-        $pdo = new PDO("sqlite:" . $path, null, null, [
-            PDO::ATTR_TIMEOUT => 5, // increased timeout to 5 seconds
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]);
-
-        // Enable WAL mode for better concurrency
-        $pdo->exec('PRAGMA journal_mode = WAL;');
-        $pdo->exec('PRAGMA busy_timeout = 5000;');
-
-        return $pdo;
-    }
-
-    public static function createQueueSqlite($event)
-    {
-        $path = storage_path("sql/events/{$event->id}.db");
-        File::ensureDirectoryExists(dirname($path));
-
-        $pdo = new PDO("sqlite:" . $path);
-
-        // Enable WAL mode right after creating new DB for better concurrent reads/writes
-        $pdo->exec('PRAGMA journal_mode = WAL;');
-
-        // Set busy timeout to wait before throwing "database is locked" errors
-        $pdo->exec('PRAGMA busy_timeout = 5000;');  // Wait up to 5 seconds
-
-        // Use foreign keys enforcement if you want referential integrity (optional)
-        $pdo->exec('PRAGMA foreign_keys = ON;');
-
-        // Create user_logs table with UNIQUE constraint on user_id to prevent duplicate users
-        $query = "
-        CREATE TABLE IF NOT EXISTS user_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL UNIQUE,
-            status TEXT NULL,
-            start_time DATETIME NULL,
-            expected_kick DATETIME,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )";
-
-        $pdo->exec($query);
+        return self::$connections[$eventId];
     }
 
     public static function loginUser($event, $user)
@@ -128,7 +87,7 @@ class Event extends Model
         // Optionally trigger adjust immediately
         if (cache()->lock('adjust_users_lock', 10)->get()) {
             try {
-                self::adjustUsers();
+                self::adjustUsers($event->id);
             } finally {
                 cache()->forget('adjust_users_lock');
             }
@@ -143,7 +102,7 @@ class Event extends Model
         $duration = $eventVariables->active_users_duration;
 
         $start = Carbon::now();
-        $end = $start->copy()->addMinutes($duration)->addSeconds(15); // Add 15 seconds buffer
+        $end = $start->copy()->addMinutes($duration);
 
         $stmt = $pdo->prepare("UPDATE user_logs SET status = 'online', start_time = ?, expected_kick = ? WHERE user_id = ?");
         $stmt->execute([$start, $end, $user->id]);
@@ -191,7 +150,7 @@ class Event extends Model
         return $stmt->fetchColumn();
     }
 
-    public static function logoutUserAndPromoteNext($event, $user)
+    public static function logoutUser($event, $user)
     {
         $pdo = self::getPdo($event);
 
@@ -217,106 +176,237 @@ class Event extends Model
             ORDER BY created_at ASC LIMIT 1
         ");
         $nextStmt->execute();
-        $nextUserId = $nextStmt->fetchColumn() ?: '';
 
         $mqttData = [
-            'event' => 'user_logout',
-            'next_user_id' => $nextUserId,
+            'event' => 'user_logout'
         ];
         self::publishMqtt($mqttData, $event->slug);
 
         // Attempt to call adjustUsers if it's not already running
         if (cache()->lock('adjust_users_lock', 10)->get()) {
             try {
-                self::adjustUsers();
+                self::adjustUsers($event->id);
             } finally {
                 cache()->forget('adjust_users_lock');
             }
         }
     }
 
-    public static function adjustUsers()
+    public static function adjustUsers($specificEventId = null)
     {
-        // Get only active events
-        $activeEvents = Event::where('status', 'active')->get();
+        if ($specificEventId) {
+            $event = Event::where('id', $specificEventId)
+                ->where('status', 'active')
+                ->first();
+            if (!$event) {
+                Log::warning("Event {$specificEventId} not found or not active");
+                return;
+            }
+            $activeEvents = collect([$event]);
+        } else {
+            $activeEvents = Event::where('status', 'active')->get();
+        }
 
         foreach ($activeEvents as $event) {
-            $pdo = self::getPdo($event);
-            $now = Carbon::now()->toDateTimeString();
+            $maxRetries = 3;
+            $retryDelay = 100; // milliseconds
 
-            // 1. Kick users whose expected_kick has passed or is NULL
-            $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE expected_kick < ?
-                ORDER BY created_at ASC
-            ");
-            $stmt->execute([$now]);
-            $expiredUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Prefetch users to avoid N+1
-            $userIds = array_column($expiredUsers, 'user_id');
-            $users = User::whereIn('id', $userIds)->get()->keyBy('id');
-
-            foreach ($expiredUsers as $expiredUser) {
-                $userModel = $users->get($expiredUser['user_id']);
-                if ($userModel) {
-                    self::logoutUserAndPromoteNext($event, $userModel);
-                }
-            }
-
-            // 2. Re-broadcast still online users in case stuck in loading
-            $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE status = 'online'
-            ");
-            $stmt->execute();
-            $onlineUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $userIds = array_column($onlineUsers, 'user_id');
-            $users = User::whereIn('id', $userIds)->get()->keyBy('id');
-            foreach ($onlineUsers as $onlineUser) {
-                $userModel = $users->get($onlineUser['user_id']);
-                if ($userModel) {
-                    // Re-publish MQTT message for online users
-                    $mqttData = [
-                        'event' => 'user_promoted',
-                        'user_id' => $userModel->id,
-                        'start_time' => $onlineUser['start_time'],
-                        'expected_kick' => $onlineUser['expected_kick']
-                    ];
-
-                    self::publishMqtt($mqttData, $event->slug);
-                }
-            }
-
-            // 3. Promote waiting users up to active_users_threshold
-            $maxOnline = $event->eventVariables->active_users_threshold ?? 0;
-            $currentOnlineCount = self::countOnlineUsers($event);
-            $availableSlots = max(0, $maxOnline - $currentOnlineCount);
-
-            if ($availableSlots <= 0) {
-                continue;
-            }
-
-            // Get waiting users regardless of expected_online
-            $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE status = 'waiting'
-                ORDER BY created_at ASC
-                LIMIT ?
-            ");
-            $stmt->execute([$availableSlots]);
-            $readyUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $userIdsToPromote = array_column($readyUsers, 'user_id');
-            $userModels = User::whereIn('id', $userIdsToPromote)->get()->keyBy('id');
-
-            foreach ($readyUsers as $userRow) {
-                $userModel = $userModels->get($userRow['user_id']);
-                if ($userModel) {
-                    self::promoteUser($event, $userModel);
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    if (self::processEventWithRetry($event, $attempt)) {
+                        break; // Success, move to next event
+                    }
+                } catch (\Exception $e) {
+                    if ($attempt === $maxRetries) {
+                        Log::error("Failed to process event {$event->id} after {$maxRetries} attempts: " . $e->getMessage());
+                    } else {
+                        Log::warning("Attempt {$attempt} failed for event {$event->id}, retrying: " . $e->getMessage());
+                        usleep($retryDelay * 1000 * $attempt); // Exponential backoff
+                    }
                 }
             }
         }
+    }
+
+    private static function processEventWithRetry($event, $attempt)
+    {
+        $pdo = self::getPdo($event);
+        $now = Carbon::now()->toDateTimeString();
+
+        // Configure SQLite for better concurrency
+        $pdo->exec('PRAGMA busy_timeout = 10000;'); // 10 seconds
+        $pdo->exec('PRAGMA synchronous = NORMAL;'); // Better performance
+        $pdo->exec('PRAGMA cache_size = -64000;'); // 64MB cache
+
+        // Use IMMEDIATE transaction to reduce lock contention
+        $pdo->exec('BEGIN IMMEDIATE;');
+
+        try {
+            // Step 1: Clean up expired users with single atomic operation
+            $expiredCount = self::cleanupExpiredUsers($pdo, $event, $now);
+
+            // Step 2: Get current counts and calculate available slots
+            $maxOnline = $event->eventVariables->active_users_threshold ?? 0;
+
+            // Use a single query to get current online count
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_logs
+                WHERE status = 'online' AND (expected_kick IS NULL OR expected_kick >= ?)
+            ");
+            $stmt->execute([$now]);
+            $currentOnlineCount = $stmt->fetchColumn();
+
+            $availableSlots = max(0, $maxOnline - $currentOnlineCount);
+
+            Log::info("Event {$event->id} (attempt {$attempt}): {$currentOnlineCount}/{$maxOnline} online, {$availableSlots} slots available");
+
+            if ($availableSlots > 0) {
+                $promotedCount = self::promoteWaitingUsers($pdo, $event, $availableSlots, $now);
+                Log::info("Event {$event->id}: Promoted {$promotedCount} users");
+            }
+
+            $pdo->exec('COMMIT;');
+            return true;
+        } catch (\Exception $e) {
+            $pdo->exec('ROLLBACK;');
+
+            // Check if it's a database lock error
+            if (strpos($e->getMessage(), 'database is locked') !== false) {
+                Log::warning("Database locked for event {$event->id} on attempt {$attempt}");
+                return false; // Retry
+            }
+
+            throw $e; // Other errors should bubble up
+        }
+    }
+
+    private static function cleanupExpiredUsers($pdo, $event, $now)
+    {
+        // Get expired users in a single query
+        $stmt = $pdo->prepare("
+            SELECT user_id FROM user_logs
+            WHERE status = 'online' AND expected_kick < ?
+            ORDER BY expected_kick ASC
+        ");
+        $stmt->execute([$now]);
+        $expiredUserIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($expiredUserIds)) {
+            return 0;
+        }
+
+        // Update their status to 'kicked' first (atomic operation)
+        $placeholders = str_repeat('?,', count($expiredUserIds) - 1) . '?';
+        $updateStmt = $pdo->prepare("
+            UPDATE user_logs
+            SET status = 'kicked'
+            WHERE user_id IN ({$placeholders}) AND status = 'online'
+        ");
+        $updateStmt->execute($expiredUserIds);
+        $kickedCount = $updateStmt->rowCount();
+
+        if ($kickedCount > 0) {
+            // Get user models for MQTT publishing (outside transaction if possible)
+            $users = User::whereIn('id', array_slice($expiredUserIds, 0, $kickedCount))->get();
+
+            // Publish MQTT messages for kicked users
+            foreach ($users as $user) {
+                $mqttData = [
+                    'event' => 'user_kicked',
+                    'user_id' => $user->id,
+                    'reason' => 'expired'
+                ];
+                self::publishMqtt($mqttData, $event->slug);
+            }
+        }
+
+        return $kickedCount;
+    }
+
+    private static function promoteWaitingUsers($pdo, $event, $availableSlots, $now)
+    {
+        // Get waiting users with row-level locking simulation
+        $stmt = $pdo->prepare("
+            SELECT user_id, created_at FROM user_logs
+            WHERE status = 'waiting'
+            ORDER BY created_at ASC
+            LIMIT ?
+        ");
+        $stmt->execute([$availableSlots]);
+        $waitingUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($waitingUsers)) {
+            return 0;
+        }
+
+        $promotedCount = 0;
+        $startTime = $now;
+        $expectedKick = Carbon::parse($now)->addMinutes(5)->toDateTimeString();
+
+        foreach ($waitingUsers as $userRow) {
+            // Atomic promotion with double-check
+            $updateStmt = $pdo->prepare("
+                UPDATE user_logs
+                SET status = 'online',
+                    start_time = ?,
+                    expected_kick = ?
+                WHERE user_id = ? AND status = 'waiting'
+            ");
+
+            $result = $updateStmt->execute([$startTime, $expectedKick, $userRow['user_id']]);
+
+            if ($result && $updateStmt->rowCount() > 0) {
+                $promotedCount++;
+
+                // Publish MQTT for successful promotion
+                $mqttData = [
+                    'event' => 'user_promoted',
+                    'user_id' => $userRow['user_id'],
+                    'start_time' => $startTime,
+                    'expected_kick' => $expectedKick
+                ];
+                self::publishMqtt($mqttData, $event->slug);
+            }
+        }
+
+        return $promotedCount;
+    }
+
+    // Improved SQLite connection with better concurrency settings
+    public static function createQueueSqlite($event)
+    {
+        $path = storage_path("sql/events/{$event->id}.db");
+        File::ensureDirectoryExists(dirname($path));
+
+        $pdo = new PDO("sqlite:" . $path);
+
+        // Optimized SQLite settings for concurrent operations
+        $pdo->exec('PRAGMA journal_mode = WAL;');
+        $pdo->exec('PRAGMA synchronous = NORMAL;'); // Balance between speed and safety
+        $pdo->exec('PRAGMA busy_timeout = 10000;'); // 10 seconds timeout
+        $pdo->exec('PRAGMA foreign_keys = ON;');
+        $pdo->exec('PRAGMA cache_size = -64000;'); // 64MB cache
+        $pdo->exec('PRAGMA temp_store = MEMORY;'); // Use memory for temp tables
+        $pdo->exec('PRAGMA mmap_size = 268435456;'); // 256MB memory mapping
+
+        // Create table with better indexing
+        $query = "
+            CREATE TABLE IF NOT EXISTS user_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL UNIQUE,
+                status TEXT NULL,
+                start_time DATETIME NULL,
+                expected_kick DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )";
+        $pdo->exec($query);
+
+        // Create indexes for better performance
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_status_created ON user_logs(status, created_at);');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_expected_kick ON user_logs(expected_kick) WHERE status = "online";');
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_user_status ON user_logs(user_id, status);');
+
+        return $pdo;
     }
 
     public static function publishMqtt(array $data, string $mqtt_code = "defaultcode")
