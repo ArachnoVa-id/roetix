@@ -115,7 +115,7 @@ class PaymentController extends Controller
                 ->exists();
 
             if ($hasActiveOrderWithSameId) {
-                throw new \Exception('Your ID Number is already used in an active order. Please use another number.');
+                throw new \Exception('Your ID Number is already used in an active order. Refresh the page if you\'re sure that it was your payment.');
             }
 
             // If the user_id_no is less than 10 characters, return error
