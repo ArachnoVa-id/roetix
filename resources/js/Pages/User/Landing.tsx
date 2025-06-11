@@ -356,64 +356,64 @@ export default function Landing({
         );
     };
 
-    const cancelPayment = async (order_ids: string[]) => {
-        if (!order_ids) return;
+    // const cancelPayment = async (order_ids: string[]) => {
+    //     if (!order_ids) return;
 
-        showSuccess('Cancelling your payment...');
+    //     showSuccess('Cancelling your payment...');
 
-        try {
-            const response = await axios.post(route('payment.cancel', client), {
-                order_ids,
-            });
+    //     try {
+    //         const response = await axios.post(route('payment.cancel', client), {
+    //             order_ids,
+    //         });
 
-            if (response.data.success) {
-                // logic publish
-                // const updated_tickets: { seat_id: string; status: string }[] =
-                //     [];
+    //         if (response.data.success) {
+    //             // logic publish
+    //             // const updated_tickets: { seat_id: string; status: string }[] =
+    //             //     [];
 
-                // for (const transaction of pendingTransactions) {
-                //     for (const seat of transaction.seats) {
-                //         updated_tickets.push({
-                //             seat_id: seat.seat_id,
-                //             status: 'available',
-                //         });
-                //     }
-                // }
+    //             // for (const transaction of pendingTransactions) {
+    //             //     for (const seat of transaction.seats) {
+    //             //         updated_tickets.push({
+    //             //             seat_id: seat.seat_id,
+    //             //             status: 'available',
+    //             //         });
+    //             //     }
+    //             // }
 
-                // const message = JSON.stringify({
-                //     event: 'update_ticket_status',
-                //     data: updated_tickets,
-                // });
+    //             // const message = JSON.stringify({
+    //             //     event: 'update_ticket_status',
+    //             //     data: updated_tickets,
+    //             // });
 
-                // Mqttclient.publish(
-                //     'novatix/midtrans/defaultcode',
-                //     message,
-                //     { qos: 1 },
-                //     (err) => {
-                //         if (err) {
-                //             console.error('MQTT Publish Error:', err);
-                //         }
-                //     },
-                // );
+    //             // Mqttclient.publish(
+    //             //     'novatix/midtrans/defaultcode',
+    //             //     message,
+    //             //     { qos: 1 },
+    //             //     (err) => {
+    //             //         if (err) {
+    //             //             console.error('MQTT Publish Error:', err);
+    //             //         }
+    //             //     },
+    //             // );
 
-                showSuccess('Payment cancelled successfully');
-                window.location.reload();
-            } else {
-                showError(response.data.message || 'Failed to cancel payment');
-            }
-        } catch (err) {
-            console.error('Failed to cancel payment:', err);
+    //             showSuccess('Payment cancelled successfully');
+    //             window.location.reload();
+    //         } else {
+    //             showError(response.data.message || 'Failed to cancel payment');
+    //         }
+    //     } catch (err) {
+    //         console.error('Failed to cancel payment:', err);
 
-            if (axios.isAxiosError(err)) {
-                const errorMsg =
-                    err.response?.data?.message ||
-                    'Failed to connect to payment server';
-                showError(errorMsg);
-            } else {
-                showError('Failed to cancel payment. Please try again.');
-            }
-        }
-    };
+    //         if (axios.isAxiosError(err)) {
+    //             const errorMsg =
+    //                 err.response?.data?.message ||
+    //                 'Failed to connect to payment server';
+    //             showError(errorMsg);
+    //         } else {
+    //             showError('Failed to cancel payment. Please try again.');
+    //         }
+    //     }
+    // };
 
     // Tentukan apakah booking diperbolehkan berdasarkan status event
     const isBookingAllowed = useMemo(() => {
@@ -1580,7 +1580,7 @@ export default function Landing({
                                                         </button>
                                                     )}
                                                     {/* Cancel Button */}
-                                                    {isBookingAllowed && (
+                                                    {/* {isBookingAllowed && (
                                                         <div className="flex gap-2">
                                                             {cancellingStack.some(
                                                                 (item) =>
@@ -1629,7 +1629,7 @@ export default function Landing({
                                                                 </>
                                                             )}
                                                         </div>
-                                                    )}
+                                                    )} */}
                                                 </div>
                                             </div>
                                         );
