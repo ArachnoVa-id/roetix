@@ -153,17 +153,14 @@ jobs:
           #!/bin/bash
           set -e
 
-          echo "Setting up Laravel worker services for production with multiple workers..."
+          echo "Setting up Laravel worker services for production (6 workers)..."
 
-          # Remove old single worker service if exists
-          sudo systemctl stop novatix-production-queue-worker || true
-          sudo systemctl disable novatix-production-queue-worker || true
-          sudo rm -f /etc/systemd/system/novatix-production-queue-worker.service
-
-          # Create systemd service template for multiple production queue workers
-          sudo tee /etc/systemd/system/novatix-production-queue-worker@.service > /dev/null << 'EOTS'
+          # Create 6 systemd services for production queue workers
+          for i in {1..6}; do
+            echo "Creating production queue worker $i..."
+            sudo tee /etc/systemd/system/novatix-production-queue-worker-$i.service > /dev/null << EOTS
           [Unit]
-          Description=NovaTix Production Laravel Queue Worker %i
+          Description=NovaTix Production Laravel Queue Worker $i
           After=network.target redis.service
           Wants=redis.service
 
@@ -178,33 +175,16 @@ jobs:
           WorkingDirectory=/var/www/novatix
           Environment=HOME=/var/www
           Environment=USER=www-data
-          Environment=WORKER_ID=%i
           ExecStartPre=/bin/bash -c 'cd /var/www/novatix && php artisan config:cache'
-          ExecStart=/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=512 --verbose --name=prod-worker-%i
+          ExecStart=/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=512 --verbose
           StandardOutput=journal
           StandardError=journal
-          SyslogIdentifier=novatix-production-queue-%i
+          SyslogIdentifier=novatix-production-queue-$i
 
           [Install]
           WantedBy=multi-user.target
           EOTS
-
-          # Create a service to manage all production workers
-          sudo tee /etc/systemd/system/novatix-production-queue-workers.service > /dev/null << 'EOTS'
-          [Unit]
-          Description=NovaTix Production Laravel Queue Workers Manager
-          After=network.target redis.service
-          Wants=redis.service
-
-          [Service]
-          Type=oneshot
-          RemainAfterExit=yes
-          ExecStart=/bin/bash -c 'for i in {1..4}; do systemctl start novatix-production-queue-worker@$i; done'
-          ExecStop=/bin/bash -c 'for i in {1..4}; do systemctl stop novatix-production-queue-worker@$i; done'
-
-          [Install]
-          WantedBy=multi-user.target
-          EOTS
+          done
 
           # Set up Laravel scheduler via cron for production
           echo "Setting up Laravel scheduler via cron for production..."
@@ -224,140 +204,10 @@ jobs:
           echo "Reloading systemd daemon..."
           sudo systemctl daemon-reload
 
-          echo "Enabling production queue workers manager service..."
-          sudo systemctl enable novatix-production-queue-workers
-
-          # Enable individual production worker services
-          for i in {1..4}; do
-              sudo systemctl enable novatix-production-queue-worker@$i
+          echo "Enabling all 6 production queue worker services..."
+          for i in {1..6}; do
+            sudo systemctl enable novatix-production-queue-worker-$i
           done
-
-          echo "Production queue worker services setup completed!"
-          echo "You now have 4 production worker processes that will be managed by novatix-production-queue-workers.service"
-          EOT
-
-          # ============================================
-          # Replace the restart_services_prod.sh section with this enhanced version
-
-          echo "Creating enhanced restart_services_prod.sh..."
-          cat > ~/novatix/setups/restart_services_prod.sh << 'EOT'
-          #!/bin/bash
-          set -e
-
-          echo "=== Stopping Laravel production queue workers ==="
-          sudo systemctl stop novatix-production-queue-workers || true
-
-          # Stop individual production workers if they're running
-          for i in {1..4}; do
-              sudo systemctl stop novatix-production-queue-worker@$i || true
-              sudo systemctl reset-failed novatix-production-queue-worker@$i || true
-          done
-
-          echo "=== Restarting PHP-FPM ==="
-          sudo systemctl restart php8.3-fpm
-
-          echo "=== Restarting Redis ==="
-          sudo systemctl restart redis-server
-
-          echo "=== Waiting for Redis to be ready ==="
-          sleep 5
-
-          # Verify Redis is ready
-          until sudo systemctl is-active --quiet redis-server && redis-cli ping > /dev/null 2>&1; do
-              echo "Waiting for Redis to start and respond..."
-              sleep 2
-          done
-          echo "✓ Redis is ready"
-
-          echo "=== Testing Laravel production environment ==="
-          cd /var/www/novatix
-
-          if [ ! -f "artisan" ]; then
-              echo "ERROR: artisan file not found in /var/www/novatix"
-              exit 1
-          fi
-
-          if [ ! -f ".env" ]; then
-              echo "ERROR: .env file not found"
-              exit 1
-          fi
-
-          if sudo -u www-data php artisan --version > /dev/null 2>&1; then
-              echo "✓ Laravel production environment is working"
-              echo "Laravel version: $(sudo -u www-data php artisan --version)"
-          else
-              echo "ERROR: Laravel production environment is not working properly"
-              exit 1
-          fi
-
-          echo "=== Starting Laravel production queue workers ==="
-          sudo systemctl start novatix-production-queue-workers
-          sleep 10
-
-          echo "=== Final service status check ==="
-          echo "Redis status:"
-          sudo systemctl status redis-server --no-pager -l || true
-
-          echo "Production queue workers manager status:"
-          sudo systemctl status novatix-production-queue-workers --no-pager -l || true
-
-          echo "Individual production worker status:"
-          for i in {1..4}; do
-              echo "Production Worker $i status:"
-              if sudo systemctl is-active --quiet novatix-production-queue-worker@$i; then
-                  echo "✓ Production Worker $i is running"
-              else
-                  echo "✗ Production Worker $i is not running"
-                  sudo journalctl -u novatix-production-queue-worker@$i --no-pager -n 5
-              fi
-          done
-
-          echo "=== Active production queue processes ==="
-          ps aux | grep "queue:work" | grep -v grep || echo "No queue workers found in process list"
-
-          echo "=== Laravel Production Scheduler Status ==="
-          echo "Cron jobs for www-data user:"
-          sudo crontab -u www-data -l || echo "No cron jobs found"
-
-          echo "=== Production deployment completed successfully! ==="
-          EOT
-
-          # ============================================
-          # Replace the check_workers_prod.sh section with this enhanced version
-
-          cat > ~/novatix/setups/check_workers_prod.sh << 'EOT'
-          #!/bin/bash
-          echo "=== Multiple Laravel Production Workers Status ==="
-
-          echo "Production Queue Workers Manager Status:"
-          sudo systemctl status novatix-production-queue-workers --no-pager -l
-          echo ""
-
-          echo "Individual Production Worker Status:"
-          for i in {1..4}; do
-              echo "--- Production Worker $i ---"
-              sudo systemctl status novatix-production-queue-worker@$i --no-pager -l
-              echo ""
-          done
-
-          echo "Redis Status:"
-          sudo systemctl status redis-server --no-pager -l
-          echo ""
-
-          echo "Active Production Queue Processes:"
-          ps aux | grep "queue:work" | grep -v grep || echo "No queue workers found"
-          echo ""
-
-          echo "Recent logs from all production workers:"
-          for i in {1..4}; do
-              echo "--- Production Worker $i logs ---"
-              sudo journalctl -u novatix-production-queue-worker@$i --no-pager -n 5 --since "5 minutes ago"
-              echo ""
-          done
-
-          echo "=== Production Queue Statistics ==="
-          echo "Jobs in queue:"
-          redis-cli llen "queues:default" 2>/dev/null || echo "Could not connect to Redis"
           EOT
           chmod +x ~/novatix/setups/setup_worker_services_prod.sh
 
@@ -461,11 +311,16 @@ jobs:
           #!/bin/bash
           set -e
 
-          echo "=== Stopping Laravel production queue worker ==="
-          sudo systemctl stop novatix-production-queue-worker || true
+          echo "=== Stopping all Laravel production queue workers ==="
+          for i in {1..6}; do
+            echo "Stopping worker $i..."
+            sudo systemctl stop novatix-production-queue-worker-$i || true
+          done
 
           echo "=== Resetting service failure counters ==="
-          sudo systemctl reset-failed novatix-production-queue-worker || true
+          for i in {1..6}; do
+            sudo systemctl reset-failed novatix-production-queue-worker-$i || true
+          done
 
           echo "=== Restarting PHP-FPM ==="
           sudo systemctl restart php8.3-fpm
@@ -518,24 +373,43 @@ jobs:
               exit 1
           fi
 
-          echo "=== Starting Laravel production queue worker ==="
-          sudo systemctl start novatix-production-queue-worker
+          echo "=== Starting all Laravel production queue workers ==="
+          FAILED_WORKERS=0
+          for i in {1..6}; do
+            echo "Starting worker $i..."
+            if sudo systemctl start novatix-production-queue-worker-$i; then
+              echo "✓ Worker $i started successfully"
+            else
+              echo "✗ Worker $i failed to start"
+              FAILED_WORKERS=$((FAILED_WORKERS + 1))
+            fi
+          done
+
           sleep 5
 
           echo "=== Final service status check ==="
           echo "Redis status:"
           sudo systemctl status redis-server --no-pager -l || true
 
-          echo "Production queue worker status:"
-          sudo systemctl status novatix-production-queue-worker --no-pager -l || true
+          echo "Production queue workers status:"
+          ACTIVE_WORKERS=0
+          for i in {1..6}; do
+            if sudo systemctl is-active --quiet novatix-production-queue-worker-$i; then
+              echo "✓ Worker $i is running"
+              ACTIVE_WORKERS=$((ACTIVE_WORKERS + 1))
+            else
+              echo "✗ Worker $i is not running"
+              echo "Worker $i logs:"
+              sudo journalctl -u novatix-production-queue-worker-$i --no-pager -n 5
+            fi
+          done
 
-          echo "=== Checking if production queue worker is actually running ==="
-          if ! sudo systemctl is-active --quiet novatix-production-queue-worker; then
-              echo "WARNING: Production queue worker failed to start"
-              sudo journalctl -u novatix-production-queue-worker --no-pager -n 20
-              echo "Continuing deployment without queue worker..."
+          echo "=== Summary ==="
+          echo "Active workers: $ACTIVE_WORKERS/6"
+          if [ $ACTIVE_WORKERS -lt 6 ]; then
+              echo "WARNING: Not all workers are running. Check logs above."
           else
-              echo "✓ Production queue worker is running"
+              echo "✓ All workers are running successfully"
           fi
 
           echo "=== Laravel Production Scheduler Status ==="
@@ -667,14 +541,34 @@ jobs:
           cat > ~/novatix/setups/check_workers_prod.sh << 'EOT'
           #!/bin/bash
           echo "=== Laravel Production Workers Status ==="
-          echo "Production Queue Worker Status:"
-          sudo systemctl status novatix-production-queue-worker --no-pager -l
+          echo "Production Queue Workers Status:"
+          ACTIVE_WORKERS=0
+          for i in {1..6}; do
+            echo "--- Worker $i ---"
+            if sudo systemctl is-active --quiet novatix-production-queue-worker-$i; then
+              echo "✓ Worker $i is ACTIVE"
+              ACTIVE_WORKERS=$((ACTIVE_WORKERS + 1))
+            else
+              echo "✗ Worker $i is INACTIVE"
+            fi
+            sudo systemctl status novatix-production-queue-worker-$i --no-pager -l | head -n 10
+            echo ""
+          done
+
+          echo "=== Summary ==="
+          echo "Active workers: $ACTIVE_WORKERS/6"
+
           echo ""
           echo "Redis Status:"
           sudo systemctl status redis-server --no-pager -l
           echo ""
-          echo "Recent logs from production queue worker:"
-          sudo journalctl -u novatix-production-queue-worker --no-pager -n 10
+
+          echo "Recent logs from production queue workers:"
+          for i in {1..6}; do
+            echo "--- Worker $i Recent Logs ---"
+            sudo journalctl -u novatix-production-queue-worker-$i --no-pager -n 5
+            echo ""
+          done
           EOT
           chmod +x ~/novatix/setups/check_workers_prod.sh
 
