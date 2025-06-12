@@ -681,12 +681,19 @@ class PaymentController extends Controller
 
         $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
 
+        // Check if extra_data has user full name
+        if (isset($request->extra_data['user_full_name'])) {
+            $customerName = $request->extra_data['user_full_name'];
+        } else {
+            $customerName = $customer->name ?? 'Guest';
+        }
+
         // Construct payload
         $payload = [
             "method" => "QRIS", // payment method
             "merchant_ref" => $orderCode,
             "amount" => (int) $totalWithTax,
-            "customer_name" => $customer->name ?? 'Guest',
+            "customer_name" => $customerName,
             "customer_email" => $customer->email ?? '',
             "customer_phone" => $request->phone ?? '',
             "order_items" => collect($itemDetails)->map(function ($item) {
