@@ -32,11 +32,7 @@ export default function CustomButton({
 
     if (href && !disabled) {
         return (
-            <a
-                href={href}
-                className={mergedClass}
-                target={hrefTarget}
-            >
+            <a href={href} className={mergedClass} target={hrefTarget}>
                 {children}
             </a>
         );
