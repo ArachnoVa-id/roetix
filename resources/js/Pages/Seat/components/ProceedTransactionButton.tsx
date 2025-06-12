@@ -1,4 +1,3 @@
-import Mqttclient from '@/Pages/Seat/components/Mqttclient';
 import {
     MidtransCallbacks,
     PaymentRequestGroupedItems,
@@ -10,7 +9,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 
 const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
-    callback,
+    extraData,
     disabled,
     client,
     selectedSeats,
@@ -155,6 +154,7 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 tax_amount: calculatedTaxAmount, // Tax amount
                 total_with_tax: calculatedTotal, // Total with tax
                 grouped_items: groupedItems,
+                extra_data: extraData,
             };
 
             // Set up axios for the request
@@ -177,9 +177,6 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
             if (response.data && response.data.accessor) {
                 const accessor = response.data.accessor;
 
-                // Wait for callback to complete BEFORE navigating
-                await callback(accessor);
-
                 if (accessor === 'free') {
                     toasterFunction.showSuccess(
                         'Payment is free. No payment required.',
@@ -192,24 +189,22 @@ const ProceedTransactionButton: React.FC<ProceedTransactionButtonProps> = ({
                 if (window.snap && paymentGateway === 'midtrans') {
                     const callbacks = createCallbacks();
 
-                    const updated_tickets = response.data.updated_tickets;
-                    const message = JSON.stringify({
-                        event: 'update_ticket_status',
-                        data: updated_tickets,
-                    });
+                    // const updated_tickets = response.data.updated_tickets;
+                    // const message = JSON.stringify({
+                    //     event: 'update_ticket_status',
+                    //     data: updated_tickets,
+                    // });
 
-                    Mqttclient.publish(
-                        'novatix/midtrans/defaultcode',
-                        message,
-                        { qos: 1 },
-                        (err) => {
-                            if (err) {
-                                console.error('MQTT Publish Error:', err);
-                            } else {
-                                console.log('MQTT Message Sent:', message);
-                            }
-                        },
-                    );
+                    // Mqttclient.publish(
+                    //     'novatix/midtrans/defaultcode',
+                    //     message,
+                    //     { qos: 1 },
+                    //     (err) => {
+                    //         if (err) {
+                    //             console.error('MQTT Publish Error:', err);
+                    //         }
+                    //     },
+                    // );
 
                     window.snap.pay(accessor, callbacks);
 

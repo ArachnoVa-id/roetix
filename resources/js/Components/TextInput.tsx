@@ -11,6 +11,7 @@ export default forwardRef(function TextInput(
         type = 'text',
         className = '',
         isFocused = false,
+        maxLength = 255, // Default maxLength to 255 if not provided
         ...props
     }: InputHTMLAttributes<HTMLInputElement> & { isFocused?: boolean },
     ref,
@@ -27,6 +28,23 @@ export default forwardRef(function TextInput(
         }
     }, [isFocused]);
 
+    const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const inputValue = e.target.value;
+
+        if (type === 'number') {
+            // Remove any non-numeric characters (except for decimal point if needed)
+            const filteredValue = inputValue.replace(/[^0-9.]/g, '');
+
+            // Update the input value with the filtered value
+            e.target.value = filteredValue;
+
+            // Ignore if exceeds maxLength
+            if (filteredValue.length > maxLength) {
+                e.target.value = filteredValue.slice(0, maxLength);
+            }
+        }
+    };
+
     return (
         <input
             {...props}
@@ -36,6 +54,7 @@ export default forwardRef(function TextInput(
                 className
             }
             ref={localRef}
+            onInput={handleInput} // Add the onInput event handler
         />
     );
 });

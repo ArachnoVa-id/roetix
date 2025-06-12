@@ -96,7 +96,7 @@ export interface SeatMapConfig {
 }
 
 export interface ProceedTransactionButtonProps {
-    callback: (val: string) => Promise<void>;
+    extraData: Record<string, unknown>;
     disabled: boolean;
     client: string;
     selectedSeats: SeatItem[];

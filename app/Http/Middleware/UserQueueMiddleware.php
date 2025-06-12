@@ -39,7 +39,7 @@ class UserQueueMiddleware
 
         // If user is admin, bypass
         $userData = User::find($user->id);
-        if ($userData->isAdmin()) {
+        if ($userData->isAdmin() || $userData->isReceptionist()) {
             return $next($request);
         }
 
@@ -66,7 +66,7 @@ class UserQueueMiddleware
             $expectedEnd = Carbon::parse($current_user->expected_kick);
 
             if ($now->gte($expectedEnd)) {
-                Event::logoutUserAndPromoteNext($event, $user, $this);
+                Event::logoutUser($event, $user, $this);
                 Auth::logout();
 
                 $request->session()->invalidate();
@@ -81,11 +81,21 @@ class UserQueueMiddleware
         // ✅ If waiting, check if next in queue
         if ($current_user->status === 'waiting') {
             $position = Event::getUserPosition($event, $user);
+            $onlineUsers = Event::countOnlineUsers($event);
+            $supposedOnlineSlot = $threshold - $onlineUsers;
 
             // Estimate waiting time
-            $batch = ceil($position / $threshold);
-            $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
-            $expected_end = Carbon::now()->addMinutes($totalMinutes)->toDateTimeString();
+            $expected_end = null;
+            $buffer = 20;
+            if ($position <= $supposedOnlineSlot) {
+                // this means the user is supposed to be online, so try waiting by giving expected_end as 20 seconds
+                $expected_end = Carbon::now()->addSeconds($buffer)->toDateTimeString();
+            } else {
+                $batch = ceil($position / $threshold);
+                $totalMinutes = ($batch - 1) * $loginDuration + $loginDuration;
+                $totalBuffer = $buffer * ($batch - 1);
+                $expected_end = Carbon::now()->addMinutes($totalMinutes)->addSeconds($totalBuffer)->toDateTimeString();
+            }
 
             return Inertia::render('User/Overload', [
                 'client' => $client,

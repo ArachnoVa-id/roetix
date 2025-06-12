@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class TicketScanController extends Controller
 {
-    public function show(Request $request, string $client, string $event_slug): InertiaResponse | \Illuminate\Http\RedirectResponse
+    public function show(Request $request, string $client): InertiaResponse | \Illuminate\Http\RedirectResponse
     {
         try {
             $user = Auth::user();
@@ -47,11 +47,11 @@ class TicketScanController extends Controller
             //         ->with('error', 'Please select an event to scan tickets.');
             // }
 
-            $event = Event::where('slug', $event_slug)->first(); // Use the passed $event_slug
+            $event = Event::where('slug', $client)->first(); // Use the passed $event_slug
 
             if (!$event) {
                 Log::error('Event not found for scanning.', [
-                    'event_slug' => $event_slug,
+                    'event_slug' => $client,
                     'client' => $client,
                     'user_id' => $user->id
                 ]);
@@ -121,9 +121,8 @@ class TicketScanController extends Controller
             ]);
 
             $ticketCode = trim($request->input('ticket_code'));
-            $event_slug = $request->input('event_slug'); // Retrieve from body
 
-            $event = Event::where('slug', $event_slug)->first();
+            $event = Event::where('slug', $client)->first();
             if (!$event) {
                 return response()->json([
                     'message' => 'Event not found.',
@@ -144,7 +143,7 @@ class TicketScanController extends Controller
                     Log::info('Ticket not found for scanning.', [
                         'ticket_code' => $ticketCode,
                         'event_id' => $event->id,
-                        'event_slug' => $event_slug,
+                        'event_slug' => $client,
                         'user_id' => $user->id
                     ]);
                     return response()->json([
@@ -226,7 +225,7 @@ class TicketScanController extends Controller
                 DB::rollBack();
                 Log::error("Database transaction failed for scan: " . $e->getMessage(), [
                     'ticket_code' => $ticketCode,
-                    'event_slug' => $event_slug,
+                    'event_slug' => $client,
                     'user_id' => $user->id,
                     'trace' => $e->getTraceAsString()
                 ]);
@@ -236,9 +235,9 @@ class TicketScanController extends Controller
                 ], 500);
             }
         } catch (\Exception $e) {
-            Log::error("Error scanning ticket for event {$event_slug}: " . $e->getMessage(), [
+            Log::error("Error scanning ticket for event {$client}: " . $e->getMessage(), [
                 'ticket_code' => $request->input('ticket_code'),
-                'event_slug' => $event_slug,
+                'event_slug' => $client,
                 'client' => $client,
                 'user_id' => $user?->id ?? null,
                 'trace' => $e->getTraceAsString()
@@ -251,7 +250,7 @@ class TicketScanController extends Controller
         }
     }
 
-    public function getScannedHistory(Request $request, string $client, string $event_slug): JsonResponse
+    public function getScannedHistory(Request $request, string $client): JsonResponse
     {
         try {
             $user = Auth::user();
@@ -269,7 +268,7 @@ class TicketScanController extends Controller
             // ]);
             // $event_slug = $request->query('event_slug');
 
-            $event = Event::where('slug', $event_slug)->first();
+            $event = Event::where('slug', $client)->first();
             if (!$event) {
                 return response()->json([
                     'message' => 'Event not found.',
@@ -302,8 +301,8 @@ class TicketScanController extends Controller
                 'data' => $formattedHistory
             ], 200);
         } catch (\Exception $e) {
-            Log::error("Error fetching scanned history for event {$event_slug}: " . $e->getMessage(), [
-                'event_slug' => $event_slug,
+            Log::error("Error fetching scanned history for event {$client}: " . $e->getMessage(), [
+                'event_slug' => $client,
                 'user_id' => $user?->id ?? null,
                 'trace' => $e->getTraceAsString()
             ]);

@@ -118,7 +118,7 @@ class AuthenticatedSessionController extends Controller
             return Inertia::location(route('filament.novatix-admin.pages.dashboard'));
         } else if ($userModel->isReceptionist()) {
             if ($client && $event) { // Jika receptionist login via subdomain DENGAN event valid
-                return redirect()->route('client.events.scan.show', ['client' => $client, 'event_slug' => $event->slug]);
+                return redirect()->route('client.client.scan', ['client' => $client, 'event_slug' => $event->slug]);
             } else { // Jika receptionist login dari main domain atau subdomain tanpa event (misal: hanya novatix.id/login)
                 Log::warning("Receptionist login without specific event context. Redirecting to main login as fallback.");
                 // Jika tidak ada konteks event yang jelas, arahkan ke login utama.
@@ -152,10 +152,10 @@ class AuthenticatedSessionController extends Controller
         $event = Event::where('slug', $subdomain)->first();
 
         if ($event) {
-            Event::logoutUserAndPromoteNext($event, $user);
+            Event::logoutUser($event, $user);
+        } else {
+            Auth::guard('web')->logout();
         }
-
-        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

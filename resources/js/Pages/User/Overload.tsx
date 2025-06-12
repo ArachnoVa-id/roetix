@@ -58,14 +58,11 @@ export default function Overload({
 
                     // Events relevant to this user
                     if (
-                        (e.event === 'user_logout' &&
-                            e.user_id === event.user_id) ||
+                        e.event === 'user_logout' ||
                         (e.event === 'user_login' &&
                             e.user_id === event.user_id) ||
                         (e.event === 'user_promoted' &&
-                            e.user_id === event.user_id) ||
-                        (e.event === 'user_logout' &&
-                            e.next_user_id === event.user_id)
+                            e.user_id === event.user_id)
                     ) {
                         return true;
                     }
@@ -209,7 +206,10 @@ export default function Overload({
                     className="text-center text-sm"
                     style={{ color: text_secondary_color || '#6b7280' }}
                 >
-                    <p>Keep this page open to stay in line.</p>
+                    <p>
+                        Keep this page open and please check it frequently
+                        <br /> as you might join faster than expected.
+                    </p>
                 </div>
             </div>
         </div>

@@ -23,6 +23,7 @@ use PhpMqtt\Client\MqttClient;
 use App\Enums\TicketOrderStatus;
 use App\Models\UserContact;
 use App\Services\ResendMailer;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +42,11 @@ class PaymentController extends Controller
     // disini nanti taro eventnya
     public function charge(Request $request, string $client = "")
     {
+        // Reject other than role user
+        if (! Auth::check() || ! User::find(Auth::id())->isUser()) {
+            return response()->json(['message' => 'Only users can buy tickets!'], 401);
+        }
+
         // Validate
         $request->validate([
             'email' => 'required|email',
@@ -93,6 +99,35 @@ class PaymentController extends Controller
                 ], 422);
             }
 
+            // Check if user_id_no exists with a completed order
+            $hasActiveOrderWithSameId = DevNoSQLData::where('collection', 'roetixUserData')
+                ->whereJsonContains('data->user_id_no', $request->extra_data['user_id_no'] ?? '')
+                ->whereRaw('JSON_EXTRACT(data, "$.accessor") IS NOT NULL')
+                ->whereExists(function ($query) {
+                    $query->select(DB::raw(1))
+                        ->from('orders')
+                        ->whereRaw('orders.accessor = JSON_UNQUOTE(JSON_EXTRACT(dev_nosql_data.data, "$.accessor"))')
+                        ->whereIn('orders.status', [
+                            OrderStatus::COMPLETED->value,
+                            OrderStatus::PENDING->value
+                        ]);
+                })
+                ->exists();
+
+            if ($hasActiveOrderWithSameId) {
+                throw new \Exception('Your ID Number is already used in an active order. Please use another number.');
+            }
+
+            // If the user_id_no is less than 10 characters, return error
+            if (isset($request->extra_data['user_id_no']) && strlen($request->extra_data['user_id_no']) < 10) {
+                throw new \Exception('Your ID Number must be at least 10 characters long');
+            }
+
+            $noSQLRecord = DevNoSQLData::create([
+                'collection' => 'roetixUserData',
+                'data' => $request->extra_data,
+            ]);
+
             if (! Auth::check()) {
                 throw new \Exception('Unauthorized');
             }
@@ -109,7 +144,7 @@ class PaymentController extends Controller
                 ->exists();
 
             if ($existingOrders) {
-                throw new \Exception('There is an existing pending order');
+                throw new \Exception('There is an existing pending order, please refresh the page to respond');
             }
 
             // Collect seat info
@@ -142,7 +177,7 @@ class PaymentController extends Controller
 
             if ($tickets->count() !== $seats->count()) {
                 DB::rollBack();
-                throw new \Exception('Failed to lock seats');
+                throw new \Exception('These seats are already taken, please choose another seat');
             }
 
             $itemDetails = [];
@@ -173,7 +208,7 @@ class PaymentController extends Controller
             $team = Team::find($event->team_id);
             if (! $team) {
                 DB::rollBack();
-                throw new \Exception('Team not found');
+                throw new \Exception('Event team not found');
             }
 
             $orderCode = Order::keyGen(OrderType::AUTO, $event);
@@ -209,6 +244,9 @@ class PaymentController extends Controller
                     "id" => $ticket->id,
                     "status" => TicketStatus::IN_TRANSACTION,
                     "seat_id" => $ticket->seat_id,
+                    "seat_number" => $ticket->seat->seat_number,
+                    "ticket_category_id" => $ticket->ticket_category_id,
+                    "ticket_type" => $ticket->ticket_type,
                 ];
             }
 
@@ -279,13 +317,26 @@ class PaymentController extends Controller
                 }
             } else {
                 // Handle free order, auto complete
-                $this->updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
+                PaymentController::updateStatus($orderCode, OrderStatus::COMPLETED->value, []);
                 $accessor = 'free';
             }
+
+            $currentData = $noSQLRecord->data;
+            $currentData['accessor'] = $accessor;
+
+            $noSQLRecord->update([
+                'data' => $currentData
+            ]);
 
             $order->update(['accessor' => $accessor]);
 
             DB::commit();
+
+            // Publish MQTT message about successful ticket update
+            Event::publishMqtt(data: [
+                'event' => "update_ticket_status",
+                'data' => $updatedTickets,
+            ]);
 
             return response()->json([
                 'accessor' => $accessor,
@@ -294,7 +345,7 @@ class PaymentController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'System failed to process payment! ' . $e->getMessage() . '.'], 500);
+            return response()->json(['message' => 'System failed: ' . $e->getMessage()], 500);
         } finally {
             optional($lock)->release();
         }
@@ -451,7 +502,7 @@ class PaymentController extends Controller
             'team_id' => $event->team_id,
             'total_price' => $totalWithTax,
             'status' => OrderStatus::PENDING,
-            'expired_at' => now()->addMinutes(10),
+            'expired_at' => now()->addHour(1),
             'payment_gateway' => $variables->payment_gateway,
         ];
 
@@ -476,6 +527,11 @@ class PaymentController extends Controller
         Event $event
     ) {
         $variables = $event->eventVariables;
+
+        $order = Order::where('order_code', $orderCode)->first();
+        if (! $order) {
+            throw new \Exception('Order not found');
+        }
 
         // Select endpoint
         $tripay_baseUrl = $variables->tripay_is_production ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
@@ -506,7 +562,26 @@ class PaymentController extends Controller
 
         // Generate signature
         $customer = $request->user();
-        $timestamp = now()->addMinutes(10)->timestamp;
+        $userQueue = Event::getUser($event, $customer); // Replace YourQueueClass with actual class name
+
+        // Calculate timeout based on user's expected_kick time
+        $timeout = null;
+        if ($userQueue && isset($userQueue['expected_kick'])) {
+            $expectedKick = Carbon::parse($userQueue['expected_kick']);
+            // format e.g. 2025-06-09 11:57:59
+
+            if ($expectedKick->isPast()) {
+                // If user's session has already expired, reject transaction and logout
+                Event::logoutUser($event, $customer);
+            } else {
+                $timeout = $expectedKick->timestamp;
+                $timeout = (int) $timeout;
+            }
+        } else {
+            // Invalid user
+            Event::logoutUser($event, $customer);
+        }
+
         $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
 
         // Construct payload
@@ -528,7 +603,7 @@ class PaymentController extends Controller
                 ];
             })->values()->toArray(),
             "return_url" => route('payment.tripayReturn'),
-            "expired_time" => $timestamp,
+            "expired_time" => $timeout,
             "signature" => $signature,
         ];
 
@@ -541,6 +616,21 @@ class PaymentController extends Controller
             throw new \Exception("Tripay charge failed: " . $response->json()['message']);
         }
 
+        // Update order expires at to follow timeout
+        $timeout = Carbon::createFromTimestamp($timeout)->toDateTimeString();
+
+        // Min timeout 12 min, max 30 min
+        if (Carbon::now()->diffInMinutes($timeout) < 12) {
+            $timeout = Carbon::now()->addMinutes(12)->toDateTimeString();
+        } elseif (Carbon::now()->diffInMinutes($timeout) > 30) {
+            $timeout = Carbon::now()->addMinutes(30)->toDateTimeString();
+        }
+
+        // Update order with timeout
+        $order->update([
+            'expired_at' => $timeout,
+        ]);
+
         $responseData = $response->json()['data'];
         // Store transaction
         DevNoSQLData::create([
@@ -552,7 +642,7 @@ class PaymentController extends Controller
                 'team_id' => $event->team_id,
                 'total_price' => $totalWithTax,
                 'status' => OrderStatus::PENDING,
-                'expired_at' => now()->addMinutes(10),
+                'expired_at' => $timeout,
                 'payment_gateway' => $variables->payment_gateway,
             ], $responseData),
         ]);
@@ -578,11 +668,6 @@ class PaymentController extends Controller
             'data' => $data,
         ]);
 
-        // // Only 172.68.164.43 (cloudflare midtrans)
-        // if ($request->ip() != '172.68.164.43') {
-        //     return response()->json(['error' => 'Forbidden request origin'], 403);
-        // }
-
         if (!isset($identifier, $data['gross_amount'], $data['transaction_status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
@@ -598,17 +683,17 @@ class PaymentController extends Controller
             switch ($data['transaction_status']) {
                 case 'capture':
                 case 'settlement':
-                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
 
                 case 'pending':
-                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::PENDING->value, $data);
                     break;
 
                 case 'deny':
                 case 'expire':
                 case 'cancel':
-                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
                     break;
             }
 
@@ -644,11 +729,11 @@ class PaymentController extends Controller
             // Process the callback based on transaction status
             switch ($data['payment_status_code']) {
                 case '2':
-                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
 
                 case '1':
-                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::PENDING->value, $data);
                     break;
 
                 case '3':
@@ -656,7 +741,7 @@ class PaymentController extends Controller
                 case '5':
                 case '7':
                 case '8':
-                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
                     break;
                 default:
                     throw new \Exception('Invalid status');
@@ -685,11 +770,6 @@ class PaymentController extends Controller
             'data' => $data,
         ]);
 
-        // Only accept from 162.158.189.25 (cloudflare tripay)
-        // if ($request->ip() != '162.158.189.25') {
-        //     return response()->json(['error' => 'Forbidden request origin'], 403);
-        // }
-
         if (!isset($identifier, $data['status'])) {
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
@@ -699,17 +779,17 @@ class PaymentController extends Controller
             // Process the callback based on transaction status
             switch ($data['status']) {
                 case 'PAID':
-                    $this->updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::COMPLETED->value, $data);
                     break;
 
                 case 'UNPAID':
-                    $this->updateStatus($identifier, OrderStatus::PENDING->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::PENDING->value, $data);
                     break;
 
                 case 'EXPIRED':
                 case 'REFUND':
                 case 'FAILED':
-                    $this->updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
+                    PaymentController::updateStatus($identifier, OrderStatus::CANCELLED->value, $data);
                     break;
                 default:
                     throw new \Exception('Invalid status');
@@ -805,7 +885,7 @@ class PaymentController extends Controller
         // Validate required parameters
         $validator = Validator::make($data, [
             'tripay_merchant_ref' => 'required|string|max:32',
-            'tripay_reference'    => 'required|string|max:32',
+            'tripay_reference' => 'required|string|max:32',
         ]);
 
         if ($validator->fails()) {
@@ -824,17 +904,20 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'error' => 'Event not found'], 404);
         }
 
-        // Redirect to my_tickets
-        return redirect()->route(
-            'client.my_tickets',
-            ['client' => $event->slug,]
-        );
+        // Generate redirect URL
+        $redirectUrl = route('client.my_tickets', ['client' => $event->slug]);
+
+        // Return redirect response with cache prevention headers
+        return redirect($redirectUrl)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', 'Thu, 01 Jan 1970 00:00:00 GMT');
     }
 
     /**
      * Update order status in the database
      */
-    private function updateStatus($orderCode, $status, $transactionData)
+    public static function updateStatus($orderCode, $status, $transactionData)
     {
         try {
             DB::beginTransaction();
@@ -875,11 +958,19 @@ class PaymentController extends Controller
             foreach ($ticketOrders as $ticketOrder) {
                 $ticket = Ticket::find($ticketOrder->ticket_id);
                 if ($ticket) { // Ensure the ticket exists before updating
-                    $ticket->status = $status === OrderStatus::COMPLETED->value ? TicketStatus::BOOKED->value : TicketStatus::AVAILABLE->value;
+                    // determine ticketStatus by all possible OrderStatus input
+                    $ticketStatus = match ($status) {
+                        OrderStatus::COMPLETED->value => TicketStatus::BOOKED->value,
+                        OrderStatus::PENDING->value => TicketStatus::IN_TRANSACTION->value,
+                        OrderStatus::CANCELLED->value => TicketStatus::AVAILABLE->value,
+                        default => $ticket->status,
+                    };
+
+                    $ticket->status = $ticketStatus;
                     $ticket->save();
                     $updatedTickets[] = [
                         "id" => $ticket->id,
-                        "status" => $status,
+                        "status" => $ticketStatus,
                         "seat_id" => $ticket->seat_id,
                         "seat_number" => $ticket->seat->seat_number,
                         "ticket_category_id" => $ticket->ticket_category_id,
@@ -897,11 +988,20 @@ class PaymentController extends Controller
                     // Get event details
                     $event = $order->getSingleEvent();
 
+                    // Get from DB
+                    $updatedTicketsObj = [];
+                    foreach ($updatedTickets as $ticket) {
+                        $ticketObj = Ticket::find($ticket['id']);
+                        if ($ticketObj) {
+                            $updatedTicketsObj[] = $ticketObj;
+                        }
+                    }
+
                     // Render the email template
                     $emailHtml = view('emails.order-confirmation', [
                         'order' => $order,
                         'event' => $event,
-                        'tickets' => $updatedTickets,
+                        'tickets' => $updatedTicketsObj,
                         'user' => $user,
                         'userContact' => $userContact
                     ])->render();
@@ -930,14 +1030,11 @@ class PaymentController extends Controller
             }
 
             // Publish MQTT message about successful ticket update
-            $this->publishMqtt(data: [
+            Event::publishMqtt(data: [
                 'event' => "update_ticket_status",
                 'data' => $updatedTickets
             ]);
         } catch (\Exception $e) {
-            $this->publishMqtt(data: [
-                'message' => $e,
-            ]);
             DB::rollBack();
             throw $e;
         }
@@ -1045,40 +1142,11 @@ class PaymentController extends Controller
                 throw new \Exception('No pending orders found');
             }
 
-            $updatedTickets = [];
-
             foreach ($orders as $order) {
-                // Update order status
-                $order->status = OrderStatus::CANCELLED;
-                $order->save();
-
-                // Update ticket statuses
-                $ticketOrders = TicketOrder::where('order_id', $order->id)->get();
-                foreach ($ticketOrders as $ticketOrder) {
-                    $ticket = Ticket::find($ticketOrder->ticket_id);
-                    if ($ticket) {
-                        $ticket->status = TicketStatus::AVAILABLE;
-                        $ticket->save();
-
-                        $updatedTickets[] = [
-                            "id" => $ticket->id,
-                            "status" => $ticket->status,
-                            "seat_id" => $ticket->seat_id,
-                            "ticket_category_id" => $ticket->ticket_category_id,
-                            "ticket_type" => $ticket->ticket_type,
-                        ];
-                    }
-
-                    // Set current status to cancelled
-                    $ticketOrder->status = TicketOrderStatus::DEACTIVATED;
-                    $ticketOrder->save();
-                }
+                // Call updateStatus to cancel the order
+                PaymentController::updateStatus($order->order_code, OrderStatus::CANCELLED->value, []);
             }
 
-            // $this->publishMqtt(data: [
-            //     'event' => "update_ticket_status",
-            //     'data' => $updatedTickets
-            // ]);
             DB::commit();
             return response()->json([
                 'success' => true,
@@ -1126,49 +1194,6 @@ class PaymentController extends Controller
             );
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to download orders: ' . $e->getMessage()], 500);
-        }
-    }
-
-    public function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
-    {
-        $server = 'broker.emqx.io';
-        $port = 1883;
-        $clientId = 'novatix_midtrans' . rand(100, 999);
-        $username = 'emqx';
-        $password = 'public';
-        $mqtt_version = MqttClient::MQTT_3_1_1;
-
-        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
-        // Atau fallback static jika belum support param client_name
-        $topic = 'novatix/midtrans/defaultcode';
-
-        $conn_settings = (new ConnectionSettings)
-            ->setUsername($username)
-            ->setPassword($password)
-            ->setLastWillMessage('client disconnected')
-            ->setLastWillTopic('emqx/last-will')
-            ->setLastWillQualityOfService(1);
-
-        $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-
-        try {
-            $mqtt->connect($conn_settings, true);
-
-            // Pastikan koneksi sukses sebelum publish
-            if ($mqtt->isConnected()) {
-                $mqtt->publish(
-                    $topic,
-                    json_encode($data),
-                    0 // QoS
-                );
-                Log::info('MQTT Publish success to topic: ' . $topic, $data);
-            } else {
-                Log::warning('MQTT not connected. Skipped publishing to topic: ' . $topic);
-            }
-
-            $mqtt->disconnect();
-        } catch (\Throwable $th) {
-            Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
 }

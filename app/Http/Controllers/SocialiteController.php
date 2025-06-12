@@ -18,6 +18,10 @@ class SocialiteController extends Controller
 {
     public function googleLogin(string $client = "")
     {
+        if (Auth::check()) {
+            return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
+        }
+
         session(['client' => $client]);
 
         $redirect = Socialite::driver('google')->redirect();
@@ -37,8 +41,9 @@ class SocialiteController extends Controller
             $userExists = $user !== null;
             $userHasCorrectGoogleId = $userExists && $user->google_id === $google_resp->id;
 
+            $event = \App\Models\Event::where('slug', $client)->first();
+
             if ($userHasCorrectGoogleId) {
-                $event = \App\Models\Event::where('slug', $client)->first();
 
                 try {
                     Event::loginUser($event, $user);
@@ -102,11 +107,17 @@ class SocialiteController extends Controller
 
                 DB::commit();
 
-                session([
-                    'auth_user' => $userData,
-                ]);
+                $user = User::find($userData->id);
+                if (!$user) {
+                    throw new Exception('User not found after creation');
+                }
 
-                Auth::login($userData);
+                try {
+                    Event::loginUser($event, $user);
+                } catch (\Throwable $e) {
+                    return redirect()->route(($client ? 'client.login' : 'login'), ['client' => $client, 'message' => $e->getMessage()]);
+                }
+
                 return redirect()->route($client ? 'client.home' : 'home', ['client' => $client]);
             }
         } catch (\Throwable $e) {

@@ -11,11 +11,10 @@ import {
     PendingTransactionResponseItem,
     SeatItem,
 } from '@/types/seatmap';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import mqtt from 'mqtt';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Mqttclient from '../Seat/components/Mqttclient';
 import SeatMapDisplay from '../Seat/SeatMapDisplay';
 
 interface TicketUpdate {
@@ -69,26 +68,26 @@ export default function Landing({
     useEffect(() => {
         setDisabledByForm(
             selectedSeats.length > 0 &&
-                (!data.user_full_name ||
-                    !data.user_id_no ||
-                    !data.user_phone_num ||
-                    !data.user_email ||
-                    (selectedSeats.filter(
-                        (seat) => seat.ticket_type?.toLowerCase() === 'nobles',
-                    ).length > 0 &&
-                        (!data.user_address ||
-                            selectedSeats
-                                .filter(
-                                    (seat) =>
-                                        seat.ticket_type?.toLowerCase() ===
-                                        'nobles',
-                                )
-                                .some(
-                                    (seat, idx) =>
-                                        !data.user_sizes ||
-                                        !data.user_sizes[idx] ||
-                                        data.user_sizes[idx].trim() === '',
-                                )))),
+            (!data.user_full_name ||
+                !data.user_id_no ||
+                !data.user_phone_num ||
+                !data.user_email ||
+                (selectedSeats.filter(
+                    (seat) => seat.ticket_type?.toLowerCase() === 'nobles',
+                ).length > 0 &&
+                    (!data.user_address ||
+                        selectedSeats
+                            .filter(
+                                (seat) =>
+                                    seat.ticket_type?.toLowerCase() ===
+                                    'nobles',
+                            )
+                            .some(
+                                (seat, idx) =>
+                                    !data.user_sizes ||
+                                    !data.user_sizes[idx] ||
+                                    data.user_sizes[idx].trim() === '',
+                            )))),
         );
     }, [data, selectedSeats]);
 
@@ -112,6 +111,11 @@ export default function Landing({
             try {
                 const payload = JSON.parse(message.toString());
                 const updates = payload.data as TicketUpdate[];
+                type UpdatedSeat = {
+                    id: string;
+                    name: string;
+                };
+                const updatedSeatsId = [] as UpdatedSeat[];
 
                 const updatedItems = layoutItems.map((item) => {
                     if (!('id' in item)) return item;
@@ -122,6 +126,13 @@ export default function Landing({
                     );
 
                     if (update) {
+                        if (selectedSeats.some((s) => s.id === item.id)) {
+                            updatedSeatsId.push({
+                                id: item.id,
+                                name: item.seat_number,
+                            });
+                        }
+
                         return {
                             ...item,
                             status: update.status,
@@ -130,6 +141,24 @@ export default function Landing({
 
                     return item;
                 });
+
+                // remove updatedSeatsId contents from selectedSeats and notify users which seats taken by someone else
+                setSelectedSeats((prevSeats) =>
+                    prevSeats.filter(
+                        (seat) =>
+                            !updatedSeatsId.some(
+                                (updatedSeat) => updatedSeat.id === seat.id,
+                            ),
+                    ),
+                );
+
+                if (updatedSeatsId.length > 0) {
+                    showError(
+                        `Seats ${updatedSeatsId
+                            .map((s) => s.name)
+                            .join(', ')} have been taken by someone else.`,
+                    );
+                }
 
                 setLayoutItems(updatedItems);
                 setLayoutState((prevLayout) => ({
@@ -339,35 +368,33 @@ export default function Landing({
 
             if (response.data.success) {
                 // logic publish
-                const updated_tickets: { seat_id: string; status: string }[] =
-                    [];
+                // const updated_tickets: { seat_id: string; status: string }[] =
+                //     [];
 
-                for (const transaction of pendingTransactions) {
-                    for (const seat of transaction.seats) {
-                        updated_tickets.push({
-                            seat_id: seat.seat_id,
-                            status: 'available',
-                        });
-                    }
-                }
+                // for (const transaction of pendingTransactions) {
+                //     for (const seat of transaction.seats) {
+                //         updated_tickets.push({
+                //             seat_id: seat.seat_id,
+                //             status: 'available',
+                //         });
+                //     }
+                // }
 
-                const message = JSON.stringify({
-                    event: 'update_ticket_status',
-                    data: updated_tickets,
-                });
+                // const message = JSON.stringify({
+                //     event: 'update_ticket_status',
+                //     data: updated_tickets,
+                // });
 
-                Mqttclient.publish(
-                    'novatix/midtrans/defaultcode',
-                    message,
-                    { qos: 1 },
-                    (err) => {
-                        if (err) {
-                            console.error('MQTT Publish Error:', err);
-                        } else {
-                            // console.log('MQTT Message Sent:', message);
-                        }
-                    },
-                );
+                // Mqttclient.publish(
+                //     'novatix/midtrans/defaultcode',
+                //     message,
+                //     { qos: 1 },
+                //     (err) => {
+                //         if (err) {
+                //             console.error('MQTT Publish Error:', err);
+                //         }
+                //     },
+                // );
 
                 showSuccess('Payment cancelled successfully');
                 window.location.reload();
@@ -687,57 +714,56 @@ export default function Landing({
                                                         style={{
                                                             backgroundColor:
                                                                 event.status ===
-                                                                'active'
+                                                                    'active'
                                                                     ? 'rgba(34, 197, 94, 0.1)'
                                                                     : event.status ===
                                                                         'planned'
-                                                                      ? 'rgba(59, 130, 246, 0.1)'
-                                                                      : event.status ===
-                                                                          'completed'
-                                                                        ? 'rgba(107, 114, 128, 0.1)'
-                                                                        : 'rgba(239, 68, 68, 0.1)',
+                                                                        ? 'rgba(59, 130, 246, 0.1)'
+                                                                        : event.status ===
+                                                                            'completed'
+                                                                            ? 'rgba(107, 114, 128, 0.1)'
+                                                                            : 'rgba(239, 68, 68, 0.1)',
                                                         }}
                                                     >
                                                         <div
-                                                            className={`h-2 w-2 rounded-full ${
-                                                                event.status ===
+                                                            className={`h-2 w-2 rounded-full ${event.status ===
                                                                 'active'
-                                                                    ? 'bg-green-500'
+                                                                ? 'bg-green-500'
+                                                                : event.status ===
+                                                                    'planned'
+                                                                    ? 'bg-blue-500'
                                                                     : event.status ===
-                                                                        'planned'
-                                                                      ? 'bg-blue-500'
-                                                                      : event.status ===
-                                                                          'completed'
+                                                                        'completed'
                                                                         ? 'bg-gray-500'
                                                                         : 'bg-red-500'
-                                                            } mr-2 animate-pulse`}
+                                                                } mr-2 animate-pulse`}
                                                         ></div>
                                                         <span
                                                             className="text-sm font-medium"
                                                             style={{
                                                                 color:
                                                                     event.status ===
-                                                                    'active'
+                                                                        'active'
                                                                         ? '#16a34a'
                                                                         : event.status ===
                                                                             'planned'
-                                                                          ? '#2563eb'
-                                                                          : event.status ===
-                                                                              'completed'
-                                                                            ? '#4b5563'
-                                                                            : '#dc2626',
+                                                                            ? '#2563eb'
+                                                                            : event.status ===
+                                                                                'completed'
+                                                                                ? '#4b5563'
+                                                                                : '#dc2626',
                                                             }}
                                                         >
                                                             {event.status ===
-                                                            'active'
+                                                                'active'
                                                                 ? 'Active'
                                                                 : event.status ===
                                                                     'planned'
-                                                                  ? 'Planned'
-                                                                  : event.status ===
-                                                                      'completed'
-                                                                    ? 'Completed'
-                                                                    : 'Cancelled'}
+                                                                    ? 'Planned'
+                                                                    : event.status ===
+                                                                        'completed'
+                                                                        ? 'Completed'
+                                                                        : 'Cancelled'}
                                                         </span>
                                                     </div>
                                                 )}
@@ -1026,9 +1052,9 @@ export default function Landing({
                                                 categoryPrices.find(
                                                     (p) =>
                                                         p.ticket_category_id ===
-                                                            category.id &&
+                                                        category.id &&
                                                         p.timeline_id ===
-                                                            currentTimeline.id,
+                                                        currentTimeline.id,
                                                 );
                                             if (priceEntry) {
                                                 price = priceEntry.price;
@@ -1049,7 +1075,7 @@ export default function Landing({
                                                     style={{
                                                         backgroundColor:
                                                             ticketTypeColors[
-                                                                type
+                                                            type
                                                             ],
                                                     }}
                                                 />
@@ -1208,12 +1234,14 @@ export default function Landing({
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
                                     htmlFor="user_id_no"
-                                    value="ID Number (NIK/KTP/SIM)"
+                                    value="ID Number (NIK / SIM / Kartu Pelajar / etc)"
                                     style={{
                                         color: props.text_primary_color,
                                     }}
                                 />
                                 <TextInput
+                                    type="number"
+                                    maxLength={16}
                                     id="user_id_no"
                                     className="mt-1 block w-full"
                                     value={data.user_id_no}
@@ -1239,7 +1267,7 @@ export default function Landing({
                                     }}
                                 />
                                 <TextInput
-                                    type="tel"
+                                    type="number"
                                     id="user_phone_num"
                                     className="mt-1 block w-full"
                                     value={data.user_phone_num}
@@ -1357,7 +1385,7 @@ export default function Landing({
                                                             return newSizes;
                                                         })(
                                                             data.user_sizes ||
-                                                                [],
+                                                            [],
                                                         ),
                                                     )
                                                 }
@@ -1687,32 +1715,7 @@ export default function Landing({
                             selectedSeats.length > 0 &&
                             isBookingAllowed && (
                                 <ProceedTransactionButton
-                                    callback={async (accessor) => {
-                                        await new Promise((resolve, reject) => {
-                                            router.post(
-                                                route(
-                                                    'client.formRegistration',
-                                                    {
-                                                        client,
-                                                    },
-                                                ),
-                                                { ...data, accessor },
-                                                {
-                                                    preserveScroll: true,
-                                                    onSuccess: () => {
-                                                        resolve(true);
-                                                    },
-                                                    onError: (error) => {
-                                                        showError(
-                                                            'Failed to proceed with payment. Error: ' +
-                                                                error,
-                                                        );
-                                                        reject(error);
-                                                    },
-                                                },
-                                            );
-                                        });
-                                    }}
+                                    extraData={data}
                                     disabled={disabledByForm}
                                     client={client}
                                     selectedSeats={selectedSeats}

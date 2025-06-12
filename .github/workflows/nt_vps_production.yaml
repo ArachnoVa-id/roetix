@@ -20,20 +20,20 @@ jobs:
           chmod 600 ~/.ssh/av_rsa
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Create Production Repository Update Script
+      - name: Ensure Folder Structure & Create Production Scripts
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           set -e
 
           echo "Ensuring production folder structure..."
-          mkdir -p ~/novatix/app/production
+          mkdir -p ~/novatix/app/production ~/novatix/setups
 
+          # Create production-specific update script
           echo "Creating update_repo_prod.sh..."
           cat > ~/novatix/setups/update_repo_prod.sh << 'EOT'
           #!/bin/bash
           set -e
-
           mkdir -p ~/novatix/app/production
           cd ~/novatix
 
@@ -62,30 +62,50 @@ jobs:
           EOT
           chmod +x ~/novatix/setups/update_repo_prod.sh
 
-          EOF
-
-      - name: Update Repository on VPS
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo_prod.sh"
-
-      - name: Setup Production Environment
-        run: |
-          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
+          # Create production-specific install dependencies script
+          echo "Creating install_dependencies_prod.sh..."
+          cat > ~/novatix/setups/install_dependencies_prod.sh << 'EOT'
+          #!/bin/bash
+          set -e
           cd ~/novatix/app/production
+
+          echo "Installing PHP 8.3 and dependencies (using shared setup from develop)..."
+          # Reuse the same system setup as develop
+          sudo apt update
+          sudo apt install software-properties-common -y
+          sudo add-apt-repository ppa:ondrej/php -y
+          sudo apt update
+
+          echo "Installing required PHP extensions and PHP-FPM..."
+          sudo apt install -y php8.3 php8.3-cli php8.3-fpm php8.3-sqlite3 unzip curl git \
+          php8.3-dom php8.3-xml php8.3-intl php8.3-curl php8.3-zip php8.3-gd php8.3-mbstring \
+          php8.3-redis php8.3-mysql
+
+          echo "Installing Redis server..."
+          sudo apt install -y redis-server
+          sudo systemctl enable redis-server
+          sudo systemctl start redis-server
+
+          echo "Installing Composer..."
+          if ! command -v composer &> /dev/null; then
+              php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+              sudo php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+              rm composer-setup.php
+          fi
+
+          echo "Creating Laravel directories and fixing permissions..."
+          mkdir -p storage/framework/{cache,sessions,views,testing}
+          mkdir -p storage/{logs,app/public,app/private,debugbar,sql} bootstrap/cache
+
+          # Set proper ownership and permissions BEFORE composer install
+          sudo chown -R $USER:$USER .
+          chmod -R 777 storage bootstrap/cache
 
           # Backup .env if it exists
           if [ -f .env ]; then
               echo "Backing up existing .env file..."
               cp .env .env.backup
           fi
-
-          # Create Laravel directories with proper permissions BEFORE composer install
-          echo "Creating Laravel directories with proper permissions..."
-          mkdir -p storage/framework/{cache,sessions,views,testing}
-          mkdir -p storage/{logs,app/public,app/private,debugbar,sql} bootstrap/cache
-
-          # Set proper ownership and permissions for Laravel operations
-          sudo chown -R $USER:www-data storage bootstrap/cache
-          chmod -R 775 storage bootstrap/cache
 
           # Create .env file before composer install to avoid Laravel configuration issues
           if [ ! -f .env ]; then
@@ -97,63 +117,507 @@ jobs:
               mv .env.backup .env
           fi
 
-          # Now run composer install for production
+          echo "Installing Composer dependencies for production..."
           composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
 
+          echo "Installing Node.js and npm..."
+          if ! command -v node &> /dev/null; then
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+              sudo apt install -y nodejs
+          fi
+
+          echo "Cleaning npm cache and node_modules..."
+          rm -rf node_modules package-lock.json
+          npm cache clean --force
+
           echo "Installing npm dependencies (including dev dependencies for build)..."
-          npm install
+          npm install --legacy-peer-deps
 
           echo "Building assets..."
           npm run build
 
           echo "Cleaning up dev dependencies..."
           npm prune --omit=dev
+
+          echo "Final permission fix for web server..."
+          sudo chown -R www-data:www-data storage bootstrap/cache
+          sudo chmod -R 777 storage bootstrap/cache
+
+          echo "Production build completed successfully!"
+          EOT
+          chmod +x ~/novatix/setups/install_dependencies_prod.sh
+
+          # Create production-specific worker services setup
+          echo "Creating setup_worker_services_prod.sh..."
+          cat > ~/novatix/setups/setup_worker_services_prod.sh << 'EOT'
+          #!/bin/bash
+          set -e
+
+          echo "Setting up Laravel worker services for production (6 workers)..."
+
+          # Create 6 systemd services for production queue workers
+          for i in {1..6}; do
+            echo "Creating production queue worker $i..."
+            sudo tee /etc/systemd/system/novatix-production-queue-worker-$i.service > /dev/null << EOTS
+          [Unit]
+          Description=NovaTix Production Laravel Queue Worker $i
+          After=network.target redis.service
+          Wants=redis.service
+
+          [Service]
+          Type=simple
+          User=www-data
+          Group=www-data
+          Restart=always
+          RestartSec=10
+          StartLimitInterval=300
+          StartLimitBurst=5
+          WorkingDirectory=/var/www/novatix
+          Environment=HOME=/var/www
+          Environment=USER=www-data
+          ExecStartPre=/bin/bash -c 'cd /var/www/novatix && php artisan config:cache'
+          ExecStart=/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=512 --verbose
+          StandardOutput=journal
+          StandardError=journal
+          SyslogIdentifier=novatix-production-queue-$i
+
+          [Install]
+          WantedBy=multi-user.target
+          EOTS
+          done
+
+          # Set up Laravel scheduler via cron for production
+          echo "Setting up Laravel scheduler via cron for production..."
+          TEMP_CRON=$(mktemp)
+          sudo crontab -u www-data -l 2>/dev/null > "$TEMP_CRON" || echo "" > "$TEMP_CRON"
+
+          # Remove existing staging cron job if exists and add production one
+          grep -v "cd /var/www/novatix_staging" "$TEMP_CRON" > "${TEMP_CRON}.tmp" && mv "${TEMP_CRON}.tmp" "$TEMP_CRON"
+
+          if ! grep -q "cd /var/www/novatix && php artisan schedule:run" "$TEMP_CRON"; then
+              echo "* * * * * cd /var/www/novatix && php artisan schedule:run >> /dev/null 2>&1" >> "$TEMP_CRON"
+          fi
+
+          sudo crontab -u www-data "$TEMP_CRON"
+          rm "$TEMP_CRON"
+
+          echo "Reloading systemd daemon..."
+          sudo systemctl daemon-reload
+
+          echo "Enabling all 6 production queue worker services..."
+          for i in {1..6}; do
+            sudo systemctl enable novatix-production-queue-worker-$i
+          done
+          EOT
+          chmod +x ~/novatix/setups/setup_worker_services_prod.sh
+
+          # Create production-specific Laravel environment setup
+          echo "Creating setup_laravel_environment_prod.sh..."
+          cat > ~/novatix/setups/setup_laravel_environment_prod.sh << 'EOT'
+          #!/bin/bash
+          set -e
+          cd /var/www/novatix
+
+          echo "=== Setting up Laravel Production Environment ==="
+
+          # Create .env file if it doesn't exist
+          if [ ! -f ".env" ]; then
+              echo "Creating .env file from example..."
+              cp .env.example .env
+              echo "Setting ownership and permissions for .env file..."
+              sudo chown www-data:www-data .env || echo "Warning: Could not change .env ownership"
+              sudo chmod 644 .env || echo "Warning: Could not change .env permissions"
+          fi
+
+          # Generate app key if not set
+          if ! grep -q "APP_KEY=base64:" .env 2>/dev/null; then
+              echo "Generating Laravel application key..."
+              sudo -u www-data php artisan key:generate --force || {
+                  echo "Failed to generate key as www-data, trying as current user..."
+                  php artisan key:generate --force
+                  sudo chown www-data:www-data .env || echo "Warning: Could not change .env ownership after key generation"
+              }
+          fi
+
+          # Create storage directories
+          echo "Creating storage directories..."
+          sudo -u www-data mkdir -p storage/framework/{cache,sessions,views,testing} 2>/dev/null || {
+              echo "Creating directories as current user first..."
+              mkdir -p storage/framework/{cache,sessions,views,testing}
+          }
+          sudo -u www-data mkdir -p storage/{logs,app/public,app/private,debugbar,sql} 2>/dev/null || mkdir -p storage/{logs,app/public,app/private,debugbar,sql}
+          sudo -u www-data mkdir -p bootstrap/cache 2>/dev/null || mkdir -p bootstrap/cache
+
+          # Fix all permissions
+          echo "Fixing permissions..."
+          echo "Setting ownership to www-data..."
+          sudo chown -R www-data:www-data /var/www/novatix || echo "Warning: Could not change all ownership"
+
+          echo "Setting directory permissions..."
+          sudo find /var/www/novatix -type d -exec chmod 755 {} \; 2>/dev/null || echo "Warning: Could not set all directory permissions"
+
+          echo "Setting file permissions..."
+          sudo find /var/www/novatix -type f -exec chmod 644 {} \; 2>/dev/null || echo "Warning: Could not set all file permissions"
+
+          echo "Setting storage and cache permissions..."
+          sudo chmod -R 777 storage bootstrap/cache 2>/dev/null || {
+              echo "Fallback: Setting permissions without sudo..."
+              chmod -R 777 storage bootstrap/cache 2>/dev/null || echo "Warning: Could not set storage permissions"
+          }
+
+          echo "Making artisan executable..."
+          sudo chmod +x artisan 2>/dev/null || chmod +x artisan 2>/dev/null || echo "Warning: Could not make artisan executable"
+
+          # Clear all Laravel caches
+          echo "Clearing Laravel caches..."
+          sudo -u www-data php artisan config:clear || true
+          sudo -u www-data php artisan cache:clear || true
+          sudo -u www-data php artisan route:clear || true
+          sudo -u www-data php artisan view:clear || true
+
+          # Test Laravel environment
+          echo "Testing Laravel environment..."
+          if sudo -u www-data php artisan --version > /dev/null 2>&1; then
+              echo "✓ Laravel environment is working"
+              echo "Laravel version: $(sudo -u www-data php artisan --version)"
+          else
+              echo "✗ Laravel environment test failed"
+              echo "Error details:"
+              sudo -u www-data php artisan --version 2>&1 || true
+              exit 1
+          fi
+
+          # Run migrations (create tables if they don't exist)
+          echo "Running database migrations..."
+          sudo -u www-data php artisan migrate --force
+
+          # Create storage link
+          echo "Creating storage link..."
+          sudo -u www-data php artisan storage:link
+
+          # Cache configurations for production
+          echo "Caching configurations for production..."
+          sudo -u www-data php artisan config:cache
+          sudo -u www-data php artisan route:cache
+          sudo -u www-data php artisan view:cache
+
+          echo "=== Laravel production environment setup completed successfully! ==="
+          EOT
+          chmod +x ~/novatix/setups/setup_laravel_environment_prod.sh
+
+          # Create production-specific restart services script
+          echo "Creating restart_services_prod.sh..."
+          cat > ~/novatix/setups/restart_services_prod.sh << 'EOT'
+          #!/bin/bash
+          set -e
+
+          echo "=== Stopping all Laravel production queue workers ==="
+          for i in {1..6}; do
+            echo "Stopping worker $i..."
+            sudo systemctl stop novatix-production-queue-worker-$i || true
+          done
+
+          echo "=== Resetting service failure counters ==="
+          for i in {1..6}; do
+            sudo systemctl reset-failed novatix-production-queue-worker-$i || true
+          done
+
+          echo "=== Restarting PHP-FPM ==="
+          sudo systemctl restart php8.3-fpm
+
+          echo "=== Restarting Redis ==="
+          sudo systemctl restart redis-server
+
+          echo "=== Waiting for Redis to be ready ==="
+          sleep 5
+
+          # Verify Redis is ready
+          until sudo systemctl is-active --quiet redis-server && redis-cli ping > /dev/null 2>&1; do
+              echo "Waiting for Redis to start and respond..."
+              sleep 2
+          done
+          echo "✓ Redis is ready"
+
+          echo "=== Testing Laravel production environment ==="
+          cd /var/www/novatix
+
+          # More detailed Laravel environment test
+          if [ ! -f "artisan" ]; then
+              echo "ERROR: artisan file not found in /var/www/novatix"
+              exit 1
+          fi
+
+          if [ ! -f ".env" ]; then
+              echo "ERROR: .env file not found"
+              exit 1
+          fi
+
+          # Test with better error reporting
+          if sudo -u www-data php artisan --version > /dev/null 2>&1; then
+              echo "✓ Laravel production environment is working"
+              echo "Laravel version: $(sudo -u www-data php artisan --version)"
+          else
+              echo "ERROR: Laravel production environment is not working properly"
+              echo "=== Debugging Information ==="
+              echo "Current directory: $(pwd)"
+              echo "Directory contents:"
+              ls -la
+              echo "PHP version: $(php -v | head -n 1)"
+              echo "www-data user test:"
+              sudo -u www-data whoami
+              echo "Artisan file permissions:"
+              ls -la artisan
+              echo "Error details:"
+              sudo -u www-data php artisan --version 2>&1 || true
+              echo "=== End Debugging ==="
+              exit 1
+          fi
+
+          echo "=== Starting all Laravel production queue workers ==="
+          FAILED_WORKERS=0
+          for i in {1..6}; do
+            echo "Starting worker $i..."
+            if sudo systemctl start novatix-production-queue-worker-$i; then
+              echo "✓ Worker $i started successfully"
+            else
+              echo "✗ Worker $i failed to start"
+              FAILED_WORKERS=$((FAILED_WORKERS + 1))
+            fi
+          done
+
+          sleep 5
+
+          echo "=== Final service status check ==="
+          echo "Redis status:"
+          sudo systemctl status redis-server --no-pager -l || true
+
+          echo "Production queue workers status:"
+          ACTIVE_WORKERS=0
+          for i in {1..6}; do
+            if sudo systemctl is-active --quiet novatix-production-queue-worker-$i; then
+              echo "✓ Worker $i is running"
+              ACTIVE_WORKERS=$((ACTIVE_WORKERS + 1))
+            else
+              echo "✗ Worker $i is not running"
+              echo "Worker $i logs:"
+              sudo journalctl -u novatix-production-queue-worker-$i --no-pager -n 5
+            fi
+          done
+
+          echo "=== Summary ==="
+          echo "Active workers: $ACTIVE_WORKERS/6"
+          if [ $ACTIVE_WORKERS -lt 6 ]; then
+              echo "WARNING: Not all workers are running. Check logs above."
+          else
+              echo "✓ All workers are running successfully"
+          fi
+
+          echo "=== Laravel Production Scheduler Status ==="
+          echo "Cron jobs for www-data user:"
+          sudo crontab -u www-data -l || echo "No cron jobs found"
+
+          echo "=== Production deployment completed successfully! ==="
+          EOT
+          chmod +x ~/novatix/setups/restart_services_prod.sh
+
+          # Reuse shared utility scripts from develop (they work for both environments)
+          echo "Creating shared utility scripts that work for both environments..."
+
+          # Production-specific permission fix script
+          cat > ~/novatix/setups/fix_permissions_prod.sh << 'EOT'
+          #!/bin/bash
+          echo "=== Production Permission Diagnostic and Fix Script ==="
+          cd /var/www/novatix
+
+          echo "Current user: $(whoami)"
+          echo "Current directory: $(pwd)"
+          echo "Directory exists: $([ -d /var/www/novatix ] && echo 'Yes' || echo 'No')"
+          echo ""
+
+          echo "=== Current Ownership and Permissions ==="
+          echo "Project directory:"
+          ls -la /var/www/ | grep novatix || echo "No novatix directory found"
+          echo ""
+          echo "Key files:"
+          ls -la .env 2>/dev/null || echo ".env file not found"
+          ls -la artisan 2>/dev/null || echo "artisan file not found"
+          echo ""
+          echo "Storage directory:"
+          ls -la storage/ 2>/dev/null || echo "storage directory not found"
+          echo ""
+
+          echo "=== Attempting to fix permissions ==="
+
+          # Try with sudo for production
+          echo "Setting ownership to www-data for production..."
+          if sudo chown -R www-data:www-data /var/www/novatix 2>/dev/null; then
+              echo "✓ Successfully set ownership to www-data"
+          else
+              echo "✗ Could not set ownership to www-data"
+              CURRENT_USER=$(whoami)
+              if sudo chown -R $CURRENT_USER:$CURRENT_USER /var/www/novatix 2>/dev/null; then
+                  echo "✓ Successfully set ownership to $CURRENT_USER"
+              else
+                  echo "✗ Could not change ownership at all"
+              fi
+          fi
+
+          # Set directory permissions
+          echo "Setting directory permissions..."
+          find /var/www/novatix -type d -exec chmod 755 {} \; 2>/dev/null || echo "Warning: Could not set directory permissions"
+
+          # Set file permissions
+          echo "Setting file permissions..."
+          find /var/www/novatix -type f -exec chmod 644 {} \; 2>/dev/null || echo "Warning: Could not set file permissions"
+
+          # Special permissions for Laravel
+          echo "Setting Laravel-specific permissions..."
+          chmod -R 777 storage bootstrap/cache 2>/dev/null || echo "Warning: Could not set storage/cache permissions"
+          chmod +x artisan 2>/dev/null || echo "Warning: Could not make artisan executable"
+
+          # Create .env if missing
+          if [ ! -f ".env" ]; then
+              echo "Creating .env file..."
+              cp .env.example .env 2>/dev/null && echo "✓ .env created" || echo "✗ Could not create .env"
+          fi
+
+          echo ""
+          echo "=== Final Status Check ==="
+          echo ".env exists: $([ -f .env ] && echo 'Yes' || echo 'No')"
+          echo "artisan executable: $([ -x artisan ] && echo 'Yes' || echo 'No')"
+          echo "storage writable: $([ -w storage ] && echo 'Yes' || echo 'No')"
+
+          echo ""
+          echo "=== Laravel Test ==="
+          if php artisan --version >/dev/null 2>&1; then
+              echo "✓ Laravel works with current user"
+              php artisan --version
+          else
+              echo "✗ Laravel doesn't work with current user"
+          fi
+
+          if sudo -u www-data php artisan --version >/dev/null 2>&1; then
+              echo "✓ Laravel works with www-data user"
+          else
+              echo "✗ Laravel doesn't work with www-data user"
+          fi
+          EOT
+          chmod +x ~/novatix/setups/fix_permissions_prod.sh
+
+          # Production-specific debug script
+          cat > ~/novatix/setups/debug_laravel_prod.sh << 'EOT'
+          #!/bin/bash
+          echo "=== Laravel Production Debug Information ==="
+          cd /var/www/novatix
+
+          echo "Current directory: $(pwd)"
+          echo "PHP version: $(php -v | head -n 1)"
+          echo "Composer version: $(composer --version 2>/dev/null || echo 'Composer not found')"
+          echo ""
+
+          echo "=== File Structure Check ==="
+          echo "Artisan exists: $([ -f artisan ] && echo 'Yes' || echo 'No')"
+          echo ".env exists: $([ -f .env ] && echo 'Yes' || echo 'No')"
+          echo "vendor directory exists: $([ -d vendor ] && echo 'Yes' || echo 'No')"
+          echo ""
+
+          echo "=== Permissions Check ==="
+          echo "Directory owner: $(ls -ld . | awk '{print $3":"$4}')"
+          echo "Artisan permissions: $(ls -l artisan 2>/dev/null || echo 'artisan not found')"
+          echo ""
+
+          echo "=== Laravel Environment Test ==="
+          if sudo -u www-data php artisan --version 2>/dev/null; then
+              echo "✓ Laravel is working as www-data user"
+          else
+              echo "✗ Laravel failed as www-data user"
+              echo "Error:"
+              sudo -u www-data php artisan --version 2>&1 || true
+          fi
+          EOT
+          chmod +x ~/novatix/setups/debug_laravel_prod.sh
+
+          # Production-specific worker check script
+          cat > ~/novatix/setups/check_workers_prod.sh << 'EOT'
+          #!/bin/bash
+          echo "=== Laravel Production Workers Status ==="
+          echo "Production Queue Workers Status:"
+          ACTIVE_WORKERS=0
+          for i in {1..6}; do
+            echo "--- Worker $i ---"
+            if sudo systemctl is-active --quiet novatix-production-queue-worker-$i; then
+              echo "✓ Worker $i is ACTIVE"
+              ACTIVE_WORKERS=$((ACTIVE_WORKERS + 1))
+            else
+              echo "✗ Worker $i is INACTIVE"
+            fi
+            sudo systemctl status novatix-production-queue-worker-$i --no-pager -l | head -n 10
+            echo ""
+          done
+
+          echo "=== Summary ==="
+          echo "Active workers: $ACTIVE_WORKERS/6"
+
+          echo ""
+          echo "Redis Status:"
+          sudo systemctl status redis-server --no-pager -l
+          echo ""
+
+          echo "Recent logs from production queue workers:"
+          for i in {1..6}; do
+            echo "--- Worker $i Recent Logs ---"
+            sudo journalctl -u novatix-production-queue-worker-$i --no-pager -n 5
+            echo ""
+          done
+          EOT
+          chmod +x ~/novatix/setups/check_workers_prod.sh
+
           EOF
 
-      - name: Deploy Laravel Project to VPS
+      - name: Update Repository on VPS
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/update_repo_prod.sh"
+
+      - name: Install Dependencies on VPS
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/install_dependencies_prod.sh"
+
+      - name: Setup Worker Services for Production
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/setup_worker_services_prod.sh"
+
+      - name: Link Production Directory
         run: |
           ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' << 'EOF'
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          echo "Linking production directory..."
+          sudo rm -rf /var/www/novatix
+          sudo ln -s ~/novatix/app/production /var/www/novatix
 
-          # Define directory paths for production
-          PROD_DIR=~/novatix/app/production
-          SYMLINK_PATH=/var/www/novatix
-
-          # Ensure directory exists
-          mkdir -p "$PROD_DIR"
-
-          # Link to /var/www/novatix
-          sudo rm -rf "$SYMLINK_PATH"
-          sudo ln -s "$PROD_DIR" "$SYMLINK_PATH"
-
-          cd "$PROD_DIR"
-
-          echo "Ensuring Laravel directory permissions are correct..."
-          mkdir -p storage/framework/{cache,sessions,views,testing}
-          mkdir -p storage/{logs,app/public,app/private,debugbar,sql} bootstrap/cache
-
-          # Set proper ownership and permissions
-          sudo chown -R $USER:www-data storage bootstrap/cache
-          sudo chmod -R 775 storage bootstrap/cache
-
-          echo "Running Laravel migrations..."
-          php artisan migrate --force
-
-          echo "Creating storage link..."
-          php artisan storage:link
-
-          echo "Clearing and caching Laravel configurations..."
-          php artisan config:clear
-          php artisan config:cache
-          php artisan route:cache
-          php artisan view:cache
-
-          # Final permission setup - set web server as owner but keep user in group
-          sudo chown -R www-data:www-data "$SYMLINK_PATH"
-          # Ensure the user can still modify files when needed
-          sudo chmod -R g+w "$SYMLINK_PATH/storage" "$SYMLINK_PATH/bootstrap/cache"
-
+          echo "Checking symbolic link..."
+          if [ -L "/var/www/novatix" ]; then
+              echo "✓ Symbolic link created successfully"
+              echo "Link target: $(readlink -f /var/www/novatix)"
+          else
+              echo "✗ Failed to create symbolic link"
+              exit 1
+          fi
           EOF
 
-      - name: Restart Services on VPS (Reuse existing script)
-        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services.sh"
+      - name: Fix Permissions Before Laravel Setup
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/fix_permissions_prod.sh"
+
+      - name: Setup Laravel Production Environment
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/setup_laravel_environment_prod.sh"
+
+      - name: Debug Laravel Before Service Restart
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/debug_laravel_prod.sh"
+
+      - name: Restart PHP-FPM and Nginx
+        run: |
+          ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            sudo systemctl restart php8.3-fpm
+            sudo systemctl reload nginx || sudo systemctl restart nginx
+          EOF
+
+      - name: Restart Services on VPS
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/restart_services_prod.sh"
+
+      - name: Final Status Check
+        run: ssh -i ~/.ssh/av_rsa -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "~/novatix/setups/check_workers_prod.sh"
