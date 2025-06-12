@@ -1179,7 +1179,6 @@ export default function Landing({
                 </div>
             </div>
 
-            {/* Form Mandatory */}
             <div
                 className={
                     'w-full pb-4 ' +
@@ -1189,13 +1188,19 @@ export default function Landing({
             >
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg border"
                         style={{
                             backgroundColor: props.primary_color,
-                            color: props.text_primary_color,
+                            borderColor: 'rgba(0, 0, 0, 0.1)',
                         }}
                     >
-                        <h3 className="mb-4 text-lg font-semibold">
+                        <h3
+                            className="mb-4 text-lg font-semibold"
+                            style={{
+                                color: props.text_primary_color,
+                                textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                            }}
+                        >
                             Fill your details for Confirmation
                         </h3>
                         {/* Form here, just edit data, no submit */}
@@ -1206,14 +1211,16 @@ export default function Landing({
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
                                     htmlFor="fullname"
-                                    value="Full Name"
+                                    value="Full Name *"
+                                    className="font-medium"
                                     style={{
                                         color: props.text_primary_color,
+                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
                                     }}
                                 />
                                 <TextInput
                                     id="fullname"
-                                    className="mt-1 block w-full"
+                                    className="mt-1 block w-full bg-white/90 backdrop-blur-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200"
                                     value={data.user_full_name}
                                     onChange={(e) =>
                                         setData(
@@ -1221,12 +1228,15 @@ export default function Landing({
                                             e.target.value,
                                         )
                                     }
+                                    placeholder="Enter your full name"
+                                    required
                                     style={{
-                                        color: props.text_secondary_color,
+                                        color: '#1f2937', // Always dark text for readability
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
                                     }}
                                 />
                                 <InputError
-                                    className="mt-2"
+                                    className="mt-2 text-red-600 font-medium"
                                     message={errors.user_full_name}
                                 />
                             </div>
@@ -1234,26 +1244,36 @@ export default function Landing({
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
                                     htmlFor="user_id_no"
-                                    value="ID Number (NIK / SIM / Kartu Pelajar / etc)"
+                                    value="ID Number (NIK / SIM / Student Card / etc) *"
+                                    className="font-medium"
                                     style={{
                                         color: props.text_primary_color,
+                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
                                     }}
                                 />
                                 <TextInput
-                                    type="number"
+                                    type="text"
                                     maxLength={16}
                                     id="user_id_no"
-                                    className="mt-1 block w-full"
+                                    className="mt-1 block w-full bg-white/90 backdrop-blur-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200"
                                     value={data.user_id_no}
-                                    onChange={(e) =>
-                                        setData('user_id_no', e.target.value)
-                                    }
+                                    onChange={(e) => {
+                                        // Only allow numbers and limit length
+                                        const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                                        setData('user_id_no', value);
+                                    }}
+                                    placeholder="Enter your ID number"
+                                    required
                                     style={{
-                                        color: props.text_secondary_color,
+                                        color: '#1f2937',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
                                     }}
                                 />
+                                <p className="mt-1 text-sm opacity-75" style={{ color: props.text_primary_color }}>
+                                    Numbers only, maximum 16 digits
+                                </p>
                                 <InputError
-                                    className="mt-2"
+                                    className="mt-2 text-red-600 font-medium"
                                     message={errors.user_id_no}
                                 />
                             </div>
@@ -1261,28 +1281,32 @@ export default function Landing({
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
                                     htmlFor="user_phone_num"
-                                    value="Phone Number"
+                                    value="Phone Number *"
+                                    className="font-medium"
                                     style={{
                                         color: props.text_primary_color,
+                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
                                     }}
                                 />
                                 <TextInput
-                                    type="number"
+                                    type="tel"
                                     id="user_phone_num"
-                                    className="mt-1 block w-full"
+                                    className="mt-1 block w-full bg-white/90 backdrop-blur-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200"
                                     value={data.user_phone_num}
-                                    onChange={(e) =>
-                                        setData(
-                                            'user_phone_num',
-                                            e.target.value,
-                                        )
-                                    }
+                                    onChange={(e) => {
+                                        // Only allow numbers and common phone characters
+                                        const value = e.target.value.replace(/[^\d+\-\s()]/g, '');
+                                        setData('user_phone_num', value);
+                                    }}
+                                    placeholder="e.g., +62 812 3456 7890"
+                                    required
                                     style={{
-                                        color: props.text_secondary_color,
+                                        color: '#1f2937',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
                                     }}
                                 />
                                 <InputError
-                                    className="mt-2"
+                                    className="mt-2 text-red-600 font-medium"
                                     message={errors.user_phone_num}
                                 />
                             </div>
@@ -1305,120 +1329,179 @@ export default function Landing({
             >
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg"
+                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg border"
                         style={{
                             backgroundColor: props.primary_color,
-                            color: props.text_primary_color,
+                            borderColor: 'rgba(0, 0, 0, 0.1)',
                         }}
                     >
-                        <h3 className="mb-4 text-lg font-semibold">
-                            Fill your details for T-Shirt
-                        </h3>
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                            </div>
+                            <h3
+                                className="text-lg font-semibold"
+                                style={{
+                                    color: props.text_primary_color,
+                                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                                }}
+                            >
+                                T-Shirt Details for Nobles Tickets
+                            </h3>
+                        </div>
+
+                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                            <p className="text-blue-800 text-sm">
+                                📦 You have {selectedSeats.filter(seat => seat.ticket_type?.toLowerCase() === 'nobles').length} Nobles ticket(s).
+                                Please provide your address and T-shirt sizes for delivery.
+                            </p>
+                        </div>
+
                         {/* Form here, just edit data, no submit */}
                         <form
-                            className="space-y-4"
+                            className="space-y-6"
                             onSubmit={(e) => e.preventDefault()}
                         >
                             <div className="min-w-[250px] flex-1">
                                 <InputLabel
                                     htmlFor="user_address"
-                                    value="Address"
+                                    value="Delivery Address *"
+                                    className="font-medium"
                                     style={{
                                         color: props.text_primary_color,
+                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
                                     }}
                                 />
-                                <TextInput
+                                <textarea
                                     id="user_address"
-                                    className="mt-1 block w-full"
+                                    rows={3}
+                                    className="mt-1 block w-full bg-white/90 backdrop-blur-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200 rounded-md resize-none"
                                     value={data.user_address}
                                     onChange={(e) =>
                                         setData('user_address', e.target.value)
                                     }
+                                    placeholder="Enter your complete delivery address including postal code"
+                                    required
                                     style={{
-                                        color: props.text_secondary_color,
+                                        color: '#1f2937',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
                                     }}
                                 />
                                 <InputError
-                                    className="mt-2"
+                                    className="mt-2 text-red-600 font-medium"
                                     message={errors.user_address}
                                 />
                             </div>
 
-                            {/* Make an array of number inputs as much as NOBLES categories selected */}
-                            <div className="flex flex-col gap-4 md:flex-row">
-                                {selectedSeats
-                                    .filter(
-                                        (seat) =>
-                                            seat.ticket_type?.toLowerCase() ===
-                                            'nobles',
-                                    )
-                                    .map((seat, index) => (
-                                        <div
-                                            key={index}
-                                            className="w-full flex-1 md:w-fit"
-                                        >
-                                            <InputLabel
-                                                htmlFor={`user_size_${index}`}
-                                                value={`T-Shirt Size ${index + 1}`}
-                                                style={{
-                                                    color: props.text_primary_color,
-                                                }}
-                                            />
-                                            <select
-                                                id={`user_size_${index}`}
-                                                className="mt-1 block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                                                value={
-                                                    data.user_sizes?.[index] ||
-                                                    ''
-                                                }
-                                                onChange={(e) =>
-                                                    setData(
-                                                        `user_sizes`,
-                                                        ((
-                                                            prevSizes: string[],
-                                                        ) => {
-                                                            const newSizes = [
-                                                                ...prevSizes,
-                                                            ];
-                                                            newSizes[index] =
-                                                                e.target.value.trim();
-                                                            return newSizes;
-                                                        })(
-                                                            data.user_sizes ||
-                                                            [],
-                                                        ),
-                                                    )
-                                                }
-                                                style={{
-                                                    color: props.text_secondary_color,
-                                                }}
+                            {/* T-Shirt sizes section */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <h4
+                                        className="text-base font-medium"
+                                        style={{
+                                            color: props.text_primary_color,
+                                            textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                                        }}
+                                    >
+                                        T-Shirt Sizes
+                                    </h4>
+                                    <span className="text-sm px-2 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                                        {selectedSeats.filter(seat => seat.ticket_type?.toLowerCase() === 'nobles').length} required
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {selectedSeats
+                                        .filter(
+                                            (seat) =>
+                                                seat.ticket_type?.toLowerCase() ===
+                                                'nobles',
+                                        )
+                                        .map((seat, index) => (
+                                            <div
+                                                key={index}
+                                                className="bg-white/50 backdrop-blur-sm p-4 rounded-lg border border-gray-200"
                                             >
-                                                <option value="">
-                                                    Select Size
-                                                </option>
-                                                {[
-                                                    'S',
-                                                    'M',
-                                                    'L',
-                                                    'XL',
-                                                    'XXL',
-                                                ].map((size) => (
-                                                    <option
-                                                        key={size}
-                                                        value={size}
-                                                    >
-                                                        {size}
+                                                <InputLabel
+                                                    htmlFor={`user_size_${index}`}
+                                                    value={`T-Shirt #${index + 1} Size *`}
+                                                    className="font-medium text-gray-700 mb-2"
+                                                />
+                                                <select
+                                                    id={`user_size_${index}`}
+                                                    className="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200 bg-white"
+                                                    value={
+                                                        data.user_sizes?.[index] ||
+                                                        ''
+                                                    }
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            `user_sizes`,
+                                                            ((
+                                                                prevSizes: string[],
+                                                            ) => {
+                                                                const newSizes = [
+                                                                    ...prevSizes,
+                                                                ];
+                                                                newSizes[index] =
+                                                                    e.target.value.trim();
+                                                                return newSizes;
+                                                            })(
+                                                                data.user_sizes ||
+                                                                [],
+                                                            ),
+                                                        )
+                                                    }
+                                                    required
+                                                    style={{
+                                                        color: '#1f2937',
+                                                    }}
+                                                >
+                                                    <option value="" disabled>
+                                                        Choose size...
                                                     </option>
-                                                ))}
-                                            </select>
-                                            <InputError
-                                                className="mt-2"
-                                                message={
-                                                    errors.user_sizes?.[index]
-                                                }
-                                            />
+                                                    {[
+                                                        { value: 'S', label: 'Small (S)' },
+                                                        { value: 'M', label: 'Medium (M)' },
+                                                        { value: 'L', label: 'Large (L)' },
+                                                        { value: 'XL', label: 'Extra Large (XL)' },
+                                                        { value: 'XXL', label: 'Double XL (XXL)' },
+                                                    ].map((size) => (
+                                                        <option
+                                                            key={size.value}
+                                                            value={size.value}
+                                                        >
+                                                            {size.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <InputError
+                                                    className="mt-2 text-red-600 font-medium"
+                                                    message={
+                                                        errors.user_sizes?.[index]
+                                                    }
+                                                />
+                                            </div>
+                                        ))}
+                                </div>
+
+                                {/* Size guide */}
+                                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                    <details className="text-sm text-gray-600">
+                                        <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
+                                            📏 Size Guide (Click to expand)
+                                        </summary>
+                                        <div className="mt-2 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                            <div><strong>S:</strong> Chest 36-38"</div>
+                                            <div><strong>M:</strong> Chest 38-40"</div>
+                                            <div><strong>L:</strong> Chest 40-42"</div>
+                                            <div><strong>XL:</strong> Chest 42-44"</div>
+                                            <div><strong>XXL:</strong> Chest 44-46"</div>
                                         </div>
-                                    ))}
+                                    </details>
+                                </div>
                             </div>
                         </form>
                     </div>
