@@ -59,8 +59,7 @@ class UserQueueMiddleware
             abort(404, 'Event Variables tidak ditemukan.');
         }
 
-        // if ($eventVariables['is_maintenance'] == 0 || $eventVariables['is_locked'] == 0) {
-        if ($eventVariables['is_maintenance'] == 1 || $eventVariables['is_locked'] == 1) {
+        if ($event['status'] != 'active') {
             return Inertia::render('User/LockedEvent', [
                 'client' => $client,
                 'event' => $this->formatEventData($event),
