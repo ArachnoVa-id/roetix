@@ -2013,6 +2013,17 @@ class EventResource extends Resource
                     ->badge()
                     ->sortable()
                     ->searchable(),
+                Tables\Columns\TextColumn::make('ticket_sold')
+                    ->label('Tickets Sold')
+                    ->getStateUsing(function ($record) {
+                        return \App\Models\TicketOrder::whereHas('order', function ($query) use ($record) {
+                            $query->where('event_id', $record->id)
+                                ->where('status', 'completed');
+                        })->count();
+                    })
+                    ->sortable()
+                    ->badge()
+                    ->color('success'),
             ])
             ->filters(
                 [
