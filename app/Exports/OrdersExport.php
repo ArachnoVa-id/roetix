@@ -2,11 +2,11 @@
 
 namespace App\Exports;
 
+use App\Models\DevNoSQLData;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\Order;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -64,9 +64,40 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
                 'order_date' => $order->order_date,
                 'total_price' => $order->total_price,
                 'status' => $order->status,
-                'created_at' => $order->created_at,
-                'updated_at' => $order->updated_at,
             ];
+
+            // Link to DevNoSQL by order accessor
+            $accessor = $order->accessor;
+
+            // Find if there's DevNoSQL with collection
+            $devNoSQLData = DevNoSQLData::where('collection', 'roetixUserData')
+                ->where('data->accessor', $accessor)
+                ->first();
+
+            // If found, split the data and add to the body
+            if ($devNoSQLData) {
+                // Remove json_decode() since $devNoSQLData->data is already an array
+                $noSQLData = $devNoSQLData->data;
+
+                $body['user_email'] = $noSQLData['user_email'] ?? null;
+                $body['user_id_no'] = $noSQLData['user_id_no'] ?? null;
+                $body['user_sizes'] = isset($noSQLData['user_sizes']) ? implode(', ', $noSQLData['user_sizes']) : null;
+                $body['user_address'] = $noSQLData['user_address'] ?? null;
+                $body['user_phone_num'] = $noSQLData['user_phone_num'] ?? null;
+            } else {
+                // If not found, set these fields to null
+                $body['user_email'] = null;
+                $body['user_id_no'] = null;
+                $body['user_sizes'] = null;
+                $body['user_address'] = null;
+                $body['user_phone_num'] = null;
+            }
+
+            // Add created_at and updated_at timestamps
+            $body['created_at'] = $order->created_at ? $order->created_at->format('Y-m-d H:i:s') : null;
+            $body['updated_at'] = $order->updated_at ? $order->updated_at->format('Y-m-d H:i:s') : null;
+
+            return $body;
         });
 
         return $data;
@@ -85,6 +116,11 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
             'Order Date',
             'Total Price',
             'Status',
+            'User Email',
+            'User ID No',
+            'User Sizes',
+            'User Address',
+            'User Phone Number',
             'Created At',
             'Updated At',
         ];

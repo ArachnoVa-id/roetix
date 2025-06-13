@@ -156,8 +156,8 @@ Route::domain('{client}.' . config('app.domain'))
                             Route::get('payment/pending', 'getPendingTransactions')
                                 ->name('payment.pending');
 
-                            Route::post('payment/cancel', 'cancelPendingTransactions')
-                                ->name('payment.cancel');
+                            // Route::post('payment/cancel', 'cancelPendingTransactions')
+                            //     ->name('payment.cancel');
 
                             Route::get('payment/get-client', 'fetchMidtransClientKey')
                                 ->name('payment.get-client');
