@@ -5,26 +5,44 @@ const Header = () => {
         <div className="relative">
             {/* background */}
             <div>
-                <img
-                    src="/images/header_mobile.png"
-                    alt="Header Mobile"
-                    width={1000}
-                    height={1000}
-                    className="h-[159.17vw] w-[100vw] object-cover md:hidden"
-                />
-                <img
-                    src="/images/header_desktop.png"
-                    alt="Header Desktop"
-                    width={1000}
-                    height={1000}
-                    className="hidden h-[39.01vw] w-[100vw] object-cover md:block"
-                />
+                <div className="relative w-full">
+
+                    <img
+                        src="/images/Pattern_Ticket.png"
+                        alt="Header Mobile"
+                        width={1000}
+                        height={1000}
+                        className="h-[159.17vw] w-[100vw] object-cover md:hidden"
+                    />
+                    <img
+                        src="/images/Pattern_Ticket.png"
+                        alt="Header Desktop"
+                        width={1000}
+                        height={1000}
+                        className="hidden h-[39.01vw] w-[100vw] object-cover md:block"
+                    />
+                    <img
+                        src="/images/Supergraphic.png"
+                        alt="Supergraphic"
+                        width={1000}
+                        height={1000}
+                        className="absolute bottom-0 left-[-5vw] w-[15vw] h-auto object-contain z-10 md:flex hidden"
+                    />
+                    <img
+                        src="/images/Supergraphic.png"
+                        alt="Supergraphic Top Right"
+                        width={1000}
+                        height={1000}
+                        className="absolute top-0 right-0 w-[15vw] h-auto object-contain rotate-180 z-10 md:flex hidden"
+                    />
+                </div>
             </div>
 
             {/* content */}
             <div className="absolute inset-0 flex w-full flex-col items-center justify-center md:items-start md:pl-[9.38vw]">
-                <h1 className="text-center text-[8.89vw] font-bold text-[rgba(211,190,255,1)] md:text-[3.33vw]">
-                    Every Great Event, There’s Roetix
+                {/* <h1 className="text-center text-[8.89vw] font-bold text-[rgba(211,190,255,1)] md:text-[3.33vw]"> */}
+                <h1 className="text-center text-[8.89vw] font-bold text-white md:text-[3.33vw]">
+                    Every Great Event, There's Roetix
                 </h1>
                 <p className="mt-[8vw] max-w-md text-start text-[4.24vw] text-white md:mt-[3vw] md:text-[1.25vw]">
                     Roetix adalah platform ticketing yang menghadirkan kemudahan
