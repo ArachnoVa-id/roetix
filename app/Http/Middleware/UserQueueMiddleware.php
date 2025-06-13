@@ -59,14 +59,18 @@ class UserQueueMiddleware
             abort(404, 'Event Variables tidak ditemukan.');
         }
 
-        if ($event['status'] != 'active') {
-            return Inertia::render('User/LockedEvent', [
-                'client' => $client,
-                'event' => $this->formatEventData($event),
-                'props' => $props->getSecure(),
-            ])->with([
-                'errors' => ['event_password' => 'The password you entered is incorrect.']
-            ]);
+        // if ($eventVariables['is_maintenance'] == 1 || $eventVariables['is_locked'] == 1) {
+        //     return Inertia::render('User/LockedEvent', [
+        //         'client' => $client,
+        //         'event' => $this->formatEventData($event),
+        //         'props' => $props->getSecure(),
+        //     ])->with([
+        //         'errors' => ['event_password' => 'The password you entered is incorrect.']
+        //     ]);
+        // }
+
+        if ($event['status'] != 'active'){
+            return $next($request);
         }
 
 
