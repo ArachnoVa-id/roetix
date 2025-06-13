@@ -6,7 +6,6 @@ const Header = () => {
             {/* background */}
             <div>
                 <div className="relative w-full">
-
                     <img
                         src="/images/Pattern_ticket.png"
                         alt="Header Mobile"
@@ -26,14 +25,14 @@ const Header = () => {
                         alt="Supergraphic"
                         width={1000}
                         height={1000}
-                        className="absolute bottom-0 left-[-5vw] w-[15vw] h-auto object-contain z-10 md:flex hidden"
+                        className="absolute bottom-0 left-[-5vw] z-10 hidden h-auto w-[15vw] object-contain md:flex"
                     />
                     <img
                         src="/images/Supergraphic.png"
                         alt="Supergraphic Top Right"
                         width={1000}
                         height={1000}
-                        className="absolute top-0 right-0 w-[15vw] h-auto object-contain rotate-180 z-10 md:flex hidden"
+                        className="absolute right-0 top-0 z-10 hidden h-auto w-[15vw] rotate-180 object-contain md:flex"
                     />
                 </div>
             </div>
