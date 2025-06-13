@@ -202,6 +202,16 @@ class EventResource extends Resource
                         Infolists\Components\TextEntry::make('location')
                             ->label('Location')
                             ->icon('heroicon-m-map-pin'),
+                        Infolists\Components\TextEntry::make('sold_tickets')
+                            ->label('Tickets Sold')
+                            ->getStateUsing(function ($record) {
+                                return \App\Models\TicketOrder::whereHas('order', function ($query) use ($record) {
+                                    $query->where('event_id', $record->id)
+                                        ->where('status', 'completed');
+                                })->count();
+                            })
+                            ->badge()
+                            ->color(fn($state) => $state > 0 ? 'success' : 'danger'),
                     ])->columns(2),
                     Infolists\Components\Tabs::make('Tabs')
                         ->tabs([
@@ -2013,6 +2023,17 @@ class EventResource extends Resource
                     ->badge()
                     ->sortable()
                     ->searchable(),
+                Tables\Columns\TextColumn::make('ticket_sold')
+                    ->label('Tickets Sold')
+                    ->getStateUsing(function ($record) {
+                        return \App\Models\TicketOrder::whereHas('order', function ($query) use ($record) {
+                            $query->where('event_id', $record->id)
+                                ->where('status', 'completed');
+                        })->count();
+                    })
+                    ->sortable()
+                    ->badge()
+                    ->color('success'),
             ])
             ->filters(
                 [
