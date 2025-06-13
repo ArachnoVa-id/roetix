@@ -94,6 +94,36 @@ class OrderResource extends Resource
             ->modal(true);
     }
 
+    public static function ResendEmailButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Resend Email')
+            ->color(Color::Green)
+            ->icon('heroicon-o-envelope')
+            ->requiresConfirmation()
+            ->modalHeading('Resend Confirmation Email')
+            ->modalDescription(fn($record) => "Are you sure you want to resend the confirmation email for Order #{$record->order_code} to {$record->user->getFilamentName()}?")
+            ->modalSubmitActionLabel('Yes, Resend Email')
+            ->modalCancelActionLabel('Cancel')
+            ->action(function ($record) {
+                try {
+                    $record->sendConfirmationEmail();
+                    Notification::make()
+                        ->title('Success')
+                        ->success()
+                        ->body('Confirmation email resent successfully.')
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error')
+                        ->danger()
+                        ->body($e->getMessage())
+                        ->send();
+                }
+            })
+            ->modalWidth('sm');
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
@@ -481,6 +511,9 @@ class OrderResource extends Resource
                         ->color(Color::Orange),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
+                    ),
+                    self::ResendEmailButton(
+                        Tables\Actions\Action::make('resendEmail')
                     ),
                 ])
             ]);
