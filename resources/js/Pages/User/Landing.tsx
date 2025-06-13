@@ -1527,22 +1527,79 @@ export default function Landing({
                                     <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
                                         📏 Size Guide (Click to expand)
                                     </summary>
-                                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs md:grid-cols-5">
-                                        <div>
-                                            <strong>S:</strong> Chest 36-38"
-                                        </div>
-                                        <div>
-                                            <strong>M:</strong> Chest 38-40"
-                                        </div>
-                                        <div>
-                                            <strong>L:</strong> Chest 40-42"
-                                        </div>
-                                        <div>
-                                            <strong>XL:</strong> Chest 42-44"
-                                        </div>
-                                        <div>
-                                            <strong>XXL:</strong> Chest 44-46"
-                                        </div>
+                                    <div className="mt-3 overflow-x-auto text-sm">
+                                        <table className="w-full border-collapse text-center">
+                                            <thead>
+                                                <tr className="bg-orange-500 text-white">
+                                                    <th className="px-3 py-2">
+                                                        Size
+                                                    </th>
+                                                    <th className="px-3 py-2">
+                                                        Panjang
+                                                    </th>
+                                                    <th className="px-3 py-2">
+                                                        Lebar
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr className="bg-orange-100">
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        S
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        65 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        45 cm
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        M
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        68 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        48 cm
+                                                    </td>
+                                                </tr>
+                                                <tr className="bg-orange-100">
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        L
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        71 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        51 cm
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        XL
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        74 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        54 cm
+                                                    </td>
+                                                </tr>
+                                                <tr className="bg-orange-100">
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        XXL
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        77 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        57 cm
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </details>
                             </div>
