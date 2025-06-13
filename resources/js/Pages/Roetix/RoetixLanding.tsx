@@ -1,3 +1,4 @@
+import { Head } from '@inertiajs/react';
 import About from '../../Components/RoetixComponents/Sections/about/About';
 import ContactUs from '../../Components/RoetixComponents/Sections/contactus/ContactUs';
 import Event from '../../Components/RoetixComponents/Sections/event/Event';
@@ -10,6 +11,10 @@ import Navigation from '../../Components/RoetixComponents/Sections/navbar/Naviga
 export default function RoetixLanding() {
     return (
         <div className="font-unageo">
+            <Head>
+                <title>Roetix</title>
+                <link rel="icon" type="image/png" href="/about_logo.png" />
+            </Head>
             <div className="aspect-[360/35] px-[5.56vw] py-[2.43vw] md:aspect-[1920/100] md:px-[8.42vw] md:py-[0.98vw]">
                 <Navigation />
             </div>
