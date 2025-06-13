@@ -16,8 +16,28 @@ use Illuminate\Support\Facades\Log;
 
 class UserQueueMiddleware
 {
+    // Helper method untuk format event data yang konsisten
+    private function formatEventData($event)
+    {
+        return [
+            'id' => $event->id,
+            'event_id' => $event->event_id ?? $event->id,
+            'name' => $event->name,
+            'slug' => $event->slug,
+            'location' => $event->location,
+            'date' => $event->date,
+            'event_date' => $event->event_date ?? $event->date,
+            'venue_id' => $event->venue_id,
+            'status' => $event->status,
+            'description' => $event->description ?? '',
+            'event_variables_id' => $event->event_variables_id,
+        ];
+    }
+
     public function handle(Request $request, Closure $next)
     {
+        $props = $request->get('props');
+
         $user = Auth::user();
 
         if (!$user) {
@@ -31,11 +51,25 @@ class UserQueueMiddleware
             abort(404, 'Event tidak ditemukan.');
         }
 
+        // avoid user to access inactive user
+
         $eventVariables = $event->eventVariables;
 
         if (!$eventVariables) {
             abort(404, 'Event Variables tidak ditemukan.');
         }
+
+        // if ($eventVariables['is_maintenance'] == 0 || $eventVariables['is_locked'] == 0) {
+        if ($eventVariables['is_maintenance'] == 1 || $eventVariables['is_locked'] == 1) {
+            return Inertia::render('User/LockedEvent', [
+                'client' => $client,
+                'event' => $this->formatEventData($event),
+                'props' => $props->getSecure(),
+            ])->with([
+                'errors' => ['event_password' => 'The password you entered is incorrect.']
+            ]);
+        }
+
 
         // If user is admin, bypass
         $userData = User::find($user->id);
