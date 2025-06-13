@@ -15,7 +15,7 @@ const ContactUs = () => {
                 <CustomButton className="flex h-[12.15vw] w-[73.49vw] items-center justify-center gap-[2vw] rounded-full bg-[linear-gradient(to_right,rgba(77,42,125,1),rgba(140,76,227,1))] transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 md:h-[3.62vw] md:w-[21.8vw]">
                     <a
                         className="text-[4.44vw] text-white md:text-[1.1vw]"
-                        href="https://wa.me/6282265486116"
+                        href="https://wa.me/6285123883960"
                         target="_blank"
                         rel="noreferrer"
                     >
