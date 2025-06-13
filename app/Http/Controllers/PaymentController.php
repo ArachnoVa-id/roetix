@@ -125,14 +125,25 @@ class PaymentController extends Controller
                 ], 422);
             }
 
-            // Check if user_id_no exists with a completed order
+            // Fetch the event early to use its ID in the DevNoSQLData query
+            $event = Event::where('slug', $client)->first();
+            if (! $event) {
+                Log::error('Event not found', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                ]);
+                throw new \Exception('Event not found');
+            }
+
+            // Check if user_id_no exists with a completed or pending order FOR THE CURRENT EVENT
             $hasActiveOrderWithSameId = DevNoSQLData::where('collection', 'roetixUserData')
                 ->whereJsonContains('data->user_id_no', $request->extra_data['user_id_no'] ?? '')
                 ->whereRaw('JSON_EXTRACT(data, "$.accessor") IS NOT NULL')
-                ->whereExists(function ($query) {
+                ->whereExists(function ($query) use ($event) { // Perhatikan `use ($event)` di sini
                     $query->select(DB::raw(1))
                         ->from('orders')
                         ->whereRaw('orders.accessor = JSON_UNQUOTE(JSON_EXTRACT(dev_nosql_data.data, "$.accessor"))')
+                        ->where('orders.event_id', $event->id) // Baris baru ini yang memfilter berdasarkan event
                         ->whereIn('orders.status', [
                             OrderStatus::COMPLETED->value,
                             OrderStatus::PENDING->value
