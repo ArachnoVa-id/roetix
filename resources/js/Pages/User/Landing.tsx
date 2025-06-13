@@ -334,27 +334,27 @@ export default function Landing({
         }
     };
 
-    interface CancellingStack {
-        order_id: string;
-        cancelling: boolean;
-    }
-    const [cancellingStack, setCancellingStack] = useState<CancellingStack[]>(
-        [],
-    );
+    // interface CancellingStack {
+    //     order_id: string;
+    //     cancelling: boolean;
+    // }
+    // const [cancellingStack, setCancellingStack] = useState<CancellingStack[]>(
+    //     [],
+    // );
 
-    const addItemToStack = (orderId: string) => {
-        const newItem = {
-            order_id: orderId,
-            cancelling: true,
-        };
-        setCancellingStack((prevStack) => [...prevStack, newItem]);
-    };
+    // const addItemToStack = (orderId: string) => {
+    //     const newItem = {
+    //         order_id: orderId,
+    //         cancelling: true,
+    //     };
+    //     setCancellingStack((prevStack) => [...prevStack, newItem]);
+    // };
 
-    const removeItemFromStack = (orderId: string) => {
-        setCancellingStack((prevStack) =>
-            prevStack.filter((item) => item.order_id !== orderId),
-        );
-    };
+    // const removeItemFromStack = (orderId: string) => {
+    //     setCancellingStack((prevStack) =>
+    //         prevStack.filter((item) => item.order_id !== orderId),
+    //     );
+    // };
 
     // const cancelPayment = async (order_ids: string[]) => {
     //     if (!order_ids) return;
@@ -1189,7 +1189,7 @@ export default function Landing({
             >
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg border"
+                        className="overflow-hidden border p-6 shadow-xl sm:rounded-lg"
                         style={{
                             backgroundColor: props.primary_color,
                             borderColor: 'rgba(0, 0, 0, 0.1)',
@@ -1216,12 +1216,13 @@ export default function Landing({
                                     className="font-medium"
                                     style={{
                                         color: props.text_primary_color,
-                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                                        textShadow:
+                                            '0 1px 2px rgba(0, 0, 0, 0.1)',
                                     }}
                                 />
                                 <TextInput
                                     id="fullname"
-                                    className="mt-1 block w-full bg-white/90 backdrop-blur-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200"
+                                    className="mt-1 block w-full border-gray-300 bg-white/90 backdrop-blur-sm transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                                     value={data.user_full_name}
                                     onChange={(e) =>
                                         setData(
@@ -1233,11 +1234,12 @@ export default function Landing({
                                     required
                                     style={{
                                         color: '#1f2937', // Always dark text for readability
-                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                        backgroundColor:
+                                            'rgba(255, 255, 255, 0.95)',
                                     }}
                                 />
                                 <InputError
-                                    className="mt-2 text-red-600 font-medium"
+                                    className="mt-2 font-medium text-red-600"
                                     message={errors.user_full_name}
                                 />
                             </div>
@@ -1249,32 +1251,39 @@ export default function Landing({
                                     className="font-medium"
                                     style={{
                                         color: props.text_primary_color,
-                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                                        textShadow:
+                                            '0 1px 2px rgba(0, 0, 0, 0.1)',
                                     }}
                                 />
                                 <TextInput
                                     type="text"
                                     maxLength={16}
                                     id="user_id_no"
-                                    className="mt-1 block w-full bg-white/90 backdrop-blur-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200"
+                                    className="mt-1 block w-full border-gray-300 bg-white/90 backdrop-blur-sm transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                                     value={data.user_id_no}
                                     onChange={(e) => {
                                         // Only allow numbers and limit length
-                                        const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                                        const value = e.target.value
+                                            .replace(/\D/g, '')
+                                            .slice(0, 16);
                                         setData('user_id_no', value);
                                     }}
                                     placeholder="Enter your ID number"
                                     required
                                     style={{
                                         color: '#1f2937',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                        backgroundColor:
+                                            'rgba(255, 255, 255, 0.95)',
                                     }}
                                 />
-                                <p className="mt-1 text-sm opacity-75" style={{ color: props.text_primary_color }}>
+                                <p
+                                    className="mt-1 text-sm opacity-75"
+                                    style={{ color: props.text_primary_color }}
+                                >
                                     Numbers only, maximum 16 digits
                                 </p>
                                 <InputError
-                                    className="mt-2 text-red-600 font-medium"
+                                    className="mt-2 font-medium text-red-600"
                                     message={errors.user_id_no}
                                 />
                             </div>
@@ -1286,28 +1295,33 @@ export default function Landing({
                                     className="font-medium"
                                     style={{
                                         color: props.text_primary_color,
-                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                                        textShadow:
+                                            '0 1px 2px rgba(0, 0, 0, 0.1)',
                                     }}
                                 />
                                 <TextInput
                                     type="tel"
                                     id="user_phone_num"
-                                    className="mt-1 block w-full bg-white/90 backdrop-blur-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200"
+                                    className="mt-1 block w-full border-gray-300 bg-white/90 backdrop-blur-sm transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                                     value={data.user_phone_num}
                                     onChange={(e) => {
                                         // Only allow numbers and common phone characters
-                                        const value = e.target.value.replace(/[^\d+\-\s()]/g, '');
+                                        const value = e.target.value.replace(
+                                            /[^\d+\-\s()]/g,
+                                            '',
+                                        );
                                         setData('user_phone_num', value);
                                     }}
                                     placeholder="e.g., +62 812 3456 7890"
                                     required
                                     style={{
                                         color: '#1f2937',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                        backgroundColor:
+                                            'rgba(255, 255, 255, 0.95)',
                                     }}
                                 />
                                 <InputError
-                                    className="mt-2 text-red-600 font-medium"
+                                    className="mt-2 font-medium text-red-600"
                                     message={errors.user_phone_num}
                                 />
                             </div>
@@ -1330,16 +1344,26 @@ export default function Landing({
             >
                 <div className="mx-auto w-full max-w-7xl sm:px-6 lg:px-8">
                     <div
-                        className="overflow-hidden p-6 shadow-xl sm:rounded-lg border"
+                        className="overflow-hidden border p-6 shadow-xl sm:rounded-lg"
                         style={{
                             backgroundColor: props.primary_color,
                             borderColor: 'rgba(0, 0, 0, 0.1)',
                         }}
                     >
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        <div className="mb-4 flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                                <svg
+                                    className="h-5 w-5 text-blue-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                                    />
                                 </svg>
                             </div>
                             <h3
@@ -1353,10 +1377,18 @@ export default function Landing({
                             </h3>
                         </div>
 
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                            <p className="text-blue-800 text-sm">
-                                📦 You have {selectedSeats.filter(seat => seat.ticket_type?.toLowerCase() === 'nobles').length} Nobles ticket(s).
-                                Please provide your address and T-shirt sizes for delivery.
+                        <div className="mb-4 rounded-lg border-l-4 border-blue-400 bg-blue-50 p-3">
+                            <p className="text-sm text-blue-800">
+                                📦 You have{' '}
+                                {
+                                    selectedSeats.filter(
+                                        (seat) =>
+                                            seat.ticket_type?.toLowerCase() ===
+                                            'nobles',
+                                    ).length
+                                }{' '}
+                                Nobles ticket(s). Please provide your address
+                                and T-shirt sizes for delivery.
                             </p>
                         </div>
 
@@ -1372,13 +1404,14 @@ export default function Landing({
                                     className="font-medium"
                                     style={{
                                         color: props.text_primary_color,
-                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                                        textShadow:
+                                            '0 1px 2px rgba(0, 0, 0, 0.1)',
                                     }}
                                 />
                                 <textarea
                                     id="user_address"
                                     rows={3}
-                                    className="mt-1 block w-full bg-white/90 backdrop-blur-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200 rounded-md resize-none"
+                                    className="mt-1 block w-full resize-none rounded-md border-gray-300 bg-white/90 backdrop-blur-sm transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                                     value={data.user_address}
                                     onChange={(e) =>
                                         setData('user_address', e.target.value)
@@ -1387,11 +1420,12 @@ export default function Landing({
                                     required
                                     style={{
                                         color: '#1f2937',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                        backgroundColor:
+                                            'rgba(255, 255, 255, 0.95)',
                                     }}
                                 />
                                 <InputError
-                                    className="mt-2 text-red-600 font-medium"
+                                    className="mt-2 font-medium text-red-600"
                                     message={errors.user_address}
                                 />
                             </div>
@@ -1411,14 +1445,12 @@ export default function Landing({
                                         >
                                             <InputLabel
                                                 htmlFor={`user_size_${index}`}
-                                                value={`T-Shirt Size ${index + 1}`}
-                                                style={{
-                                                    color: props.text_primary_color,
-                                                }}
+                                                value={`T-Shirt #${index + 1} Size *`}
+                                                className="mb-2 font-medium text-gray-700"
                                             />
                                             <select
                                                 id={`user_size_${index}`}
-                                                className="mt-1 block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                                className="block w-full rounded-lg border-gray-300 bg-white transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                                                 value={
                                                     data.user_sizes?.[index] ||
                                                     ''
@@ -1441,88 +1473,135 @@ export default function Landing({
                                                         ),
                                                     )
                                                 }
+                                                required
                                                 style={{
-                                                    color: props.text_secondary_color,
+                                                    color: '#1f2937',
                                                 }}
                                             >
-                                                <InputLabel
-                                                    htmlFor={`user_size_${index}`}
-                                                    value={`T-Shirt #${index + 1} Size *`}
-                                                    className="font-medium text-gray-700 mb-2"
-                                                />
-                                                <select
-                                                    id={`user_size_${index}`}
-                                                    className="block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 focus:ring-2 transition-all duration-200 bg-white"
-                                                    value={
-                                                        data.user_sizes?.[index] ||
-                                                        ''
-                                                    }
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            `user_sizes`,
-                                                            ((
-                                                                prevSizes: string[],
-                                                            ) => {
-                                                                const newSizes = [
-                                                                    ...prevSizes,
-                                                                ];
-                                                                newSizes[index] =
-                                                                    e.target.value.trim();
-                                                                return newSizes;
-                                                            })(
-                                                                data.user_sizes ||
-                                                                [],
-                                                            ),
-                                                        )
-                                                    }
-                                                    required
-                                                    style={{
-                                                        color: '#1f2937',
-                                                    }}
-                                                >
-                                                    <option value="" disabled>
-                                                        Choose size...
+                                                <option value="" disabled>
+                                                    Choose size...
+                                                </option>
+                                                {[
+                                                    {
+                                                        value: 'S',
+                                                        label: 'Small (S)',
+                                                    },
+                                                    {
+                                                        value: 'M',
+                                                        label: 'Medium (M)',
+                                                    },
+                                                    {
+                                                        value: 'L',
+                                                        label: 'Large (L)',
+                                                    },
+                                                    {
+                                                        value: 'XL',
+                                                        label: 'Extra Large (XL)',
+                                                    },
+                                                    {
+                                                        value: 'XXL',
+                                                        label: 'Double XL (XXL)',
+                                                    },
+                                                ].map((size) => (
+                                                    <option
+                                                        key={size.value}
+                                                        value={size.value}
+                                                    >
+                                                        {size.label}
                                                     </option>
-                                                    {[
-                                                        { value: 'S', label: 'Small (S)' },
-                                                        { value: 'M', label: 'Medium (M)' },
-                                                        { value: 'L', label: 'Large (L)' },
-                                                        { value: 'XL', label: 'Extra Large (XL)' },
-                                                        { value: 'XXL', label: 'Double XL (XXL)' },
-                                                    ].map((size) => (
-                                                        <option
-                                                            key={size.value}
-                                                            value={size.value}
-                                                        >
-                                                            {size.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <InputError
-                                                    className="mt-2 text-red-600 font-medium"
-                                                    message={
-                                                        errors.user_sizes?.[index]
-                                                    }
-                                                />
-                                            </div>
-                                        ))}
-                                </div>
-
-                                {/* Size guide */}
-                                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                                    <details className="text-sm text-gray-600">
-                                        <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
-                                            📏 Size Guide (Click to expand)
-                                        </summary>
-                                        <div className="mt-2 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
-                                            <div><strong>S:</strong> Chest 36-38"</div>
-                                            <div><strong>M:</strong> Chest 38-40"</div>
-                                            <div><strong>L:</strong> Chest 40-42"</div>
-                                            <div><strong>XL:</strong> Chest 42-44"</div>
-                                            <div><strong>XXL:</strong> Chest 44-46"</div>
+                                                ))}
+                                            </select>
+                                            <InputError
+                                                className="mt-2 font-medium text-red-600"
+                                                message={
+                                                    errors.user_sizes?.[index]
+                                                }
+                                            />
                                         </div>
-                                    </details>
-                                </div>
+                                    ))}
+                            </div>
+
+                            {/* Size guide */}
+                            <div className="mt-4 rounded-lg bg-gray-50 p-3">
+                                <details className="text-sm text-gray-600">
+                                    <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
+                                        📏 Size Guide (Click to expand)
+                                    </summary>
+                                    <div className="mt-3 overflow-x-auto text-sm">
+                                        <table className="w-full border-collapse text-center">
+                                            <thead>
+                                                <tr className="bg-orange-500 text-white">
+                                                    <th className="px-3 py-2">
+                                                        Size
+                                                    </th>
+                                                    <th className="px-3 py-2">
+                                                        Panjang
+                                                    </th>
+                                                    <th className="px-3 py-2">
+                                                        Lebar
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr className="bg-orange-100">
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        S
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        65 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        45 cm
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        M
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        68 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        48 cm
+                                                    </td>
+                                                </tr>
+                                                <tr className="bg-orange-100">
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        L
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        71 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        51 cm
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        XL
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        74 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        54 cm
+                                                    </td>
+                                                </tr>
+                                                <tr className="bg-orange-100">
+                                                    <td className="px-3 py-2 font-semibold">
+                                                        XXL
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        77 cm
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        57 cm
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
                             </div>
                         </form>
                     </div>
