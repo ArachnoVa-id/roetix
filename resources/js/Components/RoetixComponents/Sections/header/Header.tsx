@@ -8,14 +8,14 @@ const Header = () => {
                 <div className="relative w-full">
 
                     <img
-                        src="/images/Pattern_Ticket.png"
+                        src="/images/Pattern_ticket.png"
                         alt="Header Mobile"
                         width={1000}
                         height={1000}
                         className="h-[159.17vw] w-[100vw] object-cover md:hidden"
                     />
                     <img
-                        src="/images/Pattern_Ticket.png"
+                        src="/images/Pattern_ticket.png"
                         alt="Header Desktop"
                         width={1000}
                         height={1000}
