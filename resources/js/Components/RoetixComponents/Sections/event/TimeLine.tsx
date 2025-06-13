@@ -56,14 +56,14 @@ const TimeLine = () => {
         <div className="relative">
             <div>
                 <img
-                    src="/images/timeline_mobile.png"
+                    src="/images/Pattern_ticket.png"
                     alt="Header Mobile"
                     width={1000}
                     height={1000}
                     className="h-[444.89vw] w-[100vw] object-cover md:hidden"
                 />
                 <img
-                    src="/images/timeline_desktop.png"
+                    src="/images/Pattern_ticket.png"
                     alt="Header Desktop"
                     width={1000}
                     height={1000}

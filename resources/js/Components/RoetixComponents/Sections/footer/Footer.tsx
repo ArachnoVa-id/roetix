@@ -16,20 +16,15 @@ const Footer = () => {
             </p>
 
             <div className="flex flex-col items-center justify-center space-y-[2vw] text-[4.44vw] text-white md:flex-row md:space-x-[1vw] md:space-y-0 md:text-[1.25vw]">
-                {/* <div className="items-center space-x-2 hidden">
-                    <House color="rgba(252, 216, 4, 1)" />
-                    <p>Insert Alamat di Sini</p>
-                </div> */}
-
-                <div className="flex items-center space-x-2">
+                <a
+                    href="https://wa.me/6285123883960"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center space-x-2 hover:underline"
+                >
                     <Phone color="rgba(252, 216, 4, 1)" />
-                    <p>+62 822-6548-6116</p>
-                </div>
-
-                {/* <div className="flex items-center space-x-2">
-                    <Mail color="rgba(252, 216, 4, 1)" />
-                    <p>LoremIpsum@gmail.com</p>
-                </div> */}
+                    <span>+62 851-2388-3960</span>
+                </a>
             </div>
 
             <p className="text-[3.89vw] font-bold text-white md:text-[1.67vw]">
