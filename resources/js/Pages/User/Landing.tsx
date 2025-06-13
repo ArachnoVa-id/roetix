@@ -68,26 +68,26 @@ export default function Landing({
     useEffect(() => {
         setDisabledByForm(
             selectedSeats.length > 0 &&
-            (!data.user_full_name ||
-                !data.user_id_no ||
-                !data.user_phone_num ||
-                !data.user_email ||
-                (selectedSeats.filter(
-                    (seat) => seat.ticket_type?.toLowerCase() === 'nobles',
-                ).length > 0 &&
-                    (!data.user_address ||
-                        selectedSeats
-                            .filter(
-                                (seat) =>
-                                    seat.ticket_type?.toLowerCase() ===
-                                    'nobles',
-                            )
-                            .some(
-                                (seat, idx) =>
-                                    !data.user_sizes ||
-                                    !data.user_sizes[idx] ||
-                                    data.user_sizes[idx].trim() === '',
-                            )))),
+                (!data.user_full_name ||
+                    !data.user_id_no ||
+                    !data.user_phone_num ||
+                    !data.user_email ||
+                    (selectedSeats.filter(
+                        (seat) => seat.ticket_type?.toLowerCase() === 'nobles',
+                    ).length > 0 &&
+                        (!data.user_address ||
+                            selectedSeats
+                                .filter(
+                                    (seat) =>
+                                        seat.ticket_type?.toLowerCase() ===
+                                        'nobles',
+                                )
+                                .some(
+                                    (seat, idx) =>
+                                        !data.user_sizes ||
+                                        !data.user_sizes[idx] ||
+                                        data.user_sizes[idx].trim() === '',
+                                )))),
         );
     }, [data, selectedSeats]);
 
@@ -714,56 +714,57 @@ export default function Landing({
                                                         style={{
                                                             backgroundColor:
                                                                 event.status ===
-                                                                    'active'
+                                                                'active'
                                                                     ? 'rgba(34, 197, 94, 0.1)'
                                                                     : event.status ===
                                                                         'planned'
-                                                                        ? 'rgba(59, 130, 246, 0.1)'
-                                                                        : event.status ===
-                                                                            'completed'
-                                                                            ? 'rgba(107, 114, 128, 0.1)'
-                                                                            : 'rgba(239, 68, 68, 0.1)',
+                                                                      ? 'rgba(59, 130, 246, 0.1)'
+                                                                      : event.status ===
+                                                                          'completed'
+                                                                        ? 'rgba(107, 114, 128, 0.1)'
+                                                                        : 'rgba(239, 68, 68, 0.1)',
                                                         }}
                                                     >
                                                         <div
-                                                            className={`h-2 w-2 rounded-full ${event.status ===
+                                                            className={`h-2 w-2 rounded-full ${
+                                                                event.status ===
                                                                 'active'
-                                                                ? 'bg-green-500'
-                                                                : event.status ===
-                                                                    'planned'
-                                                                    ? 'bg-blue-500'
+                                                                    ? 'bg-green-500'
                                                                     : event.status ===
-                                                                        'completed'
+                                                                        'planned'
+                                                                      ? 'bg-blue-500'
+                                                                      : event.status ===
+                                                                          'completed'
                                                                         ? 'bg-gray-500'
                                                                         : 'bg-red-500'
-                                                                } mr-2 animate-pulse`}
+                                                            } mr-2 animate-pulse`}
                                                         ></div>
                                                         <span
                                                             className="text-sm font-medium"
                                                             style={{
                                                                 color:
                                                                     event.status ===
-                                                                        'active'
+                                                                    'active'
                                                                         ? '#16a34a'
                                                                         : event.status ===
                                                                             'planned'
-                                                                            ? '#2563eb'
-                                                                            : event.status ===
-                                                                                'completed'
-                                                                                ? '#4b5563'
-                                                                                : '#dc2626',
+                                                                          ? '#2563eb'
+                                                                          : event.status ===
+                                                                              'completed'
+                                                                            ? '#4b5563'
+                                                                            : '#dc2626',
                                                             }}
                                                         >
                                                             {event.status ===
-                                                                'active'
+                                                            'active'
                                                                 ? 'Active'
                                                                 : event.status ===
                                                                     'planned'
-                                                                    ? 'Planned'
-                                                                    : event.status ===
-                                                                        'completed'
-                                                                        ? 'Completed'
-                                                                        : 'Cancelled'}
+                                                                  ? 'Planned'
+                                                                  : event.status ===
+                                                                      'completed'
+                                                                    ? 'Completed'
+                                                                    : 'Cancelled'}
                                                         </span>
                                                     </div>
                                                 )}
@@ -1052,9 +1053,9 @@ export default function Landing({
                                                 categoryPrices.find(
                                                     (p) =>
                                                         p.ticket_category_id ===
-                                                        category.id &&
+                                                            category.id &&
                                                         p.timeline_id ===
-                                                        currentTimeline.id,
+                                                            currentTimeline.id,
                                                 );
                                             if (priceEntry) {
                                                 price = priceEntry.price;
@@ -1075,7 +1076,7 @@ export default function Landing({
                                                     style={{
                                                         backgroundColor:
                                                             ticketTypeColors[
-                                                            type
+                                                                type
                                                             ],
                                                     }}
                                                 />
@@ -1111,9 +1112,9 @@ export default function Landing({
                                     }}
                                 />
                                 {/* Add the status legends */}
-                                <div className="flex w-full items-center justify-center gap-4">
-                                    <p className="text-xs leading-[.8]">
-                                        Border Color:{' '}
+                                <div className="flex w-full flex-wrap items-center justify-center gap-4">
+                                    <p className="w-full text-center text-xs leading-[.8] sm:w-auto">
+                                        Border Color:
                                     </p>
                                     {statusLegends.map((legend, i) => (
                                         <div
@@ -1395,34 +1396,54 @@ export default function Landing({
                                 />
                             </div>
 
-                            {/* T-Shirt sizes section */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <h4
-                                        className="text-base font-medium"
-                                        style={{
-                                            color: props.text_primary_color,
-                                            textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-                                        }}
-                                    >
-                                        T-Shirt Sizes
-                                    </h4>
-                                    <span className="text-sm px-2 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
-                                        {selectedSeats.filter(seat => seat.ticket_type?.toLowerCase() === 'nobles').length} required
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {selectedSeats
-                                        .filter(
-                                            (seat) =>
-                                                seat.ticket_type?.toLowerCase() ===
-                                                'nobles',
-                                        )
-                                        .map((seat, index) => (
-                                            <div
-                                                key={index}
-                                                className="bg-white/50 backdrop-blur-sm p-4 rounded-lg border border-gray-200"
+                            {/* Make an array of number inputs as much as NOBLES categories selected */}
+                            <div className="flex flex-col gap-4 md:flex-row">
+                                {selectedSeats
+                                    .filter(
+                                        (seat) =>
+                                            seat.ticket_type?.toLowerCase() ===
+                                            'nobles',
+                                    )
+                                    .map((seat, index) => (
+                                        <div
+                                            key={index}
+                                            className="w-full flex-1 md:w-fit"
+                                        >
+                                            <InputLabel
+                                                htmlFor={`user_size_${index}`}
+                                                value={`T-Shirt Size ${index + 1}`}
+                                                style={{
+                                                    color: props.text_primary_color,
+                                                }}
+                                            />
+                                            <select
+                                                id={`user_size_${index}`}
+                                                className="mt-1 block w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                                value={
+                                                    data.user_sizes?.[index] ||
+                                                    ''
+                                                }
+                                                onChange={(e) =>
+                                                    setData(
+                                                        `user_sizes`,
+                                                        ((
+                                                            prevSizes: string[],
+                                                        ) => {
+                                                            const newSizes = [
+                                                                ...prevSizes,
+                                                            ];
+                                                            newSizes[index] =
+                                                                e.target.value.trim();
+                                                            return newSizes;
+                                                        })(
+                                                            data.user_sizes ||
+                                                                [],
+                                                        ),
+                                                    )
+                                                }
+                                                style={{
+                                                    color: props.text_secondary_color,
+                                                }}
                                             >
                                                 <InputLabel
                                                     htmlFor={`user_size_${index}`}
