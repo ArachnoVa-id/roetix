@@ -600,6 +600,15 @@ class Event extends Model
         return $this->hasMany(Ticket::class, 'event_id', 'id');
     }
 
+    // public function getTicketNumbers()
+    // {
+    //     return TicketOrder::whereHas('ticket', function ($query) {
+    //         $query->where('event_id', $this->id)
+    //             ->where('status', 'completed');
+    //     })->count();
+    // }
+
+
     // public function getRouteKeyName()
     // {
     //     return 'slug';
