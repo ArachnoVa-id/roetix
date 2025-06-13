@@ -13,7 +13,7 @@ export default function RoetixLanding() {
         <div className="font-unageo">
             <Head>
                 <title>Roetix</title>
-                <link rel="icon" type="image/png" href="/about_logo.png" />
+                <link rel="icon" type="image/png" href="/images/about_logo.png" />
             </Head>
             <div className="aspect-[360/35] px-[5.56vw] py-[2.43vw] md:aspect-[1920/100] md:px-[8.42vw] md:py-[0.98vw]">
                 <Navigation />
