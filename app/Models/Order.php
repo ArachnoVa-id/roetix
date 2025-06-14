@@ -120,6 +120,12 @@ class Order extends Model
             throw new \Exception('User contact information not found');
         }
 
+        // Check if the name exist in devnoSQLData
+        $devData = $this->devNoSQLUserData();
+        if ($devData && isset($devData->data['user_full_name'])) {
+            $userContact->fullname = $devData->data['user_full_name'];
+        }
+
         $emailHtml = $this->renderConfirmationEmail($event, $tickets, $user, $userContact);
 
         $subject = $isTest
@@ -222,6 +228,53 @@ class Order extends Model
         };
 
         return $ticket;
+    }
+
+    /**
+     * Get the DevNoSQLData for this order's user from roetixUserData collection
+     * This matches the accessor field (checkout URL) in Order with the accessor in DevNoSQLData
+     */
+    public function devNoSQLUserData()
+    {
+        return DevNoSQLData::where('collection', 'roetixUserData')
+            ->where('data->accessor', $this->accessor)
+            ->first();
+    }
+
+    /**
+     * Get user phone number from DevNoSQLData
+     */
+    public function getUserPhoneAttribute()
+    {
+        $devData = $this->devNoSQLUserData();
+        return $devData?->data['user_phone_num'] ?? null;
+    }
+
+    /**
+     * Get user full name from DevNoSQLData
+     */
+    public function getUserFullNameAttribute()
+    {
+        $devData = $this->devNoSQLUserData();
+        return $devData?->data['user_full_name'] ?? null;
+    }
+
+    /**
+     * Get user email from DevNoSQLData
+     */
+    public function getUserEmailFromDevDataAttribute()
+    {
+        $devData = $this->devNoSQLUserData();
+        return $devData?->data['user_email'] ?? null;
+    }
+
+    /**
+     * Get user ID number from DevNoSQLData
+     */
+    public function getUserIdNoAttribute()
+    {
+        $devData = $this->devNoSQLUserData();
+        return $devData?->data['user_id_no'] ?? null;
     }
 
     public function tickets(): BelongsToMany

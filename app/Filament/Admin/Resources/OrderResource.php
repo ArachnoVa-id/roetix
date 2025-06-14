@@ -29,6 +29,7 @@ use App\Filament\Components\CustomPagination;
 use App\Models\Team;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
+use Illuminate\Support\Facades\DB;
 
 class OrderResource extends Resource
 {
@@ -377,7 +378,15 @@ class OrderResource extends Resource
                             ->columnSpan([
                                 'default' => 1,
                                 'sm' => 1,
-                                'md' => 2,
+                                'md' => 1,
+                            ]),
+                        Infolists\Components\TextEntry::make('phone')
+                            ->default(fn() => $order?->getUserPhoneAttribute())
+                            ->icon('heroicon-o-phone')
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 1,
                             ]),
                     ]),
                 Infolists\Components\Section::make('Event')
@@ -459,6 +468,26 @@ class OrderResource extends Resource
                     })
                     ->sortable()
                     ->formatStateUsing(fn($record) => $record->user?->getFilamentName() ?? 'N/A'),
+                Tables\Columns\TextColumn::make('user_phone')
+                    ->label('Phone')
+                    ->searchable(query: function ($query, $search) {
+                        $query->whereExists(function ($subQuery) use ($search) {
+                            $subQuery->select(DB::raw(1))
+                                ->from('dev_nosql_data')
+                                ->where('collection', 'roetixUserData')
+                                ->whereColumn('data->accessor', 'orders.accessor')
+                                ->where('data->user_phone_num', 'like', "%{$search}%");
+                        });
+                    })
+                    ->formatStateUsing(function ($record) {
+                        if (!$record->accessor) return 'N/A';
+
+                        $devData = \App\Models\DevNoSQLData::where('collection', 'roetixUserData')
+                            ->where('data->accessor', $record->accessor)
+                            ->first();
+
+                        return $devData?->data['user_phone_num'] ?? 'N/A';
+                    }),
                 Tables\Columns\TextColumn::make('order_date')
                     ->label('Date')
                     ->sortable(),
