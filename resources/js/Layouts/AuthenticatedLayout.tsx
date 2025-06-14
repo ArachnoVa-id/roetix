@@ -438,7 +438,9 @@ export default function Authenticated({
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 eventProps={props}
-                                className={user.role === 'admin' ? '' : 'hidden'}
+                                className={
+                                    user.role === 'admin' ? '' : 'hidden'
+                                }
                                 href="#"
                                 onClick={() => {
                                     window.location.href = route('home');
@@ -485,6 +487,7 @@ export default function Authenticated({
                             }}
                         />
                         <span
+                            id="session-timer"
                             className="relative font-bold"
                             style={{
                                 color: props.text_primary_color,
@@ -492,8 +495,9 @@ export default function Authenticated({
                         >
                             {userEndSessionDatetime
                                 ? `Remaining Time: ${formatCountdown(countdown)}`
-                                : user.role.charAt(0).toUpperCase() + user.role.slice(1) + ` View`
-                            }
+                                : user.role.charAt(0).toUpperCase() +
+                                  user.role.slice(1) +
+                                  ` View`}
                         </span>
                     </div>
                 </div>

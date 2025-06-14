@@ -29,6 +29,7 @@ use App\Filament\Components\CustomPagination;
 use App\Models\Team;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
+use Illuminate\Support\Facades\DB;
 
 class OrderResource extends Resource
 {
@@ -92,6 +93,36 @@ class OrderResource extends Resource
             })
             ->modalWidth('sm')
             ->modal(true);
+    }
+
+    public static function ResendEmailButton($action): Actions\Action | Tables\Actions\Action | Infolists\Components\Actions\Action
+    {
+        return $action
+            ->label('Resend Email')
+            ->color(Color::Green)
+            ->icon('heroicon-o-envelope')
+            ->requiresConfirmation()
+            ->modalHeading('Resend Confirmation Email')
+            ->modalDescription(fn($record) => "Are you sure you want to resend the confirmation email for Order #{$record->order_code} to {$record->user->getFilamentName()}?")
+            ->modalSubmitActionLabel('Yes, Resend Email')
+            ->modalCancelActionLabel('Cancel')
+            ->action(function ($record) {
+                try {
+                    $record->sendConfirmationEmail();
+                    Notification::make()
+                        ->title('Success')
+                        ->success()
+                        ->body('Confirmation email resent successfully.')
+                        ->send();
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error')
+                        ->danger()
+                        ->body($e->getMessage())
+                        ->send();
+                }
+            })
+            ->modalWidth('sm');
     }
 
     public static function getEloquentQuery(): Builder
@@ -347,7 +378,15 @@ class OrderResource extends Resource
                             ->columnSpan([
                                 'default' => 1,
                                 'sm' => 1,
-                                'md' => 2,
+                                'md' => 1,
+                            ]),
+                        Infolists\Components\TextEntry::make('phone')
+                            ->default(fn() => $order?->getUserPhoneAttribute())
+                            ->icon('heroicon-o-phone')
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 1,
+                                'md' => 1,
                             ]),
                     ]),
                 Infolists\Components\Section::make('Event')
@@ -429,6 +468,26 @@ class OrderResource extends Resource
                     })
                     ->sortable()
                     ->formatStateUsing(fn($record) => $record->user?->getFilamentName() ?? 'N/A'),
+                Tables\Columns\TextColumn::make('user_phone')
+                    ->label('Phone')
+                    ->searchable(query: function ($query, $search) {
+                        $query->whereExists(function ($subQuery) use ($search) {
+                            $subQuery->select(DB::raw(1))
+                                ->from('dev_nosql_data')
+                                ->where('collection', 'roetixUserData')
+                                ->whereColumn('data->accessor', 'orders.accessor')
+                                ->where('data->user_phone_num', 'like', "%{$search}%");
+                        });
+                    })
+                    ->formatStateUsing(function ($record) {
+                        if (!$record->accessor) return 'N/A';
+
+                        $devData = \App\Models\DevNoSQLData::where('collection', 'roetixUserData')
+                            ->where('data->accessor', $record->accessor)
+                            ->first();
+
+                        return $devData?->data['user_phone_num'] ?? 'N/A';
+                    }),
                 Tables\Columns\TextColumn::make('order_date')
                     ->label('Date')
                     ->sortable(),
@@ -481,6 +540,9 @@ class OrderResource extends Resource
                         ->color(Color::Orange),
                     self::ChangeStatusButton(
                         Tables\Actions\Action::make('changeStatus')
+                    ),
+                    self::ResendEmailButton(
+                        Tables\Actions\Action::make('resendEmail')
                     ),
                 ])
             ]);

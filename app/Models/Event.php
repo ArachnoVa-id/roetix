@@ -46,6 +46,9 @@ class Event extends Model
         'team'
     ];
 
+    // Add this to your Event model
+    private static $connections = [];
+
     protected static function getPdo($event)
     {
         $path = storage_path("sql/events/{$event->id}.db");
@@ -128,7 +131,7 @@ class Event extends Model
         // Optionally trigger adjust immediately
         if (cache()->lock('adjust_users_lock', 10)->get()) {
             try {
-                self::adjustUsers();
+                self::adjustUsers($event->id);
             } finally {
                 cache()->forget('adjust_users_lock');
             }
@@ -143,7 +146,7 @@ class Event extends Model
         $duration = $eventVariables->active_users_duration;
 
         $start = Carbon::now();
-        $end = $start->copy()->addMinutes($duration)->addSeconds(15); // Add 15 seconds buffer
+        $end = $start->copy()->addMinutes($duration);
 
         $stmt = $pdo->prepare("UPDATE user_logs SET status = 'online', start_time = ?, expected_kick = ? WHERE user_id = ?");
         $stmt->execute([$start, $end, $user->id]);
@@ -191,7 +194,7 @@ class Event extends Model
         return $stmt->fetchColumn();
     }
 
-    public static function logoutUserAndPromoteNext($event, $user)
+    public static function logoutUser($event, $user)
     {
         $pdo = self::getPdo($event);
 
@@ -217,28 +220,40 @@ class Event extends Model
             ORDER BY created_at ASC LIMIT 1
         ");
         $nextStmt->execute();
-        $nextUserId = $nextStmt->fetchColumn() ?: '';
 
         $mqttData = [
-            'event' => 'user_logout',
-            'next_user_id' => $nextUserId,
+            'event' => 'user_logout'
         ];
         self::publishMqtt($mqttData, $event->slug);
 
         // Attempt to call adjustUsers if it's not already running
         if (cache()->lock('adjust_users_lock', 10)->get()) {
             try {
-                self::adjustUsers();
+                self::adjustUsers($event->id);
             } finally {
                 cache()->forget('adjust_users_lock');
             }
         }
     }
 
-    public static function adjustUsers()
+    public static function adjustUsers($specificEventId = null)
     {
-        // Get only active events
-        $activeEvents = Event::where('status', 'active')->get();
+        if ($specificEventId) {
+            // Process single event
+            $event = Event::where('id', $specificEventId)
+                ->where('status', 'active')
+                ->first();
+
+            if (!$event) {
+                Log::warning("Event {$specificEventId} not found or not active");
+                return;
+            }
+
+            $activeEvents = collect([$event]);
+        } else {
+            // Process all active events (legacy behavior)
+            $activeEvents = Event::where('status', 'active')->get();
+        }
 
         foreach ($activeEvents as $event) {
             $pdo = self::getPdo($event);
@@ -246,10 +261,10 @@ class Event extends Model
 
             // 1. Kick users whose expected_kick has passed or is NULL
             $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE expected_kick < ?
-                ORDER BY created_at ASC
-            ");
+            SELECT * FROM user_logs
+            WHERE expected_kick < ?
+            ORDER BY created_at ASC
+        ");
             $stmt->execute([$now]);
             $expiredUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -260,19 +275,21 @@ class Event extends Model
             foreach ($expiredUsers as $expiredUser) {
                 $userModel = $users->get($expiredUser['user_id']);
                 if ($userModel) {
-                    self::logoutUserAndPromoteNext($event, $userModel);
+                    self::logoutUser($event, $userModel);
                 }
             }
 
             // 2. Re-broadcast still online users in case stuck in loading
             $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE status = 'online'
-            ");
+            SELECT * FROM user_logs
+            WHERE status = 'online'
+        ");
             $stmt->execute();
             $onlineUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
             $userIds = array_column($onlineUsers, 'user_id');
             $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+
             foreach ($onlineUsers as $onlineUser) {
                 $userModel = $users->get($onlineUser['user_id']);
                 if ($userModel) {
@@ -283,7 +300,6 @@ class Event extends Model
                         'start_time' => $onlineUser['start_time'],
                         'expected_kick' => $onlineUser['expected_kick']
                     ];
-
                     self::publishMqtt($mqttData, $event->slug);
                 }
             }
@@ -299,11 +315,11 @@ class Event extends Model
 
             // Get waiting users regardless of expected_online
             $stmt = $pdo->prepare("
-                SELECT * FROM user_logs
-                WHERE status = 'waiting'
-                ORDER BY created_at ASC
-                LIMIT ?
-            ");
+            SELECT * FROM user_logs
+            WHERE status = 'waiting'
+            ORDER BY created_at ASC
+            LIMIT ?
+        ");
             $stmt->execute([$availableSlots]);
             $readyUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -317,6 +333,150 @@ class Event extends Model
                 }
             }
         }
+    }
+
+    private static function processEventWithRetry($event, $attempt)
+    {
+        $pdo = self::getPdo($event);
+        $now = Carbon::now()->toDateTimeString();
+
+        // Configure SQLite for better concurrency
+        $pdo->exec('PRAGMA busy_timeout = 10000;'); // 10 seconds
+        $pdo->exec('PRAGMA synchronous = NORMAL;'); // Better performance
+        $pdo->exec('PRAGMA cache_size = -64000;'); // 64MB cache
+
+        // Use IMMEDIATE transaction to reduce lock contention
+        $pdo->exec('BEGIN IMMEDIATE;');
+
+        try {
+            // Step 1: Clean up expired users with single atomic operation
+            $expiredCount = self::cleanupExpiredUsers($pdo, $event, $now);
+
+            // Step 2: Get current counts and calculate available slots
+            $maxOnline = $event->eventVariables->active_users_threshold ?? 0;
+
+            // Use a single query to get current online count
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_logs
+                WHERE status = 'online' AND (expected_kick IS NULL OR expected_kick >= ?)
+            ");
+            $stmt->execute([$now]);
+            $currentOnlineCount = $stmt->fetchColumn();
+
+            $availableSlots = max(0, $maxOnline - $currentOnlineCount);
+
+            Log::info("Event {$event->id} (attempt {$attempt}): {$currentOnlineCount}/{$maxOnline} online, {$availableSlots} slots available");
+
+            if ($availableSlots > 0) {
+                $promotedCount = self::promoteWaitingUsers($pdo, $event, $availableSlots, $now);
+                Log::info("Event {$event->id}: Promoted {$promotedCount} users");
+            }
+
+            $pdo->exec('COMMIT;');
+            return true;
+        } catch (\Exception $e) {
+            $pdo->exec('ROLLBACK;');
+
+            // Check if it's a database lock error
+            if (strpos($e->getMessage(), 'database is locked') !== false) {
+                Log::warning("Database locked for event {$event->id} on attempt {$attempt}");
+                return false; // Retry
+            }
+
+            throw $e; // Other errors should bubble up
+        }
+    }
+
+    private static function cleanupExpiredUsers($pdo, $event, $now)
+    {
+        // Get expired users in a single query
+        $stmt = $pdo->prepare("
+            SELECT user_id FROM user_logs
+            WHERE status = 'online' AND expected_kick < ?
+            ORDER BY expected_kick ASC
+        ");
+        $stmt->execute([$now]);
+        $expiredUserIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($expiredUserIds)) {
+            return 0;
+        }
+
+        // Update their status to 'kicked' first (atomic operation)
+        $placeholders = str_repeat('?,', count($expiredUserIds) - 1) . '?';
+        $updateStmt = $pdo->prepare("
+            UPDATE user_logs
+            SET status = 'kicked'
+            WHERE user_id IN ({$placeholders}) AND status = 'online'
+        ");
+        $updateStmt->execute($expiredUserIds);
+        $kickedCount = $updateStmt->rowCount();
+
+        if ($kickedCount > 0) {
+            // Get user models for MQTT publishing (outside transaction if possible)
+            $users = User::whereIn('id', array_slice($expiredUserIds, 0, $kickedCount))->get();
+
+            // Publish MQTT messages for kicked users
+            foreach ($users as $user) {
+                $mqttData = [
+                    'event' => 'user_kicked',
+                    'user_id' => $user->id,
+                    'reason' => 'expired'
+                ];
+                self::publishMqtt($mqttData, $event->slug);
+            }
+        }
+
+        return $kickedCount;
+    }
+
+    private static function promoteWaitingUsers($pdo, $event, $availableSlots, $now)
+    {
+        // Get waiting users with row-level locking simulation
+        $stmt = $pdo->prepare("
+            SELECT user_id, created_at FROM user_logs
+            WHERE status = 'waiting'
+            ORDER BY created_at ASC
+            LIMIT ?
+        ");
+        $stmt->execute([$availableSlots]);
+        $waitingUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($waitingUsers)) {
+            return 0;
+        }
+
+        $promotedCount = 0;
+        $startTime = $now;
+        $expectedKick = Carbon::parse($now)->addMinutes(5)->toDateTimeString();
+
+        foreach ($waitingUsers as $userRow) {
+            // Atomic promotion with double-check
+            $updateStmt = $pdo->prepare("
+                UPDATE user_logs
+                SET status = 'online',
+                    start_time = ?,
+                    expected_kick = ?
+                WHERE user_id = ? AND status = 'waiting'
+            ");
+
+            $result = $updateStmt->execute([$startTime, $expectedKick, $userRow['user_id']]);
+
+            if ($result && $updateStmt->rowCount() > 0) {
+                $promotedCount++;
+
+                // Publish MQTT for successful promotion
+                $mqttData = [
+                    'event' => 'user_promoted',
+                    'user_id' => $userRow['user_id'],
+                    'start_time' => $startTime,
+                    'expected_kick' => $expectedKick
+                ];
+                self::publishMqtt($mqttData, $event->slug);
+            }
+        }
+
+        return $promotedCount;
     }
 
     public static function publishMqtt(array $data, string $mqtt_code = "defaultcode")
@@ -439,6 +599,15 @@ class Event extends Model
     {
         return $this->hasMany(Ticket::class, 'event_id', 'id');
     }
+
+    // public function getTicketNumbers()
+    // {
+    //     return TicketOrder::whereHas('ticket', function ($query) {
+    //         $query->where('event_id', $this->id)
+    //             ->where('status', 'completed');
+    //     })->count();
+    // }
+
 
     // public function getRouteKeyName()
     // {

@@ -152,10 +152,10 @@ class AuthenticatedSessionController extends Controller
         $event = Event::where('slug', $subdomain)->first();
 
         if ($event) {
-            Event::logoutUserAndPromoteNext($event, $user);
+            Event::logoutUser($event, $user);
+        } else {
+            Auth::guard('web')->logout();
         }
-
-        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

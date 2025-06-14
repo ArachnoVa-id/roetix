@@ -19,7 +19,6 @@ use App\Models\DevNoSQLData;
 use Illuminate\Http\Request;
 use App\Enums\PaymentGateway;
 use App\Exports\OrdersExport;
-use PhpMqtt\Client\MqttClient;
 use App\Enums\TicketOrderStatus;
 use App\Models\UserContact;
 use App\Services\ResendMailer;
@@ -31,7 +30,6 @@ use Illuminate\Support\Facades\Http;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
-use PhpMqtt\Client\ConnectionSettings;
 use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
@@ -42,8 +40,17 @@ class PaymentController extends Controller
     // disini nanti taro eventnya
     public function charge(Request $request, string $client = "")
     {
+        Log::info('PaymentController@charge called', [
+            'client' => $client,
+            'user_id' => Auth::id(),
+            'request_data' => $request->all(),
+        ]);
         // Reject other than role user
         if (! Auth::check() || ! User::find(Auth::id())->isUser()) {
+            Log::warning('Unauthorized payment attempt', [
+                'user_id' => Auth::id(),
+                'client' => $client,
+            ]);
             return response()->json(['message' => 'Only users can buy tickets!'], 401);
         }
 
@@ -59,6 +66,10 @@ class PaymentController extends Controller
         $lock = Cache::lock('seat_lock_user_' . Auth::id(), 10);
 
         if (! $lock->get()) {
+            Log::warning('Payment charge request is being processed', [
+                'user_id' => Auth::id(),
+                'client' => $client,
+            ]);
             return response()->json(['message' => 'System is processing your order. Please try again in a moment.'], 429);
         }
 
@@ -72,6 +83,11 @@ class PaymentController extends Controller
                 ->count();
 
             if ($recentOrderCount >= $hourlyLimit) {
+                Log::warning('Too many orders in a short time', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'recent_order_count' => $recentOrderCount,
+                ]);
                 throw new \Exception('Too many orders in a short time. Please wait for 1 hour.');
             }
 
@@ -80,6 +96,11 @@ class PaymentController extends Controller
                 ->count();
 
             if ($dailyOrderCount >= $dailyLimit) {
+                Log::warning('Too many orders today', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'daily_order_count' => $dailyOrderCount,
+                ]);
                 throw new \Exception('Too many orders today. Please try again tomorrow.');
             }
 
@@ -93,20 +114,36 @@ class PaymentController extends Controller
             ]);
 
             if ($validator->fails()) {
+                Log::error('Validation error in payment charge', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'errors' => $validator->errors()->toArray(),
+                ]);
                 return response()->json([
                     'message' => 'Validation error',
                     'errors' => $validator->errors()
                 ], 422);
             }
 
-            // Check if user_id_no exists with a completed order
+            // Fetch the event early to use its ID in the DevNoSQLData query
+            $event = Event::where('slug', $client)->first();
+            if (! $event) {
+                Log::error('Event not found', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                ]);
+                throw new \Exception('Event not found');
+            }
+
+            // Check if user_id_no exists with a completed or pending order FOR THE CURRENT EVENT
             $hasActiveOrderWithSameId = DevNoSQLData::where('collection', 'roetixUserData')
                 ->whereJsonContains('data->user_id_no', $request->extra_data['user_id_no'] ?? '')
                 ->whereRaw('JSON_EXTRACT(data, "$.accessor") IS NOT NULL')
-                ->whereExists(function ($query) {
+                ->whereExists(function ($query) use ($event) { // Perhatikan `use ($event)` di sini
                     $query->select(DB::raw(1))
                         ->from('orders')
                         ->whereRaw('orders.accessor = JSON_UNQUOTE(JSON_EXTRACT(dev_nosql_data.data, "$.accessor"))')
+                        ->where('orders.event_id', $event->id) // Baris baru ini yang memfilter berdasarkan event
                         ->whereIn('orders.status', [
                             OrderStatus::COMPLETED->value,
                             OrderStatus::PENDING->value
@@ -115,11 +152,21 @@ class PaymentController extends Controller
                 ->exists();
 
             if ($hasActiveOrderWithSameId) {
-                throw new \Exception('Your ID Number is already used in an active order. Please use another number.');
+                Log::warning('ID Number already used in an active order', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'user_id_no' => $request->extra_data['user_id_no'] ?? 'N/A',
+                ]);
+                throw new \Exception('Your ID Number is already used in an active order. Refresh the page if you\'re sure that it was your payment.');
             }
 
             // If the user_id_no is less than 10 characters, return error
             if (isset($request->extra_data['user_id_no']) && strlen($request->extra_data['user_id_no']) < 10) {
+                Log::error('ID Number too short', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'user_id_no' => $request->extra_data['user_id_no'] ?? 'N/A',
+                ]);
                 throw new \Exception('Your ID Number must be at least 10 characters long');
             }
 
@@ -129,11 +176,19 @@ class PaymentController extends Controller
             ]);
 
             if (! Auth::check()) {
+                Log::error('Unauthorized access attempt', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                ]);
                 throw new \Exception('Unauthorized');
             }
 
             $event = Event::where('slug', $client)->first();
             if (! $event) {
+                Log::error('Event not found', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                ]);
                 throw new \Exception('Event not found');
             }
 
@@ -144,6 +199,11 @@ class PaymentController extends Controller
                 ->exists();
 
             if ($existingOrders) {
+                Log::warning('Pending order exists for user', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'event_id' => $event->id,
+                ]);
                 throw new \Exception('There is an existing pending order, please refresh the page to respond');
             }
 
@@ -162,6 +222,11 @@ class PaymentController extends Controller
             }
 
             if ($seats->isEmpty()) {
+                Log::error('No seats available for selected items', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'grouped_items' => $groupedItems,
+                ]);
                 throw new \Exception('No seats available');
             }
 
@@ -177,6 +242,12 @@ class PaymentController extends Controller
 
             if ($tickets->count() !== $seats->count()) {
                 DB::rollBack();
+                Log::error('Some seats are already taken', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'requested_seats' => $seatIds,
+                    'available_tickets' => $tickets->pluck('seat_id')->toArray(),
+                ]);
                 throw new \Exception('These seats are already taken, please choose another seat');
             }
 
@@ -208,6 +279,10 @@ class PaymentController extends Controller
             $team = Team::find($event->team_id);
             if (! $team) {
                 DB::rollBack();
+                Log::error('Event team not found', [
+                    'event_id' => $event->id,
+                    'team_id' => $event->team_id,
+                ]);
                 throw new \Exception('Event team not found');
             }
 
@@ -227,6 +302,11 @@ class PaymentController extends Controller
 
             if (! $order) {
                 DB::rollBack();
+                Log::error('Failed to create order', [
+                    'user_id' => Auth::id(),
+                    'client' => $client,
+                    'order_code' => $orderCode,
+                ]);
                 throw new \Exception('Failed to create order');
             }
 
@@ -333,9 +413,16 @@ class PaymentController extends Controller
             DB::commit();
 
             // Publish MQTT message about successful ticket update
-            PaymentController::publishMqtt(data: [
+            Event::publishMqtt(data: [
                 'event' => "update_ticket_status",
-                'data' => $updatedTickets
+                'data' => $updatedTickets,
+            ]);
+
+            Log::info('Payment charge successful', [
+                'user_id' => Auth::id(),
+                'client' => $client,
+                'order_code' => $orderCode,
+                'accessor' => $accessor,
             ]);
 
             return response()->json([
@@ -345,6 +432,11 @@ class PaymentController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Payment charge failed', [
+                'user_id' => Auth::id(),
+                'client' => $client,
+                'error' => $e->getMessage(),
+            ]);
             return response()->json(['message' => 'System failed: ' . $e->getMessage()], 500);
         } finally {
             optional($lock)->release();
@@ -526,10 +618,21 @@ class PaymentController extends Controller
         array $itemDetails,
         Event $event
     ) {
+        Log::info('Tripay charge initiated', [
+            'order_code' => $orderCode,
+            'total_with_tax' => $totalWithTax,
+            'event_id' => $event->id,
+            'user_id' => Auth::id(),
+        ]);
         $variables = $event->eventVariables;
 
         $order = Order::where('order_code', $orderCode)->first();
         if (! $order) {
+            Log::error('Order not found for Tripay charge', [
+                'order_code' => $orderCode,
+                'event_id' => $event->id,
+                'user_id' => Auth::id(),
+            ]);
             throw new \Exception('Order not found');
         }
 
@@ -572,24 +675,36 @@ class PaymentController extends Controller
 
             if ($expectedKick->isPast()) {
                 // If user's session has already expired, reject transaction and logout
-                Event::logoutUserAndPromoteNext($event, $customer);
+                Event::logoutUser($event, $customer);
             } else {
                 $timeout = $expectedKick->timestamp;
                 $timeout = (int) $timeout;
             }
         } else {
             // Invalid user
-            Event::logoutUserAndPromoteNext($event, $customer);
+            Event::logoutUser($event, $customer);
+            Log::error('Invalid user for Tripay charge', [
+                'order_code' => $orderCode,
+                'event_id' => $event->id,
+                'user_id' => Auth::id(),
+            ]);
         }
 
         $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
+
+        // Check if extra_data has user full name
+        if (isset($request->extra_data['user_full_name'])) {
+            $customerName = $request->extra_data['user_full_name'];
+        } else {
+            $customerName = $customer->name ?? 'Guest';
+        }
 
         // Construct payload
         $payload = [
             "method" => "QRIS", // payment method
             "merchant_ref" => $orderCode,
             "amount" => (int) $totalWithTax,
-            "customer_name" => $customer->name ?? 'Guest',
+            "customer_name" => $customerName,
             "customer_email" => $customer->email ?? '',
             "customer_phone" => $request->phone ?? '',
             "order_items" => collect($itemDetails)->map(function ($item) {
@@ -613,6 +728,12 @@ class PaymentController extends Controller
         ])->post($endpoint, $payload);
 
         if (! $response->ok()) {
+            Log::error('Tripay charge failed', [
+                'order_code' => $orderCode,
+                'event_id' => $event->id,
+                'user_id' => Auth::id(),
+                'response' => $response->json(),
+            ]);
             throw new \Exception("Tripay charge failed: " . $response->json()['message']);
         }
 
@@ -645,6 +766,13 @@ class PaymentController extends Controller
                 'expired_at' => $timeout,
                 'payment_gateway' => $variables->payment_gateway,
             ], $responseData),
+        ]);
+
+        Log::info('Tripay charge successful', [
+            'order_code' => $orderCode,
+            'event_id' => $event->id,
+            'user_id' => Auth::id(),
+            'redirect_url' => $responseData['checkout_url'] ?? null,
         ]);
 
         return $responseData['checkout_url'] ?? null;
@@ -770,7 +898,16 @@ class PaymentController extends Controller
             'data' => $data,
         ]);
 
+        Log::info('Tripay callback received', [
+            'identifier' => $identifier,
+            'data' => $data,
+        ]);
+
         if (!isset($identifier, $data['status'])) {
+            Log::error('Invalid Tripay callback data', [
+                'identifier' => $identifier,
+                'data' => $data,
+            ]);
             return response()->json(['error' => 'Invalid callback data'], 400);
         }
 
@@ -796,9 +933,18 @@ class PaymentController extends Controller
             }
 
             DB::commit();
+
+            Log::info('Tripay callback processed successfully', [
+                'identifier' => $identifier,
+                'data' => $data,
+            ]);
             return response()->json(['message' => 'Callback processed successfully']);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to process Tripay callback', [
+                'identifier' => $identifier,
+                'error' => $e->getMessage(),
+            ]);
             return response()->json(['error' => 'Failed to process callback'], 500);
         }
     }
@@ -882,6 +1028,10 @@ class PaymentController extends Controller
         // Retrieve all request data
         $data = $request->all();
 
+        Log::info('Tripay return received', [
+            'data' => $data,
+        ]);
+
         // Validate required parameters
         $validator = Validator::make($data, [
             'tripay_merchant_ref' => 'required|string|max:32',
@@ -889,23 +1039,42 @@ class PaymentController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::error('Tripay return validation failed', [
+                'errors' => $validator->errors(),
+                'data' => $data,
+            ]);
             return response()->json(['success' => false, 'error' => 'Callback return is not valid'], 404);
         }
 
         // Get orders from bill_no => order_code and read the client slug
         $order = Order::where('order_code', $data['tripay_merchant_ref'])->first();
         if (!$order) {
+            Log::error('Tripay return order not found', [
+                'tripay_merchant_ref' => $data['tripay_merchant_ref'],
+                'data' => $data,
+            ]);
             return response()->json(['success' => false, 'error' => 'Order not found'], 404);
         }
 
         // Get event
         $event = Event::find($order->event_id);
         if (!$event) {
+            Log::error('Tripay return event not found', [
+                'order_id' => $order->id,
+                'event_id' => $order->event_id,
+                'data' => $data,
+            ]);
             return response()->json(['success' => false, 'error' => 'Event not found'], 404);
         }
 
         // Generate redirect URL
         $redirectUrl = route('client.my_tickets', ['client' => $event->slug]);
+
+        Log::info('Tripay return redirecting', [
+            'redirect_url' => $redirectUrl,
+            'order_id' => $order->id,
+            'event_id' => $event->id,
+        ]);
 
         // Return redirect response with cache prevention headers
         return redirect($redirectUrl)
@@ -919,6 +1088,12 @@ class PaymentController extends Controller
      */
     public static function updateStatus($orderCode, $status, $transactionData)
     {
+        Log::info('Updating order status', [
+            'order_code' => $orderCode,
+            'status' => $status,
+            'transaction_data' => $transactionData,
+        ]);
+
         try {
             DB::beginTransaction();
 
@@ -942,6 +1117,11 @@ class PaymentController extends Controller
 
             $currentStatus = $order->status;
             if ($currentStatus === $status || $currentStatus === OrderStatus::CANCELLED || $currentStatus === OrderStatus::COMPLETED) {
+                Log::info('No status update needed', [
+                    'order_code' => $orderCode,
+                    'current_status' => $currentStatus,
+                    'new_status' => $status,
+                ]);
                 // No need to update if status is the same and ignore completed/cancelled orders
                 DB::commit();
                 return;
@@ -979,6 +1159,12 @@ class PaymentController extends Controller
                 }
             }
 
+            Log::info('Order status updated', [
+                'order_code' => $orderCode,
+                'new_status' => $status,
+                'updated_tickets' => $updatedTickets,
+            ]);
+
             // Commit the transaction before attempting to send email
             DB::commit();
 
@@ -988,11 +1174,20 @@ class PaymentController extends Controller
                     // Get event details
                     $event = $order->getSingleEvent();
 
+                    // Get from DB
+                    $updatedTicketsObj = [];
+                    foreach ($updatedTickets as $ticket) {
+                        $ticketObj = Ticket::find($ticket['id']);
+                        if ($ticketObj) {
+                            $updatedTicketsObj[] = $ticketObj;
+                        }
+                    }
+
                     // Render the email template
                     $emailHtml = view('emails.order-confirmation', [
                         'order' => $order,
                         'event' => $event,
-                        'tickets' => $updatedTickets,
+                        'tickets' => $updatedTicketsObj,
                         'user' => $user,
                         'userContact' => $userContact
                     ])->render();
@@ -1021,15 +1216,17 @@ class PaymentController extends Controller
             }
 
             // Publish MQTT message about successful ticket update
-            PaymentController::publishMqtt(data: [
+            Event::publishMqtt(data: [
                 'event' => "update_ticket_status",
                 'data' => $updatedTickets
             ]);
         } catch (\Exception $e) {
-            PaymentController::publishMqtt(data: [
-                'message' => $e,
-            ]);
             DB::rollBack();
+            Log::error('Failed to update order status', [
+                'order_code' => $orderCode,
+                'status' => $status,
+                'error' => $e->getMessage(),
+            ]);
             throw $e;
         }
     }
@@ -1037,6 +1234,11 @@ class PaymentController extends Controller
     public function getPendingTransactions(string $client = '')
     {
         try {
+            Log::info('Fetching pending transactions', [
+                'client' => $client,
+                'user_id' => Auth::id(),
+            ]);
+
             $userId = Auth::id();
 
             // Get the client's event
@@ -1096,11 +1298,23 @@ class PaymentController extends Controller
                 ];
             }
 
+            Log::info('Pending transactions fetched successfully', [
+                'client' => $client,
+                'user_id' => $userId,
+                'count' => count($pendingTransactions),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'pendingTransactions' => $pendingTransactions
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to fetch pending transactions', [
+                'client' => $client,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to fetch pending transactions: ' . $e->getMessage()
@@ -1188,49 +1402,6 @@ class PaymentController extends Controller
             );
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to download orders: ' . $e->getMessage()], 500);
-        }
-    }
-
-    public static function publishMqtt(array $data, string $mqtt_code = "defaultcode", string $client_name = "defaultclient")
-    {
-        $server = 'broker.emqx.io';
-        $port = 1883;
-        $clientId = 'novatix_midtrans' . rand(100, 999);
-        $username = 'emqx';
-        $password = 'public';
-        $mqtt_version = MqttClient::MQTT_3_1_1;
-
-        // $topic = 'novatix/midtrans/' . $client_name . '/' . $mqtt_code . '/ticketpurchased';
-        // Atau fallback static jika belum support param client_name
-        $topic = 'novatix/midtrans/defaultcode';
-
-        $conn_settings = (new ConnectionSettings)
-            ->setUsername($username)
-            ->setPassword($password)
-            ->setLastWillMessage('client disconnected')
-            ->setLastWillTopic('emqx/last-will')
-            ->setLastWillQualityOfService(1);
-
-        $mqtt = new MqttClient($server, $port, $clientId, $mqtt_version);
-
-        try {
-            $mqtt->connect($conn_settings, true);
-
-            // Pastikan koneksi sukses sebelum publish
-            if ($mqtt->isConnected()) {
-                $mqtt->publish(
-                    $topic,
-                    json_encode($data),
-                    0 // QoS
-                );
-                Log::info('MQTT Publish success to topic: ' . $topic, $data);
-            } else {
-                Log::warning('MQTT not connected. Skipped publishing to topic: ' . $topic);
-            }
-
-            $mqtt->disconnect();
-        } catch (\Throwable $th) {
-            Log::error('MQTT Publish Failed: ' . $th->getMessage());
         }
     }
 }

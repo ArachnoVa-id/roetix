@@ -25,6 +25,9 @@ class ViewOrder extends ViewRecord
             OrderResource::ChangeStatusButton(
                 Actions\Action::make('changeStatus')
             ),
+            OrderResource::ResendEmailButton(
+                Actions\Action::make('sendConfirmationEmail')
+            ),
         ];
     }
 }

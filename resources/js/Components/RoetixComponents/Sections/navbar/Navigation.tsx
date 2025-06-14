@@ -11,8 +11,8 @@ const Navigation = () => {
                 className="h-[6.94vw] w-[17.13vw] md:h-[4.01vw] md:w-[9.89vw]"
             />
             <CustomButton
-                href="http://wa.me/6282265486116"
-                hrefTarget='_blank'
+                href="https://wa.me/6285123883960"
+                hrefTarget="_blank"
                 className="h-[4.86vw] w-[20.7vw] rounded-full bg-gradient-to-r from-[#4D2A7D] to-[#8C4CE3] px-[3vw] py-[1vw] shadow-lg transition-transform duration-300 ease-in-out hover:scale-105 hover:from-[#6A3FA4] hover:to-[#A96DFF] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-purple-400 active:scale-95 md:h-[2.5vw] md:w-[9.9vw] md:p-0"
             >
                 <p className="text-[1.57vw] font-medium text-white md:text-[0.83vw]">

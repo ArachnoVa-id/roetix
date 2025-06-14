@@ -180,7 +180,7 @@ class UserPageController extends Controller
                 'categoryPrices' => $categoryPrices,
                 'props' => $props->getSecure(),
                 'ownedTicketCount' => $ownedTicketCount,
-                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_kick,
+                'userEndSessionDatetime' => $userData->isUser() ? $current_user->expected_kick : null,
                 'paymentGateway' => $event->eventVariables->payment_gateway,
             ];
 
