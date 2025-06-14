@@ -43,8 +43,8 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
         $data = $orders->map(function ($order) {
             // Get seat numbers for this order
             $seatNumbers = $order->ticketOrders->map(function ($ticketOrder) {
-                return $ticketOrder->ticket && $ticketOrder->ticket->seat 
-                    ? $ticketOrder->ticket->seat->seat_number 
+                return $ticketOrder->ticket && $ticketOrder->ticket->seat
+                    ? $ticketOrder->ticket->seat->seat_number
                     : 'N/A';
             })->filter(function ($seatNumber) {
                 return $seatNumber !== 'N/A';
@@ -53,17 +53,25 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
             // Count total tickets for this order
             $totalTickets = $order->ticketOrders->count();
 
-            return [
+            $body = [
                 'order_id' => $order->id,
                 'order_code' => $order->order_code,
+                'order_date' => $order->order_date,
+                'status' => $order->status,
                 'event_name' => $order->events ? $order->getSingleEvent()->name : null,  // Populate Event name
-                'user_full_name' => $order->user ? $order->user->first_name . ' ' . $order->user->last_name : null,  // Populate User full name
                 'team_name' => $order->team ? $order->team->name : null,  // Populate Team name
+                'user_email' => null,  // Will be populated from NoSQL data
+                'user_email_name' => $order->user ? $order->user->getFilamentName() : null,  // User's email name (from user table)
+                'user_full_name' => null,  // Will be populated from NoSQL data (real full name)
+                'user_id_no' => null,  // Will be populated from NoSQL data
+                'user_phone_num' => null,  // Will be populated from NoSQL data
+                'user_address' => null,  // Will be populated from NoSQL data
+                'user_sizes' => null,  // Will be populated from NoSQL data
                 'seat_numbers' => $seatNumbers ?: 'N/A',  // Seat numbers separated by comma
                 'jumlah_ticket' => $totalTickets,  // Total number of tickets
-                'order_date' => $order->order_date,
                 'total_price' => $order->total_price,
-                'status' => $order->status,
+                'created_at' => $order->created_at ? $order->created_at->format('Y-m-d H:i:s') : null,
+                'updated_at' => $order->updated_at ? $order->updated_at->format('Y-m-d H:i:s') : null,
             ];
 
             // Link to DevNoSQL by order accessor
@@ -80,22 +88,12 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
                 $noSQLData = $devNoSQLData->data;
 
                 $body['user_email'] = $noSQLData['user_email'] ?? null;
+                $body['user_full_name'] = $noSQLData['user_full_name'] ?? null;  // Real full name from NoSQL
                 $body['user_id_no'] = $noSQLData['user_id_no'] ?? null;
                 $body['user_sizes'] = isset($noSQLData['user_sizes']) ? implode(', ', $noSQLData['user_sizes']) : null;
                 $body['user_address'] = $noSQLData['user_address'] ?? null;
                 $body['user_phone_num'] = $noSQLData['user_phone_num'] ?? null;
-            } else {
-                // If not found, set these fields to null
-                $body['user_email'] = null;
-                $body['user_id_no'] = null;
-                $body['user_sizes'] = null;
-                $body['user_address'] = null;
-                $body['user_phone_num'] = null;
             }
-
-            // Add created_at and updated_at timestamps
-            $body['created_at'] = $order->created_at ? $order->created_at->format('Y-m-d H:i:s') : null;
-            $body['updated_at'] = $order->updated_at ? $order->updated_at->format('Y-m-d H:i:s') : null;
 
             return $body;
         });
@@ -108,19 +106,20 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
         return [
             'Order ID',
             'Order Code',
+            'Order Date',
+            'Status',
             'Event Name',
-            'User Full Name',
             'Team Name',
+            'User Email',
+            'User Email Name',
+            'User Full Name',
+            'User ID No',
+            'User Phone Number',
+            'User Address',
+            'User Sizes',
             'Seat Numbers',
             'Jumlah Ticket',
-            'Order Date',
             'Total Price',
-            'Status',
-            'User Email',
-            'User ID No',
-            'User Sizes',
-            'User Address',
-            'User Phone Number',
             'Created At',
             'Updated At',
         ];
