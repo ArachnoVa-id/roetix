@@ -598,7 +598,7 @@
                   <div style="font-size: 12px; line-height: 1.6; color: {{ $textPrimaryColor }};">
                     <div style="margin-bottom: 6px;">
                       <strong style="color: {{ $primaryColor }};">Name:</strong>
-                      {{ $user->first_name . ' ' . $user->last_name }}
+                      {{ $userContact->fullname }}
                     </div>
                     <div style="margin-bottom: 6px;">
                       <strong style="color: {{ $primaryColor }};">Email:</strong>

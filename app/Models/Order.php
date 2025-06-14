@@ -120,6 +120,12 @@ class Order extends Model
             throw new \Exception('User contact information not found');
         }
 
+        // Check if the name exist in devnoSQLData
+        $devData = $this->devNoSQLUserData();
+        if ($devData && isset($devData->data['user_full_name'])) {
+            $userContact->fullname = $devData->data['user_full_name'];
+        }
+
         $emailHtml = $this->renderConfirmationEmail($event, $tickets, $user, $userContact);
 
         $subject = $isTest
