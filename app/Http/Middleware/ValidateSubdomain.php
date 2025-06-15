@@ -35,6 +35,11 @@ class ValidateSubdomain
         // get subdomain
         $client = $exploded[0];
 
+        // If client is www, redirect to the main domain
+        if ($client === 'www') {
+            return redirect()->to(config('app.url'));
+        }
+
         $event = Event::where('slug', $client)->first();
 
         if (!$event) {
