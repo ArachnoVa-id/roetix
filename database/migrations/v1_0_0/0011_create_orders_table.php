@@ -39,6 +39,7 @@ return new class extends Migration
             $table->string('order_id', 36);
             $table->string('event_id', 36);
             $table->enum('status', TicketOrderStatus::getByVersion('v1', EnumVersionType::ARRAY))->default(TicketOrderStatus::getByVersion('v1'));
+            $table->timestamp('scanned_at')->nullable();
             $table->timestamps();
 
             $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('cascade');

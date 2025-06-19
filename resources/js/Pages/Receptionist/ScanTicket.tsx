@@ -6,7 +6,7 @@ import {
 } from '@/types/front-end';
 import { PageProps } from '@inertiajs/core';
 import { Head, usePage } from '@inertiajs/react';
-import axios from 'axios'; // Keep AxiosError import, it's used in type guard
+import axios from 'axios';
 import jsQR from 'jsqr';
 import React, {
     FormEvent,
@@ -20,6 +20,20 @@ import { route } from 'ziggy-js';
 interface NotificationState {
     type: 'success' | 'error' | null;
     message: string;
+}
+
+interface TicketValidationData {
+    ticket_code: string;
+    attendee_name?: string;
+    ticket_type?: string;
+    order_code?: string;
+    buyer_email?: string;
+    status: string;
+}
+
+interface ConfirmationModalState {
+    isOpen: boolean;
+    ticketData: TicketValidationData | null;
 }
 
 type ScannedTicket = ScannedTicketData;
@@ -46,6 +60,11 @@ const ScanTicket: React.FC = () => {
         message: '',
     });
     const [isFetchingHistory, setIsFetchingHistory] = useState<boolean>(true);
+    const [confirmationModal, setConfirmationModal] =
+        useState<ConfirmationModalState>({
+            isOpen: false,
+            ticketData: null,
+        });
 
     // Refs
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -86,48 +105,43 @@ const ScanTicket: React.FC = () => {
         [],
     );
 
-    // API calls (moved before camera/QR scanning as submitTicketCode is a dependency)
-    const submitTicketCode = useCallback(
-        async (codeToSubmit: string) => {
-            if (isLoading || !codeToSubmit.trim() || !event?.slug) return;
+    // API calls
+    const validateTicketCode = useCallback(
+        async (codeToValidate: string) => {
+            if (isLoading || !codeToValidate.trim() || !event?.slug) return;
 
             // Prevent rapid re-scanning
-            if (lastScannedCodeRef.current === codeToSubmit.trim()) {
-                console.log('Skipping duplicate scan:', codeToSubmit);
+            if (lastScannedCodeRef.current === codeToValidate.trim()) {
+                console.log('Skipping duplicate scan:', codeToValidate);
                 return;
             }
-            lastScannedCodeRef.current = codeToSubmit.trim();
+            lastScannedCodeRef.current = codeToValidate.trim();
 
             setIsLoading(true);
             setNotification({ type: null, message: '' });
 
             try {
-                const url = route('client.scan.store', { client });
+                const url = route('client.scan.validate', { client });
                 const response = await axios.post<
-                    ApiSuccessResponse<ScannedTicket>
+                    ApiSuccessResponse<TicketValidationData>
                 >(url, {
-                    ticket_code: codeToSubmit.trim(),
+                    ticket_code: codeToValidate.trim(),
                     event_slug: event.slug,
                 });
 
-                const successMsg =
-                    response.data?.message ||
-                    `Ticket ${codeToSubmit} scanned successfully!`;
-                showNotification('success', successMsg);
-
                 if (response.data?.data) {
-                    addOrUpdateScannedTicket(response.data.data);
+                    // Show confirmation modal
+                    setConfirmationModal({
+                        isOpen: true,
+                        ticketData: response.data.data,
+                    });
                 }
-                setTicketCode('');
             } catch (error: unknown) {
-                // Changed to unknown
                 let errorMessage =
-                    'An unknown error occurred while processing the ticket.';
-                const ticketStatus: ScannedTicket['status'] = 'error';
+                    'An unknown error occurred while validating the ticket.';
                 let scannedTicketData: ScannedTicket | undefined = undefined;
 
                 if (axios.isAxiosError(error)) {
-                    // Using type guard
                     const responseData = error.response?.data as
                         | ApiErrorResponse<ScannedTicket>
                         | undefined;
@@ -142,15 +156,9 @@ const ScanTicket: React.FC = () => {
                 }
 
                 showNotification('error', errorMessage);
-                addOrUpdateScannedTicket(
-                    scannedTicketData || {
-                        id: `local-error-${Date.now()}`,
-                        ticket_code: codeToSubmit.trim(),
-                        scanned_at: new Date().toISOString(),
-                        status: ticketStatus,
-                        message: errorMessage,
-                    },
-                );
+                if (scannedTicketData) {
+                    addOrUpdateScannedTicket(scannedTicketData);
+                }
             } finally {
                 setIsLoading(false);
                 // Allow re-scanning after delay
@@ -166,6 +174,59 @@ const ScanTicket: React.FC = () => {
             showNotification,
             addOrUpdateScannedTicket,
         ],
+    );
+
+    const confirmScanTicket = useCallback(
+        async (ticketData: TicketValidationData) => {
+            if (!ticketData || !event?.slug) return;
+
+            setIsLoading(true);
+            setConfirmationModal({ isOpen: false, ticketData: null });
+
+            try {
+                const url = route('client.scan.store', { client });
+                const response = await axios.post<
+                    ApiSuccessResponse<ScannedTicket>
+                >(url, {
+                    ticket_code: ticketData.ticket_code,
+                    event_slug: event.slug,
+                });
+
+                const successMsg =
+                    response.data?.message ||
+                    `Ticket ${ticketData.ticket_code} scanned successfully!`;
+                showNotification('success', successMsg);
+
+                if (response.data?.data) {
+                    addOrUpdateScannedTicket(response.data.data);
+                }
+                setTicketCode('');
+            } catch (error: unknown) {
+                let errorMessage =
+                    'An unknown error occurred while scanning the ticket.';
+
+                if (axios.isAxiosError(error)) {
+                    const responseData = error.response?.data as
+                        | ApiErrorResponse<ScannedTicket>
+                        | undefined;
+                    if (responseData?.message) {
+                        errorMessage = responseData.message;
+                    }
+                }
+
+                showNotification('error', errorMessage);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [client, event?.slug, showNotification, addOrUpdateScannedTicket],
+    );
+
+    const submitTicketCode = useCallback(
+        async (codeToSubmit: string) => {
+            await validateTicketCode(codeToSubmit);
+        },
+        [validateTicketCode],
     );
 
     // Camera management
@@ -347,7 +408,7 @@ const ScanTicket: React.FC = () => {
         }
     }, [useFrontCamera, showNotification]);
 
-    // QR Code scanning (now defined after submitTicketCode)
+    // QR Code scanning
     const startQrScanning = useCallback(() => {
         if (!videoRef.current || !canvasRef.current || isLoading) {
             console.log('Cannot start QR scanning: missing refs or loading');
@@ -376,7 +437,8 @@ const ScanTicket: React.FC = () => {
                 video.videoHeight > 0 &&
                 !video.paused &&
                 !video.ended &&
-                !isLoading
+                !isLoading &&
+                !confirmationModal.isOpen
             ) {
                 try {
                     canvas.width = video.videoWidth;
@@ -410,7 +472,12 @@ const ScanTicket: React.FC = () => {
                 }
             }
         }, 200);
-    }, [isLoading, showNotification, submitTicketCode]);
+    }, [
+        isLoading,
+        confirmationModal.isOpen,
+        showNotification,
+        submitTicketCode,
+    ]);
 
     const fetchScannedTicketsHistory = useCallback(async () => {
         if (!event?.slug) {
@@ -424,7 +491,6 @@ const ScanTicket: React.FC = () => {
         try {
             const url = route('client.scanned.history', {
                 client: client,
-                event_slug: event.slug,
             });
 
             const response =
@@ -460,6 +526,20 @@ const ScanTicket: React.FC = () => {
             return;
         }
         submitTicketCode(ticketCode.trim());
+    };
+
+    const handleConfirmScan = () => {
+        if (confirmationModal.ticketData) {
+            confirmScanTicket(confirmationModal.ticketData);
+        }
+    };
+
+    const handleCancelScan = () => {
+        setConfirmationModal({ isOpen: false, ticketData: null });
+        // Reset scanning
+        setTimeout(() => {
+            lastScannedCodeRef.current = '';
+        }, 1000);
     };
 
     // Effects
@@ -572,6 +652,98 @@ const ScanTicket: React.FC = () => {
             }
         >
             <Head title={`Scan Ticket - ${event.name}`} />
+
+            {/* Confirmation Modal */}
+            {confirmationModal.isOpen && confirmationModal.ticketData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
+                        <div className="bg-blue-500 p-6 text-white">
+                            <h3 className="text-xl font-bold">
+                                Confirm Ticket Scan
+                            </h3>
+                        </div>
+                        <div className="space-y-4 p-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Ticket Code
+                                </label>
+                                <p className="font-mono text-lg font-bold text-blue-600">
+                                    {confirmationModal.ticketData.ticket_code}
+                                </p>
+                            </div>
+                            {confirmationModal.ticketData.attendee_name && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Attendee Name
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {
+                                            confirmationModal.ticketData
+                                                .attendee_name
+                                        }
+                                    </p>
+                                </div>
+                            )}
+                            {confirmationModal.ticketData.ticket_type && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Ticket Type
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {
+                                            confirmationModal.ticketData
+                                                .ticket_type
+                                        }
+                                    </p>
+                                </div>
+                            )}
+                            {confirmationModal.ticketData.order_code && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Order Code
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {
+                                            confirmationModal.ticketData
+                                                .order_code
+                                        }
+                                    </p>
+                                </div>
+                            )}
+                            {confirmationModal.ticketData.buyer_email && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Buyer Email
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {
+                                            confirmationModal.ticketData
+                                                .buyer_email
+                                        }
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-3 bg-gray-50 px-6 py-4">
+                            <button
+                                onClick={handleCancelScan}
+                                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                disabled={isLoading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmScan}
+                                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? 'Scanning...' : 'Confirm Scan'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div
                 className="py-8 text-white md:py-12"
                 style={{
@@ -787,7 +959,7 @@ const ScanTicket: React.FC = () => {
                                                 ></path>
                                             </svg>
                                         ) : (
-                                            'Submit'
+                                            'Validate'
                                         )}
                                     </button>
                                 </form>

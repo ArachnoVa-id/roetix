@@ -137,6 +137,9 @@ Route::domain('{client}.' . config('app.domain'))
                 // FOR THE SCAN PAGE (show method)
                 Route::get('/scan', [TicketScanController::class, 'show'])->name('client.scan');
 
+                // FOR THE TICKET VALIDATION (validate method, e.g., POST request)
+                Route::post('/scan/validate', [TicketScanController::class, 'validateTicket'])->name('client.scan.validate');
+
                 // FOR THE SCAN ACTION (store method, e.g., POST request)
                 Route::post('/scan', [TicketScanController::class, 'scan'])->name('client.scan.store');
 

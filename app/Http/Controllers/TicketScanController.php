@@ -40,14 +40,7 @@ class TicketScanController extends Controller
                     ->with('error', 'You do not have permission to access this page.');
             }
 
-            // $event_slug is now directly passed as a route parameter, no need for $request->query()
-            // if (empty($event_slug)) { // This check is no longer needed if it's a mandatory route parameter
-            //     Log::error('Event slug is missing for scan page access.', ['client' => $client, 'user_id' => $user->id]);
-            //     return redirect()->route('client.home', ['client' => $client])
-            //         ->with('error', 'Please select an event to scan tickets.');
-            // }
-
-            $event = Event::where('slug', $client)->first(); // Use the passed $event_slug
+            $event = Event::where('slug', $client)->first();
 
             if (!$event) {
                 Log::error('Event not found for scanning.', [
@@ -90,6 +83,112 @@ class TicketScanController extends Controller
         }
     }
 
+    public function validateTicket(Request $request, string $client): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'message' => 'Authentication required.',
+                    'error' => 'UNAUTHENTICATED'
+                ], 401);
+            }
+
+            $userModel = User::find($user->id);
+            if (!$userModel || !$userModel->isReceptionist()) {
+                return response()->json([
+                    'message' => 'You do not have permission to validate tickets.',
+                    'error' => 'UNAUTHORIZED'
+                ], 403);
+            }
+
+            $request->validate([
+                'ticket_code' => 'required|string|max:255|min:1',
+                'event_slug' => 'required|string|max:255|min:1',
+            ]);
+
+            $ticketCode = trim($request->input('ticket_code'));
+
+            $event = Event::where('slug', $client)->first();
+            if (!$event) {
+                return response()->json([
+                    'message' => 'Event not found.',
+                    'error' => 'EVENT_NOT_FOUND'
+                ], 404);
+            }
+
+            $ticket = Ticket::where('ticket_code', $ticketCode)
+                ->where('event_id', $event->id)
+                ->with(['ticketType', 'ticketOrders.order.user'])
+                ->first();
+
+            if (!$ticket) {
+                return response()->json([
+                    'message' => 'Ticket not found or not valid for this event.',
+                    'error' => 'TICKET_NOT_FOUND'
+                ], 404);
+            }
+
+            $ticketOrder = $ticket->ticketOrders()
+                ->where('status', '!=', TicketOrderStatus::SCANNED->value)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if (!$ticketOrder) {
+                $alreadyScannedOrder = $ticket->ticketOrders()
+                    ->where('status', TicketOrderStatus::SCANNED->value)
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                if ($alreadyScannedOrder) {
+                    return response()->json([
+                        'message' => "Ticket {$ticketCode} has already been scanned.",
+                        'error' => 'ALREADY_SCANNED',
+                        'data' => [
+                            'ticket_code' => $ticket->ticket_code,
+                            'attendee_name' => $ticket->attendee_name ?? null,
+                            'ticket_type' => $ticket->ticketType->name ?? 'N/A',
+                            'scanned_at' => $alreadyScannedOrder->scanned_at?->toIso8601String(),
+                            'status' => 'already_scanned'
+                        ]
+                    ], 409);
+                }
+
+                return response()->json([
+                    'message' => 'Ticket order not found or not in a scannable state.',
+                    'error' => 'ORDER_NOT_FOUND_OR_INVALID_STATE'
+                ], 404);
+            }
+
+            // Return ticket information for confirmation
+            return response()->json([
+                'message' => 'Ticket validation successful',
+                'data' => [
+                    'ticket_code' => $ticket->ticket_code,
+                    'attendee_name' => $ticket->attendee_name ?? null,
+                    'ticket_type' => $ticket->ticketType->name ?? 'N/A',
+                    'order_code' => $ticketOrder->order->order_code ?? null,
+                    'buyer_email' => $ticketOrder->order->user->email ?? null,
+                    'status' => 'valid_for_scan'
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error("Error validating ticket for event {$client}: " . $e->getMessage(), [
+                'ticket_code' => $request->input('ticket_code'),
+                'event_slug' => $client,
+                'user_id' => $user?->id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'An unexpected error occurred while validating the ticket.',
+                'error' => 'SERVER_ERROR'
+            ], 500);
+        }
+    }
+
     public function scan(Request $request, string $client): JsonResponse
     {
         try {
@@ -117,7 +216,7 @@ class TicketScanController extends Controller
 
             $request->validate([
                 'ticket_code' => 'required|string|max:255|min:1',
-                'event_slug' => 'required|string|max:255|min:1', // Expected from body
+                'event_slug' => 'required|string|max:255|min:1',
             ]);
 
             $ticketCode = trim($request->input('ticket_code'));
@@ -140,12 +239,6 @@ class TicketScanController extends Controller
 
                 if (!$ticket) {
                     DB::rollBack();
-                    Log::info('Ticket not found for scanning.', [
-                        'ticket_code' => $ticketCode,
-                        'event_id' => $event->id,
-                        'event_slug' => $client,
-                        'user_id' => $user->id
-                    ]);
                     return response()->json([
                         'message' => 'Ticket not found or not valid for this event.',
                         'error' => 'TICKET_NOT_FOUND'
@@ -165,18 +258,13 @@ class TicketScanController extends Controller
 
                     if ($alreadyScannedOrder) {
                         DB::rollBack();
-                        Log::info('Attempt to scan already scanned ticket.', [
-                            'ticket_code' => $ticketCode,
-                            'ticket_order_id' => $alreadyScannedOrder->id,
-                            'user_id' => $user->id
-                        ]);
                         return response()->json([
                             'message' => "Ticket {$ticketCode} has already been scanned.",
                             'error' => 'ALREADY_SCANNED',
                             'data' => [
                                 'id' => (string) $alreadyScannedOrder->id,
                                 'ticket_code' => $ticket->ticket_code,
-                                'scanned_at' => $alreadyScannedOrder->updated_at->toIso8601String(),
+                                'scanned_at' => $alreadyScannedOrder->scanned_at?->toIso8601String(),
                                 'status' => 'error',
                                 'message' => "Ticket {$ticketCode} has already been scanned.",
                                 'attendee_name' => $ticket->attendee_name ?? null,
@@ -186,11 +274,6 @@ class TicketScanController extends Controller
                     }
 
                     DB::rollBack();
-                    Log::error('Ticket order not found or not in scannable state for ticket.', [
-                        'ticket_id' => $ticket->id,
-                        'ticket_code' => $ticketCode,
-                        'event_id' => $event->id
-                    ]);
                     return response()->json([
                         'message' => 'Ticket order not found or not in a scannable state for this ticket.',
                         'error' => 'ORDER_NOT_FOUND_OR_INVALID_STATE'
@@ -198,6 +281,7 @@ class TicketScanController extends Controller
                 }
 
                 $ticketOrder->status = TicketOrderStatus::SCANNED;
+                $ticketOrder->scanned_at = now();
                 $ticketOrder->save();
 
                 DB::commit();
@@ -206,6 +290,7 @@ class TicketScanController extends Controller
                     'ticket_code' => $ticketCode,
                     'ticket_order_id' => $ticketOrder->id,
                     'event_id' => $event->id,
+                    'scanned_at' => $ticketOrder->scanned_at
                 ]);
 
                 return response()->json([
@@ -214,7 +299,7 @@ class TicketScanController extends Controller
                     'data' => [
                         'id' => (string) $ticketOrder->id,
                         'ticket_code' => $ticket->ticket_code,
-                        'scanned_at' => $ticketOrder->updated_at->toIso8601String(),
+                        'scanned_at' => $ticketOrder->scanned_at->toIso8601String(),
                         'status' => 'success',
                         'message' => "Ticket {$ticketCode} successfully scanned.",
                         'attendee_name' => $ticket->attendee_name ?? null,
@@ -262,12 +347,6 @@ class TicketScanController extends Controller
                 ], 403);
             }
 
-            // HAPUS VALIDASI INI KARENA $event_slug SUDAH DARI ROUTE PARAMETER:
-            // $request->validate([
-            //     'event_slug' => 'required|string|max:255|min:1',
-            // ]);
-            // $event_slug = $request->query('event_slug');
-
             $event = Event::where('slug', $client)->first();
             if (!$event) {
                 return response()->json([
@@ -281,14 +360,15 @@ class TicketScanController extends Controller
             })
                 ->with(['ticket.ticketType'])
                 ->where('status', TicketOrderStatus::SCANNED->value)
-                ->orderByDesc('updated_at')
+                ->whereNotNull('scanned_at')
+                ->orderByDesc('scanned_at')
                 ->get();
 
             $formattedHistory = $scannedOrders->map(function ($order) {
                 return [
                     'id' => (string) $order->id,
                     'ticket_code' => $order->ticket->ticket_code,
-                    'scanned_at' => $order->updated_at->toIso8601String(),
+                    'scanned_at' => $order->scanned_at->toIso8601String(),
                     'status' => 'success',
                     'message' => "Ticket {$order->ticket->ticket_code} was scanned.",
                     'attendee_name' => $order->ticket->attendee_name ?? null,
