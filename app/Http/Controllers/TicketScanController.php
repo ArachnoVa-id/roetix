@@ -85,10 +85,16 @@ class TicketScanController extends Controller
 
     public function validateTicket(Request $request, string $client): JsonResponse
     {
+        Log::info('validateTicket method called', [
+            'client' => $client,
+            'request_data' => $request->all()
+        ]);
+
         try {
             $user = Auth::user();
 
             if (!$user) {
+                Log::warning('Unauthenticated validation attempt', ['client' => $client]);
                 return response()->json([
                     'message' => 'Authentication required.',
                     'error' => 'UNAUTHENTICATED'
@@ -97,39 +103,84 @@ class TicketScanController extends Controller
 
             $userModel = User::find($user->id);
             if (!$userModel || !$userModel->isReceptionist()) {
+                Log::warning('Unauthorized validation attempt', [
+                    'user_id' => $user->id,
+                    'user_role' => $userModel?->role ?? 'unknown',
+                    'client' => $client
+                ]);
                 return response()->json([
                     'message' => 'You do not have permission to validate tickets.',
                     'error' => 'UNAUTHORIZED'
                 ], 403);
             }
 
-            $request->validate([
-                'ticket_code' => 'required|string|max:255|min:1',
-                'event_slug' => 'required|string|max:255|min:1',
-            ]);
+            // Validasi input
+            try {
+                $request->validate([
+                    'ticket_code' => 'required|string|max:255|min:1',
+                    'event_slug' => 'required|string|max:255|min:1',
+                ]);
+            } catch (ValidationException $e) {
+                Log::error('Validation failed in validateTicket', [
+                    'errors' => $e->errors(),
+                    'request_data' => $request->all()
+                ]);
+                return response()->json([
+                    'message' => 'Invalid input data.',
+                    'error' => 'VALIDATION_ERROR',
+                    'details' => $e->errors()
+                ], 422);
+            }
 
             $ticketCode = trim($request->input('ticket_code'));
+            $eventSlug = trim($request->input('event_slug'));
+
+            Log::info('Processing ticket validation', [
+                'ticket_code' => $ticketCode,
+                'event_slug' => $eventSlug,
+                'client' => $client
+            ]);
 
             $event = Event::where('slug', $client)->first();
             if (!$event) {
+                Log::error('Event not found for validation', [
+                    'client' => $client,
+                    'event_slug' => $eventSlug
+                ]);
                 return response()->json([
                     'message' => 'Event not found.',
                     'error' => 'EVENT_NOT_FOUND'
                 ], 404);
             }
 
+            Log::info('Event found', [
+                'event_id' => $event->id,
+                'event_name' => $event->name
+            ]);
+
+            // Cari ticket dengan relasi
             $ticket = Ticket::where('ticket_code', $ticketCode)
                 ->where('event_id', $event->id)
-                ->with(['ticketType', 'ticketOrders.order.user'])
+                ->with(['ticketCategory', 'ticketOrders.order.user'])
                 ->first();
 
             if (!$ticket) {
+                Log::info('Ticket not found', [
+                    'ticket_code' => $ticketCode,
+                    'event_id' => $event->id
+                ]);
                 return response()->json([
                     'message' => 'Ticket not found or not valid for this event.',
                     'error' => 'TICKET_NOT_FOUND'
                 ], 404);
             }
 
+            Log::info('Ticket found', [
+                'ticket_id' => $ticket->id,
+                'ticket_code' => $ticket->ticket_code
+            ]);
+
+            // Cek ticket order
             $ticketOrder = $ticket->ticketOrders()
                 ->where('status', '!=', TicketOrderStatus::SCANNED->value)
                 ->orderByDesc('created_at')
@@ -142,49 +193,74 @@ class TicketScanController extends Controller
                     ->first();
 
                 if ($alreadyScannedOrder) {
+                    Log::info('Ticket already scanned', [
+                        'ticket_code' => $ticketCode,
+                        'scanned_at' => $alreadyScannedOrder->scanned_at
+                    ]);
                     return response()->json([
                         'message' => "Ticket {$ticketCode} has already been scanned.",
                         'error' => 'ALREADY_SCANNED',
                         'data' => [
                             'ticket_code' => $ticket->ticket_code,
                             'attendee_name' => $ticket->attendee_name ?? null,
-                            'ticket_type' => $ticket->ticketType->name ?? 'N/A',
+                            'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
                             'scanned_at' => $alreadyScannedOrder->scanned_at?->toIso8601String(),
                             'status' => 'already_scanned'
                         ]
                     ], 409);
                 }
 
+                Log::warning('No valid ticket order found', [
+                    'ticket_id' => $ticket->id,
+                    'ticket_code' => $ticketCode
+                ]);
                 return response()->json([
                     'message' => 'Ticket order not found or not in a scannable state.',
                     'error' => 'ORDER_NOT_FOUND_OR_INVALID_STATE'
                 ], 404);
             }
 
+            Log::info('Valid ticket order found', [
+                'ticket_order_id' => $ticketOrder->id,
+                'order_id' => $ticketOrder->order_id
+            ]);
+
             // Return ticket information for confirmation
+            $responseData = [
+                'ticket_code' => $ticket->ticket_code,
+                'attendee_name' => $ticket->attendee_name ?? null,
+                'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
+                'order_code' => $ticketOrder->order->order_code ?? null,
+                'buyer_email' => $ticketOrder->order->user->email ?? null,
+                'status' => 'valid_for_scan'
+            ];
+
+            Log::info('Returning validation success', ['data' => $responseData]);
+
             return response()->json([
                 'message' => 'Ticket validation successful',
-                'data' => [
-                    'ticket_code' => $ticket->ticket_code,
-                    'attendee_name' => $ticket->attendee_name ?? null,
-                    'ticket_type' => $ticket->ticketType->name ?? 'N/A',
-                    'order_code' => $ticketOrder->order->order_code ?? null,
-                    'buyer_email' => $ticketOrder->order->user->email ?? null,
-                    'status' => 'valid_for_scan'
-                ]
+                'data' => $responseData
             ], 200);
 
         } catch (\Exception $e) {
             Log::error("Error validating ticket for event {$client}: " . $e->getMessage(), [
                 'ticket_code' => $request->input('ticket_code'),
-                'event_slug' => $client,
+                'event_slug' => $request->input('event_slug'),
+                'client' => $client,
                 'user_id' => $user?->id ?? null,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'message' => 'An unexpected error occurred while validating the ticket.',
-                'error' => 'SERVER_ERROR'
+                'error' => 'SERVER_ERROR',
+                'debug' => config('app.debug') ? [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
             ], 500);
         }
     }
@@ -268,7 +344,7 @@ class TicketScanController extends Controller
                                 'status' => 'error',
                                 'message' => "Ticket {$ticketCode} has already been scanned.",
                                 'attendee_name' => $ticket->attendee_name ?? null,
-                                'ticket_type' => $ticket->ticketType->name ?? 'N/A',
+                                'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
                             ]
                         ], 409);
                     }
@@ -303,7 +379,7 @@ class TicketScanController extends Controller
                         'status' => 'success',
                         'message' => "Ticket {$ticketCode} successfully scanned.",
                         'attendee_name' => $ticket->attendee_name ?? null,
-                        'ticket_type' => $ticket->ticketType->name ?? 'N/A',
+                        'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
                     ]
                 ], 200);
             } catch (\Exception $e) {
@@ -358,7 +434,7 @@ class TicketScanController extends Controller
             $scannedOrders = TicketOrder::whereHas('ticket', function ($query) use ($event) {
                 $query->where('event_id', $event->id);
             })
-                ->with(['ticket.ticketType'])
+                ->with(['ticket.ticketCategory'])
                 ->where('status', TicketOrderStatus::SCANNED->value)
                 ->whereNotNull('scanned_at')
                 ->orderByDesc('scanned_at')
@@ -372,7 +448,7 @@ class TicketScanController extends Controller
                     'status' => 'success',
                     'message' => "Ticket {$order->ticket->ticket_code} was scanned.",
                     'attendee_name' => $order->ticket->attendee_name ?? null,
-                    'ticket_type' => $order->ticket->ticketType->name ?? 'N/A',
+                    'ticket_type' => $order->ticket->ticketCategory->name ?? 'N/A',
                 ];
             });
 
