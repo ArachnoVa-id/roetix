@@ -118,10 +118,10 @@ class Event extends Model
 
         // Check if user already exists in the queue
         $userQueue = self::getUser($event, $user);
-        if ($userQueue) {
-            Auth::logout();
-            throw new Exception('User already logged in or queued.');
-        }
+        // if ($userQueue) {
+        //    Auth::logout();
+        //    throw new Exception('User already logged in or queued.');
+        // }
 
         $pdo = self::getPdo($event);
 
@@ -238,6 +238,7 @@ class Event extends Model
 
     public static function adjustUsers($specificEventId = null)
     {
+	return;
         if ($specificEventId) {
             // Process single event
             $event = Event::where('id', $specificEventId)

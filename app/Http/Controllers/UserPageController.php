@@ -159,7 +159,8 @@ class UserPageController extends Controller
                 })
                 ->count();
 
-            $current_user = (object) Event::getUser($event, Auth::user());
+	    $current_user_data = Event::getUser($event, Auth::user());
+	    $current_user = $current_user_data ? (object) $current_user_data : null;
 
             $user = Auth::user();
             $userData = User::find($user->id);
@@ -180,7 +181,7 @@ class UserPageController extends Controller
                 'categoryPrices' => $categoryPrices,
                 'props' => $props->getSecure(),
                 'ownedTicketCount' => $ownedTicketCount,
-                'userEndSessionDatetime' => $userData->isUser() ? $current_user->expected_kick : null,
+                'userEndSessionDatetime' => $userData->isUser() ? $current_user?->expected_kick : null,
                 'paymentGateway' => $event->eventVariables->payment_gateway,
             ];
 
@@ -297,7 +298,7 @@ class UserPageController extends Controller
                 'tickets' => $formattedTickets,
                 'ticketCategories' => $ticketCategories,
                 'event' => $this->formatEventData($event), // Gunakan helper method
-                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user->expected_kick,
+                'userEndSessionDatetime' => $userData->isAdmin() ? null : $current_user?->expected_kick,
             ]);
         } catch (\Exception $e) {
             return redirect()->route('client.home', ['client' => $client])
