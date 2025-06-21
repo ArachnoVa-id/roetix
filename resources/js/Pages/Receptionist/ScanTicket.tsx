@@ -1,9 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {
-    ApiErrorResponse,
-    ApiSuccessResponse,
-    ScannedTicketData,
-} from '@/types/front-end';
+import { ApiErrorResponse, ApiSuccessResponse } from '@/types/front-end';
 import { PageProps } from '@inertiajs/core';
 import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -26,14 +22,77 @@ interface TicketValidationData {
     ticket_code: string;
     attendee_name?: string;
     ticket_type?: string;
+    ticket_price?: number;
     order_code?: string;
+    order_date?: string;
     buyer_email?: string;
+    buyer_name?: string;
+    buyer_phone?: string;
+    buyer_id_number?: string;
+    seat_number?: string;
+    seat_row?: string;
+    event_name?: string;
+    event_location?: string;
+    event_date?: string;
+    event_time?: string;
     status: string;
+    scanned_at?: string;
+}
+
+interface ScannedTicketData {
+    id: string;
+    ticket_id?: string;
+    ticket_code: string;
+    scanned_at: string;
+    status: string;
+    message: string;
+
+    // Ticket Information
+    attendee_name?: string;
+    ticket_type?: string;
+    ticket_price?: number;
+    ticket_color?: string;
+
+    // Seat Information
+    seat_number?: string;
+    seat_row?: string;
+    seat_position?: string;
+
+    // Order Information
+    order_id?: string;
+    order_code?: string;
+    order_date?: string;
+    total_price?: number;
+    payment_gateway?: string;
+
+    // Buyer Information
+    buyer_id?: string;
+    buyer_email?: string;
+    buyer_name?: string;
+    buyer_phone?: string;
+    buyer_whatsapp?: string;
+    buyer_id_number?: string;
+    buyer_address?: string;
+    buyer_gender?: string;
+    buyer_birth_date?: string;
+
+    // Event Information
+    event_id?: string;
+    event_name?: string;
+    event_location?: string;
+    event_date?: string;
+    event_time?: string;
+    event_slug?: string;
 }
 
 interface ConfirmationModalState {
     isOpen: boolean;
     ticketData: TicketValidationData | null;
+}
+
+interface DetailModalState {
+    isOpen: boolean;
+    ticketData: ScannedTicketData | null;
 }
 
 type ScannedTicket = ScannedTicketData;
@@ -65,6 +124,10 @@ const ScanTicket: React.FC = () => {
             isOpen: false,
             ticketData: null,
         });
+    const [detailModal, setDetailModal] = useState<DetailModalState>({
+        isOpen: false,
+        ticketData: null,
+    });
 
     // Refs
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -104,6 +167,14 @@ const ScanTicket: React.FC = () => {
         },
         [],
     );
+
+    const formatCurrency = (amount: number): string => {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(amount);
+    };
 
     // API calls
     const validateTicketCode = useCallback(
@@ -406,7 +477,7 @@ const ScanTicket: React.FC = () => {
         } finally {
             isCameraStartingRef.current = false;
         }
-    }, [useFrontCamera, showNotification]);
+    }, [useFrontCamera, showNotification, stopCamera]);
 
     // QR Code scanning
     const startQrScanning = useCallback(() => {
@@ -438,7 +509,8 @@ const ScanTicket: React.FC = () => {
                 !video.paused &&
                 !video.ended &&
                 !isLoading &&
-                !confirmationModal.isOpen
+                !confirmationModal.isOpen &&
+                !detailModal.isOpen
             ) {
                 try {
                     canvas.width = video.videoWidth;
@@ -475,6 +547,7 @@ const ScanTicket: React.FC = () => {
     }, [
         isLoading,
         confirmationModal.isOpen,
+        detailModal.isOpen,
         showNotification,
         submitTicketCode,
     ]);
@@ -542,6 +615,14 @@ const ScanTicket: React.FC = () => {
         }, 1000);
     };
 
+    const handleTicketClick = (ticket: ScannedTicket) => {
+        setDetailModal({ isOpen: true, ticketData: ticket });
+    };
+
+    const handleCloseDetailModal = () => {
+        setDetailModal({ isOpen: false, ticketData: null });
+    };
+
     // Effects
     useEffect(() => {
         fetchScannedTicketsHistory();
@@ -596,7 +677,14 @@ const ScanTicket: React.FC = () => {
                 stopCamera().catch(console.error);
             }
         };
-    }, [isScanning, useFrontCamera]);
+    }, [
+        isScanning,
+        useFrontCamera,
+        startCamera,
+        startQrScanning,
+        stopCamera,
+        showNotification,
+    ]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -641,7 +729,10 @@ const ScanTicket: React.FC = () => {
             props={pageConfigProps}
             userEndSessionDatetime={userEndSessionDatetime}
             header={
-                <div style={{ color: pageConfigProps.text_primary_color }}>
+                <div
+                    className="text-white"
+                    style={{ color: pageConfigProps.text_primary_color }}
+                >
                     <h2 className="header-dynamic-color text-3xl font-extrabold leading-tight drop-shadow-md md:text-4xl">
                         Scan Ticket for {event.name}
                     </h2>
@@ -653,74 +744,250 @@ const ScanTicket: React.FC = () => {
         >
             <Head title={`Scan Ticket - ${event.name}`} />
 
-            {/* Confirmation Modal */}
+            {/* Enhanced Confirmation Modal */}
             {confirmationModal.isOpen && confirmationModal.ticketData && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-                    <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
+                    <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
                         <div className="bg-blue-500 p-6 text-white">
                             <h3 className="text-xl font-bold">
                                 Confirm Ticket Scan
                             </h3>
+                            <p className="mt-1 text-blue-100">
+                                Please verify the ticket information before
+                                scanning
+                            </p>
                         </div>
-                        <div className="space-y-4 p-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Ticket Code
-                                </label>
-                                <p className="font-mono text-lg font-bold text-blue-600">
-                                    {confirmationModal.ticketData.ticket_code}
-                                </p>
+                        <div className="max-h-[60vh] overflow-y-auto p-6">
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                {/* Ticket Information */}
+                                <div className="space-y-4">
+                                    <h4 className="border-b pb-2 font-semibold text-gray-900">
+                                        Ticket Information
+                                    </h4>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Ticket Code
+                                        </label>
+                                        <p className="font-mono text-lg font-bold text-blue-600">
+                                            {
+                                                confirmationModal.ticketData
+                                                    .ticket_code
+                                            }
+                                        </p>
+                                    </div>
+                                    {confirmationModal.ticketData
+                                        .attendee_name && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Attendee Name
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .attendee_name
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+                                    {confirmationModal.ticketData
+                                        .ticket_type && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Ticket Type
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .ticket_type
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+                                    {confirmationModal.ticketData
+                                        .ticket_price && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Price
+                                            </label>
+                                            <p className="font-semibold text-gray-900">
+                                                {formatCurrency(
+                                                    confirmationModal.ticketData
+                                                        .ticket_price,
+                                                )}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {confirmationModal.ticketData
+                                        .seat_number && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Seat
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .seat_number
+                                                }
+                                                {confirmationModal.ticketData
+                                                    .seat_row &&
+                                                    ` (Row ${confirmationModal.ticketData.seat_row})`}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Buyer Information */}
+                                <div className="space-y-4">
+                                    <h4 className="border-b pb-2 font-semibold text-gray-900">
+                                        Buyer Information
+                                    </h4>
+                                    {confirmationModal.ticketData
+                                        .buyer_name && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Buyer Name
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .buyer_name
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+                                    {confirmationModal.ticketData
+                                        .buyer_email && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Email
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .buyer_email
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+                                    {confirmationModal.ticketData
+                                        .buyer_phone && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Phone
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .buyer_phone
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+                                    {confirmationModal.ticketData
+                                        .buyer_id_number && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                ID Number
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .buyer_id_number
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+                                    {confirmationModal.ticketData
+                                        .order_code && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Order Code
+                                            </label>
+                                            <p className="font-mono text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .order_code
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+                                    {confirmationModal.ticketData
+                                        .order_date && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Order Date
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {
+                                                    confirmationModal.ticketData
+                                                        .order_date
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            {confirmationModal.ticketData.attendee_name && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Attendee Name
-                                    </label>
-                                    <p className="text-gray-900">
-                                        {
-                                            confirmationModal.ticketData
-                                                .attendee_name
-                                        }
-                                    </p>
-                                </div>
-                            )}
-                            {confirmationModal.ticketData.ticket_type && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Ticket Type
-                                    </label>
-                                    <p className="text-gray-900">
-                                        {
-                                            confirmationModal.ticketData
-                                                .ticket_type
-                                        }
-                                    </p>
-                                </div>
-                            )}
-                            {confirmationModal.ticketData.order_code && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Order Code
-                                    </label>
-                                    <p className="text-gray-900">
-                                        {
-                                            confirmationModal.ticketData
-                                                .order_code
-                                        }
-                                    </p>
-                                </div>
-                            )}
-                            {confirmationModal.ticketData.buyer_email && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Buyer Email
-                                    </label>
-                                    <p className="text-gray-900">
-                                        {
-                                            confirmationModal.ticketData
-                                                .buyer_email
-                                        }
-                                    </p>
+
+                            {/* Event Information */}
+                            {(confirmationModal.ticketData.event_name ||
+                                confirmationModal.ticketData.event_date ||
+                                confirmationModal.ticketData
+                                    .event_location) && (
+                                <div className="mt-6 space-y-4">
+                                    <h4 className="border-b pb-2 font-semibold text-gray-900">
+                                        Event Information
+                                    </h4>
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                        {confirmationModal.ticketData
+                                            .event_name && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Event
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {
+                                                        confirmationModal
+                                                            .ticketData
+                                                            .event_name
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {confirmationModal.ticketData
+                                            .event_date && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Date
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {
+                                                        confirmationModal
+                                                            .ticketData
+                                                            .event_date
+                                                    }
+                                                    {confirmationModal
+                                                        .ticketData
+                                                        .event_time &&
+                                                        ` at ${confirmationModal.ticketData.event_time}`}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {confirmationModal.ticketData
+                                            .event_location && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Location
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {
+                                                        confirmationModal
+                                                            .ticketData
+                                                            .event_location
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -744,11 +1011,433 @@ const ScanTicket: React.FC = () => {
                 </div>
             )}
 
+            {/* Detailed Ticket Information Modal */}
+            {detailModal.isOpen && detailModal.ticketData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
+                        <div className="bg-gray-800 p-6 text-white">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-xl font-bold">
+                                        Ticket Details
+                                    </h3>
+                                    <p className="mt-1 font-mono text-gray-300">
+                                        {detailModal.ticketData.ticket_code}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <div
+                                        className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${
+                                            detailModal.ticketData.status ===
+                                            'success'
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-red-500 text-white'
+                                        }`}
+                                    >
+                                        {detailModal.ticketData.status ===
+                                        'success'
+                                            ? 'Scanned'
+                                            : 'Error'}
+                                    </div>
+                                    <p className="mt-1 text-sm text-gray-300">
+                                        {new Date(
+                                            detailModal.ticketData.scanned_at,
+                                        ).toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="max-h-[70vh] overflow-y-auto p-6">
+                            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+                                {/* Ticket Information */}
+                                <div className="space-y-4">
+                                    <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                                        🎫 Ticket Information
+                                    </h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Type
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                <div
+                                                    className="h-4 w-4 rounded"
+                                                    style={{
+                                                        backgroundColor:
+                                                            detailModal
+                                                                .ticketData
+                                                                .ticket_color ||
+                                                            '#667eea',
+                                                    }}
+                                                />
+                                                <p className="text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .ticket_type
+                                                    }
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {detailModal.ticketData
+                                            .attendee_name && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Attendee
+                                                </label>
+                                                <p className="font-medium text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .attendee_name
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData
+                                            .ticket_price && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Price
+                                                </label>
+                                                <p className="text-lg font-semibold text-gray-900">
+                                                    {formatCurrency(
+                                                        detailModal.ticketData
+                                                            .ticket_price,
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Seat
+                                            </label>
+                                            <p className="text-gray-900">
+                                                {detailModal.ticketData
+                                                    .seat_number ||
+                                                    'General Admission'}
+                                                {detailModal.ticketData
+                                                    .seat_row &&
+                                                    ` (Row ${detailModal.ticketData.seat_row})`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Buyer Information */}
+                                <div className="space-y-4">
+                                    <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                                        👤 Buyer Information
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {detailModal.ticketData.buyer_name && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Name
+                                                </label>
+                                                <p className="font-medium text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .buyer_name
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData.buyer_email && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Email
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .buyer_email
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData.buyer_phone && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Phone
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .buyer_phone
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData
+                                            .buyer_whatsapp && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    WhatsApp
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .buyer_whatsapp
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData
+                                            .buyer_id_number && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    ID Number
+                                                </label>
+                                                <p className="font-mono text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .buyer_id_number
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData
+                                            .buyer_gender && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Gender
+                                                </label>
+                                                <p className="capitalize text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .buyer_gender
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData
+                                            .buyer_birth_date && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Birth Date
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {new Date(
+                                                        detailModal.ticketData.buyer_birth_date,
+                                                    ).toLocaleDateString(
+                                                        'id-ID',
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData
+                                            .buyer_address && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Address
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .buyer_address
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Order & Event Information */}
+                                <div className="space-y-4">
+                                    <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                                        📋 Order & Event Details
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {detailModal.ticketData.order_code && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Order Code
+                                                </label>
+                                                <p className="font-mono text-sm text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .order_code
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData.order_date && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Order Date
+                                                </label>
+                                                <p className="text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .order_date
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData.total_price && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Total Order Value
+                                                </label>
+                                                <p className="font-semibold text-gray-900">
+                                                    {formatCurrency(
+                                                        detailModal.ticketData
+                                                            .total_price,
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {detailModal.ticketData
+                                            .payment_gateway && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Payment Method
+                                                </label>
+                                                <p className="capitalize text-gray-900">
+                                                    {
+                                                        detailModal.ticketData
+                                                            .payment_gateway
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+                                        <div className="mt-3 border-t pt-3">
+                                            {detailModal.ticketData
+                                                .event_name && (
+                                                <div className="mb-2">
+                                                    <label className="block text-sm font-medium text-gray-700">
+                                                        Event
+                                                    </label>
+                                                    <p className="font-medium text-gray-900">
+                                                        {
+                                                            detailModal
+                                                                .ticketData
+                                                                .event_name
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {detailModal.ticketData
+                                                .event_date && (
+                                                <div className="mb-2">
+                                                    <label className="block text-sm font-medium text-gray-700">
+                                                        Date & Time
+                                                    </label>
+                                                    <p className="text-gray-900">
+                                                        {
+                                                            detailModal
+                                                                .ticketData
+                                                                .event_date
+                                                        }
+                                                        {detailModal.ticketData
+                                                            .event_time &&
+                                                            ` at ${detailModal.ticketData.event_time}`}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {detailModal.ticketData
+                                                .event_location && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700">
+                                                        Location
+                                                    </label>
+                                                    <p className="text-gray-900">
+                                                        {
+                                                            detailModal
+                                                                .ticketData
+                                                                .event_location
+                                                        }
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Scan Information */}
+                            <div className="mt-8 rounded-lg bg-gray-50 p-4">
+                                <h4 className="mb-3 font-semibold text-gray-900">
+                                    🕒 Scan Information
+                                </h4>
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Scan Status
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className={`h-3 w-3 rounded-full ${
+                                                    detailModal.ticketData
+                                                        .status === 'success'
+                                                        ? 'bg-green-400'
+                                                        : 'bg-red-400'
+                                                }`}
+                                            />
+                                            <p
+                                                className={`font-medium ${
+                                                    detailModal.ticketData
+                                                        .status === 'success'
+                                                        ? 'text-green-700'
+                                                        : 'text-red-700'
+                                                }`}
+                                            >
+                                                {detailModal.ticketData
+                                                    .status === 'success'
+                                                    ? 'Successfully Scanned'
+                                                    : 'Scan Error'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Scan Time
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {new Date(
+                                                detailModal.ticketData.scanned_at,
+                                            ).toLocaleString('id-ID', {
+                                                weekday: 'long',
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                second: '2-digit',
+                                            })}
+                                        </p>
+                                    </div>
+                                </div>
+                                {detailModal.ticketData.message && (
+                                    <div className="mt-3">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Message
+                                        </label>
+                                        <p className="italic text-gray-900">
+                                            {detailModal.ticketData.message}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex justify-end bg-gray-50 px-6 py-4">
+                            <button
+                                onClick={handleCloseDetailModal}
+                                className="rounded-lg bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div
                 className="py-8 text-white md:py-12"
                 style={{
                     backgroundColor: pageConfigProps.secondary_color,
-                    backgroundImage: `url(${pageConfigProps.texture})`,
+                    backgroundImage: pageConfigProps.texture
+                        ? `url(${pageConfigProps.texture})`
+                        : undefined,
                     backgroundRepeat: 'repeat',
                     backgroundSize: 'auto',
                 }}
@@ -966,12 +1655,41 @@ const ScanTicket: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Scanned Tickets History */}
+                        {/* Enhanced Scanned Tickets History */}
                         <div className="flex flex-col rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
-                            <h3 className="mb-6 text-2xl font-bold">
-                                Scanned Tickets History ({scannedTickets.length}
-                                )
-                            </h3>
+                            <div className="mb-6 flex items-center justify-between">
+                                <h3 className="text-2xl font-bold">
+                                    Scanned Tickets History
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <div className="rounded-full bg-white/20 px-3 py-1">
+                                        <span className="text-sm font-semibold">
+                                            {scannedTickets.length} tickets
+                                        </span>
+                                    </div>
+                                    {scannedTickets.length > 0 && (
+                                        <button
+                                            onClick={fetchScannedTicketsHistory}
+                                            className="rounded-full bg-blue-500/20 p-2 text-blue-200 transition-colors hover:bg-blue-500/30"
+                                            title="Refresh history"
+                                        >
+                                            <svg
+                                                className="h-4 w-4"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                strokeWidth={1.5}
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                                                />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
 
                             {isFetchingHistory ? (
                                 <div className="flex flex-grow flex-col items-center justify-center py-8 text-gray-300">
@@ -1026,13 +1744,16 @@ const ScanTicket: React.FC = () => {
                                     {scannedTickets.map((ticket) => (
                                         <div
                                             key={ticket.id}
-                                            className={`rounded-lg border-l-4 p-4 shadow-md transition-transform duration-150 hover:scale-[1.01] ${
+                                            onClick={() =>
+                                                handleTicketClick(ticket)
+                                            }
+                                            className={`cursor-pointer rounded-lg border-l-4 p-4 shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${
                                                 ticket.status === 'success'
-                                                    ? 'border-green-400 bg-green-500/20'
-                                                    : 'border-red-400 bg-red-500/20'
+                                                    ? 'border-green-400 bg-green-500/20 hover:bg-green-500/30'
+                                                    : 'border-red-400 bg-red-500/20 hover:bg-red-500/30'
                                             }`}
                                         >
-                                            <div className="mb-2 flex items-center justify-between">
+                                            <div className="mb-3 flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <div
                                                         className={`mr-3 h-3 w-3 rounded-full ${
@@ -1046,29 +1767,94 @@ const ScanTicket: React.FC = () => {
                                                         {ticket.ticket_code}
                                                     </span>
                                                 </div>
-                                                <span className="text-xs text-gray-300">
-                                                    {new Date(
-                                                        ticket.scanned_at,
-                                                    ).toLocaleString()}
+                                                <div className="text-right">
+                                                    <span className="text-xs text-gray-300">
+                                                        {new Date(
+                                                            ticket.scanned_at,
+                                                        ).toLocaleString(
+                                                            'id-ID',
+                                                            {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                                day: '2-digit',
+                                                                month: '2-digit',
+                                                            },
+                                                        )}
+                                                    </span>
+                                                    <div className="mt-1 flex justify-end">
+                                                        <svg
+                                                            className="h-4 w-4 text-gray-400 transition-colors hover:text-white"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            strokeWidth={1.5}
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                {ticket.attendee_name && (
+                                                    <p className="text-sm">
+                                                        <strong className="text-gray-200">
+                                                            Attendee:
+                                                        </strong>{' '}
+                                                        <span className="text-white">
+                                                            {
+                                                                ticket.attendee_name
+                                                            }
+                                                        </span>
+                                                    </p>
+                                                )}
+                                                <div className="flex items-center justify-between">
+                                                    {ticket.ticket_type && (
+                                                        <div className="flex items-center gap-2">
+                                                            <div
+                                                                className="h-3 w-3 rounded"
+                                                                style={{
+                                                                    backgroundColor:
+                                                                        ticket.ticket_color ||
+                                                                        '#667eea',
+                                                                }}
+                                                            />
+                                                            <span className="text-sm text-gray-300">
+                                                                {
+                                                                    ticket.ticket_type
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {ticket.seat_number && (
+                                                        <span className="text-sm text-gray-300">
+                                                            📍{' '}
+                                                            {ticket.seat_number}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {ticket.buyer_name && (
+                                                    <p className="text-sm text-gray-300">
+                                                        <strong>Buyer:</strong>{' '}
+                                                        {ticket.buyer_name}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-3 flex items-center justify-between">
+                                                <p
+                                                    className={`text-sm ${ticket.status === 'success' ? 'text-green-200' : 'text-red-200'}`}
+                                                >
+                                                    {ticket.message}
+                                                </p>
+                                                <span className="text-xs text-gray-400 transition-colors hover:text-white">
+                                                    Click for details →
                                                 </span>
                                             </div>
-                                            {ticket.attendee_name && (
-                                                <p className="mb-1 text-sm">
-                                                    <strong>Attendee:</strong>{' '}
-                                                    {ticket.attendee_name}
-                                                </p>
-                                            )}
-                                            {ticket.ticket_type && (
-                                                <p className="mb-1 text-sm text-gray-300">
-                                                    <strong>Type:</strong>{' '}
-                                                    {ticket.ticket_type}
-                                                </p>
-                                            )}
-                                            <p
-                                                className={`text-sm ${ticket.status === 'success' ? 'text-green-200' : 'text-red-200'}`}
-                                            >
-                                                {ticket.message}
-                                            </p>
                                         </div>
                                     ))}
                                 </div>

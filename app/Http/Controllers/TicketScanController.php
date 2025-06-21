@@ -65,6 +65,8 @@ class TicketScanController extends Controller
                     'name' => $event->name,
                     'slug' => $event->slug,
                     'location' => $event->location,
+                    'event_date' => $event->event_date?->toDateString(),
+                    'event_time' => $event->event_date?->format('H:i'),
                 ],
                 'client' => $client,
                 'props' => $eventVariables->getSecure(),
@@ -158,10 +160,15 @@ class TicketScanController extends Controller
                 'event_name' => $event->name
             ]);
 
-            // Cari ticket dengan relasi
+            // Cari ticket dengan relasi yang lebih lengkap
             $ticket = Ticket::where('ticket_code', $ticketCode)
                 ->where('event_id', $event->id)
-                ->with(['ticketCategory', 'ticketOrders.order.user'])
+                ->with([
+                    'ticketCategory', 
+                    'seat', 
+                    'ticketOrders.order.user.contactInfo',
+                    'event'
+                ])
                 ->first();
 
             if (!$ticket) {
@@ -183,12 +190,14 @@ class TicketScanController extends Controller
             // Cek ticket order
             $ticketOrder = $ticket->ticketOrders()
                 ->where('status', '!=', TicketOrderStatus::SCANNED->value)
+                ->with(['order.user.contactInfo'])
                 ->orderByDesc('created_at')
                 ->first();
 
             if (!$ticketOrder) {
                 $alreadyScannedOrder = $ticket->ticketOrders()
                     ->where('status', TicketOrderStatus::SCANNED->value)
+                    ->with(['order.user.contactInfo'])
                     ->orderByDesc('created_at')
                     ->first();
 
@@ -200,13 +209,7 @@ class TicketScanController extends Controller
                     return response()->json([
                         'message' => "Ticket {$ticketCode} has already been scanned.",
                         'error' => 'ALREADY_SCANNED',
-                        'data' => [
-                            'ticket_code' => $ticket->ticket_code,
-                            'attendee_name' => $ticket->attendee_name ?? null,
-                            'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
-                            'scanned_at' => $alreadyScannedOrder->scanned_at?->toIso8601String(),
-                            'status' => 'already_scanned'
-                        ]
+                        'data' => $this->formatTicketData($ticket, $alreadyScannedOrder, 'already_scanned')
                     ], 409);
                 }
 
@@ -225,15 +228,8 @@ class TicketScanController extends Controller
                 'order_id' => $ticketOrder->order_id
             ]);
 
-            // Return ticket information for confirmation
-            $responseData = [
-                'ticket_code' => $ticket->ticket_code,
-                'attendee_name' => $ticket->attendee_name ?? null,
-                'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
-                'order_code' => $ticketOrder->order->order_code ?? null,
-                'buyer_email' => $ticketOrder->order->user->email ?? null,
-                'status' => 'valid_for_scan'
-            ];
+            // Return comprehensive ticket information for confirmation
+            $responseData = $this->formatTicketData($ticket, $ticketOrder, 'valid_for_scan');
 
             Log::info('Returning validation success', ['data' => $responseData]);
 
@@ -310,6 +306,12 @@ class TicketScanController extends Controller
             try {
                 $ticket = Ticket::where('ticket_code', $ticketCode)
                     ->where('event_id', $event->id)
+                    ->with([
+                        'ticketCategory', 
+                        'seat', 
+                        'ticketOrders.order.user.contactInfo',
+                        'event'
+                    ])
                     ->lockForUpdate()
                     ->first();
 
@@ -323,12 +325,14 @@ class TicketScanController extends Controller
 
                 $ticketOrder = $ticket->ticketOrders()
                     ->where('status', '!=', TicketOrderStatus::SCANNED->value)
+                    ->with(['order.user.contactInfo'])
                     ->orderByDesc('created_at')
                     ->first();
 
                 if (!$ticketOrder) {
                     $alreadyScannedOrder = $ticket->ticketOrders()
                         ->where('status', TicketOrderStatus::SCANNED->value)
+                        ->with(['order.user.contactInfo'])
                         ->orderByDesc('created_at')
                         ->first();
 
@@ -337,15 +341,7 @@ class TicketScanController extends Controller
                         return response()->json([
                             'message' => "Ticket {$ticketCode} has already been scanned.",
                             'error' => 'ALREADY_SCANNED',
-                            'data' => [
-                                'id' => (string) $alreadyScannedOrder->id,
-                                'ticket_code' => $ticket->ticket_code,
-                                'scanned_at' => $alreadyScannedOrder->scanned_at?->toIso8601String(),
-                                'status' => 'error',
-                                'message' => "Ticket {$ticketCode} has already been scanned.",
-                                'attendee_name' => $ticket->attendee_name ?? null,
-                                'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
-                            ]
+                            'data' => $this->formatScannedTicketData($ticket, $alreadyScannedOrder, 'error', "Ticket {$ticketCode} has already been scanned.")
                         ], 409);
                     }
 
@@ -372,15 +368,7 @@ class TicketScanController extends Controller
                 return response()->json([
                     'message' => "Ticket {$ticketCode} successfully scanned.",
                     'success' => true,
-                    'data' => [
-                        'id' => (string) $ticketOrder->id,
-                        'ticket_code' => $ticket->ticket_code,
-                        'scanned_at' => $ticketOrder->scanned_at->toIso8601String(),
-                        'status' => 'success',
-                        'message' => "Ticket {$ticketCode} successfully scanned.",
-                        'attendee_name' => $ticket->attendee_name ?? null,
-                        'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
-                    ]
+                    'data' => $this->formatScannedTicketData($ticket, $ticketOrder, 'success', "Ticket {$ticketCode} successfully scanned.")
                 ], 200);
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -434,22 +422,19 @@ class TicketScanController extends Controller
             $scannedOrders = TicketOrder::whereHas('ticket', function ($query) use ($event) {
                 $query->where('event_id', $event->id);
             })
-                ->with(['ticket.ticketCategory'])
+                ->with([
+                    'ticket.ticketCategory',
+                    'ticket.seat',
+                    'ticket.event',
+                    'order.user.contactInfo'
+                ])
                 ->where('status', TicketOrderStatus::SCANNED->value)
                 ->whereNotNull('scanned_at')
                 ->orderByDesc('scanned_at')
                 ->get();
 
             $formattedHistory = $scannedOrders->map(function ($order) {
-                return [
-                    'id' => (string) $order->id,
-                    'ticket_code' => $order->ticket->ticket_code,
-                    'scanned_at' => $order->scanned_at->toIso8601String(),
-                    'status' => 'success',
-                    'message' => "Ticket {$order->ticket->ticket_code} was scanned.",
-                    'attendee_name' => $order->ticket->attendee_name ?? null,
-                    'ticket_type' => $order->ticket->ticketCategory->name ?? 'N/A',
-                ];
+                return $this->formatScannedTicketData($order->ticket, $order, 'success', "Ticket {$order->ticket->ticket_code} was scanned.");
             });
 
             return response()->json([
@@ -468,5 +453,102 @@ class TicketScanController extends Controller
                 'error' => 'SERVER_ERROR'
             ], 500);
         }
+    }
+
+    /**
+     * Format comprehensive ticket data for validation response
+     */
+    private function formatTicketData($ticket, $ticketOrder, $status)
+    {
+        $buyer = $ticketOrder->order->user ?? null;
+        $buyerContact = $buyer?->contactInfo ?? null;
+
+        // Get user data from DevNoSQLData if available
+        $devData = $ticketOrder->order->devNoSQLUserData();
+        $userFullName = $devData?->data['user_full_name'] ?? null;
+        $userPhone = $devData?->data['user_phone_num'] ?? null;
+        $userIdNo = $devData?->data['user_id_no'] ?? null;
+
+        return [
+            'ticket_code' => $ticket->ticket_code,
+            'attendee_name' => $ticket->attendee_name ?? $userFullName ?? ($buyerContact?->fullname ?? 'N/A'),
+            'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
+            'ticket_price' => $ticket->price ?? 0,
+            'order_code' => $ticketOrder->order->order_code ?? null,
+            'order_date' => $ticketOrder->order->getOrderDateTimestamp() ?? null,
+            'buyer_email' => $buyer?->email ?? null,
+            'buyer_name' => $buyerContact?->fullname ?? $userFullName ?? 'N/A',
+            'buyer_phone' => $buyerContact?->phone_number ?? $userPhone ?? null,
+            'buyer_id_number' => $userIdNo ?? null,
+            'seat_number' => $ticket->seat?->seat_number ?? null,
+            'seat_row' => $ticket->seat?->row ?? null,
+            'event_name' => $ticket->event->name ?? null,
+            'event_location' => $ticket->event->location ?? null,
+            'event_date' => $ticket->event->getEventDate() ?? null,
+            'event_time' => $ticket->event->getEventTime() ?? null,
+            'status' => $status,
+            'scanned_at' => $status === 'already_scanned' ? $ticketOrder->scanned_at?->toIso8601String() : null,
+        ];
+    }
+
+    /**
+     * Format comprehensive scanned ticket data for history
+     */
+    private function formatScannedTicketData($ticket, $ticketOrder, $status, $message)
+    {
+        $buyer = $ticketOrder->order->user ?? null;
+        $buyerContact = $buyer?->contactInfo ?? null;
+
+        // Get user data from DevNoSQLData if available
+        $devData = $ticketOrder->order->devNoSQLUserData();
+        $userFullName = $devData?->data['user_full_name'] ?? null;
+        $userPhone = $devData?->data['user_phone_num'] ?? null;
+        $userIdNo = $devData?->data['user_id_no'] ?? null;
+
+        return [
+            'id' => (string) $ticketOrder->id,
+            'ticket_id' => $ticket->id,
+            'ticket_code' => $ticket->ticket_code,
+            'scanned_at' => $ticketOrder->scanned_at->toIso8601String(),
+            'status' => $status,
+            'message' => $message,
+            
+            // Ticket Information
+            'attendee_name' => $ticket->attendee_name ?? $userFullName ?? ($buyerContact?->fullname ?? 'N/A'),
+            'ticket_type' => $ticket->ticketCategory->name ?? 'N/A',
+            'ticket_price' => $ticket->price ?? 0,
+            'ticket_color' => $ticket->ticketCategory->color ?? '#667eea',
+            
+            // Seat Information
+            'seat_number' => $ticket->seat?->seat_number ?? 'General Admission',
+            'seat_row' => $ticket->seat?->row ?? null,
+            'seat_position' => $ticket->seat?->position ?? null,
+            
+            // Order Information
+            'order_id' => $ticketOrder->order->id,
+            'order_code' => $ticketOrder->order->order_code ?? null,
+            'order_date' => $ticketOrder->order->getOrderDateTimestamp() ?? null,
+            'total_price' => $ticketOrder->order->total_price ?? 0,
+            'payment_gateway' => $ticketOrder->order->payment_gateway ?? null,
+            
+            // Buyer Information
+            'buyer_id' => $buyer?->id ?? null,
+            'buyer_email' => $buyer?->email ?? null,
+            'buyer_name' => $buyerContact?->fullname ?? $userFullName ?? 'N/A',
+            'buyer_phone' => $buyerContact?->phone_number ?? $userPhone ?? null,
+            'buyer_whatsapp' => $buyerContact?->whatsapp_number ?? null,
+            'buyer_id_number' => $userIdNo ?? null,
+            'buyer_address' => $buyerContact?->address ?? null,
+            'buyer_gender' => $buyerContact?->gender ?? null,
+            'buyer_birth_date' => $buyerContact?->birth_date ?? null,
+            
+            // Event Information
+            'event_id' => $ticket->event->id,
+            'event_name' => $ticket->event->name ?? null,
+            'event_location' => $ticket->event->location ?? null,
+            'event_date' => $ticket->event->getEventDate() ?? null,
+            'event_time' => $ticket->event->getEventTime() ?? null,
+            'event_slug' => $ticket->event->slug ?? null,
+        ];
     }
 }
