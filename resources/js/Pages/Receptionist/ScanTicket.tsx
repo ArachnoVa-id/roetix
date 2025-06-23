@@ -4,15 +4,10 @@ import { PageProps } from '@inertiajs/core';
 import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import jsQR from 'jsqr';
-import React, {
-    FormEvent,
-    useCallback,
-    useEffect,
-    useRef,
-    useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { route } from 'ziggy-js';
 
+// Types
 interface NotificationState {
     type: 'success' | 'error' | null;
     message: string;
@@ -25,10 +20,13 @@ interface TicketValidationData {
     ticket_price?: number;
     order_code?: string;
     order_date?: string;
+    order_created_at?: string;
+    order_paid_at?: string;
     buyer_email?: string;
     buyer_name?: string;
     buyer_phone?: string;
     buyer_id_number?: string;
+    buyer_sizes?: string;
     seat_number?: string;
     seat_row?: string;
     event_name?: string;
@@ -39,49 +37,23 @@ interface TicketValidationData {
     scanned_at?: string;
 }
 
-interface ScannedTicketData {
+interface ScannedTicketData extends TicketValidationData {
     id: string;
     ticket_id?: string;
-    ticket_code: string;
     scanned_at: string;
     status: string;
     message: string;
-
-    // Ticket Information
-    attendee_name?: string;
-    ticket_type?: string;
-    ticket_price?: number;
     ticket_color?: string;
-
-    // Seat Information
-    seat_number?: string;
-    seat_row?: string;
     seat_position?: string;
-
-    // Order Information
     order_id?: string;
-    order_code?: string;
-    order_date?: string;
     total_price?: number;
     payment_gateway?: string;
-
-    // Buyer Information
     buyer_id?: string;
-    buyer_email?: string;
-    buyer_name?: string;
-    buyer_phone?: string;
     buyer_whatsapp?: string;
-    buyer_id_number?: string;
     buyer_address?: string;
     buyer_gender?: string;
     buyer_birth_date?: string;
-
-    // Event Information
     event_id?: string;
-    event_name?: string;
-    event_location?: string;
-    event_date?: string;
-    event_time?: string;
     event_slug?: string;
 }
 
@@ -95,422 +67,146 @@ interface DetailModalState {
     ticketData: ScannedTicketData | null;
 }
 
-type ScannedTicket = ScannedTicketData;
-
-const ScanTicket: React.FC = () => {
-    const page = usePage<PageProps>();
-    const {
-        props: pageConfigProps,
-        client,
-        event,
-        appName,
-        userEndSessionDatetime,
-    } = page.props;
-
-    // State management
-    const [ticketCode, setTicketCode] = useState<string>('');
-    const [useFrontCamera, setUseFrontCamera] = useState<boolean>(false);
-    const [isScanning, setIsScanning] = useState<boolean>(false);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [cameraError, setCameraError] = useState<string>('');
-    const [scannedTickets, setScannedTickets] = useState<ScannedTicket[]>([]);
+// Custom Hooks
+const useNotification = () => {
     const [notification, setNotification] = useState<NotificationState>({
         type: null,
         message: '',
     });
-    const [isFetchingHistory, setIsFetchingHistory] = useState<boolean>(true);
-    const [confirmationModal, setConfirmationModal] =
-        useState<ConfirmationModalState>({
-            isOpen: false,
-            ticketData: null,
-        });
-    const [detailModal, setDetailModal] = useState<DetailModalState>({
-        isOpen: false,
-        ticketData: null,
-    });
-
-    // Refs
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
-    const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const lastScannedCodeRef = useRef<string>('');
-    const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const isCameraStartingRef = useRef<boolean>(false);
-
-    // Utility functions
-    const clearNotification = useCallback(() => {
-        if (notificationTimeoutRef.current) {
-            clearTimeout(notificationTimeoutRef.current);
-        }
-        notificationTimeoutRef.current = setTimeout(() => {
-            setNotification({ type: null, message: '' });
-        }, 3000);
-    }, []);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const showNotification = useCallback(
         (type: 'success' | 'error', message: string) => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             setNotification({ type, message });
-            clearNotification();
-        },
-        [clearNotification],
-    );
-
-    const addOrUpdateScannedTicket = useCallback(
-        (newTicketData: ScannedTicket) => {
-            setScannedTickets((prev) => {
-                const filtered = prev.filter(
-                    (ticket) => ticket.id !== newTicketData.id,
-                );
-                return [newTicketData, ...filtered];
-            });
+            timeoutRef.current = setTimeout(
+                () => setNotification({ type: null, message: '' }),
+                3000,
+            );
         },
         [],
     );
 
-    const formatCurrency = (amount: number): string => {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-        }).format(amount);
-    };
+    const clearNotification = useCallback(() => {
+        setNotification({ type: null, message: '' });
+    }, []);
 
-    // API calls
-    const validateTicketCode = useCallback(
-        async (codeToValidate: string) => {
-            if (isLoading || !codeToValidate.trim() || !event?.slug) return;
+    return { notification, showNotification, clearNotification };
+};
 
-            // Prevent rapid re-scanning
-            if (lastScannedCodeRef.current === codeToValidate.trim()) {
-                console.log('Skipping duplicate scan:', codeToValidate);
-                return;
-            }
-            lastScannedCodeRef.current = codeToValidate.trim();
+const useCamera = (
+    showNotification: (type: 'success' | 'error', message: string) => void,
+) => {
+    const [isScanning, setIsScanning] = useState(false);
+    const [useFrontCamera, setUseFrontCamera] = useState(false);
+    const [cameraError, setCameraError] = useState('');
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const isCameraStartingRef = useRef(false);
 
-            setIsLoading(true);
-            setNotification({ type: null, message: '' });
-
-            try {
-                const url = route('client.scan.validate', { client });
-                const response = await axios.post<
-                    ApiSuccessResponse<TicketValidationData>
-                >(url, {
-                    ticket_code: codeToValidate.trim(),
-                    event_slug: event.slug,
-                });
-
-                if (response.data?.data) {
-                    // Show confirmation modal
-                    setConfirmationModal({
-                        isOpen: true,
-                        ticketData: response.data.data,
-                    });
-                }
-            } catch (error: unknown) {
-                let errorMessage =
-                    'An unknown error occurred while validating the ticket.';
-                let scannedTicketData: ScannedTicket | undefined = undefined;
-
-                if (axios.isAxiosError(error)) {
-                    const responseData = error.response?.data as
-                        | ApiErrorResponse<ScannedTicket>
-                        | undefined;
-                    if (responseData?.message) {
-                        errorMessage = responseData.message;
-                    }
-                    if (error.response?.status === 409 && responseData?.data) {
-                        scannedTicketData = responseData.data;
-                        errorMessage =
-                            scannedTicketData.message || errorMessage;
-                    }
-                }
-
-                showNotification('error', errorMessage);
-                if (scannedTicketData) {
-                    addOrUpdateScannedTicket(scannedTicketData);
-                }
-            } finally {
-                setIsLoading(false);
-                // Allow re-scanning after delay
-                setTimeout(() => {
-                    lastScannedCodeRef.current = '';
-                }, 2000);
-            }
-        },
-        [
-            isLoading,
-            client,
-            event?.slug,
-            showNotification,
-            addOrUpdateScannedTicket,
-        ],
-    );
-
-    const confirmScanTicket = useCallback(
-        async (ticketData: TicketValidationData) => {
-            if (!ticketData || !event?.slug) return;
-
-            setIsLoading(true);
-            setConfirmationModal({ isOpen: false, ticketData: null });
-
-            try {
-                const url = route('client.scan.store', { client });
-                const response = await axios.post<
-                    ApiSuccessResponse<ScannedTicket>
-                >(url, {
-                    ticket_code: ticketData.ticket_code,
-                    event_slug: event.slug,
-                });
-
-                const successMsg =
-                    response.data?.message ||
-                    `Ticket ${ticketData.ticket_code} scanned successfully!`;
-                showNotification('success', successMsg);
-
-                if (response.data?.data) {
-                    addOrUpdateScannedTicket(response.data.data);
-                }
-                setTicketCode('');
-            } catch (error: unknown) {
-                let errorMessage =
-                    'An unknown error occurred while scanning the ticket.';
-
-                if (axios.isAxiosError(error)) {
-                    const responseData = error.response?.data as
-                        | ApiErrorResponse<ScannedTicket>
-                        | undefined;
-                    if (responseData?.message) {
-                        errorMessage = responseData.message;
-                    }
-                }
-
-                showNotification('error', errorMessage);
-            } finally {
-                setIsLoading(false);
-            }
-        },
-        [client, event?.slug, showNotification, addOrUpdateScannedTicket],
-    );
-
-    const submitTicketCode = useCallback(
-        async (codeToSubmit: string) => {
-            await validateTicketCode(codeToSubmit);
-        },
-        [validateTicketCode],
-    );
-
-    // Camera management
     const stopCamera = useCallback(async () => {
-        console.log('Stopping camera...');
-
-        // Stop QR scanning
-        if (scanIntervalRef.current) {
-            clearInterval(scanIntervalRef.current);
-            scanIntervalRef.current = null;
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
         }
-
-        // Clear video element BEFORE stopping stream
         if (videoRef.current) {
-            videoRef.current.pause();
             videoRef.current.srcObject = null;
             videoRef.current.load();
         }
-
-        // Stop camera stream
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach((track) => {
-                console.log('Stopping track:', track.kind, track.readyState);
-                track.stop();
-            });
-            streamRef.current = null;
-        }
-
         setCameraError('');
-        lastScannedCodeRef.current = '';
         isCameraStartingRef.current = false;
-
-        // Longer delay to ensure complete cleanup
-        await new Promise((resolve) => setTimeout(resolve, 300));
     }, []);
 
     const startCamera = useCallback(async () => {
-        if (isCameraStartingRef.current) {
-            console.log('Camera already starting, skipping...');
-            return;
-        }
-
+        if (isCameraStartingRef.current) return;
         isCameraStartingRef.current = true;
-        console.log('Starting camera...');
         setCameraError('');
 
         try {
-            // Stop any existing camera first
             await stopCamera();
+            await new Promise((resolve) => setTimeout(resolve, 300));
 
-            // Wait longer to ensure complete cleanup
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            if (!navigator.mediaDevices?.getUserMedia) {
-                throw new Error('Camera not supported in this browser');
-            }
-
-            const constraints: MediaStreamConstraints = {
+            const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: useFrontCamera ? 'user' : 'environment',
                     width: { ideal: 640, max: 1280 },
                     height: { ideal: 480, max: 720 },
                 },
                 audio: false,
-            };
+            });
 
-            console.log('Requesting media with constraints:', constraints);
-            const stream =
-                await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
-
             if (videoRef.current) {
-                // Clear any existing srcObject first
-                videoRef.current.srcObject = null;
-                videoRef.current.load();
-
-                // Wait a bit before setting new stream
-                await new Promise((resolve) => setTimeout(resolve, 100));
-
                 videoRef.current.srcObject = stream;
-
-                // Wait for video to be ready with more robust handling
-                await new Promise<void>((resolve, reject) => {
-                    const video = videoRef.current!;
-                    const timeout = setTimeout(() => {
-                        reject(new Error('Video load timeout'));
-                    }, 10000);
-
-                    const cleanup = () => {
-                        clearTimeout(timeout);
-                        video.removeEventListener('canplay', onCanPlay);
-                        video.removeEventListener('error', onError);
-                    };
-
-                    const onCanPlay = () => {
-                        console.log(
-                            'Video can play, readyState:',
-                            video.readyState,
-                        );
-                        cleanup();
-                        resolve();
-                    };
-
-                    const onError = (e: Event) => {
-                        console.error('Video error:', e);
-                        cleanup();
-                        reject(new Error('Video failed to load'));
-                    };
-
-                    video.addEventListener('canplay', onCanPlay, {
-                        once: true,
-                    });
-                    video.addEventListener('error', onError, { once: true });
-                });
-
-                // Additional wait before playing
-                await new Promise((resolve) => setTimeout(resolve, 200));
-
-                console.log(
-                    'About to play video, readyState:',
-                    videoRef.current.readyState,
-                );
                 await videoRef.current.play();
-
-                // Verify video is actually playing
-                await new Promise<void>((resolve, reject) => {
-                    const video = videoRef.current!;
-                    const timeout = setTimeout(() => {
-                        reject(new Error('Video failed to start playing'));
-                    }, 5000);
-
-                    const checkPlaying = () => {
-                        if (
-                            !video.paused &&
-                            !video.ended &&
-                            video.readyState > 2
-                        ) {
-                            clearTimeout(timeout);
-                            console.log('Video confirmed playing');
-                            resolve();
-                        } else {
-                            setTimeout(checkPlaying, 100);
-                        }
-                    };
-
-                    checkPlaying();
-                });
             }
-
-            console.log('Camera started successfully');
         } catch (error: unknown) {
-            console.error('Error starting camera:', error);
+            // const err = error as Error;
+            const domErr = error as DOMException;
 
-            let message = 'Could not access camera. ';
-            if (error instanceof DOMException) {
-                if (error.name === 'NotAllowedError') {
-                    message += 'Permission denied. Please allow camera access.';
-                } else if (error.name === 'NotFoundError') {
-                    message += 'No camera found on this device.';
-                } else if (error.name === 'NotReadableError') {
-                    message +=
-                        'Camera is already in use by another application.';
-                } else {
-                    message += error.message || 'Unknown error occurred.';
-                }
-            } else if (error instanceof Error) {
-                message += error.message || 'Unknown error occurred.';
-            } else {
-                message += 'An unexpected error occurred.';
-            }
+            const message =
+                domErr.name === 'NotAllowedError'
+                    ? 'Camera permission denied. Please allow camera access.'
+                    : domErr.name === 'NotFoundError'
+                      ? 'No camera found on this device.'
+                      : 'Could not access camera.';
 
             setCameraError(message);
             showNotification('error', message);
-
-            // Ensure cleanup on error
             await stopCamera();
         } finally {
             isCameraStartingRef.current = false;
         }
     }, [useFrontCamera, showNotification, stopCamera]);
 
-    // QR Code scanning
+    const toggleScanning = useCallback(
+        () => setIsScanning((prev) => !prev),
+        [],
+    );
+    const toggleCameraFacingMode = useCallback(
+        () => setUseFrontCamera((prev) => !prev),
+        [],
+    );
+
+    return {
+        isScanning,
+        useFrontCamera,
+        cameraError,
+        videoRef,
+        streamRef,
+        startCamera,
+        stopCamera,
+        toggleScanning,
+        toggleCameraFacingMode,
+    };
+};
+
+const useQRScanner = (
+    videoRef: React.RefObject<HTMLVideoElement>,
+    streamRef: React.RefObject<MediaStream | null>,
+    isLoading: boolean,
+    onCodeScanned: (code: string) => void,
+) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const lastScannedCodeRef = useRef('');
+
     const startQrScanning = useCallback(() => {
-        if (!videoRef.current || !canvasRef.current || isLoading) {
-            console.log('Cannot start QR scanning: missing refs or loading');
-            return;
-        }
+        if (!videoRef.current || !canvasRef.current || isLoading) return;
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) return;
 
-        if (!context) {
-            showNotification('error', 'Could not get canvas context.');
-            return;
-        }
-
-        if (scanIntervalRef.current) {
-            clearInterval(scanIntervalRef.current);
-        }
-
-        console.log('Starting QR scanning...');
+        if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
 
         scanIntervalRef.current = setInterval(() => {
             if (
                 video.readyState >= 3 &&
                 video.videoWidth > 0 &&
-                video.videoHeight > 0 &&
                 !video.paused &&
-                !video.ended &&
-                !isLoading &&
-                !confirmationModal.isOpen &&
-                !detailModal.isOpen
+                !isLoading
             ) {
                 try {
                     canvas.width = video.videoWidth;
@@ -536,46 +232,872 @@ const ScanTicket: React.FC = () => {
                         code?.data?.trim() &&
                         code.data.trim() !== lastScannedCodeRef.current
                     ) {
-                        console.log('QR Code detected:', code.data.trim());
-                        submitTicketCode(code.data.trim());
+                        lastScannedCodeRef.current = code.data.trim();
+                        onCodeScanned(code.data.trim());
+                        // Reset after delay to allow re-scanning
+                        setTimeout(() => {
+                            lastScannedCodeRef.current = '';
+                        }, 2000);
                     }
                 } catch (error) {
                     console.warn('QR scanning error:', error);
                 }
             }
         }, 200);
-    }, [
+    }, [videoRef, isLoading, onCodeScanned]);
+
+    const stopQrScanning = useCallback(() => {
+        if (scanIntervalRef.current) {
+            clearInterval(scanIntervalRef.current);
+            scanIntervalRef.current = null;
+        }
+    }, []);
+
+    return { canvasRef, startQrScanning, stopQrScanning };
+};
+
+// Components
+const NotificationBanner: React.FC<{
+    notification: NotificationState;
+    onClose: () => void;
+}> = ({ notification, onClose }) => {
+    if (!notification.type) return null;
+
+    const isSuccess = notification.type === 'success';
+    const bgColor = isSuccess ? 'bg-green-500/90' : 'bg-red-500/90';
+    const icon = isSuccess ? (
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+    ) : (
+        <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+    );
+
+    return (
+        <div
+            className={`mb-8 flex items-center justify-between rounded-xl p-4 text-white shadow-lg transition-all duration-300 ${bgColor} backdrop-blur-sm`}
+        >
+            <div className="flex items-center">
+                <svg
+                    className="mr-3 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                >
+                    {icon}
+                </svg>
+                <span className="text-base font-semibold">
+                    {notification.message}
+                </span>
+            </div>
+            <button
+                onClick={onClose}
+                className="ml-4 text-white opacity-80 transition-opacity hover:opacity-100"
+            >
+                <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                    />
+                </svg>
+            </button>
+        </div>
+    );
+};
+
+const CameraFeed: React.FC<{
+    videoRef: React.RefObject<HTMLVideoElement>;
+    canvasRef: React.RefObject<HTMLCanvasElement>;
+    isScanning: boolean;
+    useFrontCamera: boolean;
+    hasStream: boolean;
+}> = ({ videoRef, canvasRef, isScanning, useFrontCamera, hasStream }) => (
+    <div className="relative mb-6 aspect-video w-full overflow-hidden rounded-xl border-2 border-white/50 bg-gray-900 shadow-lg">
+        <video
+            ref={videoRef}
+            className={`h-full w-full object-cover ${isScanning && hasStream ? '' : 'hidden'} ${useFrontCamera ? 'scale-x-[-1]' : ''}`}
+            autoPlay
+            playsInline
+            muted
+        />
+        {(!isScanning || !hasStream) && (
+            <div className="absolute inset-0 flex h-full items-center justify-center bg-gray-800/80">
+                <div className="text-center">
+                    <svg
+                        className="mx-auto mb-4 h-20 w-20 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z"
+                        />
+                    </svg>
+                    <p className="text-lg text-gray-300">Camera inactive</p>
+                    <p className="mt-1 text-sm text-gray-400">
+                        Click "Start Camera & Scan"
+                    </p>
+                </div>
+            </div>
+        )}
+        <canvas ref={canvasRef} className="hidden" />
+    </div>
+);
+
+const ManualInputForm: React.FC<{
+    ticketCode: string;
+    setTicketCode: (code: string) => void;
+    onSubmit: (e: React.FormEvent) => void;
+    isLoading: boolean;
+}> = ({ ticketCode, setTicketCode, onSubmit, isLoading }) => (
+    <div className="w-full border-t border-white/20 pt-8">
+        <h4 className="mb-4 text-xl font-bold">Manual Ticket Entry</h4>
+        <form onSubmit={onSubmit} className="flex gap-3">
+            <input
+                type="text"
+                className="block flex-1 rounded-full border border-white/30 bg-white/20 p-3 text-white placeholder-gray-300 focus:border-blue-300 focus:ring-blue-300"
+                placeholder="Enter ticket code"
+                value={ticketCode}
+                onChange={(e) => setTicketCode(e.target.value)}
+                disabled={isLoading}
+            />
+            <button
+                type="submit"
+                className="rounded-full bg-gray-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isLoading || !ticketCode.trim()}
+            >
+                {isLoading ? 'Validating...' : 'Validate'}
+            </button>
+        </form>
+    </div>
+);
+
+// Confirmation Modal Component
+const ConfirmationModal: React.FC<{
+    isOpen: boolean;
+    ticketData: TicketValidationData | null;
+    onConfirm: () => void;
+    onCancel: () => void;
+    isLoading: boolean;
+}> = ({ isOpen, ticketData, onConfirm, onCancel, isLoading }) => {
+    if (!isOpen || !ticketData) return null;
+
+    const formatCurrency = (amount: number) =>
+        new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(amount);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
+                <div className="bg-blue-500 p-6 text-white">
+                    <h3 className="text-xl font-bold">Confirm Ticket Scan</h3>
+                    <p className="mt-1 text-blue-100">
+                        Please verify the ticket information before scanning
+                    </p>
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto p-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        {/* Ticket Information */}
+                        <div className="space-y-4">
+                            <h4 className="border-b pb-2 font-semibold text-gray-900">
+                                Ticket Information
+                            </h4>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Ticket Code
+                                </label>
+                                <p className="font-mono text-lg font-bold text-blue-600">
+                                    {ticketData.ticket_code}
+                                </p>
+                            </div>
+                            {ticketData.attendee_name && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Attendee Name
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.attendee_name}
+                                    </p>
+                                </div>
+                            )}
+                            {ticketData.ticket_type && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Ticket Type
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.ticket_type}
+                                    </p>
+                                </div>
+                            )}
+                            {ticketData.ticket_price && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Price
+                                    </label>
+                                    <p className="font-semibold text-gray-900">
+                                        {formatCurrency(
+                                            ticketData.ticket_price,
+                                        )}
+                                    </p>
+                                </div>
+                            )}
+                            {ticketData.seat_number && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Seat
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.seat_number}
+                                        {ticketData.seat_row &&
+                                            ` (Row ${ticketData.seat_row})`}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Buyer Information */}
+                        <div className="space-y-4">
+                            <h4 className="border-b pb-2 font-semibold text-gray-900">
+                                Buyer Information
+                            </h4>
+                            {ticketData.buyer_name && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Buyer Name
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.buyer_name}
+                                    </p>
+                                </div>
+                            )}
+                            {ticketData.buyer_email && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Email
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.buyer_email}
+                                    </p>
+                                </div>
+                            )}
+                            {ticketData.buyer_phone && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Phone
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.buyer_phone}
+                                    </p>
+                                </div>
+                            )}
+                            {ticketData.buyer_id_number && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        NIK
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.buyer_id_number}
+                                    </p>
+                                </div>
+                            )}
+                            {ticketData.buyer_sizes && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Sizes
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.buyer_sizes}
+                                    </p>
+                                </div>
+                            )}
+                            {ticketData.order_code && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Order Code
+                                    </label>
+                                    <p className="font-mono text-gray-900">
+                                        {ticketData.order_code}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Order Timestamps */}
+                    {(ticketData.order_created_at ||
+                        ticketData.order_paid_at) && (
+                        <div className="mt-6 space-y-4">
+                            <h4 className="border-b pb-2 font-semibold text-gray-900">
+                                Order Timeline
+                            </h4>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                {ticketData.order_created_at && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Order Created
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {new Date(
+                                                ticketData.order_created_at,
+                                            ).toLocaleString()}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.order_paid_at && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Order Paid
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {new Date(
+                                                ticketData.order_paid_at,
+                                            ).toLocaleString()}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Event Information */}
+                    {(ticketData.event_name ||
+                        ticketData.event_date ||
+                        ticketData.event_location) && (
+                        <div className="mt-6 space-y-4">
+                            <h4 className="border-b pb-2 font-semibold text-gray-900">
+                                Event Information
+                            </h4>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                {ticketData.event_name && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Event
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {ticketData.event_name}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.event_date && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Date
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {ticketData.event_date}
+                                            {ticketData.event_time &&
+                                                ` at ${ticketData.event_time}`}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.event_location && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Location
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {ticketData.event_location}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="flex justify-end gap-3 bg-gray-50 px-6 py-4">
+                    <button
+                        onClick={onCancel}
+                        className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        disabled={isLoading}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Scanning...' : 'Confirm Scan'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Detail Modal Component
+const DetailModal: React.FC<{
+    isOpen: boolean;
+    ticketData: ScannedTicketData | null;
+    onClose: () => void;
+}> = ({ isOpen, ticketData, onClose }) => {
+    if (!isOpen || !ticketData) return null;
+
+    const formatCurrency = (amount: number) =>
+        new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(amount);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
+                <div className="bg-gray-800 p-6 text-white">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-bold">
+                                Ticket Details
+                            </h3>
+                            <p className="mt-1 font-mono text-gray-300">
+                                {ticketData.ticket_code}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <div
+                                className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${
+                                    ticketData.status === 'success'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-red-500 text-white'
+                                }`}
+                            >
+                                {ticketData.status === 'success'
+                                    ? 'Scanned'
+                                    : 'Error'}
+                            </div>
+                            <p className="mt-1 text-sm text-gray-300">
+                                {new Date(
+                                    ticketData.scanned_at,
+                                ).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div className="max-h-[70vh] overflow-y-auto p-6">
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+                        {/* Ticket Information */}
+                        <div className="space-y-4">
+                            <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                                🎫 Ticket Information
+                            </h4>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Type
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <div
+                                            className="h-4 w-4 rounded"
+                                            style={{
+                                                backgroundColor:
+                                                    ticketData.ticket_color ||
+                                                    '#667eea',
+                                            }}
+                                        />
+                                        <p className="text-gray-900">
+                                            {ticketData.ticket_type}
+                                        </p>
+                                    </div>
+                                </div>
+                                {ticketData.attendee_name && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Attendee
+                                        </label>
+                                        <p className="font-medium text-gray-900">
+                                            {ticketData.attendee_name}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.ticket_price && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Price
+                                        </label>
+                                        <p className="text-lg font-semibold text-gray-900">
+                                            {formatCurrency(
+                                                ticketData.ticket_price,
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Seat
+                                    </label>
+                                    <p className="text-gray-900">
+                                        {ticketData.seat_number ||
+                                            'General Admission'}
+                                        {ticketData.seat_row &&
+                                            ` (Row ${ticketData.seat_row})`}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Buyer Information */}
+                        <div className="space-y-4">
+                            <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                                👤 Buyer Information
+                            </h4>
+                            <div className="space-y-3">
+                                {ticketData.buyer_name && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Name
+                                        </label>
+                                        <p className="font-medium text-gray-900">
+                                            {ticketData.buyer_name}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.buyer_email && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Email
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {ticketData.buyer_email}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.buyer_phone && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Phone
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {ticketData.buyer_phone}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.buyer_id_number && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            NIK
+                                        </label>
+                                        <p className="font-mono text-gray-900">
+                                            {ticketData.buyer_id_number}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.buyer_sizes && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Sizes
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {ticketData.buyer_sizes}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Order Information */}
+                        <div className="space-y-4">
+                            <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                                📋 Order Details
+                            </h4>
+                            <div className="space-y-3">
+                                {ticketData.order_code && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Order Code
+                                        </label>
+                                        <p className="font-mono text-sm text-gray-900">
+                                            {ticketData.order_code}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.order_created_at && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Order Created
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {new Date(
+                                                ticketData.order_created_at,
+                                            ).toLocaleString()}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.order_paid_at && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Order Paid
+                                        </label>
+                                        <p className="text-gray-900">
+                                            {new Date(
+                                                ticketData.order_paid_at,
+                                            ).toLocaleString()}
+                                        </p>
+                                    </div>
+                                )}
+                                {ticketData.total_price && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Total Price
+                                        </label>
+                                        <p className="font-semibold text-gray-900">
+                                            {formatCurrency(
+                                                ticketData.total_price,
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Scan Information */}
+                    <div className="mt-8 rounded-lg bg-gray-50 p-4">
+                        <h4 className="mb-3 font-semibold text-gray-900">
+                            🕒 Scan Information
+                        </h4>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Scan Status
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className={`h-3 w-3 rounded-full ${
+                                            ticketData.status === 'success'
+                                                ? 'bg-green-400'
+                                                : 'bg-red-400'
+                                        }`}
+                                    />
+                                    <p
+                                        className={`font-medium ${
+                                            ticketData.status === 'success'
+                                                ? 'text-green-700'
+                                                : 'text-red-700'
+                                        }`}
+                                    >
+                                        {ticketData.status === 'success'
+                                            ? 'Successfully Scanned'
+                                            : 'Scan Error'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Scan Time
+                                </label>
+                                <p className="text-gray-900">
+                                    {new Date(
+                                        ticketData.scanned_at,
+                                    ).toLocaleString('id-ID', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                    })}
+                                </p>
+                            </div>
+                        </div>
+                        {ticketData.message && (
+                            <div className="mt-3">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Message
+                                </label>
+                                <p className="italic text-gray-900">
+                                    {ticketData.message}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="flex justify-end bg-gray-50 px-6 py-4">
+                    <button
+                        onClick={onClose}
+                        className="rounded-lg bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Main Component
+const ScanTicket: React.FC = () => {
+    const page = usePage<PageProps>();
+    const {
+        props: pageConfigProps,
+        client,
+        event,
+        appName,
+        userEndSessionDatetime,
+    } = page.props;
+
+    // State
+    const [ticketCode, setTicketCode] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [scannedTickets, setScannedTickets] = useState<ScannedTicketData[]>(
+        [],
+    );
+    const [isFetchingHistory, setIsFetchingHistory] = useState(true);
+    const [confirmationModal, setConfirmationModal] =
+        useState<ConfirmationModalState>({ isOpen: false, ticketData: null });
+    const [detailModal, setDetailModal] = useState<DetailModalState>({
+        isOpen: false,
+        ticketData: null,
+    });
+
+    // Custom hooks
+    const { notification, showNotification, clearNotification } =
+        useNotification();
+    const camera = useCamera(showNotification);
+
+    // QR Scanner
+    const onCodeScanned = useCallback(async (code: string) => {
+        await validateTicketCode(code);
+    }, []);
+
+    const { canvasRef, startQrScanning, stopQrScanning } = useQRScanner(
+        camera.videoRef,
+        camera.streamRef,
         isLoading,
-        confirmationModal.isOpen,
-        detailModal.isOpen,
-        showNotification,
-        submitTicketCode,
-    ]);
+        onCodeScanned,
+    );
+
+    // API Functions
+    const validateTicketCode = useCallback(
+        async (codeToValidate: string) => {
+            if (isLoading || !codeToValidate.trim() || !event?.slug) return;
+
+            setIsLoading(true);
+            try {
+                const url = route('client.scan.validate', { client });
+                const response = await axios.post<
+                    ApiSuccessResponse<TicketValidationData>
+                >(url, {
+                    ticket_code: codeToValidate.trim(),
+                    event_slug: event.slug,
+                });
+
+                if (response.data?.data) {
+                    setConfirmationModal({
+                        isOpen: true,
+                        ticketData: response.data.data,
+                    });
+                }
+            } catch (error: unknown) {
+                let errorMessage =
+                    'An unknown error occurred while validating the ticket.';
+                let scannedTicketData: ScannedTicketData | undefined =
+                    undefined;
+
+                if (axios.isAxiosError(error)) {
+                    const responseData = error.response?.data as
+                        | ApiErrorResponse<ScannedTicketData>
+                        | undefined;
+                    if (responseData?.message)
+                        errorMessage = responseData.message;
+                    if (error.response?.status === 409 && responseData?.data) {
+                        scannedTicketData = responseData.data;
+                        errorMessage =
+                            scannedTicketData.message || errorMessage;
+                    }
+                }
+
+                showNotification('error', errorMessage);
+                if (scannedTicketData) {
+                    setScannedTickets((prev) => [
+                        scannedTicketData!,
+                        ...prev.filter((t) => t.id !== scannedTicketData!.id),
+                    ]);
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [isLoading, client, event?.slug, showNotification],
+    );
+
+    const confirmScanTicket = useCallback(
+        async (ticketData: TicketValidationData) => {
+            if (!ticketData || !event?.slug) return;
+
+            setIsLoading(true);
+            setConfirmationModal({ isOpen: false, ticketData: null });
+
+            try {
+                const url = route('client.scan.store', { client });
+                const response = await axios.post<
+                    ApiSuccessResponse<ScannedTicketData>
+                >(url, {
+                    ticket_code: ticketData.ticket_code,
+                    event_slug: event.slug,
+                });
+
+                const successMsg =
+                    response.data?.message ||
+                    `Ticket ${ticketData.ticket_code} scanned successfully!`;
+                showNotification('success', successMsg);
+
+                if (response.data?.data) {
+                    setScannedTickets((prev) => [
+                        response.data.data!,
+                        ...prev.filter((t) => t.id !== response.data.data!.id),
+                    ]);
+                }
+                setTicketCode('');
+            } catch (error: unknown) {
+                let errorMessage =
+                    'An unknown error occurred while scanning the ticket.';
+                if (axios.isAxiosError(error)) {
+                    const responseData = error.response?.data as
+                        | ApiErrorResponse<ScannedTicketData>
+                        | undefined;
+                    if (responseData?.message)
+                        errorMessage = responseData.message;
+                }
+                showNotification('error', errorMessage);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [client, event?.slug, showNotification],
+    );
 
     const fetchScannedTicketsHistory = useCallback(async () => {
-        if (!event?.slug) {
-            console.error('Event slug missing for history fetch.');
-            setIsFetchingHistory(false);
-            showNotification('error', 'Event data missing for history.');
-            return;
-        }
+        if (!event?.slug) return;
 
         setIsFetchingHistory(true);
         try {
-            const url = route('client.scanned.history', {
-                client: client,
-            });
-
+            const url = route('client.scanned.history', { client });
             const response =
-                await axios.get<ApiSuccessResponse<ScannedTicket[]>>(url);
-
-            if (response.data?.data) {
-                setScannedTickets(response.data.data);
-            } else {
-                setScannedTickets([]);
-            }
+                await axios.get<ApiSuccessResponse<ScannedTicketData[]>>(url);
+            setScannedTickets(response.data?.data || []);
         } catch (error) {
-            console.error('Failed to fetch scanned tickets history:', error);
             showNotification('error', 'Failed to load scan history.');
             setScannedTickets([]);
         } finally {
@@ -583,22 +1105,14 @@ const ScanTicket: React.FC = () => {
         }
     }, [client, event?.slug, showNotification]);
 
-    // Event handlers
-    const toggleScanning = useCallback(async () => {
-        setIsScanning((prev) => !prev);
-    }, []);
-
-    const toggleCameraFacingMode = useCallback(() => {
-        setUseFrontCamera((prev) => !prev);
-    }, []);
-
-    const handleManualSubmit = async (e: FormEvent) => {
+    // Event Handlers
+    const handleManualSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!ticketCode.trim()) {
             showNotification('error', 'Ticket code cannot be empty.');
             return;
         }
-        submitTicketCode(ticketCode.trim());
+        await validateTicketCode(ticketCode.trim());
     };
 
     const handleConfirmScan = () => {
@@ -609,18 +1123,6 @@ const ScanTicket: React.FC = () => {
 
     const handleCancelScan = () => {
         setConfirmationModal({ isOpen: false, ticketData: null });
-        // Reset scanning
-        setTimeout(() => {
-            lastScannedCodeRef.current = '';
-        }, 1000);
-    };
-
-    const handleTicketClick = (ticket: ScannedTicket) => {
-        setDetailModal({ isOpen: true, ticketData: ticket });
-    };
-
-    const handleCloseDetailModal = () => {
-        setDetailModal({ isOpen: false, ticketData: null });
     };
 
     // Effects
@@ -628,38 +1130,25 @@ const ScanTicket: React.FC = () => {
         fetchScannedTicketsHistory();
     }, [fetchScannedTicketsHistory]);
 
-    // Main camera control effect
     useEffect(() => {
         let mounted = true;
-        let cleanupPromise: Promise<void> | null = null;
 
         const handleCameraControl = async () => {
             try {
-                if (isScanning) {
-                    console.log('Effect: Starting camera...');
-                    await startCamera();
+                if (camera.isScanning) {
+                    await camera.startCamera();
                     if (mounted) {
-                        // Additional delay before starting QR scanning
                         setTimeout(() => {
-                            if (mounted) {
-                                startQrScanning();
-                            }
+                            if (mounted) startQrScanning();
                         }, 1000);
                     }
                 } else {
-                    console.log('Effect: Stopping camera...');
-                    if (scanIntervalRef.current) {
-                        clearInterval(scanIntervalRef.current);
-                        scanIntervalRef.current = null;
-                    }
-                    cleanupPromise = stopCamera();
-                    await cleanupPromise;
+                    stopQrScanning();
+                    await camera.stopCamera();
                 }
             } catch (error) {
-                console.error('Camera control error:', error);
-                if (mounted) {
+                if (mounted)
                     showNotification('error', 'Failed to control camera');
-                }
             }
         };
 
@@ -667,39 +1156,18 @@ const ScanTicket: React.FC = () => {
 
         return () => {
             mounted = false;
-            if (scanIntervalRef.current) {
-                clearInterval(scanIntervalRef.current);
-                scanIntervalRef.current = null;
-            }
-
-            // Don't await here, just start the cleanup
-            if (!cleanupPromise) {
-                stopCamera().catch(console.error);
-            }
+            stopQrScanning();
+            camera.stopCamera().catch(console.error);
         };
     }, [
-        isScanning,
-        useFrontCamera,
-        startCamera,
+        camera.isScanning,
+        camera.useFrontCamera,
+        camera.startCamera,
+        camera.stopCamera,
         startQrScanning,
-        stopCamera,
+        stopQrScanning,
         showNotification,
     ]);
-
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach((track) => track.stop());
-            }
-            if (scanIntervalRef.current) {
-                clearInterval(scanIntervalRef.current);
-            }
-            if (notificationTimeoutRef.current) {
-                clearTimeout(notificationTimeoutRef.current);
-            }
-        };
-    }, []);
 
     if (!event) {
         return (
@@ -744,692 +1212,21 @@ const ScanTicket: React.FC = () => {
         >
             <Head title={`Scan Ticket - ${event.name}`} />
 
-            {/* Enhanced Confirmation Modal */}
-            {confirmationModal.isOpen && confirmationModal.ticketData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-                    <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
-                        <div className="bg-blue-500 p-6 text-white">
-                            <h3 className="text-xl font-bold">
-                                Confirm Ticket Scan
-                            </h3>
-                            <p className="mt-1 text-blue-100">
-                                Please verify the ticket information before
-                                scanning
-                            </p>
-                        </div>
-                        <div className="max-h-[60vh] overflow-y-auto p-6">
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                {/* Ticket Information */}
-                                <div className="space-y-4">
-                                    <h4 className="border-b pb-2 font-semibold text-gray-900">
-                                        Ticket Information
-                                    </h4>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Ticket Code
-                                        </label>
-                                        <p className="font-mono text-lg font-bold text-blue-600">
-                                            {
-                                                confirmationModal.ticketData
-                                                    .ticket_code
-                                            }
-                                        </p>
-                                    </div>
-                                    {confirmationModal.ticketData
-                                        .attendee_name && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Attendee Name
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .attendee_name
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-                                    {confirmationModal.ticketData
-                                        .ticket_type && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Ticket Type
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .ticket_type
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-                                    {confirmationModal.ticketData
-                                        .ticket_price && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Price
-                                            </label>
-                                            <p className="font-semibold text-gray-900">
-                                                {formatCurrency(
-                                                    confirmationModal.ticketData
-                                                        .ticket_price,
-                                                )}
-                                            </p>
-                                        </div>
-                                    )}
-                                    {confirmationModal.ticketData
-                                        .seat_number && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Seat
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .seat_number
-                                                }
-                                                {confirmationModal.ticketData
-                                                    .seat_row &&
-                                                    ` (Row ${confirmationModal.ticketData.seat_row})`}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
+            <ConfirmationModal
+                isOpen={confirmationModal.isOpen}
+                ticketData={confirmationModal.ticketData}
+                onConfirm={handleConfirmScan}
+                onCancel={handleCancelScan}
+                isLoading={isLoading}
+            />
 
-                                {/* Buyer Information */}
-                                <div className="space-y-4">
-                                    <h4 className="border-b pb-2 font-semibold text-gray-900">
-                                        Buyer Information
-                                    </h4>
-                                    {confirmationModal.ticketData
-                                        .buyer_name && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Buyer Name
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .buyer_name
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-                                    {confirmationModal.ticketData
-                                        .buyer_email && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Email
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .buyer_email
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-                                    {confirmationModal.ticketData
-                                        .buyer_phone && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Phone
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .buyer_phone
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-                                    {confirmationModal.ticketData
-                                        .buyer_id_number && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                ID Number
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .buyer_id_number
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-                                    {confirmationModal.ticketData
-                                        .order_code && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Order Code
-                                            </label>
-                                            <p className="font-mono text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .order_code
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-                                    {confirmationModal.ticketData
-                                        .order_date && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Order Date
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {
-                                                    confirmationModal.ticketData
-                                                        .order_date
-                                                }
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Event Information */}
-                            {(confirmationModal.ticketData.event_name ||
-                                confirmationModal.ticketData.event_date ||
-                                confirmationModal.ticketData
-                                    .event_location) && (
-                                <div className="mt-6 space-y-4">
-                                    <h4 className="border-b pb-2 font-semibold text-gray-900">
-                                        Event Information
-                                    </h4>
-                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                                        {confirmationModal.ticketData
-                                            .event_name && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Event
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {
-                                                        confirmationModal
-                                                            .ticketData
-                                                            .event_name
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {confirmationModal.ticketData
-                                            .event_date && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Date
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {
-                                                        confirmationModal
-                                                            .ticketData
-                                                            .event_date
-                                                    }
-                                                    {confirmationModal
-                                                        .ticketData
-                                                        .event_time &&
-                                                        ` at ${confirmationModal.ticketData.event_time}`}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {confirmationModal.ticketData
-                                            .event_location && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Location
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {
-                                                        confirmationModal
-                                                            .ticketData
-                                                            .event_location
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex justify-end gap-3 bg-gray-50 px-6 py-4">
-                            <button
-                                onClick={handleCancelScan}
-                                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                                disabled={isLoading}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleConfirmScan}
-                                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Scanning...' : 'Confirm Scan'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Detailed Ticket Information Modal */}
-            {detailModal.isOpen && detailModal.ticketData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-                    <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
-                        <div className="bg-gray-800 p-6 text-white">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-xl font-bold">
-                                        Ticket Details
-                                    </h3>
-                                    <p className="mt-1 font-mono text-gray-300">
-                                        {detailModal.ticketData.ticket_code}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <div
-                                        className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${
-                                            detailModal.ticketData.status ===
-                                            'success'
-                                                ? 'bg-green-500 text-white'
-                                                : 'bg-red-500 text-white'
-                                        }`}
-                                    >
-                                        {detailModal.ticketData.status ===
-                                        'success'
-                                            ? 'Scanned'
-                                            : 'Error'}
-                                    </div>
-                                    <p className="mt-1 text-sm text-gray-300">
-                                        {new Date(
-                                            detailModal.ticketData.scanned_at,
-                                        ).toLocaleString()}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="max-h-[70vh] overflow-y-auto p-6">
-                            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                                {/* Ticket Information */}
-                                <div className="space-y-4">
-                                    <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
-                                        🎫 Ticket Information
-                                    </h4>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Type
-                                            </label>
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className="h-4 w-4 rounded"
-                                                    style={{
-                                                        backgroundColor:
-                                                            detailModal
-                                                                .ticketData
-                                                                .ticket_color ||
-                                                            '#667eea',
-                                                    }}
-                                                />
-                                                <p className="text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .ticket_type
-                                                    }
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {detailModal.ticketData
-                                            .attendee_name && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Attendee
-                                                </label>
-                                                <p className="font-medium text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .attendee_name
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData
-                                            .ticket_price && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Price
-                                                </label>
-                                                <p className="text-lg font-semibold text-gray-900">
-                                                    {formatCurrency(
-                                                        detailModal.ticketData
-                                                            .ticket_price,
-                                                    )}
-                                                </p>
-                                            </div>
-                                        )}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">
-                                                Seat
-                                            </label>
-                                            <p className="text-gray-900">
-                                                {detailModal.ticketData
-                                                    .seat_number ||
-                                                    'General Admission'}
-                                                {detailModal.ticketData
-                                                    .seat_row &&
-                                                    ` (Row ${detailModal.ticketData.seat_row})`}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Buyer Information */}
-                                <div className="space-y-4">
-                                    <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
-                                        👤 Buyer Information
-                                    </h4>
-                                    <div className="space-y-3">
-                                        {detailModal.ticketData.buyer_name && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Name
-                                                </label>
-                                                <p className="font-medium text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .buyer_name
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData.buyer_email && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Email
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .buyer_email
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData.buyer_phone && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Phone
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .buyer_phone
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData
-                                            .buyer_whatsapp && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    WhatsApp
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .buyer_whatsapp
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData
-                                            .buyer_id_number && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    ID Number
-                                                </label>
-                                                <p className="font-mono text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .buyer_id_number
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData
-                                            .buyer_gender && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Gender
-                                                </label>
-                                                <p className="capitalize text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .buyer_gender
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData
-                                            .buyer_birth_date && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Birth Date
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {new Date(
-                                                        detailModal.ticketData.buyer_birth_date,
-                                                    ).toLocaleDateString(
-                                                        'id-ID',
-                                                    )}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData
-                                            .buyer_address && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Address
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .buyer_address
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Order & Event Information */}
-                                <div className="space-y-4">
-                                    <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
-                                        📋 Order & Event Details
-                                    </h4>
-                                    <div className="space-y-3">
-                                        {detailModal.ticketData.order_code && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Order Code
-                                                </label>
-                                                <p className="font-mono text-sm text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .order_code
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData.order_date && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Order Date
-                                                </label>
-                                                <p className="text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .order_date
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData.total_price && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Total Order Value
-                                                </label>
-                                                <p className="font-semibold text-gray-900">
-                                                    {formatCurrency(
-                                                        detailModal.ticketData
-                                                            .total_price,
-                                                    )}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {detailModal.ticketData
-                                            .payment_gateway && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">
-                                                    Payment Method
-                                                </label>
-                                                <p className="capitalize text-gray-900">
-                                                    {
-                                                        detailModal.ticketData
-                                                            .payment_gateway
-                                                    }
-                                                </p>
-                                            </div>
-                                        )}
-                                        <div className="mt-3 border-t pt-3">
-                                            {detailModal.ticketData
-                                                .event_name && (
-                                                <div className="mb-2">
-                                                    <label className="block text-sm font-medium text-gray-700">
-                                                        Event
-                                                    </label>
-                                                    <p className="font-medium text-gray-900">
-                                                        {
-                                                            detailModal
-                                                                .ticketData
-                                                                .event_name
-                                                        }
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {detailModal.ticketData
-                                                .event_date && (
-                                                <div className="mb-2">
-                                                    <label className="block text-sm font-medium text-gray-700">
-                                                        Date & Time
-                                                    </label>
-                                                    <p className="text-gray-900">
-                                                        {
-                                                            detailModal
-                                                                .ticketData
-                                                                .event_date
-                                                        }
-                                                        {detailModal.ticketData
-                                                            .event_time &&
-                                                            ` at ${detailModal.ticketData.event_time}`}
-                                                    </p>
-                                                </div>
-                                            )}
-                                            {detailModal.ticketData
-                                                .event_location && (
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700">
-                                                        Location
-                                                    </label>
-                                                    <p className="text-gray-900">
-                                                        {
-                                                            detailModal
-                                                                .ticketData
-                                                                .event_location
-                                                        }
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Scan Information */}
-                            <div className="mt-8 rounded-lg bg-gray-50 p-4">
-                                <h4 className="mb-3 font-semibold text-gray-900">
-                                    🕒 Scan Information
-                                </h4>
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Scan Status
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className={`h-3 w-3 rounded-full ${
-                                                    detailModal.ticketData
-                                                        .status === 'success'
-                                                        ? 'bg-green-400'
-                                                        : 'bg-red-400'
-                                                }`}
-                                            />
-                                            <p
-                                                className={`font-medium ${
-                                                    detailModal.ticketData
-                                                        .status === 'success'
-                                                        ? 'text-green-700'
-                                                        : 'text-red-700'
-                                                }`}
-                                            >
-                                                {detailModal.ticketData
-                                                    .status === 'success'
-                                                    ? 'Successfully Scanned'
-                                                    : 'Scan Error'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Scan Time
-                                        </label>
-                                        <p className="text-gray-900">
-                                            {new Date(
-                                                detailModal.ticketData.scanned_at,
-                                            ).toLocaleString('id-ID', {
-                                                weekday: 'long',
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                                second: '2-digit',
-                                            })}
-                                        </p>
-                                    </div>
-                                </div>
-                                {detailModal.ticketData.message && (
-                                    <div className="mt-3">
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Message
-                                        </label>
-                                        <p className="italic text-gray-900">
-                                            {detailModal.ticketData.message}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex justify-end bg-gray-50 px-6 py-4">
-                            <button
-                                onClick={handleCloseDetailModal}
-                                className="rounded-lg bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DetailModal
+                isOpen={detailModal.isOpen}
+                ticketData={detailModal.ticketData}
+                onClose={() =>
+                    setDetailModal({ isOpen: false, ticketData: null })
+                }
+            />
 
             <div
                 className="py-8 text-white md:py-12"
@@ -1443,74 +1240,11 @@ const ScanTicket: React.FC = () => {
                 }}
             >
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    {/* Notification */}
-                    {notification.type && (
-                        <div
-                            className={`mb-8 flex items-center justify-between rounded-xl p-4 text-white shadow-lg transition-all duration-300 ${
-                                notification.type === 'success'
-                                    ? 'bg-green-500/90'
-                                    : 'bg-red-500/90'
-                            } backdrop-blur-sm`}
-                        >
-                            <div className="flex items-center">
-                                {notification.type === 'success' ? (
-                                    <svg
-                                        className="mr-3 h-6 w-6"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth={1.5}
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                        />
-                                    </svg>
-                                ) : (
-                                    <svg
-                                        className="mr-3 h-6 w-6"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth={1.5}
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                        />
-                                    </svg>
-                                )}
-                                <span className="text-base font-semibold">
-                                    {notification.message}
-                                </span>
-                            </div>
-                            <button
-                                onClick={() =>
-                                    setNotification({ type: null, message: '' })
-                                }
-                                className="ml-4 text-white opacity-80 transition-opacity hover:opacity-100"
-                                aria-label="Close notification"
-                            >
-                                <svg
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    )}
+                    <NotificationBanner
+                        notification={notification}
+                        onClose={clearNotification}
+                    />
 
-                    {/* Main content grid */}
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         {/* Camera Scanner Section */}
                         <div className="relative flex flex-col items-center justify-center rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
@@ -1518,144 +1252,67 @@ const ScanTicket: React.FC = () => {
                                 Camera Scanner
                             </h3>
 
-                            {cameraError && (
+                            {camera.cameraError && (
                                 <div className="mb-6 w-full rounded-lg bg-yellow-100/20 p-4 text-yellow-200 backdrop-blur-sm">
                                     <strong className="block text-lg">
                                         Camera Issue:
                                     </strong>
-                                    <p className="text-sm">{cameraError}</p>
+                                    <p className="text-sm">
+                                        {camera.cameraError}
+                                    </p>
                                 </div>
                             )}
 
-                            {/* Camera Feed */}
-                            <div className="relative mb-6 aspect-video w-full overflow-hidden rounded-xl border-2 border-white/50 bg-gray-900 shadow-lg">
-                                <video
-                                    ref={videoRef}
-                                    className={`h-full w-full object-cover ${isScanning && streamRef.current ? '' : 'hidden'} ${useFrontCamera ? 'scale-x-[-1]' : ''}`}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                />
-
-                                {(!isScanning || !streamRef.current) && (
-                                    <div className="absolute inset-0 flex h-full items-center justify-center bg-gray-800/80">
-                                        <div className="text-center">
-                                            <svg
-                                                className="mx-auto mb-4 h-20 w-20 text-gray-400"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                strokeWidth={1.5}
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z"
-                                                />
-                                            </svg>
-                                            <p className="text-lg text-gray-300">
-                                                Camera inactive
-                                            </p>
-                                            <p className="mt-1 text-sm text-gray-400">
-                                                Click "Start Camera & Scan"
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                                <canvas ref={canvasRef} className="hidden" />
-                            </div>
+                            <CameraFeed
+                                videoRef={camera.videoRef}
+                                canvasRef={canvasRef}
+                                isScanning={camera.isScanning}
+                                useFrontCamera={camera.useFrontCamera}
+                                hasStream={!!camera.streamRef.current}
+                            />
 
                             {/* Camera Controls */}
                             <div className="mb-8 flex flex-wrap justify-center gap-3">
                                 <button
                                     type="button"
-                                    onClick={toggleScanning}
+                                    onClick={camera.toggleScanning}
                                     className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
-                                        isScanning
+                                        camera.isScanning
                                             ? 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400'
                                             : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400'
                                     } shadow-lg disabled:cursor-not-allowed disabled:opacity-50`}
-                                    disabled={
-                                        isLoading || isCameraStartingRef.current
-                                    }
+                                    disabled={isLoading}
                                 >
-                                    {isScanning
+                                    {camera.isScanning
                                         ? 'Stop Camera'
                                         : 'Start Camera & Scan'}
                                 </button>
 
-                                {isScanning && (
+                                {camera.isScanning && (
                                     <button
                                         type="button"
-                                        onClick={toggleCameraFacingMode}
+                                        onClick={camera.toggleCameraFacingMode}
                                         className="rounded-full bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
-                                        disabled={
-                                            isLoading ||
-                                            isCameraStartingRef.current
-                                        }
+                                        disabled={isLoading}
                                     >
                                         Switch to{' '}
-                                        {useFrontCamera ? 'Back' : 'Front'}{' '}
+                                        {camera.useFrontCamera
+                                            ? 'Back'
+                                            : 'Front'}{' '}
                                         Camera
                                     </button>
                                 )}
                             </div>
 
-                            {/* Manual Input Form */}
-                            <div className="w-full border-t border-white/20 pt-8">
-                                <h4 className="mb-4 text-xl font-bold">
-                                    Manual Ticket Entry
-                                </h4>
-                                <form
-                                    onSubmit={handleManualSubmit}
-                                    className="flex gap-3"
-                                >
-                                    <input
-                                        type="text"
-                                        className="block flex-1 rounded-full border border-white/30 bg-white/20 p-3 text-white placeholder-gray-300 focus:border-blue-300 focus:ring-blue-300"
-                                        placeholder="Enter ticket code"
-                                        value={ticketCode}
-                                        onChange={(e) =>
-                                            setTicketCode(e.target.value)
-                                        }
-                                        disabled={isLoading}
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="rounded-full bg-gray-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
-                                        disabled={
-                                            isLoading || !ticketCode.trim()
-                                        }
-                                    >
-                                        {isLoading ? (
-                                            <svg
-                                                className="mx-auto h-5 w-5 animate-spin text-white"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <circle
-                                                    className="opacity-25"
-                                                    cx="12"
-                                                    cy="12"
-                                                    r="10"
-                                                    stroke="currentColor"
-                                                    strokeWidth="4"
-                                                ></circle>
-                                                <path
-                                                    className="opacity-75"
-                                                    fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                                ></path>
-                                            </svg>
-                                        ) : (
-                                            'Validate'
-                                        )}
-                                    </button>
-                                </form>
-                            </div>
+                            <ManualInputForm
+                                ticketCode={ticketCode}
+                                setTicketCode={setTicketCode}
+                                onSubmit={handleManualSubmit}
+                                isLoading={isLoading}
+                            />
                         </div>
 
-                        {/* Enhanced Scanned Tickets History */}
+                        {/* Scanned Tickets History */}
                         <div className="flex flex-col rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
                             <div className="mb-6 flex items-center justify-between">
                                 <h3 className="text-2xl font-bold">
@@ -1672,6 +1329,7 @@ const ScanTicket: React.FC = () => {
                                             onClick={fetchScannedTicketsHistory}
                                             className="rounded-full bg-blue-500/20 p-2 text-blue-200 transition-colors hover:bg-blue-500/30"
                                             title="Refresh history"
+                                            aria-label="Refresh scan history"
                                         >
                                             <svg
                                                 className="h-4 w-4"
@@ -1705,12 +1363,12 @@ const ScanTicket: React.FC = () => {
                                             r="10"
                                             stroke="currentColor"
                                             strokeWidth="4"
-                                        ></circle>
+                                        />
                                         <path
                                             className="opacity-75"
                                             fill="currentColor"
                                             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                        ></path>
+                                        />
                                     </svg>
                                     <p className="mt-4 text-lg font-medium">
                                         Loading scan history...
@@ -1745,7 +1403,10 @@ const ScanTicket: React.FC = () => {
                                         <div
                                             key={ticket.id}
                                             onClick={() =>
-                                                handleTicketClick(ticket)
+                                                setDetailModal({
+                                                    isOpen: true,
+                                                    ticketData: ticket,
+                                                })
                                             }
                                             className={`cursor-pointer rounded-lg border-l-4 p-4 shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${
                                                 ticket.status === 'success'
@@ -1756,12 +1417,7 @@ const ScanTicket: React.FC = () => {
                                             <div className="mb-3 flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <div
-                                                        className={`mr-3 h-3 w-3 rounded-full ${
-                                                            ticket.status ===
-                                                            'success'
-                                                                ? 'bg-green-400'
-                                                                : 'bg-red-400'
-                                                        }`}
+                                                        className={`mr-3 h-3 w-3 rounded-full ${ticket.status === 'success' ? 'bg-green-400' : 'bg-red-400'}`}
                                                     />
                                                     <span className="font-mono text-base font-bold">
                                                         {ticket.ticket_code}
@@ -1781,21 +1437,6 @@ const ScanTicket: React.FC = () => {
                                                             },
                                                         )}
                                                     </span>
-                                                    <div className="mt-1 flex justify-end">
-                                                        <svg
-                                                            className="h-4 w-4 text-gray-400 transition-colors hover:text-white"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            strokeWidth={1.5}
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-                                                            />
-                                                        </svg>
-                                                    </div>
                                                 </div>
                                             </div>
 
