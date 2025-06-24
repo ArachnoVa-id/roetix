@@ -60,6 +60,7 @@ interface ScannedTicketData extends TicketValidationData {
 interface ConfirmationModalState {
     isOpen: boolean;
     ticketData: TicketValidationData | null;
+    isAlreadyScanned?: boolean;
 }
 
 interface DetailModalState {
@@ -396,7 +397,15 @@ const ConfirmationModal: React.FC<{
     onConfirm: () => void;
     onCancel: () => void;
     isLoading: boolean;
-}> = ({ isOpen, ticketData, onConfirm, onCancel, isLoading }) => {
+    isAlreadyScanned?: boolean;
+}> = ({
+    isOpen,
+    ticketData,
+    onConfirm,
+    onCancel,
+    isLoading,
+    isAlreadyScanned = false,
+}) => {
     if (!isOpen || !ticketData) return null;
 
     const formatCurrency = (amount: number) =>
@@ -409,11 +418,27 @@ const ConfirmationModal: React.FC<{
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
             <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
-                <div className="bg-blue-500 p-6 text-white">
-                    <h3 className="text-xl font-bold">Confirm Ticket Scan</h3>
-                    <p className="mt-1 text-blue-100">
-                        Please verify the ticket information before scanning
+                <div
+                    className={`p-6 text-white ${isAlreadyScanned ? 'bg-orange-500' : 'bg-blue-500'}`}
+                >
+                    <h3 className="text-xl font-bold">
+                        {isAlreadyScanned
+                            ? 'Ticket Already Scanned'
+                            : 'Confirm Ticket Scan'}
+                    </h3>
+                    <p
+                        className={`mt-1 ${isAlreadyScanned ? 'text-orange-100' : 'text-blue-100'}`}
+                    >
+                        {isAlreadyScanned
+                            ? 'This ticket has already been scanned previously'
+                            : 'Please verify the ticket information before scanning'}
                     </p>
+                    {isAlreadyScanned && ticketData.scanned_at && (
+                        <p className="mt-2 text-sm text-orange-100">
+                            <strong>Scanned at:</strong>{' '}
+                            {new Date(ticketData.scanned_at).toLocaleString()}
+                        </p>
+                    )}
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto p-6">
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -631,15 +656,17 @@ const ConfirmationModal: React.FC<{
                         className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                         disabled={isLoading}
                     >
-                        Cancel
+                        {isAlreadyScanned ? 'Close' : 'Cancel'}
                     </button>
-                    <button
-                        onClick={onConfirm}
-                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                        disabled={isLoading}
-                    >
-                        {isLoading ? 'Scanning...' : 'Confirm Scan'}
-                    </button>
+                    {!isAlreadyScanned && (
+                        <button
+                            onClick={onConfirm}
+                            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? 'Scanning...' : 'Confirm Scan'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -1007,6 +1034,7 @@ const ScanTicket: React.FC = () => {
                     setConfirmationModal({
                         isOpen: true,
                         ticketData: response.data.data,
+                        isAlreadyScanned: false, // tiket valid untuk scan
                     });
                 }
             } catch (error: unknown) {
@@ -1021,20 +1049,53 @@ const ScanTicket: React.FC = () => {
                         | undefined;
                     if (responseData?.message)
                         errorMessage = responseData.message;
+
                     if (error.response?.status === 409 && responseData?.data) {
                         scannedTicketData = responseData.data;
-                        errorMessage =
-                            scannedTicketData.message || errorMessage;
+
+                        const ticketDataForModal: TicketValidationData = {
+                            ticket_code: scannedTicketData.ticket_code,
+                            attendee_name: scannedTicketData.attendee_name,
+                            ticket_type: scannedTicketData.ticket_type,
+                            ticket_price: scannedTicketData.ticket_price,
+                            order_code: scannedTicketData.order_code,
+                            order_date: scannedTicketData.order_date,
+                            order_created_at:
+                                scannedTicketData.order_created_at,
+                            order_paid_at: scannedTicketData.order_paid_at,
+                            buyer_email: scannedTicketData.buyer_email,
+                            buyer_name: scannedTicketData.buyer_name,
+                            buyer_phone: scannedTicketData.buyer_phone,
+                            buyer_id_number: scannedTicketData.buyer_id_number,
+                            buyer_sizes: scannedTicketData.buyer_sizes,
+                            seat_number: scannedTicketData.seat_number,
+                            seat_row: scannedTicketData.seat_row,
+                            event_name: scannedTicketData.event_name,
+                            event_location: scannedTicketData.event_location,
+                            event_date: scannedTicketData.event_date,
+                            event_time: scannedTicketData.event_time,
+                            status: scannedTicketData.status,
+                            scanned_at: scannedTicketData.scanned_at,
+                        };
+
+                        setConfirmationModal({
+                            isOpen: true,
+                            ticketData: ticketDataForModal,
+                            isAlreadyScanned: true,
+                        });
+
+                        setScannedTickets((prev) => [
+                            scannedTicketData!,
+                            ...prev.filter(
+                                (t) => t.id !== scannedTicketData!.id,
+                            ),
+                        ]);
+
+                        return;
                     }
                 }
 
                 showNotification('error', errorMessage);
-                if (scannedTicketData) {
-                    setScannedTickets((prev) => [
-                        scannedTicketData!,
-                        ...prev.filter((t) => t.id !== scannedTicketData!.id),
-                    ]);
-                }
             } finally {
                 setIsLoading(false);
             }
@@ -1218,6 +1279,7 @@ const ScanTicket: React.FC = () => {
                 onConfirm={handleConfirmScan}
                 onCancel={handleCancelScan}
                 isLoading={isLoading}
+                isAlreadyScanned={confirmationModal.isAlreadyScanned} // tambahan prop
             />
 
             <DetailModal
