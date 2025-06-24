@@ -618,12 +618,16 @@ class PaymentController extends Controller
         array $itemDetails,
         Event $event
     ) {
+        // Capture user ID early before any potential logout
+        $userId = Auth::id();
+        
         Log::info('Tripay charge initiated', [
             'order_code' => $orderCode,
             'total_with_tax' => $totalWithTax,
             'event_id' => $event->id,
-            'user_id' => Auth::id(),
+            'user_id' => $userId,
         ]);
+        
         $variables = $event->eventVariables;
 
         $order = Order::where('order_code', $orderCode)->first();
@@ -631,7 +635,7 @@ class PaymentController extends Controller
             Log::error('Order not found for Tripay charge', [
                 'order_code' => $orderCode,
                 'event_id' => $event->id,
-                'user_id' => Auth::id(),
+                'user_id' => $userId,
             ]);
             throw new \Exception('Order not found');
         }
@@ -665,30 +669,48 @@ class PaymentController extends Controller
 
         // Generate signature
         $customer = $request->user();
-        $userQueue = Event::getUser($event, $customer); // Replace YourQueueClass with actual class name
+        // COMMENTED OUT: Queue system is currently disabled
+        // $userQueue = Event::getUser($event, $customer);
 
         // Calculate timeout based on user's expected_kick time
         $timeout = null;
+        // COMMENTED OUT: Queue system timeout calculation - using default timeout instead
+        /*
         if ($userQueue && isset($userQueue['expected_kick'])) {
             $expectedKick = Carbon::parse($userQueue['expected_kick']);
-            // format e.g. 2025-06-09 11:57:59
 
             if ($expectedKick->isPast()) {
                 // If user's session has already expired, reject transaction and logout
                 Event::logoutUser($event, $customer);
+                Log::error('User session expired during Tripay charge', [
+                    'order_code' => $orderCode,
+                    'event_id' => $event->id,
+                    'user_id' => $userId, // Use captured ID
+                    'expected_kick' => $expectedKick->toDateTimeString(),
+                ]);
+                throw new \Exception('Your session has expired. Please refresh the page and try again.');
             } else {
                 $timeout = $expectedKick->timestamp;
                 $timeout = (int) $timeout;
             }
         } else {
-            // Invalid user
-            Event::logoutUser($event, $customer);
+            // Invalid user - log error with captured user ID before logout
             Log::error('Invalid user for Tripay charge', [
                 'order_code' => $orderCode,
                 'event_id' => $event->id,
-                'user_id' => Auth::id(),
+                'user_id' => $userId, // Use captured ID
+                'user_queue_data' => $userQueue,
+                'customer_exists' => $customer ? true : false,
             ]);
+            
+            // Logout user after logging
+            Event::logoutUser($event, $customer);
+            throw new \Exception('Invalid user session. Please refresh the page and try again.');
         }
+        */
+        
+        // ADDED: Default timeout since queue system is disabled
+        $timeout = Carbon::now()->addMinutes(15)->timestamp;
 
         $signature = hash_hmac('sha256', $merchantCode . $orderCode . $totalWithTax, $privateKey);
 
@@ -731,7 +753,7 @@ class PaymentController extends Controller
             Log::error('Tripay charge failed', [
                 'order_code' => $orderCode,
                 'event_id' => $event->id,
-                'user_id' => Auth::id(),
+                'user_id' => $userId, // Use captured ID
                 'response' => $response->json(),
             ]);
             throw new \Exception("Tripay charge failed: " . $response->json()['message']);
@@ -759,7 +781,7 @@ class PaymentController extends Controller
             'data' => array_merge([
                 'order_code' => $orderCode,
                 'event_id' => $event->id,
-                'user_id' => Auth::id(),
+                'user_id' => $userId, // Use captured ID
                 'team_id' => $event->team_id,
                 'total_price' => $totalWithTax,
                 'status' => OrderStatus::PENDING,
@@ -771,7 +793,7 @@ class PaymentController extends Controller
         Log::info('Tripay charge successful', [
             'order_code' => $orderCode,
             'event_id' => $event->id,
-            'user_id' => Auth::id(),
+            'user_id' => $userId, // Use captured ID
             'redirect_url' => $responseData['checkout_url'] ?? null,
         ]);
 

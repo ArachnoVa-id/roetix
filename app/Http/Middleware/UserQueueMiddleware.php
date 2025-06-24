@@ -36,6 +36,7 @@ class UserQueueMiddleware
 
     public function handle(Request $request, Closure $next)
     {
+	return $next($request);
         $props = $request->get('props');
 
         $user = Auth::user();
@@ -100,7 +101,7 @@ class UserQueueMiddleware
         // ✅ If online, check session timeout
         if ($current_user->status === 'online') {
             $now = Carbon::now();
-            $expectedEnd = Carbon::parse($current_user->expected_kick);
+            $expectedEnd = Carbon::parse($current_user?->expected_kick);
 
             if ($now->gte($expectedEnd)) {
                 Event::logoutUser($event, $user, $this);
