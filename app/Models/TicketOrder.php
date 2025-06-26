@@ -19,7 +19,12 @@ class TicketOrder extends Model
         'order_id',
         'ticket_id',
         'event_id',
-        'status'
+        'status',
+        'scanned_at'
+    ];
+
+    protected $casts = [
+        'scanned_at' => 'datetime',
     ];
 
     protected static function boot()
