@@ -55,6 +55,10 @@ interface ScannedTicketData extends TicketValidationData {
     buyer_birth_date?: string;
     event_id?: string;
     event_slug?: string;
+    scanned_by_id?: string;
+    scanned_by_name?: string;
+    scanned_by_email?: string;
+    scanned_by_full_name?: string;
 }
 
 interface ConfirmationModalState {
@@ -903,7 +907,7 @@ const DetailModal: React.FC<{
                         <h4 className="mb-3 font-semibold text-gray-900">
                             🕒 Scan Information
                         </h4>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">
                                     Scan Status
@@ -947,6 +951,24 @@ const DetailModal: React.FC<{
                                     })}
                                 </p>
                             </div>
+                            {ticketData.scanned_by_name && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Scanned By
+                                    </label>
+                                    <div className="space-y-1">
+                                        <p className="font-medium text-gray-900">
+                                            {ticketData.scanned_by_full_name ||
+                                                ticketData.scanned_by_name}
+                                        </p>
+                                        {ticketData.scanned_by_email && (
+                                            <p className="text-sm text-gray-600">
+                                                {ticketData.scanned_by_email}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         {ticketData.message && (
                             <div className="mt-3">
@@ -1544,6 +1566,15 @@ const ScanTicket: React.FC = () => {
                                                     <p className="text-sm text-gray-300">
                                                         <strong>Buyer:</strong>{' '}
                                                         {ticket.buyer_name}
+                                                    </p>
+                                                )}
+                                                {ticket.scanned_by_name && (
+                                                    <p className="text-sm text-gray-300">
+                                                        <strong>
+                                                            Scanned by:
+                                                        </strong>{' '}
+                                                        {ticket.scanned_by_full_name ||
+                                                            ticket.scanned_by_name}
                                                     </p>
                                                 )}
                                             </div>
