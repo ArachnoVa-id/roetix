@@ -20,7 +20,8 @@ class TicketOrder extends Model
         'ticket_id',
         'event_id',
         'status',
-        'scanned_at'
+        'scanned_at',
+        'scanned_by'
     ];
 
     protected $casts = [
@@ -51,5 +52,10 @@ class TicketOrder extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id', 'id');
+    }
+
+    public function scannedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'scanned_by', 'id');
     }
 }
