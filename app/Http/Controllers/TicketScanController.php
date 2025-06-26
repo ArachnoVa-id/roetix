@@ -85,13 +85,13 @@ class TicketScanController extends Controller
     public function scan(Request $request, string $client): JsonResponse
     {
         try {
-            $this->authenticateUser($client);
+            $user = $this->authenticateUser($client);
             $this->validateInput($request);
             
             $ticketCode = trim($request->input('ticket_code'));
             $event = $this->getEvent($client);
 
-            return DB::transaction(function () use ($ticketCode, $event) {
+            return DB::transaction(function () use ($ticketCode, $event, $user) {
                 $ticket = $this->findTicketForUpdate($ticketCode, (int) $event->id);
                 if (!$ticket) {
                     return $this->errorResponse('Ticket not found or not valid for this event.', 'TICKET_NOT_FOUND', 404);
@@ -111,13 +111,14 @@ class TicketScanController extends Controller
                     return $this->errorResponse('Ticket order not found or not in a scannable state for this ticket.', 'ORDER_NOT_FOUND_OR_INVALID_STATE', 404);
                 }
 
-                $this->markTicketAsScanned($ticketOrder);
+                $this->markTicketAsScanned($ticketOrder, $user->id);
 
                 Log::info('Ticket successfully scanned.', [
                     'ticket_code' => $ticketCode,
                     'ticket_order_id' => $ticketOrder->id,
                     'event_id' => $event->id,
-                    'scanned_at' => $ticketOrder->scanned_at
+                    'scanned_at' => $ticketOrder->scanned_at,
+                    'scanned_by' => $user->id
                 ]);
 
                 return response()->json([
@@ -243,15 +244,16 @@ class TicketScanController extends Controller
     {
         return $ticket->ticketOrders()
             ->where('status', TicketOrderStatus::SCANNED->value)
-            ->with(['order.user.contactInfo'])
+            ->with(['order.user.contactInfo', 'scannedBy.contactInfo'])
             ->orderByDesc('created_at')
             ->first();
     }
 
-    private function markTicketAsScanned($ticketOrder)
+    private function markTicketAsScanned($ticketOrder, $userId)
     {
         $ticketOrder->status = TicketOrderStatus::SCANNED;
         $ticketOrder->scanned_at = now();
+        $ticketOrder->scanned_by = $userId;
         $ticketOrder->save();
     }
 
@@ -260,7 +262,7 @@ class TicketScanController extends Controller
         return TicketOrder::whereHas('ticket', function ($query) use ($eventId) {
             $query->where('event_id', $eventId);
         })
-        ->with(['ticket.ticketCategory', 'ticket.seat', 'ticket.event', 'order.user.contactInfo'])
+        ->with(['ticket.ticketCategory', 'ticket.seat', 'ticket.event', 'order.user.contactInfo', 'scannedBy.contactInfo'])
         ->where('status', TicketOrderStatus::SCANNED->value)
         ->whereNotNull('scanned_at')
         ->orderByDesc('scanned_at')
@@ -317,6 +319,18 @@ class TicketScanController extends Controller
     private function formatScannedTicketData($ticket, $ticketOrder, $status, $message)
     {
         $userData = $this->getUserDataFromOrder($ticketOrder->order);
+        
+        // Get scanned by user information
+        $scannedByUser = $ticketOrder->scannedBy ?? null;
+        $scannedByData = null;
+        if ($scannedByUser) {
+            $scannedByContact = $scannedByUser->contactInfo ?? null;
+            $scannedByData = [
+                'name' => $scannedByUser->getFilamentName(),
+                'email' => $scannedByUser->email,
+                'full_name' => $scannedByContact?->fullname ?? $scannedByUser->getFilamentName(),
+            ];
+        }
 
         return [
             'id' => (string) $ticketOrder->id,
@@ -365,6 +379,12 @@ class TicketScanController extends Controller
             'event_date' => $ticket->event->getEventDate() ?? null,
             'event_time' => $ticket->event->getEventTime() ?? null,
             'event_slug' => $ticket->event->slug ?? null,
+            
+            // Scanned By Information
+            'scanned_by_id' => $ticketOrder->scanned_by ?? null,
+            'scanned_by_name' => $scannedByData['name'] ?? null,
+            'scanned_by_email' => $scannedByData['email'] ?? null,
+            'scanned_by_full_name' => $scannedByData['full_name'] ?? null,
         ];
     }
 
