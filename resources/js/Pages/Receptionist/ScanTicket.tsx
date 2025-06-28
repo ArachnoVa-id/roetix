@@ -35,6 +35,10 @@ interface TicketValidationData {
     event_time?: string;
     status: string;
     scanned_at?: string;
+    scanned_by_id?: string;
+    scanned_by_name?: string;
+    scanned_by_email?: string;
+    scanned_by_full_name?: string;
 }
 
 interface ScannedTicketData extends TicketValidationData {
@@ -441,6 +445,14 @@ const ConfirmationModal: React.FC<{
                         <p className="mt-2 text-sm text-orange-100">
                             <strong>Scanned at:</strong>{' '}
                             {new Date(ticketData.scanned_at).toLocaleString()}
+                        </p>
+                    )}
+                    {isAlreadyScanned && ticketData.scanned_by_full_name && (
+                        <p className="mt-2 text-sm text-orange-100">
+                            <strong>Scanned by:</strong>{' '}
+                            {ticketData.scanned_by_full_name}{' '}
+                            {ticketData.scanned_by_email &&
+                                `(${ticketData.scanned_by_email})`}
                         </p>
                     )}
                 </div>
@@ -1098,6 +1110,10 @@ const ScanTicket: React.FC = () => {
                             event_time: scannedTicketData.event_time,
                             status: scannedTicketData.status,
                             scanned_at: scannedTicketData.scanned_at,
+                            scanned_by_id: scannedTicketData.scanned_by_id,
+                            scanned_by_name: scannedTicketData.scanned_by_name,
+                            scanned_by_email: scannedTicketData.scanned_by_email,
+                            scanned_by_full_name: scannedTicketData.scanned_by_full_name,
                         };
 
                         setConfirmationModal({
