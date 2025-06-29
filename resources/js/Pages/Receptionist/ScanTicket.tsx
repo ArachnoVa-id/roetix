@@ -427,6 +427,10 @@ const ConfirmationModal: React.FC<{
     onCancel: () => void;
     isLoading: boolean;
     isAlreadyScanned?: boolean;
+    textPrimaryColor: string; // New prop
+    textSecondaryColor: string; // New prop
+    primaryColor?: string; // Optional prop for primary color
+    secondaryColor?: string;
 }> = ({
     isOpen,
     ticketData,
@@ -434,6 +438,10 @@ const ConfirmationModal: React.FC<{
     onCancel,
     isLoading,
     isAlreadyScanned = false,
+    textPrimaryColor, // Destructure new prop
+    textSecondaryColor, // Destructure new prop
+    primaryColor,
+    secondaryColor,
 }) => {
     if (!isOpen || !ticketData) return null;
 
@@ -448,76 +456,107 @@ const ConfirmationModal: React.FC<{
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
             <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
                 <div
-                    className={`p-6 text-white ${isAlreadyScanned ? 'bg-orange-500' : 'bg-blue-500'}`}
+                    className={`p-6 ${isAlreadyScanned ? 'bg-orange-500' : 'bg-blue-500'}`}
+                    style={{
+                        color: textPrimaryColor,
+                        backgroundColor: primaryColor,
+                    }}
                 >
                     <h3 className="text-xl font-bold">
                         {isAlreadyScanned
                             ? 'Ticket Already Scanned'
                             : 'Confirm Ticket Scan'}
                     </h3>
-                    <p
-                        className={`mt-1 ${isAlreadyScanned ? 'text-orange-100' : 'text-blue-100'}`}
-                    >
+                    <p className={`mt-1`} style={{ color: textSecondaryColor }}>
                         {isAlreadyScanned
                             ? 'This ticket has already been scanned previously'
                             : 'Please verify the ticket information before scanning'}
                     </p>
                     {isAlreadyScanned && ticketData.scanned_at && (
-                        <p className="mt-2 text-sm text-orange-100">
-                            <strong>Scanned at:</strong>{' '}
+                        <p className="mt-2 text-sm">
+                            <strong style={{ color: textSecondaryColor }}>
+                                Scanned at:
+                            </strong>{' '}
                             {new Date(ticketData.scanned_at).toLocaleString()}
                         </p>
                     )}
                     {isAlreadyScanned && ticketData.scanned_by_full_name && (
-                        <p className="mt-2 text-sm text-orange-100">
-                            <strong>Scanned by:</strong>{' '}
+                        <p className="mt-2 text-sm">
+                            <strong style={{ color: textSecondaryColor }}>
+                                Scanned by:
+                            </strong>{' '}
                             {ticketData.scanned_by_full_name}{' '}
                             {ticketData.scanned_by_email &&
                                 `(${ticketData.scanned_by_email})`}
                         </p>
                     )}
                 </div>
-                <div className="max-h-[60vh] overflow-y-auto p-6">
+                <div
+                    className="max-h-[60vh] overflow-y-auto p-6"
+                    style={{ backgroundColor: secondaryColor }}
+                >
+                    {/* Ticket Code */}
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         {/* Ticket Information */}
                         <div className="space-y-4">
-                            <h4 className="border-b pb-2 font-semibold text-gray-900">
+                            <h4
+                                className="border-b pb-2 font-semibold"
+                                style={{ color: textPrimaryColor }}
+                            >
                                 Ticket Information
                             </h4>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">
+                                <label
+                                    className="block text-sm font-medium"
+                                    style={{ color: textPrimaryColor }}
+                                >
                                     Ticket Code
                                 </label>
-                                <p className="font-mono text-lg font-bold text-blue-600">
+                                <p
+                                    className="font-mono text-lg font-bold"
+                                    style={{ color: textSecondaryColor }}
+                                >
                                     {ticketData.ticket_code}
                                 </p>
                             </div>
                             {ticketData.attendee_name && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Attendee Name
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.attendee_name}
                                     </p>
                                 </div>
                             )}
                             {ticketData.ticket_type && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Ticket Type
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.ticket_type}
                                     </p>
                                 </div>
                             )}
                             {ticketData.ticket_price && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Price
                                     </label>
-                                    <p className="font-semibold text-gray-900">
+                                    <p
+                                        className="font-semibold"
+                                        style={{ color: textSecondaryColor }}
+                                    >
                                         {formatCurrency(
                                             ticketData.ticket_price,
                                         )}
@@ -526,10 +565,13 @@ const ConfirmationModal: React.FC<{
                             )}
                             {ticketData.seat_number && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Seat
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.seat_number}
                                         {ticketData.seat_row &&
                                             ` (Row ${ticketData.seat_row})`}
@@ -540,65 +582,89 @@ const ConfirmationModal: React.FC<{
 
                         {/* Buyer Information */}
                         <div className="space-y-4">
-                            <h4 className="border-b pb-2 font-semibold text-gray-900">
+                            <h4
+                                className="border-b pb-2 font-semibold"
+                                style={{ color: textPrimaryColor }}
+                            >
                                 Buyer Information
                             </h4>
                             {ticketData.buyer_name && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Buyer Name
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.buyer_name}
                                     </p>
                                 </div>
                             )}
                             {ticketData.buyer_email && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Email
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.buyer_email}
                                     </p>
                                 </div>
                             )}
                             {ticketData.buyer_phone && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Phone
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.buyer_phone}
                                     </p>
                                 </div>
                             )}
                             {ticketData.buyer_id_number && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         NIK
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.buyer_id_number}
                                     </p>
                                 </div>
                             )}
                             {ticketData.buyer_sizes && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Sizes
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.buyer_sizes}
                                     </p>
                                 </div>
                             )}
                             {ticketData.order_code && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Order Code
                                     </label>
-                                    <p className="font-mono text-gray-900">
+                                    <p
+                                        className="font-mono"
+                                        style={{ color: textSecondaryColor }}
+                                    >
                                         {ticketData.order_code}
                                     </p>
                                 </div>
@@ -610,16 +676,26 @@ const ConfirmationModal: React.FC<{
                     {(ticketData.order_created_at ||
                         ticketData.order_paid_at) && (
                         <div className="mt-6 space-y-4">
-                            <h4 className="border-b pb-2 font-semibold text-gray-900">
+                            <h4
+                                className="border-b pb-2 font-semibold"
+                                style={{ color: textPrimaryColor }}
+                            >
                                 Order Timeline
                             </h4>
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 {ticketData.order_created_at && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Order Created
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {new Date(
                                                 ticketData.order_created_at,
                                             ).toLocaleString()}
@@ -628,10 +704,17 @@ const ConfirmationModal: React.FC<{
                                 )}
                                 {ticketData.order_paid_at && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Order Paid
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {new Date(
                                                 ticketData.order_paid_at,
                                             ).toLocaleString()}
@@ -647,26 +730,43 @@ const ConfirmationModal: React.FC<{
                         ticketData.event_date ||
                         ticketData.event_location) && (
                         <div className="mt-6 space-y-4">
-                            <h4 className="border-b pb-2 font-semibold text-gray-900">
+                            <h4
+                                className="border-b pb-2 font-semibold"
+                                style={{ color: textPrimaryColor }}
+                            >
                                 Event Information
                             </h4>
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 {ticketData.event_name && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Event
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.event_name}
                                         </p>
                                     </div>
                                 )}
                                 {ticketData.event_date && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Date
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.event_date}
                                             {ticketData.event_time &&
                                                 ` at ${ticketData.event_time}`}
@@ -675,10 +775,17 @@ const ConfirmationModal: React.FC<{
                                 )}
                                 {ticketData.event_location && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Location
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.event_location}
                                         </p>
                                     </div>
@@ -687,7 +794,10 @@ const ConfirmationModal: React.FC<{
                         </div>
                     )}
                 </div>
-                <div className="flex justify-end gap-3 bg-gray-50 px-6 py-4">
+                <div
+                    className="flex justify-end gap-3 px-6 py-4"
+                    style={{ backgroundColor: primaryColor }}
+                >
                     <button
                         onClick={onCancel}
                         className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -715,7 +825,19 @@ const DetailModal: React.FC<{
     isOpen: boolean;
     ticketData: ScannedTicketData | null;
     onClose: () => void;
-}> = ({ isOpen, ticketData, onClose }) => {
+    textPrimaryColor: string; // New prop
+    textSecondaryColor: string; // New prop
+    primaryColor: string; // New prop
+    secondaryColor: string; // New prop
+}> = ({
+    isOpen,
+    ticketData,
+    onClose,
+    textPrimaryColor,
+    textSecondaryColor,
+    primaryColor,
+    secondaryColor,
+}) => {
     if (!isOpen || !ticketData) return null;
 
     const formatCurrency = (amount: number) =>
@@ -728,13 +850,19 @@ const DetailModal: React.FC<{
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
             <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
-                <div className="bg-gray-800 p-6 text-white">
+                <div className="p-6" style={{ backgroundColor: primaryColor }}>
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-xl font-bold">
+                            <h3
+                                className="text-xl font-bold"
+                                style={{ color: textPrimaryColor }}
+                            >
                                 Ticket Details
                             </h3>
-                            <p className="mt-1 font-mono text-gray-300">
+                            <p
+                                className="mt-1 font-mono"
+                                style={{ color: textSecondaryColor }}
+                            >
                                 {ticketData.ticket_code}
                             </p>
                         </div>
@@ -750,7 +878,10 @@ const DetailModal: React.FC<{
                                     ? 'Scanned'
                                     : 'Error'}
                             </div>
-                            <p className="mt-1 text-sm text-gray-300">
+                            <p
+                                className="mt-1 text-sm"
+                                style={{ color: textSecondaryColor }}
+                            >
                                 {new Date(
                                     ticketData.scanned_at,
                                 ).toLocaleString()}
@@ -758,16 +889,25 @@ const DetailModal: React.FC<{
                         </div>
                     </div>
                 </div>
-                <div className="max-h-[70vh] overflow-y-auto p-6">
+                <div
+                    className="max-h-[70vh] overflow-y-auto p-6"
+                    style={{ backgroundColor: secondaryColor }}
+                >
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                         {/* Ticket Information */}
                         <div className="space-y-4">
-                            <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                            <h4
+                                className="border-b border-gray-200 pb-2 font-semibold"
+                                style={{ color: textPrimaryColor }}
+                            >
                                 🎫 Ticket Information
                             </h4>
                             <div className="space-y-3">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Type
                                     </label>
                                     <div className="flex items-center gap-2">
@@ -779,27 +919,47 @@ const DetailModal: React.FC<{
                                                     '#667eea',
                                             }}
                                         />
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.ticket_type}
                                         </p>
                                     </div>
                                 </div>
                                 {ticketData.attendee_name && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Attendee
                                         </label>
-                                        <p className="font-medium text-gray-900">
+                                        <p
+                                            className="font-medium"
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.attendee_name}
                                         </p>
                                     </div>
                                 )}
                                 {ticketData.ticket_price && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Price
                                         </label>
-                                        <p className="text-lg font-semibold text-gray-900">
+                                        <p
+                                            className="text-lg font-semibold"
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {formatCurrency(
                                                 ticketData.ticket_price,
                                             )}
@@ -807,10 +967,13 @@ const DetailModal: React.FC<{
                                     </div>
                                 )}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Seat
                                     </label>
-                                    <p className="text-gray-900">
+                                    <p style={{ color: textSecondaryColor }}>
                                         {ticketData.seat_number ||
                                             'General Admission'}
                                         {ticketData.seat_row &&
@@ -822,56 +985,96 @@ const DetailModal: React.FC<{
 
                         {/* Buyer Information */}
                         <div className="space-y-4">
-                            <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                            <h4
+                                className="border-b border-gray-200 pb-2 font-semibold"
+                                style={{ color: textPrimaryColor }}
+                            >
                                 👤 Buyer Information
                             </h4>
                             <div className="space-y-3">
                                 {ticketData.buyer_name && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Name
                                         </label>
-                                        <p className="font-medium text-gray-900">
+                                        <p
+                                            className="font-medium"
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.buyer_name}
                                         </p>
                                     </div>
                                 )}
                                 {ticketData.buyer_email && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Email
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.buyer_email}
                                         </p>
                                     </div>
                                 )}
                                 {ticketData.buyer_phone && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Phone
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.buyer_phone}
                                         </p>
                                     </div>
                                 )}
                                 {ticketData.buyer_id_number && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             NIK
                                         </label>
-                                        <p className="font-mono text-gray-900">
+                                        <p
+                                            className="font-mono"
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.buyer_id_number}
                                         </p>
                                     </div>
                                 )}
                                 {ticketData.buyer_sizes && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Sizes
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.buyer_sizes}
                                         </p>
                                     </div>
@@ -881,26 +1084,44 @@ const DetailModal: React.FC<{
 
                         {/* Order Information */}
                         <div className="space-y-4">
-                            <h4 className="border-b border-gray-200 pb-2 font-semibold text-gray-900">
+                            <h4
+                                className="border-b border-gray-200 pb-2 font-semibold"
+                                style={{ color: textPrimaryColor }}
+                            >
                                 📋 Order Details
                             </h4>
                             <div className="space-y-3">
                                 {ticketData.order_code && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Order Code
                                         </label>
-                                        <p className="font-mono text-sm text-gray-900">
+                                        <p
+                                            className="font-mono text-sm"
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.order_code}
                                         </p>
                                     </div>
                                 )}
                                 {ticketData.order_created_at && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Order Created
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {new Date(
                                                 ticketData.order_created_at,
                                             ).toLocaleString()}
@@ -909,10 +1130,17 @@ const DetailModal: React.FC<{
                                 )}
                                 {ticketData.order_paid_at && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Order Paid
                                         </label>
-                                        <p className="text-gray-900">
+                                        <p
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {new Date(
                                                 ticketData.order_paid_at,
                                             ).toLocaleString()}
@@ -921,10 +1149,18 @@ const DetailModal: React.FC<{
                                 )}
                                 {ticketData.total_price && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label
+                                            className="block text-sm font-medium"
+                                            style={{ color: textPrimaryColor }}
+                                        >
                                             Total Price
                                         </label>
-                                        <p className="font-semibold text-gray-900">
+                                        <p
+                                            className="font-semibold"
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {formatCurrency(
                                                 ticketData.total_price,
                                             )}
@@ -936,13 +1172,22 @@ const DetailModal: React.FC<{
                     </div>
 
                     {/* Scan Information */}
-                    <div className="mt-8 rounded-lg bg-gray-50 p-4">
-                        <h4 className="mb-3 font-semibold text-gray-900">
+                    <div
+                        className="mt-8 rounded-lg p-4"
+                        style={{ backgroundColor: primaryColor }}
+                    >
+                        <h4
+                            className="mb-3 font-semibold"
+                            style={{ color: textPrimaryColor }}
+                        >
                             🕒 Scan Information
                         </h4>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">
+                                <label
+                                    className="block text-sm font-medium"
+                                    style={{ color: textPrimaryColor }}
+                                >
                                     Scan Status
                                 </label>
                                 <div className="flex items-center gap-2">
@@ -954,11 +1199,8 @@ const DetailModal: React.FC<{
                                         }`}
                                     />
                                     <p
-                                        className={`font-medium ${
-                                            ticketData.status === 'success'
-                                                ? 'text-green-700'
-                                                : 'text-red-700'
-                                        }`}
+                                        className={`font-medium`}
+                                        style={{ color: textSecondaryColor }}
                                     >
                                         {ticketData.status === 'success'
                                             ? 'Successfully Scanned'
@@ -967,10 +1209,13 @@ const DetailModal: React.FC<{
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">
+                                <label
+                                    className="block text-sm font-medium"
+                                    style={{ color: textPrimaryColor }}
+                                >
                                     Scan Time
                                 </label>
-                                <p className="text-gray-900">
+                                <p style={{ color: textSecondaryColor }}>
                                     {new Date(
                                         ticketData.scanned_at,
                                     ).toLocaleString('id-ID', {
@@ -986,16 +1231,29 @@ const DetailModal: React.FC<{
                             </div>
                             {ticketData.scanned_by_name && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">
+                                    <label
+                                        className="block text-sm font-medium"
+                                        style={{ color: textPrimaryColor }}
+                                    >
                                         Scanned By
                                     </label>
                                     <div className="space-y-1">
-                                        <p className="font-medium text-gray-900">
+                                        <p
+                                            className="font-medium"
+                                            style={{
+                                                color: textSecondaryColor,
+                                            }}
+                                        >
                                             {ticketData.scanned_by_full_name ||
                                                 ticketData.scanned_by_name}
                                         </p>
                                         {ticketData.scanned_by_email && (
-                                            <p className="text-sm text-gray-600">
+                                            <p
+                                                className="text-sm"
+                                                style={{
+                                                    color: textSecondaryColor,
+                                                }}
+                                            >
                                                 {ticketData.scanned_by_email}
                                             </p>
                                         )}
@@ -1005,17 +1263,26 @@ const DetailModal: React.FC<{
                         </div>
                         {ticketData.message && (
                             <div className="mt-3">
-                                <label className="block text-sm font-medium text-gray-700">
+                                <label
+                                    className="block text-sm font-medium"
+                                    style={{ color: textPrimaryColor }}
+                                >
                                     Message
                                 </label>
-                                <p className="italic text-gray-900">
+                                <p
+                                    className="italic"
+                                    style={{ color: textSecondaryColor }}
+                                >
                                     {ticketData.message}
                                 </p>
                             </div>
                         )}
                     </div>
                 </div>
-                <div className="flex justify-end bg-gray-50 px-6 py-4">
+                <div
+                    className="flex justify-end px-6 py-4"
+                    style={{ backgroundColor: primaryColor }}
+                >
                     <button
                         onClick={onClose}
                         className="rounded-lg bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -1465,7 +1732,11 @@ const ScanTicket: React.FC = () => {
                 onConfirm={handleConfirmScan}
                 onCancel={handleCancelScan}
                 isLoading={isLoading}
-                isAlreadyScanned={confirmationModal.isAlreadyScanned} // tambahan prop
+                isAlreadyScanned={confirmationModal.isAlreadyScanned}
+                textPrimaryColor={pageConfigProps.text_primary_color} // Pass prop
+                textSecondaryColor={pageConfigProps.text_secondary_color} // Pass prop
+                primaryColor={pageConfigProps.primary_color} // Pass prop
+                secondaryColor={pageConfigProps.secondary_color} // Pass prop
             />
 
             <DetailModal
@@ -1474,6 +1745,10 @@ const ScanTicket: React.FC = () => {
                 onClose={() =>
                     setDetailModal({ isOpen: false, ticketData: null })
                 }
+                textPrimaryColor={pageConfigProps.text_primary_color} // Pass prop
+                textSecondaryColor={pageConfigProps.text_secondary_color} // Pass prop
+                primaryColor={pageConfigProps.primary_color} // Pass prop
+                secondaryColor={pageConfigProps.secondary_color} // Pass prop
             />
 
             <div
