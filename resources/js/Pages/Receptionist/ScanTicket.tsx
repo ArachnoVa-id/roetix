@@ -375,13 +375,30 @@ const ManualInputForm: React.FC<{
     setTicketCode: (code: string) => void;
     onSubmit: (e: React.FormEvent) => void;
     isLoading: boolean;
-}> = ({ ticketCode, setTicketCode, onSubmit, isLoading }) => (
+    textPrimaryColor: string;
+    primaryColor: string;
+    textSecondaryColor: string;
+}> = ({
+    ticketCode,
+    setTicketCode,
+    onSubmit,
+    isLoading,
+    textPrimaryColor,
+    primaryColor,
+    textSecondaryColor,
+}) => (
     <div className="w-full border-t border-white/20 pt-8">
-        <h4 className="mb-4 text-xl font-bold">Manual Ticket Entry</h4>
+        <h4
+            className="mb-4 text-xl font-bold"
+            style={{ color: textPrimaryColor }}
+        >
+            Manual Ticket Entry
+        </h4>
         <form onSubmit={onSubmit} className="flex gap-3">
             <input
                 type="text"
-                className="block flex-1 rounded-full border border-white/30 bg-white/20 p-3 text-white placeholder-gray-300 focus:border-blue-300 focus:ring-blue-300"
+                style={{ color: textSecondaryColor }}
+                className="block flex-1 rounded-full border border-white/30 bg-white/20 p-3 placeholder-gray-300 focus:border-blue-300 focus:ring-blue-300"
                 placeholder="Enter ticket code"
                 value={ticketCode}
                 onChange={(e) => setTicketCode(e.target.value)}
@@ -389,7 +406,11 @@ const ManualInputForm: React.FC<{
             />
             <button
                 type="submit"
-                className="rounded-full bg-gray-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                    backgroundColor: primaryColor,
+                    color: textSecondaryColor,
+                }}
+                className="rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide shadow-lg transition-all duration-300 hover:opacity-80 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={isLoading || !ticketCode.trim()}
             >
                 {isLoading ? 'Validating...' : 'Validate'}
@@ -1426,10 +1447,7 @@ const ScanTicket: React.FC = () => {
             props={pageConfigProps}
             userEndSessionDatetime={userEndSessionDatetime}
             header={
-                <div
-                    className="text-white"
-                    style={{ color: pageConfigProps.text_primary_color }}
-                >
+                <div style={{ color: pageConfigProps.text_primary_color }}>
                     <h2 className="header-dynamic-color text-3xl font-extrabold leading-tight drop-shadow-md md:text-4xl">
                         Scan Ticket for {event.name}
                     </h2>
@@ -1459,7 +1477,7 @@ const ScanTicket: React.FC = () => {
             />
 
             <div
-                className="py-8 text-white md:py-12"
+                className="py-8 md:py-12"
                 style={{
                     backgroundColor: pageConfigProps.secondary_color,
                     backgroundImage: pageConfigProps.texture
@@ -1477,17 +1495,32 @@ const ScanTicket: React.FC = () => {
 
                     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
                         {/* Camera Scanner Section */}
-                        <div className="relative flex flex-col items-center justify-center rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
+                        <div
+                            className="relative flex flex-col items-center justify-center rounded-2xl border border-white/20 bg-white/10 p-8 shadow-xl backdrop-blur-md"
+                            style={{
+                                color: pageConfigProps.text_primary_color,
+                            }}
+                        >
                             <h3 className="mb-6 text-2xl font-bold">
                                 Camera Scanner
                             </h3>
 
                             {camera.cameraError && (
-                                <div className="mb-6 w-full rounded-lg bg-yellow-100/20 p-4 text-yellow-200 backdrop-blur-sm">
-                                    <strong className="block text-lg">
+                                <div className="mb-6 w-full rounded-lg bg-yellow-100/20 p-4 backdrop-blur-sm">
+                                    <strong
+                                        className="block text-lg"
+                                        style={{
+                                            color: pageConfigProps.text_primary_color,
+                                        }}
+                                    >
                                         Camera Issue:
                                     </strong>
-                                    <p className="text-sm">
+                                    <p
+                                        className="text-sm"
+                                        style={{
+                                            color: pageConfigProps.text_primary_color,
+                                        }}
+                                    >
                                         {camera.cameraError}
                                     </p>
                                 </div>
@@ -1506,11 +1539,12 @@ const ScanTicket: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={camera.toggleScanning}
-                                    className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
-                                        camera.isScanning
-                                            ? 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400'
-                                            : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400'
-                                    } shadow-lg disabled:cursor-not-allowed disabled:opacity-50`}
+                                    style={{
+                                        backgroundColor:
+                                            pageConfigProps.primary_color,
+                                        color: pageConfigProps.text_secondary_color,
+                                    }}
+                                    className={`rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide shadow-lg transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
                                     disabled={isLoading}
                                 >
                                     {camera.isScanning
@@ -1522,7 +1556,12 @@ const ScanTicket: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={camera.toggleCameraFacingMode}
-                                        className="rounded-full bg-blue-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-all duration-300 hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                        style={{
+                                            backgroundColor:
+                                                pageConfigProps.primary_color,
+                                            color: pageConfigProps.text_secondary_color,
+                                        }}
+                                        className="rounded-full px-6 py-3 text-sm font-bold uppercase tracking-wide shadow-lg transition-all duration-300 focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-50"
                                         disabled={isLoading}
                                     >
                                         Switch to{' '}
@@ -1539,17 +1578,36 @@ const ScanTicket: React.FC = () => {
                                 setTicketCode={setTicketCode}
                                 onSubmit={handleManualSubmit}
                                 isLoading={isLoading}
+                                textPrimaryColor={
+                                    pageConfigProps.text_primary_color
+                                }
+                                primaryColor={pageConfigProps.primary_color}
+                                textSecondaryColor={
+                                    pageConfigProps.text_secondary_color
+                                }
                             />
                         </div>
 
                         {/* Scanned Tickets History */}
-                        <div className="flex flex-col rounded-2xl border border-white/20 bg-white/10 p-8 text-white shadow-xl backdrop-blur-md">
-                            <div className="mb-6 flex items-center justify-between">
+                        <div className="flex flex-col rounded-2xl border border-white/20 bg-white/10 p-8 shadow-xl backdrop-blur-md">
+                            <div
+                                className="mb-6 flex items-center justify-between"
+                                style={{
+                                    color: pageConfigProps.text_primary_color,
+                                }}
+                            >
                                 <h3 className="text-2xl font-bold">
                                     Scanned Tickets History
                                 </h3>
                                 <div className="flex items-center gap-2">
-                                    <div className="rounded-full bg-white/20 px-3 py-1">
+                                    <div
+                                        className="rounded-full px-3 py-1"
+                                        style={{
+                                            backgroundColor:
+                                                pageConfigProps.primary_color,
+                                            color: pageConfigProps.text_secondary_color,
+                                        }}
+                                    >
                                         <span className="text-sm font-semibold">
                                             {scannedTickets.length} tickets
                                         </span>
@@ -1557,7 +1615,12 @@ const ScanTicket: React.FC = () => {
                                     {scannedTickets.length > 0 && (
                                         <button
                                             onClick={fetchScannedTicketsHistory}
-                                            className="rounded-full bg-blue-500/20 p-2 text-blue-200 transition-colors hover:bg-blue-500/30"
+                                            style={{
+                                                backgroundColor:
+                                                    pageConfigProps.primary_color,
+                                                color: pageConfigProps.text_secondary_color,
+                                            }}
+                                            className="rounded-full p-2 transition-colors hover:opacity-80"
                                             title="Refresh history"
                                             aria-label="Refresh scan history"
                                         >
@@ -1580,11 +1643,19 @@ const ScanTicket: React.FC = () => {
                             </div>
 
                             {isFetchingHistory ? (
-                                <div className="flex flex-grow flex-col items-center justify-center py-8 text-gray-300">
+                                <div
+                                    className="flex flex-grow flex-col items-center justify-center py-8"
+                                    style={{
+                                        color: pageConfigProps.text_primary_color,
+                                    }}
+                                >
                                     <svg
-                                        className="mx-auto h-16 w-16 animate-spin text-gray-400"
+                                        className="mx-auto h-16 w-16 animate-spin"
                                         fill="none"
                                         viewBox="0 0 24 24"
+                                        style={{
+                                            color: pageConfigProps.text_primary_color,
+                                        }}
                                     >
                                         <circle
                                             className="opacity-25"
@@ -1605,12 +1676,20 @@ const ScanTicket: React.FC = () => {
                                     </p>
                                 </div>
                             ) : scannedTickets.length === 0 ? (
-                                <div className="flex flex-grow flex-col items-center justify-center py-8 text-gray-300">
+                                <div
+                                    className="flex flex-grow flex-col items-center justify-center py-8"
+                                    style={{
+                                        color: pageConfigProps.text_primary_color,
+                                    }}
+                                >
                                     <svg
-                                        className="mx-auto mb-4 h-20 w-20 text-gray-400"
+                                        className="mx-auto mb-4 h-20 w-20"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                         stroke="currentColor"
+                                        style={{
+                                            color: pageConfigProps.text_primary_color,
+                                        }}
                                     >
                                         <path
                                             strokeLinecap="round"
@@ -1622,7 +1701,7 @@ const ScanTicket: React.FC = () => {
                                     <h3 className="text-xl font-medium">
                                         No tickets scanned yet
                                     </h3>
-                                    <p className="mt-2 text-sm text-gray-400">
+                                    <p className="mt-2 text-sm">
                                         Start scanning or manually enter a
                                         ticket code.
                                     </p>
@@ -1638,11 +1717,16 @@ const ScanTicket: React.FC = () => {
                                                     ticketData: ticket,
                                                 })
                                             }
-                                            className={`cursor-pointer rounded-lg border-l-4 p-4 shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${
-                                                ticket.status === 'success'
-                                                    ? 'border-green-400 bg-green-500/20 hover:bg-green-500/30'
-                                                    : 'border-red-400 bg-red-500/20 hover:bg-red-500/30'
-                                            }`}
+                                            style={{
+                                                backgroundColor:
+                                                    pageConfigProps.primary_color,
+                                                color: pageConfigProps.text_secondary_color,
+                                                borderLeftColor:
+                                                    ticket.status === 'success'
+                                                        ? 'green'
+                                                        : 'red', // Border color based on status
+                                            }}
+                                            className={`cursor-pointer rounded-lg border-l-4 p-4 shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg`}
                                         >
                                             <div className="mb-3 flex items-center justify-between">
                                                 <div className="flex items-center">
@@ -1653,8 +1737,13 @@ const ScanTicket: React.FC = () => {
                                                         {ticket.ticket_code}
                                                     </span>
                                                 </div>
-                                                <div className="text-right">
-                                                    <span className="text-xs text-gray-300">
+                                                <div
+                                                    className="text-right"
+                                                    style={{
+                                                        color: pageConfigProps.text_secondary_color,
+                                                    }}
+                                                >
+                                                    <span className="text-xs">
                                                         {new Date(
                                                             ticket.scanned_at,
                                                         ).toLocaleString(
@@ -1670,20 +1759,30 @@ const ScanTicket: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-2">
+                                            <div
+                                                className="space-y-2"
+                                                style={{
+                                                    color: pageConfigProps.text_secondary_color,
+                                                }}
+                                            >
                                                 {ticket.attendee_name && (
                                                     <p className="text-sm">
-                                                        <strong className="text-gray-200">
+                                                        <strong>
                                                             Attendee:
                                                         </strong>{' '}
-                                                        <span className="text-white">
+                                                        <span>
                                                             {
                                                                 ticket.attendee_name
                                                             }
                                                         </span>
                                                     </p>
                                                 )}
-                                                <div className="flex items-center justify-between">
+                                                <div
+                                                    className="flex items-center justify-between"
+                                                    style={{
+                                                        color: pageConfigProps.text_secondary_color,
+                                                    }}
+                                                >
                                                     {ticket.ticket_type && (
                                                         <div className="flex items-center gap-2">
                                                             <div
@@ -1694,7 +1793,7 @@ const ScanTicket: React.FC = () => {
                                                                         '#667eea',
                                                                 }}
                                                             />
-                                                            <span className="text-sm text-gray-300">
+                                                            <span className="text-sm">
                                                                 {
                                                                     ticket.ticket_type
                                                                 }
@@ -1702,20 +1801,20 @@ const ScanTicket: React.FC = () => {
                                                         </div>
                                                     )}
                                                     {ticket.seat_number && (
-                                                        <span className="text-sm text-gray-300">
+                                                        <span className="text-sm">
                                                             📍{' '}
                                                             {ticket.seat_number}
                                                         </span>
                                                     )}
                                                 </div>
                                                 {ticket.buyer_name && (
-                                                    <p className="text-sm text-gray-300">
+                                                    <p className="text-sm">
                                                         <strong>Buyer:</strong>{' '}
                                                         {ticket.buyer_name}
                                                     </p>
                                                 )}
                                                 {ticket.scanned_by_name && (
-                                                    <p className="text-sm text-gray-300">
+                                                    <p className="text-sm">
                                                         <strong>
                                                             Scanned by:
                                                         </strong>{' '}
@@ -1725,13 +1824,16 @@ const ScanTicket: React.FC = () => {
                                                 )}
                                             </div>
 
-                                            <div className="mt-3 flex items-center justify-between">
-                                                <p
-                                                    className={`text-sm ${ticket.status === 'success' ? 'text-green-200' : 'text-red-200'}`}
-                                                >
+                                            <div
+                                                className="mt-3 flex items-center justify-between"
+                                                style={{
+                                                    color: pageConfigProps.text_secondary_color,
+                                                }}
+                                            >
+                                                <p className={`text-sm`}>
                                                     {ticket.message}
                                                 </p>
-                                                <span className="text-xs text-gray-400 transition-colors hover:text-white">
+                                                <span className="text-xs transition-colors hover:text-white">
                                                     Click for details →
                                                 </span>
                                             </div>
