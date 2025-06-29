@@ -1037,10 +1037,71 @@ const ScanTicket: React.FC = () => {
         useNotification();
     const camera = useCamera(showNotification);
 
+    const isTicketAlreadyScanned = useCallback(
+        (ticketCode: string) => {
+            return scannedTickets.some(
+                (ticket) => ticket.ticket_code === ticketCode,
+            );
+        },
+        [scannedTickets],
+    );
     // QR Scanner
-    const onCodeScanned = useCallback(async (code: string) => {
-        await validateTicketCode(code);
-    }, []);
+    const onCodeScanned = useCallback(
+        async (code: string) => {
+            // Check if ticket is already scanned in current session first
+            if (isTicketAlreadyScanned(code)) {
+                const existingTicket = scannedTickets.find(
+                    (ticket) => ticket.ticket_code === code,
+                );
+                if (existingTicket) {
+                    // Convert ScannedTicketData to TicketValidationData for modal
+                    const ticketDataForModal: TicketValidationData = {
+                        ticket_code: existingTicket.ticket_code,
+                        attendee_name: existingTicket.attendee_name,
+                        ticket_type: existingTicket.ticket_type,
+                        ticket_price: existingTicket.ticket_price,
+                        order_code: existingTicket.order_code,
+                        order_date: existingTicket.order_date,
+                        order_created_at: existingTicket.order_created_at,
+                        order_paid_at: existingTicket.order_paid_at,
+                        buyer_email: existingTicket.buyer_email,
+                        buyer_name: existingTicket.buyer_name,
+                        buyer_phone: existingTicket.buyer_phone,
+                        buyer_id_number: existingTicket.buyer_id_number,
+                        buyer_sizes: existingTicket.buyer_sizes,
+                        seat_number: existingTicket.seat_number,
+                        seat_row: existingTicket.seat_row,
+                        event_name: existingTicket.event_name,
+                        event_location: existingTicket.event_location,
+                        event_date: existingTicket.event_date,
+                        event_time: existingTicket.event_time,
+                        status: existingTicket.status,
+                        scanned_at: existingTicket.scanned_at,
+                        scanned_by_id: existingTicket.scanned_by_id,
+                        scanned_by_name: existingTicket.scanned_by_name,
+                        scanned_by_email: existingTicket.scanned_by_email,
+                        scanned_by_full_name:
+                            existingTicket.scanned_by_full_name,
+                    };
+
+                    setConfirmationModal({
+                        isOpen: true,
+                        ticketData: ticketDataForModal,
+                        isAlreadyScanned: true,
+                    });
+
+                    showNotification(
+                        'error',
+                        `Ticket ${code} has already been scanned in this session.`,
+                    );
+                    return;
+                }
+            }
+
+            await validateTicketCode(code);
+        },
+        [isTicketAlreadyScanned, scannedTickets, showNotification],
+    );
 
     const { canvasRef, startQrScanning, stopQrScanning } = useQRScanner(
         camera.videoRef,
@@ -1112,8 +1173,10 @@ const ScanTicket: React.FC = () => {
                             scanned_at: scannedTicketData.scanned_at,
                             scanned_by_id: scannedTicketData.scanned_by_id,
                             scanned_by_name: scannedTicketData.scanned_by_name,
-                            scanned_by_email: scannedTicketData.scanned_by_email,
-                            scanned_by_full_name: scannedTicketData.scanned_by_full_name,
+                            scanned_by_email:
+                                scannedTicketData.scanned_by_email,
+                            scanned_by_full_name:
+                                scannedTicketData.scanned_by_full_name,
                         };
 
                         setConfirmationModal({
@@ -1122,12 +1185,25 @@ const ScanTicket: React.FC = () => {
                             isAlreadyScanned: true,
                         });
 
-                        setScannedTickets((prev) => [
-                            scannedTicketData!,
-                            ...prev.filter(
-                                (t) => t.id !== scannedTicketData!.id,
-                            ),
-                        ]);
+                        setScannedTickets((prev) => {
+                            // Check if ticket already exists in the list
+                            const existingTicketIndex = prev.findIndex(
+                                (t) =>
+                                    t.ticket_code ===
+                                    scannedTicketData!.ticket_code,
+                            );
+
+                            if (existingTicketIndex >= 0) {
+                                // Update existing ticket
+                                const updatedTickets = [...prev];
+                                updatedTickets[existingTicketIndex] =
+                                    scannedTicketData!;
+                                return updatedTickets;
+                            } else {
+                                // Add new ticket to the beginning of the list
+                                return [scannedTicketData!, ...prev];
+                            }
+                        });
 
                         return;
                     }
@@ -1163,10 +1239,16 @@ const ScanTicket: React.FC = () => {
                 showNotification('success', successMsg);
 
                 if (response.data?.data) {
-                    setScannedTickets((prev) => [
-                        response.data.data!,
-                        ...prev.filter((t) => t.id !== response.data.data!.id),
-                    ]);
+                    // Update scanned tickets list immediately
+                    setScannedTickets((prev) => {
+                        // Remove any existing ticket with same ticket_code and add the new one at the beginning
+                        const filteredPrev = prev.filter(
+                            (t) =>
+                                t.ticket_code !==
+                                response.data.data!.ticket_code,
+                        );
+                        return [response.data.data!, ...filteredPrev];
+                    });
                 }
                 setTicketCode('');
             } catch (error: unknown) {
@@ -1210,6 +1292,54 @@ const ScanTicket: React.FC = () => {
         if (!ticketCode.trim()) {
             showNotification('error', 'Ticket code cannot be empty.');
             return;
+        }
+        // Check if ticket is already scanned in current session first
+        if (isTicketAlreadyScanned(ticketCode.trim())) {
+            const existingTicket = scannedTickets.find(
+                (ticket) => ticket.ticket_code === ticketCode.trim(),
+            );
+            if (existingTicket) {
+                // Convert ScannedTicketData to TicketValidationData for modal
+                const ticketDataForModal: TicketValidationData = {
+                    ticket_code: existingTicket.ticket_code,
+                    attendee_name: existingTicket.attendee_name,
+                    ticket_type: existingTicket.ticket_type,
+                    ticket_price: existingTicket.ticket_price,
+                    order_code: existingTicket.order_code,
+                    order_date: existingTicket.order_date,
+                    order_created_at: existingTicket.order_created_at,
+                    order_paid_at: existingTicket.order_paid_at,
+                    buyer_email: existingTicket.buyer_email,
+                    buyer_name: existingTicket.buyer_name,
+                    buyer_phone: existingTicket.buyer_phone,
+                    buyer_id_number: existingTicket.buyer_id_number,
+                    buyer_sizes: existingTicket.buyer_sizes,
+                    seat_number: existingTicket.seat_number,
+                    seat_row: existingTicket.seat_row,
+                    event_name: existingTicket.event_name,
+                    event_location: existingTicket.event_location,
+                    event_date: existingTicket.event_date,
+                    event_time: existingTicket.event_time,
+                    status: existingTicket.status,
+                    scanned_at: existingTicket.scanned_at,
+                    scanned_by_id: existingTicket.scanned_by_id,
+                    scanned_by_name: existingTicket.scanned_by_name,
+                    scanned_by_email: existingTicket.scanned_by_email,
+                    scanned_by_full_name: existingTicket.scanned_by_full_name,
+                };
+
+                setConfirmationModal({
+                    isOpen: true,
+                    ticketData: ticketDataForModal,
+                    isAlreadyScanned: true,
+                });
+
+                showNotification(
+                    'error',
+                    `Ticket ${ticketCode.trim()} has already been scanned in this session.`,
+                );
+                return;
+            }
         }
         await validateTicketCode(ticketCode.trim());
     };
