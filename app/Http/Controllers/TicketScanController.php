@@ -291,6 +291,12 @@ class TicketScanController extends Controller
     {
         $userData = $this->getUserDataFromOrder($ticketOrder->order);
 
+        // Perbaikan di sini: Inisialisasi $scannedByData berdasarkan status
+        $scannedByData = null;
+        if ($status === 'already_scanned') {
+            $scannedByData = $this->getScannedByData($ticketOrder);
+        }
+
         return [
             'ticket_code' => $ticket->ticket_code,
             'attendee_name' => $ticket->attendee_name ?? $userData['full_name'],
@@ -313,6 +319,10 @@ class TicketScanController extends Controller
             'event_time' => $ticket->event->getEventTime() ?? null,
             'status' => $status,
             'scanned_at' => $status === 'already_scanned' ? $ticketOrder->scanned_at?->toIso8601String() : null,
+            'scanned_by_id' => $scannedByData['id'] ?? null, // Sekarang $scannedByData sudah pasti terinisialisasi jika diperlukan
+            'scanned_by_name' => $scannedByData['name'] ?? null, // Sekarang $scannedByData sudah pasti terinisialisasi jika diperlukan
+            'scanned_by_email' => $scannedByData['email'] ?? null, // Sekarang $scannedByData sudah pasti terinisialisasi jika diperlukan
+            'scanned_by_full_name' => $scannedByData['full_name'] ?? null, // Sekarang $scannedByData sudah pasti terinisialisasi jika diperlukan
         ];
     }
 
@@ -321,16 +331,7 @@ class TicketScanController extends Controller
         $userData = $this->getUserDataFromOrder($ticketOrder->order);
         
         // Get scanned by user information
-        $scannedByUser = $ticketOrder->scannedBy ?? null;
-        $scannedByData = null;
-        if ($scannedByUser) {
-            $scannedByContact = $scannedByUser->contactInfo ?? null;
-            $scannedByData = [
-                'name' => $scannedByUser->getFilamentName(),
-                'email' => $scannedByUser->email,
-                'full_name' => $scannedByContact?->fullname ?? $scannedByUser->getFilamentName(),
-            ];
-        }
+        $scannedByData = $this->getScannedByData($ticketOrder);
 
         return [
             'id' => (string) $ticketOrder->id,
@@ -381,11 +382,26 @@ class TicketScanController extends Controller
             'event_slug' => $ticket->event->slug ?? null,
             
             // Scanned By Information
-            'scanned_by_id' => $ticketOrder->scanned_by ?? null,
+            'scanned_by_id' => $scannedByData['id'] ?? null,
             'scanned_by_name' => $scannedByData['name'] ?? null,
             'scanned_by_email' => $scannedByData['email'] ?? null,
             'scanned_by_full_name' => $scannedByData['full_name'] ?? null,
         ];
+    }
+
+    private function getScannedByData($ticketOrder)
+    {
+        $scannedByUser = $ticketOrder->scannedBy ?? null;
+        if ($scannedByUser) {
+            $scannedByContact = $scannedByUser->contactInfo ?? null;
+            return [
+                'id' => $scannedByUser->id,
+                'name' => $scannedByUser->getFilamentName(),
+                'email' => $scannedByUser->email,
+                'full_name' => $scannedByContact?->fullname ?? $scannedByUser->getFilamentName(),
+            ];
+        }
+        return null;
     }
 
     private function errorResponse(string $message, string $error, int $status, $data = null): JsonResponse
