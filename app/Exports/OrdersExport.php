@@ -30,13 +30,13 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
 
         // Check if the user is admin and if eventId is not provided
         if ($user->isAdmin() && empty($this->eventId)) {
-            $orders = Order::with(['ticketOrders.ticket.seat'])->get();  // Get all orders with seat relation
+            $orders = Order::with(['ticketOrders.ticket.seat', 'ticketOrders.scannedBy'])->orderBy('created_at', 'asc')->get();  // Get all orders with seat relation, sorted by creation time
         } else if (
             !$user->isAdmin() && $this->eventId && !in_array(Event::find($this->eventId)->team_id, $user->teams()->pluck('user_team.team_id')->toArray())
         ) {
             $orders = collect();  // Return empty collection
         } else {
-            $orders = Order::with(['ticketOrders.ticket.seat'])->where('event_id', $this->eventId)->get();  // Get orders based on eventId with seat relation
+            $orders = Order::with(['ticketOrders.ticket.seat', 'ticketOrders.scannedBy'])->where('event_id', $this->eventId)->orderBy('created_at', 'asc')->get();  // Get orders based on eventId with seat relation, sorted by creation time
         }
 
         // Map over the orders and populate the additional fields
@@ -52,6 +52,19 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
 
             // Count total tickets for this order
             $totalTickets = $order->ticketOrders->count();
+
+            // Get scanning information
+            $scannedTickets = $order->ticketOrders->filter(function ($ticketOrder) {
+                return !is_null($ticketOrder->scanned_at);
+            });
+
+            $scannedCount = $scannedTickets->count();
+            $scanStatus = $scannedCount === 0 ? 'Not Scanned' : ($scannedCount === $totalTickets ? 'Fully Scanned' : 'Partially Scanned');
+
+            // Get earliest scan time and scanned by info
+            $earliestScan = $scannedTickets->sortBy('scanned_at')->first();
+            $scannedAt = $earliestScan ? $earliestScan->scanned_at->format('Y-m-d H:i:s') : null;
+            $scannedByEmail = $earliestScan && $earliestScan->scannedBy ? $earliestScan->scannedBy->email : null;
 
             $body = [
                 'order_id' => $order->id,
@@ -69,6 +82,9 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
                 'user_sizes' => null,  // Will be populated from NoSQL data
                 'seat_numbers' => $seatNumbers ?: 'N/A',  // Seat numbers separated by comma
                 'jumlah_ticket' => $totalTickets,  // Total number of tickets
+                'scanned_status' => $scanStatus,  // Scanning status
+                'scanned_at' => $scannedAt,  // First scan timestamp
+                'scanned_by_email' => $scannedByEmail,  // Email of user who scanned
                 'total_price' => $order->total_price,
                 'created_at' => $order->created_at ? $order->created_at->format('Y-m-d H:i:s') : null,
                 'updated_at' => $order->updated_at ? $order->updated_at->format('Y-m-d H:i:s') : null,
@@ -119,6 +135,9 @@ class OrdersExport implements FromCollection, WithHeadings, WithTitle
             'User Sizes',
             'Seat Numbers',
             'Jumlah Ticket',
+            'Scanned Status',
+            'Scanned At',
+            'Scanned By Email',
             'Total Price',
             'Created At',
             'Updated At',
