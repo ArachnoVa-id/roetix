@@ -1935,29 +1935,6 @@ class EventResource extends Resource
                                     'md' => 2,
                                 ]),
                         ]),
-                    Forms\Components\Wizard\Step::make('User Logs')
-                        ->schema([
-                            \Filament\Forms\Components\Actions::make([
-                                \Filament\Forms\Components\Actions\Action::make('button')
-                                    ->label('Recreate SQLite for user logs Event')
-                                    ->action(function (Forms\Set $set, $state, $livewire) {
-                                        $event = $livewire->getRecord();
-                                        if ($event) {
-                                            Event::createQueueSqlite($event);
-
-                                            \Filament\Notifications\Notification::make()
-                                                ->title("SQLite for Event #{$event->id} created.")
-                                                ->success()
-                                                ->send();
-                                        } else {
-                                            \Filament\Notifications\Notification::make()
-                                                ->title("No event record found.")
-                                                ->danger()
-                                                ->send();
-                                        }
-                                    }),
-                            ])
-                        ]),
                 ])
                     ->skippable($modelExists)
                     ->columnSpan('full'),
